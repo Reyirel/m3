@@ -2375,8 +2375,11 @@ export default function TaskDetailScreen({ route, navigation }) {
           </View>
         </View>
       )}
-      
-      {/* Modal de Delegación para Secretarios */}
+
+        </KeyboardAvoidingView>
+      )}
+
+      {/* Modal de Delegación para Secretarios - FUERA del bloque isReadOnly */}
       <Modal
         visible={showDelegateModal}
         transparent={true}
@@ -2393,11 +2396,11 @@ export default function TaskDetailScreen({ route, navigation }) {
                 <Ionicons name="close" size={28} color={theme.text} />
               </TouchableOpacity>
             </View>
-            
+
             <Text style={[styles.delegateModalSubtitle, { color: theme.textSecondary }]}>
               Selecciona un director para asignarle esta tarea:
             </Text>
-            
+
             {editingTask?.isAreaSubtask && currentUser?.role === 'secretario' && (
               <View style={[styles.delegateWarningBox, { backgroundColor: '#FFF3CD', borderColor: '#FFC107' }]}>
                 <Ionicons name="warning" size={16} color="#FF6B6B" />
@@ -2437,7 +2440,7 @@ export default function TaskDetailScreen({ route, navigation }) {
                 ))
               )}
             </ScrollView>
-            
+
             <TouchableOpacity
               style={[styles.delegateCancelButton, { backgroundColor: theme.border }]}
               onPress={() => setShowDelegateModal(false)}
@@ -2447,8 +2450,6 @@ export default function TaskDetailScreen({ route, navigation }) {
           </View>
         </View>
       </Modal>
-        </KeyboardAvoidingView>
-      )}
     </View>
   );
 }
