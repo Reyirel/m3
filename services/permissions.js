@@ -183,22 +183,8 @@ export function canDelegateTask(user, task) {
     return { canDelegate: true, reason: 'Admin puede delegar', allowedUsers: 'all' };
   }
   
-  // Secretario puede delegar solo tareas que le fueron asignadas directamente a él
+  // Secretario puede delegar cualquier tarea a sus directores adscritos
   if (user.role === ROLES.SECRETARIO) {
-    const myEmail = user.email?.toLowerCase().trim();
-    const assignedTo = task.assignedTo || [];
-    const assignees = Array.isArray(assignedTo)
-      ? assignedTo.map(e => (typeof e === 'string' ? e : e?.email || '')?.toLowerCase().trim())
-      : [(assignedTo || '').toLowerCase().trim()];
-
-    if (!myEmail || !assignees.includes(myEmail)) {
-      return {
-        canDelegate: false,
-        reason: 'Solo puedes delegar tareas que te fueron asignadas directamente',
-        allowedAreas: []
-      };
-    }
-
     // Las áreas del secretario definen qué directores puede ver en el selector
     const todasAreas = [...new Set([
       user.area,
@@ -233,18 +219,9 @@ export function canCreateSubtask(user, task) {
     return { canCreate: true, reason: 'Admin puede crear subtareas' };
   }
   
-  // Secretario puede crear subtareas en tareas asignadas a él
+  // Secretario puede crear subtareas en cualquier tarea
   if (user.role === ROLES.SECRETARIO) {
-    const myEmail = user.email?.toLowerCase().trim();
-    const assignedTo = task.assignedTo || [];
-    const assignees = Array.isArray(assignedTo)
-      ? assignedTo.map(e => (typeof e === 'string' ? e : e?.email || '')?.toLowerCase().trim())
-      : [(assignedTo || '').toLowerCase().trim()];
-
-    if (myEmail && assignees.includes(myEmail)) {
-      return { canCreate: true, reason: 'Secretario puede crear subtareas en tareas asignadas a él' };
-    }
-    return { canCreate: false, reason: 'Solo puedes crear subtareas en tareas que te fueron asignadas' };
+    return { canCreate: true, reason: 'Secretario puede crear subtareas' };
   }
   
   // Director no puede crear subtareas

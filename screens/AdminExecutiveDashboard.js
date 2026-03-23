@@ -29,20 +29,25 @@ import ShimmerEffect from '../components/ShimmerEffect';
 import TrafficLightDashboard from '../components/TrafficLightDashboard';
 import { toMs } from '../utils/dateUtils';
 import { resolveAreaName } from '../config/areas';
+import { useResponsive } from '../utils/responsive';
+import { MAX_WIDTHS } from '../theme/tokens';
 
 const { width } = Dimensions.get('window');
 const chartWidth = Math.min(width - 48, 500);
 
 export default function AdminExecutiveDashboard({ navigation }) {
   const { theme, isDark } = useTheme();
+  const { isDesktop } = useResponsive();
   const { tasks } = useTasks();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [users, setUsers] = useState([]);
-  const [activeTab, setActiveTab] = useState('overview'); // overview, evolution, compliance, performance
+  const [activeTab, setActiveTab] = useState('overview'); // overview, compliance, trafficlight
   const [selectedPeriod, setSelectedPeriod] = useState('month'); // week, month, quarter
   const [selectedUser, setSelectedUser] = useState(null);
   const [showUserModal, setShowUserModal] = useState(false);
+  const [showEvolutionModal, setShowEvolutionModal] = useState(false);
+  const [complianceView, setComplianceView] = useState('directors'); // directors | secretarios
   
   // Animaciones
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -359,7 +364,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
   // Sección: Resumen General
   const renderOverview = () => (
     <View>
-      {/* Fila de KPIs principales — 4 cards en 2x2 */}
+      {/* KPIs principales + tasas en una sola card */}
       <View style={[styles.section, { backgroundColor: theme.card }]}>
         <View style={styles.kpiGrid}>
           {[
@@ -391,35 +396,27 @@ export default function AdminExecutiveDashboard({ navigation }) {
             </View>
           ))}
         </View>
-      </View>
 
-      {/* Comparativa rápida este mes vs anterior */}
-      <View style={[styles.section, { backgroundColor: theme.card }]}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="trending-up" size={18} color="#9C27B0" />
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Este mes vs anterior</Text>
-          <View style={[styles.statusBadge, {
-            backgroundColor: monthlyComparison.improving ? '#10B98120' : '#EF444420',
-            marginLeft: 'auto',
-          }]}>
-            <Ionicons
-              name={monthlyComparison.improving ? 'arrow-up' : 'arrow-down'}
-              size={13} color={monthlyComparison.improving ? '#10B981' : '#EF4444'}
-            />
-            <Text style={{ color: monthlyComparison.improving ? '#10B981' : '#EF4444', fontWeight: '700', fontSize: 12 }}>
-              {monthlyComparison.change > 0 ? '+' : ''}{monthlyComparison.change}%
+        {/* Comparativa mes actual vs anterior — inline compacta */}
+        <View style={[styles.compactComparison, { borderTopColor: theme.border, marginTop: 14, paddingTop: 14 }]}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Ionicons name="trending-up" size={14} color="#9C27B0" />
+            <Text style={[styles.compactCompLabel, { color: theme.textSecondary }]}>Este mes vs anterior</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <Text style={[styles.compactCompValue, { color: theme.text }]}>
+              {monthlyComparison.thisMonth}
             </Text>
-          </View>
-        </View>
-        <View style={styles.comparisonRow}>
-          <View style={styles.comparisonItem}>
-            <Text style={[styles.comparisonValue, { color: theme.text }]}>{monthlyComparison.thisMonth}</Text>
-            <Text style={[styles.comparisonLabel, { color: theme.textSecondary }]}>Este mes</Text>
-          </View>
-          <View style={[styles.comparisonArrow, { backgroundColor: theme.border }]} />
-          <View style={styles.comparisonItem}>
-            <Text style={[styles.comparisonValue, { color: theme.textSecondary }]}>{monthlyComparison.lastMonth}</Text>
-            <Text style={[styles.comparisonLabel, { color: theme.textSecondary }]}>Mes anterior</Text>
+            <Text style={[styles.compactCompSep, { color: theme.textSecondary }]}>vs</Text>
+            <Text style={[styles.compactCompValue, { color: theme.textSecondary }]}>
+              {monthlyComparison.lastMonth}
+            </Text>
+            <View style={[styles.compactBadge, { backgroundColor: monthlyComparison.improving ? '#10B98120' : '#EF444420' }]}>
+              <Ionicons name={monthlyComparison.improving ? 'arrow-up' : 'arrow-down'} size={11} color={monthlyComparison.improving ? '#10B981' : '#EF4444'} />
+              <Text style={{ color: monthlyComparison.improving ? '#10B981' : '#EF4444', fontSize: 11, fontWeight: '700' }}>
+                {monthlyComparison.change > 0 ? '+' : ''}{monthlyComparison.change}%
+              </Text>
+            </View>
           </View>
         </View>
       </View>
@@ -446,6 +443,23 @@ export default function AdminExecutiveDashboard({ navigation }) {
           ))}
         </View>
       )}
+
+      {/* Botón para ver evolución histórica */}
+      <TouchableOpacity
+        style={[styles.evolutionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+        onPress={() => setShowEvolutionModal(true)}
+      >
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View style={{ backgroundColor: '#3B82F620', padding: 8, borderRadius: 10 }}>
+            <Ionicons name="analytics" size={18} color="#3B82F6" />
+          </View>
+          <View>
+            <Text style={[{ fontSize: 14, fontWeight: '700', color: theme.text }]}>Evolución histórica</Text>
+            <Text style={[{ fontSize: 12, color: theme.textSecondary }]}>Ver gráfica de tareas por período</Text>
+          </View>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+      </TouchableOpacity>
     </View>
   );
 
@@ -527,187 +541,118 @@ export default function AdminExecutiveDashboard({ navigation }) {
     </View>
   );
 
-  // Sección: Cumplimiento
-  const renderCompliance = () => (
-    <View style={[styles.section, { backgroundColor: theme.card }]}>
-      <View style={styles.sectionHeader}>
-        <Ionicons name="bar-chart" size={20} color="#F59E0B" />
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Reporte de Cumplimiento</Text>
-        <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>Quién trabaja y quién no</Text>
-      </View>
-      
-      {/* Resumen rápido */}
-      <View style={styles.complianceSummary}>
-        <View style={[styles.complianceCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
-          <Text style={[styles.complianceValue, { color: theme.text }]}>{userMetrics.length}</Text>
-          <Text style={[styles.complianceLabel, { color: theme.textSecondary }]}>Asignados</Text>
-        </View>
-        <View style={[styles.complianceCard, { backgroundColor: isDark ? '#1E2620' : '#ECFDF5' }]}>
-          <Text style={[styles.complianceValue, { color: '#10B981' }]}>
-            {userMetrics.filter(u => u.completionRate >= 70).length}
-          </Text>
-          <Text style={[styles.complianceLabel, { color: theme.textSecondary }]}>Cumpliendo</Text>
-        </View>
-        <View style={[styles.complianceCard, { backgroundColor: isDark ? '#2D1E1E' : '#FEF2F2' }]}>
-          <Text style={[styles.complianceValue, { color: '#EF4444' }]}>
-            {userMetrics.filter(u => u.overdueTasks > 0).length}
-          </Text>
-          <Text style={[styles.complianceLabel, { color: theme.textSecondary }]}>Con Retrasos</Text>
-        </View>
-        <View style={[styles.complianceCard, { backgroundColor: isDark ? '#1E293B' : '#DBEAFE' }]}>
-          <Text style={[styles.complianceValue, { color: '#3B82F6' }]}>
-            {userMetrics.length > 0 
-              ? Math.round(userMetrics.reduce((a, b) => a + b.completionRate, 0) / userMetrics.length) 
-              : 0}%
-          </Text>
-          <Text style={[styles.complianceLabel, { color: theme.textSecondary }]}>Promedio</Text>
-        </View>
-      </View>
-      
-      {/* Lista de usuarios ordenada */}
-      <View style={styles.sortButtons}>
-        <Text style={[styles.sortLabel, { color: theme.textSecondary }]}>Ordenar por:</Text>
-        <TouchableOpacity style={[styles.sortButton, { backgroundColor: theme.primary + '20' }]}>
-          <Text style={[styles.sortButtonText, { color: theme.primary }]}>Cumplimiento ↓</Text>
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.usersList}>
-        {userMetrics.length === 0 ? (
-          <View style={styles.emptyState}>
-            <Ionicons name="people-outline" size={48} color={theme.textSecondary} />
-            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-              No hay directores o jefes asignados
-            </Text>
-          </View>
-        ) : (
-          userMetrics.map((user, index) => (
-            <TouchableOpacity
-              key={user.id || index}
-              style={[
-                styles.userCard,
-                { 
-                  backgroundColor: isDark ? '#1E1E23' : '#F8FAFC',
-                  borderLeftColor: getCompletionColor(user.completionRate),
-                }
-              ]}
-              onPress={() => {
-                setSelectedUser(user);
-                setShowUserModal(true);
-              }}
-            >
-              <View style={styles.userRank}>
-                <Text style={[styles.rankNumber, { color: index < 3 ? '#F59E0B' : theme.textSecondary }]}>
-                  #{index + 1}
-                </Text>
-              </View>
-              <Avatar name={user.displayName || user.email} size={40} />
-              <View style={styles.userInfo}>
-                <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>
-                  {user.displayName || user.email?.split('@')[0]}
-                </Text>
-                <Text style={[styles.userRole, { color: theme.textSecondary }]} numberOfLines={1}>
-                  {getRoleLabel(user.role)} · {user.area || 'Sin área'}
-                </Text>
-              </View>
-              <View style={styles.userStats}>
-                <Text style={[styles.userRate, { color: getCompletionColor(user.completionRate) }]}>
-                  {user.completionRate}%
-                </Text>
-                {user.overdueTasks > 0 && (
-                  <View style={[styles.overdueBadge]}>
-                    <Text style={styles.overdueText}>{user.overdueTasks} vencidas</Text>
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
-          ))
-        )}
-      </View>
-    </View>
-  );
+  // Sección: Cumplimiento + Secretarías (unificada con toggle)
+  const renderCompliance = () => {
+    const isDirectors = complianceView === 'directors';
+    const activeMetrics = isDirectors ? userMetrics : secretariaMetrics;
+    const avgRate = isDirectors
+      ? (userMetrics.length > 0 ? Math.round(userMetrics.reduce((a, b) => a + b.completionRate, 0) / userMetrics.length) : 0)
+      : (secretariaMetrics.length > 0 ? Math.round(secretariaMetrics.reduce((a, b) => a + b.completionRate, 0) / secretariaMetrics.length) : 0);
 
-  // Sección: Rendimiento por Secretaría
-  const renderPerformance = () => (
-    <View style={[styles.section, { backgroundColor: theme.card }]}>
-      <View style={styles.sectionHeader}>
-        <Ionicons name="business" size={20} color="#9C27B0" />
-        <Text style={[styles.sectionTitle, { color: theme.text }]}>Rendimiento por Secretaría</Text>
-      </View>
-      
-      {secretariaMetrics.length === 0 ? (
-        <View style={styles.emptyState}>
-          <Ionicons name="business-outline" size={48} color={theme.textSecondary} />
-          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-            No hay secretarios configurados
-          </Text>
+    return (
+      <View style={[styles.section, { backgroundColor: theme.card }]}>
+        {/* Toggle Directores / Secretarías */}
+        <View style={[styles.segmentToggle, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+          {[
+            { key: 'directors', label: 'Directores', icon: 'people' },
+            { key: 'secretarios', label: 'Secretarías', icon: 'business' },
+          ].map(seg => (
+            <TouchableOpacity
+              key={seg.key}
+              style={[styles.segmentBtn, complianceView === seg.key && { backgroundColor: theme.card, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 }]}
+              onPress={() => setComplianceView(seg.key)}
+            >
+              <Ionicons name={seg.icon} size={14} color={complianceView === seg.key ? theme.primary : theme.textSecondary} />
+              <Text style={[styles.segmentBtnText, { color: complianceView === seg.key ? theme.primary : theme.textSecondary }]}>{seg.label}</Text>
+            </TouchableOpacity>
+          ))}
         </View>
-      ) : (
-        secretariaMetrics.map((data, index) => (
-          <TouchableOpacity
-            key={data.secretario.id || index}
-            style={[
-              styles.secretariaCard,
-              { 
-                backgroundColor: isDark ? '#1E1E23' : '#F8FAFC',
-                borderLeftColor: getCompletionColor(data.completionRate)
-              }
-            ]}
-            onPress={() => {
-              setSelectedUser({ ...data.secretario, ...data });
-              setShowUserModal(true);
-            }}
-          >
-            <View style={styles.secretariaHeader}>
-              <Avatar name={data.secretario.displayName || data.secretario.email} size={44} />
-              <View style={styles.secretariaInfo}>
-                <Text style={[styles.secretariaName, { color: theme.text }]} numberOfLines={1}>
-                  {data.secretario.displayName || data.secretario.email?.split('@')[0]}
-                </Text>
-                <Text style={[styles.secretariaArea, { color: theme.textSecondary }]} numberOfLines={1}>
-                  {data.secretario.area || 'Sin área'}
-                </Text>
-              </View>
-              <View style={styles.secretariaScore}>
-                <Text style={[styles.scoreValue, { color: getCompletionColor(data.completionRate) }]}>
-                  {data.completionRate}%
-                </Text>
-              </View>
+
+        {/* Resumen en 3 chips */}
+        <View style={[styles.complianceSummary, { marginTop: 14 }]}>
+          <View style={[styles.complianceCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
+            <Text style={[styles.complianceValue, { color: theme.text }]}>{activeMetrics.length}</Text>
+            <Text style={[styles.complianceLabel, { color: theme.textSecondary }]}>Total</Text>
+          </View>
+          <View style={[styles.complianceCard, { backgroundColor: isDark ? '#1E2620' : '#ECFDF5' }]}>
+            <Text style={[styles.complianceValue, { color: '#10B981' }]}>{avgRate}%</Text>
+            <Text style={[styles.complianceLabel, { color: theme.textSecondary }]}>Promedio</Text>
+          </View>
+          <View style={[styles.complianceCard, { backgroundColor: isDark ? '#2D1E1E' : '#FEF2F2' }]}>
+            <Text style={[styles.complianceValue, { color: '#EF4444' }]}>
+              {isDirectors
+                ? userMetrics.filter(u => u.overdueTasks > 0).length
+                : secretariaMetrics.filter(s => s.overdueTasks > 0).length}
+            </Text>
+            <Text style={[styles.complianceLabel, { color: theme.textSecondary }]}>Con retrasos</Text>
+          </View>
+        </View>
+
+        {/* Lista */}
+        <View style={[styles.usersList, { marginTop: 14 }]}>
+          {activeMetrics.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Ionicons name="people-outline" size={48} color={theme.textSecondary} />
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Sin datos</Text>
             </View>
-            
-            <View style={styles.secretariaStats}>
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: theme.text }]}>{data.totalTasks}</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: '#10B981' }]}>{data.completedTasks}</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Completas</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: '#F59E0B' }]}>{data.pendingTasks}</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Pendientes</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: '#EF4444' }]}>{data.overdueTasks}</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Vencidas</Text>
-              </View>
-              <View style={styles.statDivider} />
-              <View style={styles.statItem}>
-                <Text style={[styles.statValue, { color: '#3B82F6' }]}>{data.directorsCount}</Text>
-                <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Directores</Text>
-              </View>
-            </View>
-            
-            <ProgressBar progress={data.completionRate} color={getCompletionColor(data.completionRate)} size="small" />
-          </TouchableOpacity>
-        ))
-      )}
-    </View>
-  );
+          ) : isDirectors ? (
+            userMetrics.map((user, index) => (
+              <TouchableOpacity
+                key={user.id || index}
+                style={[styles.userCard, { backgroundColor: isDark ? '#1E1E23' : '#F8FAFC', borderLeftColor: getCompletionColor(user.completionRate) }]}
+                onPress={() => { setSelectedUser(user); setShowUserModal(true); }}
+              >
+                <Text style={[styles.rankNumber, { color: index < 3 ? '#F59E0B' : theme.textSecondary, width: 24 }]}>#{index + 1}</Text>
+                <Avatar name={user.displayName || user.email} size={36} />
+                <View style={styles.userInfo}>
+                  <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>{user.displayName || user.email?.split('@')[0]}</Text>
+                  <Text style={[styles.userRole, { color: theme.textSecondary }]} numberOfLines={1}>{user.area || 'Sin área'}</Text>
+                </View>
+                <View style={styles.userStats}>
+                  <Text style={[styles.userRate, { color: getCompletionColor(user.completionRate) }]}>{user.completionRate}%</Text>
+                  {user.overdueTasks > 0 && <Text style={styles.overdueText}>{user.overdueTasks} venc.</Text>}
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            secretariaMetrics.map((data, index) => (
+              <TouchableOpacity
+                key={data.secretario.id || index}
+                style={[styles.secretariaCard, { backgroundColor: isDark ? '#1E1E23' : '#F8FAFC', borderLeftColor: getCompletionColor(data.completionRate) }]}
+                onPress={() => { setSelectedUser({ ...data.secretario, ...data }); setShowUserModal(true); }}
+              >
+                <View style={styles.secretariaHeader}>
+                  <Avatar name={data.secretario.displayName || data.secretario.email} size={40} />
+                  <View style={styles.secretariaInfo}>
+                    <Text style={[styles.secretariaName, { color: theme.text }]} numberOfLines={1}>{data.secretario.displayName || data.secretario.email?.split('@')[0]}</Text>
+                    <Text style={[styles.secretariaArea, { color: theme.textSecondary }]} numberOfLines={1}>{data.secretario.area || 'Sin área'}</Text>
+                  </View>
+                  <Text style={[styles.scoreValue, { color: getCompletionColor(data.completionRate) }]}>{data.completionRate}%</Text>
+                </View>
+                <View style={styles.secretariaStats}>
+                  {[
+                    { v: data.totalTasks, l: 'Total', c: theme.text },
+                    { v: data.completedTasks, l: 'Compl.', c: '#10B981' },
+                    { v: data.overdueTasks, l: 'Vencidas', c: '#EF4444' },
+                    { v: data.directorsCount, l: 'Direct.', c: '#3B82F6' },
+                  ].map((s, i, arr) => (
+                    <React.Fragment key={s.l}>
+                      <View style={styles.statItem}>
+                        <Text style={[styles.statValue, { color: s.c }]}>{s.v}</Text>
+                        <Text style={[styles.statLabel, { color: theme.textSecondary }]}>{s.l}</Text>
+                      </View>
+                      {i < arr.length - 1 && <View style={styles.statDivider} />}
+                    </React.Fragment>
+                  ))}
+                </View>
+                <ProgressBar progress={data.completionRate} color={getCompletionColor(data.completionRate)} size="small" />
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+      </View>
+    );
+  };
 
   // === RENDER PRINCIPAL ===
   
@@ -745,6 +690,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       {/* Header */}
       <LinearGradient
         colors={['#9F2241', '#BC955C']}
@@ -766,15 +712,13 @@ export default function AdminExecutiveDashboard({ navigation }) {
         </View>
       </LinearGradient>
 
-      {/* Tabs de navegación */}
+      {/* Tabs de navegación — 3 tabs */}
       <View style={[styles.tabsContainer, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabsScroll}>
+        <View style={styles.tabsScroll}>
           <TabButton id="overview" label="Resumen" icon="grid" />
-          <TabButton id="trafficlight" label="Semáforo" icon="traffic-light-outline" />
-          <TabButton id="evolution" label="Evolución" icon="trending-up" />
-          <TabButton id="compliance" label="Cumplimiento" icon="people" />
-          <TabButton id="performance" label="Secretarías" icon="business" />
-        </ScrollView>
+          <TabButton id="compliance" label="Personas" icon="people" />
+          <TabButton id="trafficlight" label="Semáforo" icon="radio-button-on" />
+        </View>
       </View>
 
       {/* Contenido */}
@@ -785,19 +729,33 @@ export default function AdminExecutiveDashboard({ navigation }) {
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
           {activeTab === 'overview' && renderOverview()}
+          {activeTab === 'compliance' && renderCompliance()}
           {activeTab === 'trafficlight' && (
-            <TrafficLightDashboard 
-              tasks={tasks} 
+            <TrafficLightDashboard
+              tasks={tasks}
               onAreaPress={(area) => navigation.navigate('Tasks', { filterArea: area })}
             />
           )}
-          {activeTab === 'evolution' && renderEvolution()}
-          {activeTab === 'compliance' && renderCompliance()}
-          {activeTab === 'performance' && renderPerformance()}
-          
           <View style={{ height: 100 }} />
         </Animated.View>
       </ScrollView>
+
+      </View>{/* end contentWrapper */}
+
+      {/* Modal de Evolución */}
+      <Modal visible={showEvolutionModal} animationType="slide" transparent onRequestClose={() => setShowEvolutionModal(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>Evolución histórica</Text>
+              <TouchableOpacity onPress={() => setShowEvolutionModal(false)}>
+                <Ionicons name="close-circle" size={28} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            {renderEvolution()}
+          </View>
+        </View>
+      </Modal>
 
       {/* Modal de detalle de usuario */}
       <Modal
@@ -885,6 +843,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  contentWrapper: { flex: 1, alignSelf: 'center', width: '100%' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { marginTop: 12, fontSize: 14 },
   
@@ -899,9 +858,24 @@ const styles = StyleSheet.create({
   
   // Tabs
   tabsContainer: { borderBottomWidth: 1, paddingVertical: 10 },
-  tabsScroll: { paddingHorizontal: 16, gap: 8 },
-  tabButton: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: 'transparent', gap: 6 },
+  tabsScroll: { flexDirection: 'row', paddingHorizontal: 16, gap: 8, justifyContent: 'space-around' },
+  tabButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: 'transparent', gap: 6 },
   tabLabel: { fontSize: 13, fontWeight: '600' },
+
+  // Compact comparison (inline in overview card)
+  compactComparison: { borderTopWidth: 1, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  compactCompLabel: { fontSize: 12 },
+  compactCompValue: { fontSize: 20, fontWeight: '800' },
+  compactCompSep: { fontSize: 12 },
+  compactBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+
+  // Evolution button (in overview)
+  evolutionButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14, borderRadius: 16, borderWidth: 1, marginBottom: 16 },
+
+  // Segment toggle (compliance tab)
+  segmentToggle: { flexDirection: 'row', borderRadius: 12, padding: 3, gap: 3 },
+  segmentBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 8, borderRadius: 10 },
+  segmentBtnText: { fontSize: 13, fontWeight: '600' },
   
   // Content
   scrollContent: { padding: 16 },

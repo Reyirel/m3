@@ -33,6 +33,8 @@ function SubtasksList({
   currentUser = null
 }) {
   const { theme } = useTheme();
+  // Secretarios y admin pueden eliminar subtareas
+  const canDelete = canEdit || currentUser?.role === 'secretario';
   const [subtasks, setSubtasks] = useState([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
@@ -273,10 +275,10 @@ function SubtasksList({
             </View>
           )}
 
-          {canEdit && (
+          {canDelete && (
             <View style={styles.actionButtons}>
-              {/* Botón de delegar (solo si canDelegate y hay usuarios disponibles) */}
-              {canDelegate && delegateUsers.length > 0 && (
+              {/* Botón de delegar (solo si canEdit, canDelegate y hay usuarios disponibles) */}
+              {canEdit && canDelegate && delegateUsers.length > 0 && (
                 <TouchableOpacity
                   style={[styles.actionButton, styles.delegateButton]}
                   onPress={() => handleOpenDelegateModal(item)}

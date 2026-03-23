@@ -23,9 +23,12 @@ import { hapticSuccess, hapticWarning } from '../utils/haptics';
 import { toMs } from '../utils/dateUtils';
 import { useNotification } from '../contexts/NotificationContext';
 import { useTasks } from '../contexts/TasksContext';
+import { useResponsive } from '../utils/responsive';
+import { MAX_WIDTHS } from '../theme/tokens';
 
 const AdminReportsScreen = ({ navigation }) => {
   const { theme, isDark } = useTheme();
+  const { isDesktop } = useResponsive();
   const { showSuccess, showError } = useNotification();
   const { currentUser } = useTasks();
   const [reports, setReports] = useState([]);
@@ -425,6 +428,14 @@ const AdminReportsScreen = ({ navigation }) => {
   const styles = useMemo(() => StyleSheet.create({
     container: {
       flex: 1,
+    },
+    contentWrapper: {
+      flex: 1,
+      alignSelf: 'center',
+      width: '100%',
+    },
+    innerContainer: {
+      flex: 1,
       backgroundColor: isDark ? '#000' : '#f5f5f5',
     },
     header: {
@@ -806,7 +817,9 @@ const AdminReportsScreen = ({ navigation }) => {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: isDark ? '#000' : '#f5f5f5' }]}>
+      <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
+      <View style={styles.innerContainer}>
       <View style={styles.header}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} accessibilityLabel="Volver" accessibilityRole="button">
           <Ionicons name="arrow-back" size={24} color={isDark ? '#fff' : '#000'} />
@@ -918,6 +931,9 @@ const AdminReportsScreen = ({ navigation }) => {
           )}
         />
       )}
+
+      </View>{/* end innerContainer */}
+      </View>{/* end contentWrapper */}
 
       {renderDetailModal()}
 

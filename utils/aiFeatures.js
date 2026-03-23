@@ -397,3 +397,135 @@ export function riskLevelDisplay(level) {
     default:       return { label: 'En tiempo',     color: '#10B981', icon: 'checkmark-circle-outline' };
   }
 }
+
+// ─── Feature 6: Sugerencia de prioridad ───────────────────────────────────────
+
+/**
+ * Palabras clave que indican alta/urgente prioridad.
+ */
+const PRIORITY_KEYWORDS = {
+  urgente: ['urgente', 'urgencia', 'emergencia', 'inmediato', 'inmediata', 'critico', 'critica',
+            'prioritario', 'prioritaria', 'alerta', 'atencion', 'hoy', 'ya', 'ahora'],
+  alta:    ['importante', 'necesario', 'necesaria', 'requerido', 'requerida', 'obligatorio',
+            'obligatoria', 'revision', 'inspeccion', 'supervision', 'contrato', 'licitacion',
+            'presupuesto', 'autorizar', 'aprobar', 'gobernador', 'presidente', 'director',
+            'reunion', 'sesion', 'cabildo', 'auditoria'],
+  media:   ['seguimiento', 'actualizacion', 'reporte', 'informe', 'tramite', 'solicitud',
+            'verificar', 'revisar', 'coordinar'],
+};
+
+/**
+ * Sugiere la prioridad de una tarea basándose en palabras clave del título y descripción.
+ * @param {string} title
+ * @param {string} description
+ * @returns {{ priority: 'urgente'|'alta'|'media'|'baja', confidence: 'alta'|'media'|'baja', reason: string|null }}
+ */
+export function suggestPriority(title = '', description = '') {
+  if (!title || title.length < 4) return { priority: null, confidence: 'baja', reason: null };
+
+  const text = `${title} ${description}`.toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  // Buscar por nivel de mayor a menor urgencia
+  for (const [level, keywords] of Object.entries(PRIORITY_KEYWORDS)) {
+    const matched = keywords.find(kw => text.includes(kw));
+    if (matched) {
+      const confidenceMap = { urgente: 'alta', alta: 'media', media: 'baja' };
+      return {
+        priority: level,
+        confidence: confidenceMap[level],
+        reason: `Detectado: "${matched}"`,
+      };
+    }
+  }
+
+  return { priority: 'baja', confidence: 'baja', reason: null };
+}
+
+// ─── Feature 7: Detección de tareas estancadas ────────────────────────────────
+
+/**
+ * Detecta tareas que llevan muchos días en "en_proceso" sin avanzar.
+ * @param {Array}  tasks        - Lista de tareas
+ * @param {number} thresholdDays - Días sin movimiento para considerar estancada (default: 5)
+ * @returns {Array<{ task: Object, stalledDays: number }>} tareas estancadas, ordenadas por días
+ */
+export function detectStalledTasks(tasks, thresholdDays = 5) {
+  if (!tasks?.length) return [];
+
+  const now = Date.now();
+  const thresholdMs = thresholdDays * 24 * 60 * 60 * 1000;
+
+  return tasks
+    .filter(t => t.status === 'en_proceso')
+    .map(t => {
+      // Usar updatedAt si existe, si no createdAt
+      const lastMovement = toMs(t.updatedAt) || toMs(t.createdAt) || 0;
+      const stalledMs = now - lastMovement;
+      return { task: t, stalledDays: Math.floor(stalledMs / (24 * 60 * 60 * 1000)) };
+    })
+    .filter(({ stalledDays }) => stalledDays >= thresholdDays)
+    .sort((a, b) => b.stalledDays - a.stalledDays);
+}
+
+// ─── Feature 8: Sugerencia de fecha límite ────────────────────────────────────
+
+/**
+ * Duración típica por categoría (en días) basada en estándares municipales.
+ */
+const CATEGORY_DURATIONS = {
+  obra: 30, construccion: 45, pavimentacion: 60, mantenimiento: 7,
+  contrato: 20, licitacion: 30, informe: 3, reporte: 2, reunion: 1, presupuesto: 5,
+  alumbrado: 3, agua: 2, limpieza: 1, parque: 7,
+  tramite: 5, permiso: 10, evento: 7,
+  campana: 14, vacunacion: 7,
+};
+
+/**
+ * Sugiere una fecha límite realista basándose en tareas históricas del mismo área/categoría.
+ * Si no hay historial suficiente, usa duraciones estándar por categoría.
+ *
+ * @param {string} title
+ * @param {string} area
+ * @param {Array}  allTasks - Historial de tareas cerradas
+ * @returns {{ suggestedDate: Date|null, basisDays: number, source: 'historico'|'estandar'|null }}
+ */
+export function suggestDueDate(title = '', area = '', allTasks = []) {
+  if (!title) return { suggestedDate: null, basisDays: 0, source: null };
+
+  const text = title.toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  // Intentar obtener duración histórica de tareas cerradas similares en el mismo área
+  if (area && allTasks.length > 0) {
+    const inputTokens = tokenize(text);
+    const closedSimilar = allTasks
+      .filter(t => t.status === 'cerrada' && t.area === area && t.createdAt && t.updatedAt)
+      .map(t => {
+        const sim = jaccardSimilarity(inputTokens, tokenize(t.title || ''));
+        const durationDays = Math.round((toMs(t.updatedAt) - toMs(t.createdAt)) / (24 * 60 * 60 * 1000));
+        return { sim, durationDays };
+      })
+      .filter(r => r.sim >= 0.25 && r.durationDays > 0 && r.durationDays <= 180)
+      .sort((a, b) => b.sim - a.sim)
+      .slice(0, 5);
+
+    if (closedSimilar.length >= 2) {
+      const avgDays = Math.round(closedSimilar.reduce((s, r) => s + r.durationDays, 0) / closedSimilar.length);
+      const date = new Date(Date.now() + avgDays * 24 * 60 * 60 * 1000);
+      return { suggestedDate: date, basisDays: avgDays, source: 'historico' };
+    }
+  }
+
+  // Fallback: duraciones estándar por categoría
+  for (const [keyword, days] of Object.entries(CATEGORY_DURATIONS)) {
+    if (text.includes(keyword)) {
+      const date = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+      return { suggestedDate: date, basisDays: days, source: 'estandar' };
+    }
+  }
+
+  return { suggestedDate: null, basisDays: 0, source: null };
+}

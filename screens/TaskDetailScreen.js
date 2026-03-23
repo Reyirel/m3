@@ -20,7 +20,7 @@ import TagInput from '../components/TagInput';
 import TaskStatusButtons from '../components/TaskStatusButtons';
 import MultiUserSelector from '../components/MultiUserSelector';
 import { toMs } from '../utils/dateUtils';
-import { findSimilarTasks, suggestTaskMetadata, generateSubtasks } from '../utils/aiFeatures';
+import { findSimilarTasks, suggestTaskMetadata, generateSubtasks, suggestPriority, suggestDueDate } from '../utils/aiFeatures';
 import { addSubtask } from '../services/tasksMultiple';
 import SuggestedDirectionsPanel from '../components/SuggestedDirectionsPanel';
 import SuggestedDirectorsPanel from '../components/SuggestedDirectorsPanel';
@@ -219,6 +219,8 @@ export default function TaskDetailScreen({ route, navigation }) {
   // ─── IA Features 2, 3, 4 ────────────────────────────────────────────────────
   const [similarTasks, setSimilarTasks] = useState([]);       // Feature 2: duplicados
   const [metaSuggestion, setMetaSuggestion] = useState(null); // Feature 3: área/responsable
+  const [prioritySuggestion, setPrioritySuggestion] = useState(null); // Feature 6: prioridad
+  const [dateSuggestion, setDateSuggestion] = useState(null); // Feature 8: fecha
   const [showAiSubtasksModal, setShowAiSubtasksModal] = useState(false); // Feature 4
   const [aiSubtaskOptions, setAiSubtaskOptions] = useState([]); // { title, checked }
   const [aiPendingSubtasks, setAiPendingSubtasks] = useState([]); // seleccionadas para crear
@@ -229,6 +231,8 @@ export default function TaskDetailScreen({ route, navigation }) {
     if (editingTask || !title || title.length < 6) {
       setSimilarTasks([]);
       setMetaSuggestion(null);
+      setPrioritySuggestion(null);
+      setDateSuggestion(null);
       return;
     }
     clearTimeout(aiDebounceRef.current);
@@ -236,6 +240,12 @@ export default function TaskDetailScreen({ route, navigation }) {
       setSimilarTasks(findSimilarTasks(title, tasks));
       const suggestion = suggestTaskMetadata(title, tasks);
       setMetaSuggestion(suggestion.area ? suggestion : null);
+      // Feature 6: sugerencia de prioridad
+      const pSug = suggestPriority(title, description);
+      setPrioritySuggestion(pSug.priority && pSug.priority !== 'baja' ? pSug : null);
+      // Feature 8: sugerencia de fecha
+      const dSug = suggestDueDate(title, selectedAreas[0] || '', tasks);
+      setDateSuggestion(dSug.suggestedDate ? dSug : null);
     }, 600);
     return () => clearTimeout(aiDebounceRef.current);
   }, [title, tasks, editingTask]);
@@ -640,29 +650,30 @@ export default function TaskDetailScreen({ route, navigation }) {
       setIsReadOnly(!createPermission.canCreate);
     }
 
-    if (role === 'secretario' && editingTask) {
+    if ((role === 'secretario' || role === 'admin') && editingTask) {
       loadDelegateUsers(user);
     }
   };
-  
+
   // Cargar usuarios disponibles para delegación
   const loadDelegateUsers = async (user) => {
     try {
       const delegatePermission = canDelegateTask(user, editingTask);
       if (!delegatePermission.canDelegate) return;
-      
+
       // Obtener directores de las áreas permitidas
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('role', '==', 'director'));
       const snapshot = await getDocs(q);
-      
+
       const allowedAreas = delegatePermission.allowedAreas || [];
+      const isAdmin = user.role === 'admin';
       const directors = [];
-      
+
       snapshot.forEach(doc => {
         const userData = doc.data();
-        // Solo mostrar directores de las áreas del secretario
-        if (allowedAreas.includes(userData.area)) {
+        // Admin puede ver todos los directores, secretario solo los de sus áreas
+        if (isAdmin || allowedAreas.includes(userData.area)) {
           directors.push({
             email: userData.email,
             displayName: userData.displayName || userData.email,
@@ -670,7 +681,7 @@ export default function TaskDetailScreen({ route, navigation }) {
           });
         }
       });
-      
+
       setDelegateUsers(directors);
     } catch (error) {
       if (__DEV__) console.error('Error cargando usuarios para delegación:', error);
@@ -1591,6 +1602,26 @@ export default function TaskDetailScreen({ route, navigation }) {
               })}
             </View>
 
+            {/* Sugerencia de prioridad IA — solo al crear */}
+            {!editingTask && prioritySuggestion && priority !== prioritySuggestion.priority && (
+              <View style={[styles.aiSuggestionCard, { backgroundColor: isDark ? '#1a1000' : '#FFFBEB', borderColor: '#F59E0B' }]}>
+                <Ionicons name="sparkles" size={16} color="#F59E0B" style={{ marginTop: 2 }} />
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={[styles.aiWarningTitle, { color: '#F59E0B' }]}>Sugerencia IA</Text>
+                  <Text style={[styles.aiWarningItem, { color: theme.textSecondary }]}>
+                    Prioridad sugerida: {prioritySuggestion.priority.charAt(0).toUpperCase() + prioritySuggestion.priority.slice(1)}
+                    {prioritySuggestion.reason ? ` (${prioritySuggestion.reason})` : ''}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.aiApplyBtn, { backgroundColor: '#F59E0B' }]}
+                  onPress={() => { setPriority(prioritySuggestion.priority); setPrioritySuggestion(null); }}
+                >
+                  <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Aplicar</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
             <Text style={styles.label}>FECHA COMPROMISO *</Text>
             {/* Solo admin puede cambiar fecha al editar */}
             {editingTask && currentUser && !['admin'].includes(currentUser.role) ? (
@@ -1645,6 +1676,26 @@ export default function TaskDetailScreen({ route, navigation }) {
                   <Ionicons name="chevron-forward" size={22} color={theme.primary} />
                 </View>
               </TouchableOpacity>
+            )}
+
+            {/* Sugerencia de fecha IA — solo al crear */}
+            {!editingTask && dateSuggestion && (
+              <View style={[styles.aiSuggestionCard, { backgroundColor: isDark ? '#001020' : '#EFF6FF', borderColor: '#3B82F6', marginTop: 8 }]}>
+                <Ionicons name="sparkles" size={16} color="#3B82F6" style={{ marginTop: 2 }} />
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={[styles.aiWarningTitle, { color: '#3B82F6' }]}>Sugerencia IA</Text>
+                  <Text style={[styles.aiWarningItem, { color: theme.textSecondary }]}>
+                    Plazo sugerido: {dateSuggestion.basisDays} días
+                    {dateSuggestion.source === 'historico' ? ' (basado en historial)' : ' (estándar por categoría)'}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[styles.aiApplyBtn, { backgroundColor: '#3B82F6' }]}
+                  onPress={() => { setDueAt(dateSuggestion.suggestedDate); setDateSuggestion(null); }}
+                >
+                  <Text style={{ color: '#FFF', fontSize: 12, fontWeight: '700' }}>Aplicar</Text>
+                </TouchableOpacity>
+              </View>
             )}
           </View>
 

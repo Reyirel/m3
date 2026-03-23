@@ -13,7 +13,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { deleteManager } from '../utils/deleteManager';
 import QuickActionButton from '../components/QuickActionButton';
 import { toMs } from '../utils/dateUtils';
-import { generateDailySummary } from '../utils/aiFeatures';
+import { generateDailySummary, detectStalledTasks } from '../utils/aiFeatures';
 import ShimmerEffect from '../components/ShimmerEffect';
 import SkeletonLoader from '../components/SkeletonLoader';
 import OverdueAlert from '../components/OverdueAlert';
@@ -459,6 +459,12 @@ export default function HomeScreen({ navigation }) {
     [tasks, currentUser]
   );
 
+  // Feature 7: tareas estancadas (en_proceso sin movimiento 5+ días)
+  const stalledTasks = useMemo(
+    () => detectStalledTasks(tasks, 5).slice(0, 3),
+    [tasks]
+  );
+
   // Conteo por estado para chips de filtro rápido
   const statusCounts = useMemo(() => ({
     todas: tasks.length,
@@ -868,6 +874,22 @@ export default function HomeScreen({ navigation }) {
                   <Text style={{ fontSize: 13, color: theme.textSecondary, flex: 1, lineHeight: 19 }}>{detail}</Text>
                 </View>
               ))}
+              {stalledTasks.length > 0 && (
+                <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.border }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                    <Ionicons name="pause-circle" size={14} color="#F59E0B" />
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#F59E0B' }}>Tareas estancadas ({stalledTasks.length})</Text>
+                  </View>
+                  {stalledTasks.map(({ task, stalledDays }) => (
+                    <View key={task.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3 }}>
+                      <Ionicons name="ellipse" size={6} color="#F59E0B" style={{ marginTop: 1 }} />
+                      <Text style={{ fontSize: 12, color: theme.textSecondary, flex: 1 }} numberOfLines={1}>
+                        {task.title} · {stalledDays}d sin movimiento
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
             </TouchableOpacity>
           </TouchableOpacity>
         </Modal>
