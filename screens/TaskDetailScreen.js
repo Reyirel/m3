@@ -1142,11 +1142,11 @@ export default function TaskDetailScreen({ route, navigation }) {
                 {/* Subtareas */}
                 <View style={styles.readOnlySection}>
                   <Text style={[styles.readOnlyLabel, { color: theme.textSecondary }]}>Subtareas</Text>
-                  <SubtasksList 
+                  <SubtasksList
                     taskId={editingTask.id}
-                    canEdit={false}
-                    canDelegate={false}
-                    delegateUsers={[]}
+                    canEdit={canAddSubtask}
+                    canDelegate={canDelegate}
+                    delegateUsers={delegateUsers}
                     currentUser={currentUser}
                   />
                 </View>
@@ -1170,7 +1170,7 @@ export default function TaskDetailScreen({ route, navigation }) {
                   <Text style={[styles.readOnlyLabel, { color: theme.textSecondary }]}>Más Opciones</Text>
                   <View style={{ gap: 12, marginTop: 10 }}>
                     {/* Botón Reportes */}
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={[styles.readOnlyActionButton, { backgroundColor: theme.primary }]}
                       onPress={() => {
                         navigation.goBack();
@@ -1180,11 +1180,11 @@ export default function TaskDetailScreen({ route, navigation }) {
                       }}
                     >
                       <Ionicons name="document-text" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                      <Text style={styles.readOnlyActionButtonText}>📊 Ver/Enviar Reportes</Text>
+                      <Text style={styles.readOnlyActionButtonText}>Ver/Enviar Reportes</Text>
                     </TouchableOpacity>
 
                     {/* Botón Chat */}
-                    <TouchableOpacity 
+                    <TouchableOpacity
                       style={[styles.readOnlyActionButton, { backgroundColor: '#007AFF' }]}
                       onPress={() => {
                         navigation.goBack();
@@ -1194,8 +1194,19 @@ export default function TaskDetailScreen({ route, navigation }) {
                       }}
                     >
                       <Ionicons name="chatbubble-ellipses" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-                      <Text style={styles.readOnlyActionButtonText}>💬 Ir al Chat</Text>
+                      <Text style={styles.readOnlyActionButtonText}>Ir al Chat</Text>
                     </TouchableOpacity>
+
+                    {/* Botón Delegar - Solo para secretarios con permiso */}
+                    {canDelegate && currentUser?.role === 'secretario' && (
+                      <TouchableOpacity
+                        style={[styles.readOnlyActionButton, { backgroundColor: '#FF9800' }]}
+                        onPress={() => setShowDelegateModal(true)}
+                      >
+                        <Ionicons name="people" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
+                        <Text style={styles.readOnlyActionButtonText}>Delegar Tarea</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
                 </View>
               </ScrollView>
