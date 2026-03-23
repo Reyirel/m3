@@ -1,71 +1,41 @@
 // components/ProgressBadge.js
-// Badge con barra de progreso animada
-import React, { useEffect, useRef, memo } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+// Badge de estado con barra de progreso estática (sin Animated para no bloquear JS thread)
+import { memo } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 
-const ProgressBadge = memo(function ProgressBadge({ 
-  status = 'pendiente', 
-  progress = 0, // 0 a 100
-  animated = true,
-  showProgress = false
+const ProgressBadge = memo(function ProgressBadge({
+  status = 'pendiente',
+  progress = 0,
+  showProgress = false,
 }) {
-  const progressAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (animated && showProgress) {
-      Animated.timing(progressAnim, {
-        toValue: progress,
-        duration: 800,
-        useNativeDriver: false,
-      }).start();
-    }
-  }, [progress, animated, showProgress]);
-
   const getStatusConfig = () => {
     switch (status) {
-      case 'pendiente':
-        return { color: '#FF9800', label: 'Pendiente', bgColor: '#FFF3E0' };
-      case 'en_proceso':
-        return { color: '#2196F3', label: 'En Proceso', bgColor: '#E3F2FD' };
-      case 'en_revision':
-        return { color: '#9C27B0', label: 'En Revisión', bgColor: '#F3E5F5' };
-      case 'cerrada':
-        return { color: '#4CAF50', label: 'Completada', bgColor: '#E8F5E9' };
-      default:
-        return { color: '#9E9E9E', label: status, bgColor: '#F5F5F5' };
+      case 'pendiente':   return { color: '#FF9800', label: 'Pendiente',   bgColor: '#FFF3E0' };
+      case 'en_proceso':  return { color: '#2196F3', label: 'En Proceso',  bgColor: '#E3F2FD' };
+      case 'en_revision': return { color: '#9C27B0', label: 'En Revisión', bgColor: '#F3E5F5' };
+      case 'cerrada':     return { color: '#4CAF50', label: 'Completada',  bgColor: '#E8F5E9' };
+      default:            return { color: '#9E9E9E', label: status,         bgColor: '#F5F5F5' };
     }
   };
 
   const config = getStatusConfig();
-  
-  const animatedWidth = showProgress ? progressAnim.interpolate({
-    inputRange: [0, 100],
-    outputRange: ['0%', '100%'],
-  }) : '0%';
+  const clamped = Math.max(0, Math.min(100, Math.round(progress)));
 
   return (
     <View style={[styles.container, { backgroundColor: config.bgColor }]}>
-      {showProgress && progress > 0 && (
-        <Animated.View 
+      {showProgress && clamped > 0 && (
+        <View
           style={[
-            styles.progressBar, 
-            { 
-              backgroundColor: config.color + '40',
-              width: animatedWidth 
-            }
-          ]} 
+            styles.progressBar,
+            { backgroundColor: config.color + '40', width: `${clamped}%` },
+          ]}
         />
       )}
-      
       <View style={styles.content}>
         <View style={[styles.dot, { backgroundColor: config.color }]} />
-        <Text style={[styles.label, { color: config.color }]}>
-          {config.label}
-        </Text>
-        {showProgress && progress > 0 && (
-          <Text style={[styles.percentage, { color: config.color }]}>
-            {Math.round(progress)}%
-          </Text>
+        <Text style={[styles.label, { color: config.color }]}>{config.label}</Text>
+        {showProgress && clamped > 0 && (
+          <Text style={[styles.percentage, { color: config.color }]}>{clamped}%</Text>
         )}
       </View>
     </View>
@@ -95,19 +65,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     gap: 6,
   },
-  dot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  label: {
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  percentage: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 4,
-  },
+  dot: { width: 8, height: 8, borderRadius: 4 },
+  label: { fontSize: 13, fontWeight: '700', letterSpacing: 0.3 },
+  percentage: { fontSize: 12, fontWeight: '600', marginLeft: 4 },
 });

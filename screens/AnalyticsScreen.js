@@ -49,11 +49,6 @@ const AnalyticsScreen = ({ navigation }) => {
   const topTasksAnim = useRef(new Animated.Value(0)).current;
   const topTasksSlide = useRef(new Animated.Value(40)).current;
   
-  // Animaciones de barras de progreso
-  const completedProgress = useRef(new Animated.Value(0)).current;
-  const inProgressProgress = useRef(new Animated.Value(0)).current;
-  const pendingProgress = useRef(new Animated.Value(0)).current;
-  
   // Animaciones de escala para tarjetas
   const [cardScales] = useState([
     new Animated.Value(1),
@@ -444,10 +439,6 @@ const AnalyticsScreen = ({ navigation }) => {
     statusSlide.setValue(40);
     topTasksAnim.setValue(0);
     topTasksSlide.setValue(40);
-    completedProgress.setValue(0);
-    inProgressProgress.setValue(0);
-    pendingProgress.setValue(0);
-    
     // Animación secuencial
     Animated.stagger(100, [
       // Header
@@ -477,29 +468,6 @@ const AnalyticsScreen = ({ navigation }) => {
       ]),
     ]).start();
     
-    // Animar barras de progreso después de un pequeño delay
-    setTimeout(() => {
-      if (taskMetrics) {
-        const total = taskMetrics.total || 1;
-        Animated.parallel([
-          Animated.timing(completedProgress, {
-            toValue: (taskMetrics.completed / total) * 100,
-            duration: 800,
-            useNativeDriver: false,
-          }),
-          Animated.timing(inProgressProgress, {
-            toValue: (taskMetrics.inProgress / total) * 100,
-            duration: 800,
-            useNativeDriver: false,
-          }),
-          Animated.timing(pendingProgress, {
-            toValue: (taskMetrics.pending / total) * 100,
-            duration: 800,
-            useNativeDriver: false,
-          }),
-        ]).start();
-      }
-    }, 500);
   };
   
   // Función para animar escala de tarjeta
@@ -828,21 +796,10 @@ const AnalyticsScreen = ({ navigation }) => {
                   <Text style={styles.statusValue}>{taskMetrics.completed || 0}</Text>
                 </View>
                 <View style={styles.statusBarBg}>
-                  <Animated.View
-                    style={[
-                      styles.statusBarFill,
-                      { 
-                        backgroundColor: '#10B981',
-                        width: completedProgress.interpolate({
-                          inputRange: [0, 100],
-                          outputRange: ['0%', '100%']
-                        })
-                      },
-                    ]}
-                  />
+                  <View style={[styles.statusBarFill, { backgroundColor: '#10B981', width: `${Math.round(((taskMetrics.completed || 0) / (taskMetrics.total || 1)) * 100)}%` }]} />
                 </View>
               </View>
-              
+
               {/* En Progreso */}
               <View style={styles.statusItem}>
                 <View style={styles.statusItemHeader}>
@@ -853,21 +810,10 @@ const AnalyticsScreen = ({ navigation }) => {
                   <Text style={styles.statusValue}>{taskMetrics.inProgress || 0}</Text>
                 </View>
                 <View style={styles.statusBarBg}>
-                  <Animated.View
-                    style={[
-                      styles.statusBarFill,
-                      { 
-                        backgroundColor: '#F59E0B',
-                        width: inProgressProgress.interpolate({
-                          inputRange: [0, 100],
-                          outputRange: ['0%', '100%']
-                        })
-                      },
-                    ]}
-                  />
+                  <View style={[styles.statusBarFill, { backgroundColor: '#F59E0B', width: `${Math.round(((taskMetrics.inProgress || 0) / (taskMetrics.total || 1)) * 100)}%` }]} />
                 </View>
               </View>
-              
+
               {/* Pendientes */}
               <View style={[styles.statusItem, { marginBottom: 0 }]}>
                 <View style={styles.statusItemHeader}>
@@ -878,18 +824,7 @@ const AnalyticsScreen = ({ navigation }) => {
                   <Text style={styles.statusValue}>{taskMetrics.pending || 0}</Text>
                 </View>
                 <View style={styles.statusBarBg}>
-                  <Animated.View
-                    style={[
-                      styles.statusBarFill,
-                      { 
-                        backgroundColor: '#A855F7',
-                        width: pendingProgress.interpolate({
-                          inputRange: [0, 100],
-                          outputRange: ['0%', '100%']
-                        })
-                      },
-                    ]}
-                  />
+                  <View style={[styles.statusBarFill, { backgroundColor: '#A855F7', width: `${Math.round(((taskMetrics.pending || 0) / (taskMetrics.total || 1)) * 100)}%` }]} />
                 </View>
               </View>
             </LinearGradient>

@@ -62,19 +62,31 @@ const normalizeTaskAssignments = async () => {
     for (const taskDoc of tasksSnapshot.docs) {
       const taskData = taskDoc.data();
       const originalAssigned = taskData.assignedTo;
-      
+
       if (originalAssigned) {
-        const normalizedAssigned = originalAssigned.toLowerCase().trim();
-        
-        if (originalAssigned !== normalizedAssigned) {
-          await updateDoc(doc(db, 'tasks', taskDoc.id), {
-            assignedTo: normalizedAssigned
-          });
-          console.log(`  ✅ Tarea actualizada: "${taskData.title}"`);
-          console.log(`     ${originalAssigned} → ${normalizedAssigned}`);
-          updated++;
+        // Soportar tanto string (formato legacy) como array (formato actual)
+        if (Array.isArray(originalAssigned)) {
+          const normalizedArray = originalAssigned.map(e =>
+            typeof e === 'string' ? e.toLowerCase().trim() : e
+          );
+          const changed = normalizedArray.some((e, i) => e !== originalAssigned[i]);
+          if (changed) {
+            await updateDoc(doc(db, 'tasks', taskDoc.id), { assignedTo: normalizedArray });
+            console.log(`  ✅ Tarea (array) actualizada: "${taskData.title}"`);
+            updated++;
+          } else {
+            skipped++;
+          }
         } else {
-          skipped++;
+          const normalizedAssigned = originalAssigned.toLowerCase().trim();
+          if (originalAssigned !== normalizedAssigned) {
+            await updateDoc(doc(db, 'tasks', taskDoc.id), { assignedTo: normalizedAssigned });
+            console.log(`  ✅ Tarea actualizada: "${taskData.title}"`);
+            console.log(`     ${originalAssigned} → ${normalizedAssigned}`);
+            updated++;
+          } else {
+            skipped++;
+          }
         }
       } else {
         console.log(`  ⚠️ Tarea sin asignación: "${taskData.title}"`);

@@ -2,6 +2,7 @@
 // Dashboard exclusivo para Secretarios con métricas de sus direcciones y directores
 
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
   Text,
@@ -98,31 +99,41 @@ export default function SecretarioDashboardScreen({ navigation }) {
   };
 
   const loadDirectors = async (user) => {
+    const DIRECTORS_CACHE_TTL = 10 * 60 * 1000; // 10 minutos
+    const cacheKey = `@sec_directors_${(user.email || '').toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+
     try {
-      // Obtener las direcciones del secretario usando mapeo oficial primero
+      // Verificar cache — la lista de directores cambia raramente
+      const cached = await AsyncStorage.getItem(cacheKey);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < DIRECTORS_CACHE_TTL) {
+          setDirectors(data);
+          return;
+        }
+      }
+
       const direccionesOficiales = getDireccionesBySecretaria(user.area || '');
       const direccionesFirebase = user.direcciones || [];
-      // Combinar ambas fuentes sin duplicados
       const direcciones = [...new Set([...direccionesOficiales, ...direccionesFirebase])].filter(Boolean);
       const secretariaArea = user.area || '';
-      
-      // Buscar directores de sus áreas
+
       const usersRef = collection(db, 'users');
       const q = query(usersRef, where('role', '==', 'director'));
       const snapshot = await getDocs(q);
-      
+
       const myDirectors = [];
       snapshot.forEach(doc => {
         const directorData = { id: doc.id, ...doc.data() };
-        // Verificar si el director pertenece a alguna de las direcciones del secretario
-        if (direcciones.includes(directorData.area) || 
+        if (direcciones.includes(directorData.area) ||
             direcciones.includes(directorData.department) ||
             directorData.area?.includes(secretariaArea)) {
           myDirectors.push(directorData);
         }
       });
-      
+
       setDirectors(myDirectors);
+      AsyncStorage.setItem(cacheKey, JSON.stringify({ data: myDirectors, timestamp: Date.now() })).catch(() => {});
     } catch (error) {
       if (__DEV__) console.error('Error loading directors:', error);
     }

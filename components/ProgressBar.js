@@ -1,126 +1,68 @@
 // components/ProgressBar.js
-// Componente de barra de progreso reutilizable
-// ⚡ Optimizado con React.memo
-import React, { memo, useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+// Barra de progreso estática — sin Animated para no bloquear el hilo JS en web
+import React, { memo } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 
-const ProgressBar = memo(function ProgressBar({ 
+const ProgressBar = memo(function ProgressBar({
   progress = 0,
   size = 'medium',
   showLabel = true,
-  animated = true,
   color = '#9F2241',
   label = 'Progreso',
-  height = null
+  height = null,
 }) {
-  const animatedProgress = React.useRef(new Animated.Value(0)).current;
-
-  React.useEffect(() => {
-    if (animated) {
-      Animated.timing(animatedProgress, {
-        toValue: progress,
-        duration: 800,
-        useNativeDriver: false
-      }).start();
-    } else {
-      animatedProgress.setValue(progress);
-    }
-  }, [progress, animated]);
-
   const sizeConfig = {
-    small: { height: 4, labelSize: 12, containerPadding: 8 },
-    medium: { height: 8, labelSize: 14, containerPadding: 12 },
-    large: { height: 12, labelSize: 16, containerPadding: 16 }
+    small:  { height: 4,  labelSize: 12 },
+    medium: { height: 8,  labelSize: 14 },
+    large:  { height: 12, labelSize: 16 },
   };
 
   const config = sizeConfig[size] || sizeConfig.medium;
   const barHeight = height || config.height;
+  const clamped = Math.max(0, Math.min(100, Math.round(progress)));
 
-  // Determinar colores por progreso
-  const getGradientColors = (p) => {
-    if (p < 33) return ['#EF4444', '#F87171']; // Rojo
-    if (p < 66) return ['#FBBF24', '#F59E0B']; // Naranja/Amarillo
-    return [color, '#A83860']; // Verde/Maroon
+  const getColor = (p) => {
+    if (p < 33) return '#EF4444';
+    if (p < 66) return '#F59E0B';
+    return color;
   };
 
-  const gradientColors = getGradientColors(progress);
+  const barColor = getColor(clamped);
 
   return (
     <View style={styles.container}>
       {showLabel && (
-        <View style={styles.labelContainer}>
-          <Text style={[styles.label, { fontSize: config.labelSize }]}>
-            {label}
-          </Text>
-          <Text style={[styles.percentage, { fontSize: config.labelSize, color }]}>
-            {Math.round(progress)}%
+        <View style={styles.labelRow}>
+          <Text style={[styles.label, { fontSize: config.labelSize }]}>{label}</Text>
+          <Text style={[styles.percentage, { fontSize: config.labelSize, color: barColor }]}>
+            {clamped}%
           </Text>
         </View>
       )}
-      
-      <View style={[styles.barContainer, { paddingVertical: config.containerPadding }]}>
-        <View style={[styles.barBackground, { height: barHeight }]}>
-          <Animated.View
-            style={[
-              styles.barFill,
-              {
-                height: barHeight,
-                width: animatedProgress.interpolate({
-                  inputRange: [0, 100],
-                  outputRange: ['0%', '100%']
-                })
-              }
-            ]}
-          >
-            <LinearGradient
-              colors={gradientColors}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={{ flex: 1, borderRadius: barHeight / 2 }}
-            />
-          </Animated.View>
-        </View>
+      <View style={[styles.track, { height: barHeight }]}>
+        <View style={[styles.fill, { height: barHeight, width: `${clamped}%`, backgroundColor: barColor }]} />
       </View>
     </View>
   );
 });
 
 ProgressBar.displayName = 'ProgressBar';
-
 export default ProgressBar;
 
 const styles = StyleSheet.create({
-  container: {
-    width: '100%'
-  },
-  labelContainer: {
+  container: { width: '100%' },
+  labelRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8
+    marginBottom: 8,
   },
-  label: {
-    fontWeight: '600',
-    color: '#333'
-  },
-  percentage: {
-    fontWeight: '700'
-  },
-  barContainer: {
-    width: '100%'
-  },
-  barBackground: {
+  label: { fontWeight: '600', color: '#333' },
+  percentage: { fontWeight: '700' },
+  track: {
     backgroundColor: '#E5E7EB',
     borderRadius: 999,
     overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1
   },
-  barFill: {
-    borderRadius: 999
-  }
+  fill: { borderRadius: 999 },
 });

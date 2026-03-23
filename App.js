@@ -105,10 +105,11 @@ const ScreenFallback = () => (
 let globalNavigationRef = null;
 
 // Tab Navigator con todas las pantallas
-function MainTabs({ onLogout }) {
+function MainTabs({ onLogout, initialSession }) {
   const { theme, isDark } = useTheme();
   const { tasks: contextTasks } = useTasks();
-  const [currentUser, setCurrentUser] = useState(null);
+  // Usar initialSession para evitar flash de tabs condicionales en primer render
+  const [currentUser, setCurrentUser] = useState(initialSession || null);
   const [overdueCount, setOverdueCount] = useState(0);
   const [urgentCount, setUrgentCount] = useState(0); // 🔔 Tareas urgentes (vencidas + próximas <24h)
   const unsubPushRef = useRef(null);
@@ -420,6 +421,7 @@ function MainTabs({ onLogout }) {
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [initialSession, setInitialSession] = useState(null);
   const [forceUpdate, setForceUpdate] = useState(0);
   const navigationRef = useRef(null);
   
@@ -509,6 +511,7 @@ export default function App() {
           setIsLoading(false);
           clearTimeout(timeout);
           if (result.success) {
+            setInitialSession(result.session);
             productionLogger.logInfo('User authenticated', { userId: result.session?.uid });
           }
         }
@@ -588,6 +591,7 @@ export default function App() {
                     <MainTabs
                       {...props}
                       onLogout={handleLogout}
+                      initialSession={initialSession}
                     />
                   )}
                 </Stack.Screen>

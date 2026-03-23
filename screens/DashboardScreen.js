@@ -19,9 +19,7 @@ import { hapticMedium } from '../utils/haptics';
 import LoadingIndicator from '../components/LoadingIndicator';
 import ShimmerEffect from '../components/ShimmerEffect';
 import EmptyState from '../components/EmptyState';
-import StatCard from '../components/StatCard';
 import StateStatusCards from '../components/StateStatusCards';
-import StatColumn from '../components/StatColumn';
 import MetricCard from '../components/MetricCard';
 const Heatmap = React.lazy(() => import('../components/Heatmap'));
 import OverdueAlert from '../components/OverdueAlert';
@@ -513,174 +511,13 @@ export default function DashboardScreen({ navigation }) {
           </View>
         )}
 
-        {/* LAYOUT KANBAN - Columnas de Estados con animación */}
-        <Animated.View style={[styles.kanbanContainer, { opacity: Platform.OS === 'web' ? 1 : kanbanOpacity, transform: Platform.OS === 'web' ? [] : [{ translateY: kanbanSlide }] }]}>
-          <View style={styles.sectionHeaderContainer}>
-            <View style={[styles.sectionIconBadge, { backgroundColor: 'rgba(59, 130, 246, 0.15)' }]}>
-              <Ionicons name="layers-outline" size={20} color="#3B82F6" />
-            </View>
-            <View style={styles.sectionHeaderText}>
-              <Text style={[styles.sectionLabel, { color: theme.text }]}>
-                Estado de Tareas
-              </Text>
-              <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>
-                Vista general de progreso
-              </Text>
-            </View>
-          </View>
-
-          {isDesktop ? (
-            // Desktop: 4 columnas en 1 fila
-            <View style={styles.kanbanColumns}>
-              {/* Columna Pendientes */}
-              <View style={styles.columnWrapper}>
-                <StatColumn
-                  icon="alert-circle"
-                  title="Pendientes"
-                  count={metrics.pending}
-                  headerColor="#F59E0B"
-                  items={[
-                    { label: 'Total', value: metrics.pending.toString() },
-                    { 
-                      label: 'Vencidas', 
-                      value: metrics.overdue?.toString() || '0',
-                      subtitle: 'Requieren atención'
-                    },
-                  ]}
-                />
-              </View>
-
-              {/* Columna En Proceso */}
-              <View style={styles.columnWrapper}>
-                <StatColumn
-                  icon="play-circle"
-                  title="En Proceso"
-                  count={metrics.inProgress}
-                  headerColor="#3B82F6"
-                  items={[
-                    { label: 'Activas', value: metrics.inProgress.toString() },
-                    { 
-                      label: 'Progreso', 
-                      value: '50%',
-                      subtitle: 'Promedio'
-                    },
-                  ]}
-                />
-              </View>
-
-              {/* Columna En Revisión */}
-              <View style={styles.columnWrapper}>
-                <StatColumn
-                  icon="eye-outline"
-                  title="En Revisión"
-                  count={metrics.inReview}
-                  headerColor="#8B5CF6"
-                  items={[
-                    { label: 'Esperando', value: metrics.inReview.toString() },
-                    { 
-                      label: 'Tiempo promedio', 
-                      value: '2 días',
-                      subtitle: 'En revisión'
-                    },
-                  ]}
-                />
-              </View>
-
-              {/* Columna Completadas */}
-              <View style={styles.columnWrapper}>
-                <StatColumn
-                  icon="checkmark-done-sharp"
-                  title="Completadas"
-                  count={metrics.completed}
-                  headerColor="#10B981"
-                  items={[
-                    { label: 'Terminadas', value: metrics.completed.toString() },
-                    { 
-                      label: 'Tasa', 
-                      value: `${metrics.completionRate}%`,
-                      subtitle: 'De completitud'
-                    },
-                  ]}
-                />
-              </View>
-            </View>
-          ) : (
-            // Mobile/Tablet: 2 filas de 2 columnas
-            <>
-              <View style={styles.kanbanRow}>
-                <View style={styles.columnWrapperMobile}>
-                  <StatColumn
-                    icon="alert-circle"
-                    title="Pendientes"
-                    count={metrics.pending}
-                    headerColor="#F59E0B"
-                    items={[
-                      { label: 'Total', value: metrics.pending.toString() },
-                      { 
-                        label: 'Vencidas', 
-                        value: metrics.overdue?.toString() || '0',
-                        subtitle: 'Requieren atención'
-                      },
-                    ]}
-                  />
-                </View>
-
-                <View style={styles.columnWrapperMobile}>
-                  <StatColumn
-                    icon="play-circle"
-                    title="En Proceso"
-                    count={metrics.inProgress}
-                    headerColor="#3B82F6"
-                    items={[
-                      { label: 'Activas', value: metrics.inProgress.toString() },
-                      { 
-                        label: 'Progreso', 
-                        value: '50%',
-                        subtitle: 'Promedio'
-                      },
-                    ]}
-                  />
-                </View>
-              </View>
-
-              <View style={styles.kanbanRow}>
-                <View style={styles.columnWrapperMobile}>
-                  <StatColumn
-                    icon="eye-outline"
-                    title="En Revisión"
-                    count={metrics.inReview}
-                    headerColor="#8B5CF6"
-                    items={[
-                      { label: 'Esperando', value: metrics.inReview.toString() },
-                      { 
-                        label: 'Tiempo promedio', 
-                        value: '2 días',
-                        subtitle: 'En revisión'
-                      },
-                    ]}
-                  />
-                </View>
-
-                <View style={styles.columnWrapperMobile}>
-                  <StatColumn
-                    icon="checkmark-done-sharp"
-                    title="Completadas"
-                    count={metrics.completed}
-                    headerColor="#10B981"
-                    items={[
-                      { label: 'Terminadas', value: metrics.completed.toString() },
-                      { 
-                        label: 'Tasa', 
-                        value: `${metrics.completionRate}%`,
-                        subtitle: 'De completitud'
-                      },
-                    ]}
-                  />
-                </View>
-              </View>
-            </>
-          )}
-        </Animated.View>
+        {/* ESTADO DE TAREAS - Tira compacta */}
+        <StateStatusCards
+          completed={metrics.completed}
+          pending={metrics.pending}
+          inProgress={metrics.inProgress}
+          inReview={metrics.inReview}
+        />
 
         {/* Sección de Tareas Críticas y Vencidas */}
         {(criticalTasks.length > 0 || overdueTasks.length > 0) && (

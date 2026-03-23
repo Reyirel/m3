@@ -113,48 +113,48 @@ export default function MyInboxScreen({ navigation }) {
   useEffect(() => {
     if (!currentUser?.email || !db) return;
 
+    const MESSAGES_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+    const cacheKey = `@inbox_messages_${currentUser.email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+
     const loadRecentMessages = async () => {
       try {
+        // Verificar cache antes de ir a Firestore
+        const cached = await AsyncStorage.getItem(cacheKey);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < MESSAGES_CACHE_TTL) {
+            setRecentMessages(data);
+            return;
+          }
+        }
+
         const messages = [];
         const userEmail = currentUser.email?.toLowerCase().trim() || '';
-        
-        // Obtener tareas donde el usuario está involucrado (case-insensitive)
+
+        // Obtener tareas donde el usuario está involucrado
         let userTasks = tasks.filter(task => {
           if (!task || !task.id) return false;
-          // Verificar assignedTo (puede ser string o array)
-          let isAssigned = false;
-          if (Array.isArray(task.assignedTo)) {
-            isAssigned = task.assignedTo.some(e => e?.toLowerCase().trim() === userEmail);
-          } else {
-            isAssigned = task.assignedTo?.toLowerCase().trim() === userEmail;
-          }
-          const isCreator = task.createdBy?.toLowerCase().trim() === userEmail;
-          return isAssigned || isCreator;
+          return isTaskAssignedToUser(task, userEmail) ||
+            task.createdBy?.toLowerCase().trim() === userEmail;
         });
 
-        // Si es admin, agregar tareas donde haya actividad reciente (máximo 20)
+        // Si es admin, agregar tareas con actividad reciente
         if (currentUser.role === 'admin' && userTasks.length < 10) {
           const otherTasks = tasks
             .filter(task => {
               if (!task || !task.id) return false;
-              let isAssigned = false;
-              if (Array.isArray(task.assignedTo)) {
-                isAssigned = task.assignedTo.some(e => e?.toLowerCase().trim() === userEmail);
-              } else {
-                isAssigned = task.assignedTo?.toLowerCase().trim() === userEmail;
-              }
-              const isCreator = task.createdBy?.toLowerCase().trim() === userEmail;
-              return !isAssigned && !isCreator;
+              return !isTaskAssignedToUser(task, userEmail) &&
+                task.createdBy?.toLowerCase().trim() !== userEmail;
             })
             .slice(0, 10 - userTasks.length);
           userTasks = [...userTasks, ...otherTasks];
         }
 
         // Por cada tarea, obtener los últimos 3 mensajes
-        for (const task of userTasks.slice(0, 10)) { // Limitar a 10 tareas para no sobrecargar
+        for (const task of userTasks.slice(0, 10)) {
           try {
             if (!task.id) continue;
-            
+
             const messagesRef = collection(db, 'tasks', task.id, 'messages');
             const q = query(messagesRef, orderBy('createdAt', 'desc'), limit(3));
             const snapshot = await getDocs(q);
@@ -194,9 +194,11 @@ export default function MyInboxScreen({ navigation }) {
           }
         });
 
-        setRecentMessages(messages.slice(0, 5));
+        const result = messages.slice(0, 5);
+        setRecentMessages(result);
+        // Guardar en cache
+        AsyncStorage.setItem(cacheKey, JSON.stringify({ data: result, timestamp: Date.now() })).catch(() => {});
       } catch (error) {
-        // Silenciar error pero no cargar mensajes
         setRecentMessages([]);
       }
     };
@@ -204,7 +206,7 @@ export default function MyInboxScreen({ navigation }) {
     if (tasks.length > 0) {
       loadRecentMessages();
     }
-  }, [currentUser?.email, tasks]);
+  }, [currentUser?.email]);
 
   // Filtrar y ordenar tareas con búsqueda y filtros avanzados
   const filtered = tasks

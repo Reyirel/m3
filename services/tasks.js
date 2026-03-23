@@ -1,9 +1,9 @@
 // services/tasks.js
 // Servicio para gestionar tareas con Firebase Firestore en tiempo real
 // Con soporte OFFLINE-FIRST
-// 🚨 PRODUCCION: console.logs deshabilitados
-const __DEV__ = false; // Cambiar a true para depuración
-const log = __DEV__ ? console.log : () => {};
+/* global __DEV__ */
+const _isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV === 'development';
+const log = _isDev ? console.log : () => {};
 import { toMs } from '../utils/dateUtils';
 import { isTaskAssignedToUser, normalizeStatus } from '../utils/taskHelpers';
 import { getDireccionesBySecretaria, resolveAreaName } from '../config/areas';
@@ -151,10 +151,22 @@ export async function subscribeToTasks(callback) {
     };
 
     // Crear query y suscribirse
-    const tasksQuery = query(
-      collection(db, COLLECTION_NAME),
-      orderBy('createdAt', 'desc')
-    );
+    // Directores: filtro server-side por assignedTo (usa índice compuesto existente)
+    // Esto reduce lecturas de Firestore al no descargar todas las tareas
+    let tasksQuery;
+    if (userRole === 'director') {
+      tasksQuery = query(
+        collection(db, COLLECTION_NAME),
+        where('assignedTo', 'array-contains', userEmail),
+        orderBy('createdAt', 'desc')
+      );
+    } else {
+      // Admin y secretario: descargan todas las tareas (filtran client-side por área)
+      tasksQuery = query(
+        collection(db, COLLECTION_NAME),
+        orderBy('createdAt', 'desc')
+      );
+    }
 
     let isSubscribed = true;
     const unsubscribeListener = onSnapshot(

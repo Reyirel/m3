@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Animated,
-  Easing,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -22,7 +21,6 @@ export default function AreaFilter({
 }) {
   const { theme, isDark } = useTheme();
   const [isExpanded, setIsExpanded] = useState(false);
-  const expandAnim = React.useRef(new Animated.Value(0)).current;
   const rotateAnim = React.useRef(new Animated.Value(0)).current;
 
   const handleSelectArea = (area) => {
@@ -34,21 +32,13 @@ export default function AreaFilter({
   };
 
   const handleToggleExpand = () => {
-    setIsExpanded(!isExpanded);
-    Animated.parallel([
-      Animated.timing(expandAnim, {
-        toValue: isExpanded ? 0 : 1,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: false,
-      }),
-      Animated.timing(rotateAnim, {
-        toValue: isExpanded ? 0 : 1,
-        duration: 300,
-        easing: Easing.ease,
-        useNativeDriver: true,
-      }),
-    ]).start();
+    const next = !isExpanded;
+    setIsExpanded(next);
+    Animated.timing(rotateAnim, {
+      toValue: next ? 1 : 0,
+      duration: 250,
+      useNativeDriver: true,
+    }).start();
   };
 
   const handleSelectAll = () => {

@@ -21,7 +21,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 const LineChart = React.lazy(() => import('react-native-chart-kit').then(module => ({ default: module.LineChart })));
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
-import { collection, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import ProgressBar from '../components/ProgressBar';
 import Avatar from '../components/Avatar';
@@ -277,14 +277,18 @@ export default function AdminExecutiveDashboard({ navigation }) {
   // === EFECTOS ===
   
   useEffect(() => {
-    loadInitialData();
-
     let mounted = true;
 
+    // onSnapshot dispara inmediatamente con el estado actual, no necesita getDocs previo
     const usersRef = collection(db, 'users');
     const unsubscribeUsers = onSnapshot(usersRef, (snapshot) => {
+      if (!mounted) return;
       const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setUsers(usersData);
+      setLoading(false);
+    }, (error) => {
+      if (__DEV__) console.error('Error loading users:', error);
+      if (mounted) setLoading(false);
     });
 
     Animated.parallel([
@@ -297,19 +301,6 @@ export default function AdminExecutiveDashboard({ navigation }) {
       if (unsubscribeUsers) unsubscribeUsers();
     };
   }, []);
-
-  const loadInitialData = async () => {
-    try {
-      const usersRef = collection(db, 'users');
-      const usersSnapshot = await getDocs(usersRef);
-      const usersData = usersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setUsers(usersData);
-    } catch (error) {
-      if (__DEV__) console.error('Error loading data:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -645,7 +636,6 @@ export default function AdminExecutiveDashboard({ navigation }) {
                     </React.Fragment>
                   ))}
                 </View>
-                <ProgressBar progress={data.completionRate} color={getCompletionColor(data.completionRate)} size="small" />
               </TouchableOpacity>
             ))
           )}

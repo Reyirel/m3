@@ -25,37 +25,25 @@ const SUBTASKS_SUBCOLLECTION = 'subtasks';
  */
 export function subscribeToTaskProgress(taskId, callback) {
   try {
-    // Escuchar cambios en la tarea
     const taskRef = doc(db, TASKS_COLLECTION, taskId);
-    
-    const unsubscribeTask = onSnapshot(taskRef, async (taskDoc) => {
-      if (!taskDoc.exists()) {
-        callback(null);
-        return;
+    const subtasksRef = collection(db, TASKS_COLLECTION, taskId, SUBTASKS_SUBCOLLECTION);
+
+    // Obtener datos de la tarea una sola vez (no en tiempo real).
+    // Solo las subtareas necesitan live updates para el progreso.
+    let cachedTaskData = null;
+
+    const unsubscribe = onSnapshot(subtasksRef, async (subtasksSnap) => {
+      if (!cachedTaskData) {
+        const taskSnap = await getDoc(taskRef);
+        if (!taskSnap.exists()) { callback(null); return; }
+        cachedTaskData = taskSnap.data();
       }
 
-      const taskData = taskDoc.data();
-      
-      // Escuchar subtareas
-      const subtasksRef = collection(db, TASKS_COLLECTION, taskId, SUBTASKS_SUBCOLLECTION);
-      const unsubscribeSubtasks = onSnapshot(subtasksRef, async (subtasksSnap) => {
-        const subtasks = [];
-        subtasksSnap.forEach(doc => {
-          subtasks.push({
-            id: doc.id,
-            ...doc.data()
-          });
-        });
-
-        // Calcular progreso general
-        const progressData = calculateProgress(taskData, subtasks);
-        callback(progressData);
-      });
-
-      return unsubscribeSubtasks;
+      const subtasks = subtasksSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+      callback(calculateProgress(cachedTaskData, subtasks));
     });
 
-    return unsubscribeTask;
+    return unsubscribe;
   } catch (error) {
     console.error('Error en subscribeToTaskProgress:', error);
     return () => {};

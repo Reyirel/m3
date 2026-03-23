@@ -1,7 +1,7 @@
 // components/ShakeInput.js
 // Input con animación de shake para errores y feedback visual
-import React, { useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { TextInput, Animated, StyleSheet } from 'react-native';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { TextInput, View, Animated, StyleSheet } from 'react-native';
 import { hapticMedium } from '../utils/haptics';
 
 const ShakeInput = forwardRef(({ 
@@ -11,7 +11,7 @@ const ShakeInput = forwardRef(({
   ...props 
 }, ref) => {
   const shakeAnim = useRef(new Animated.Value(0)).current;
-  const borderColorAnim = useRef(new Animated.Value(0)).current;
+  const [hasError, setHasError] = useState(error);
   const inputRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
@@ -53,26 +53,9 @@ const ShakeInput = forwardRef(({
   };
 
   useEffect(() => {
-    if (error) {
-      triggerShake();
-      Animated.timing(borderColorAnim, {
-        toValue: 1,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
-    } else {
-      Animated.timing(borderColorAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: false,
-      }).start();
-    }
+    setHasError(error);
+    if (error) triggerShake();
   }, [error]);
-
-  const borderColor = borderColorAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['#E5E5EA', errorColor],
-  });
 
   return (
     <Animated.View
@@ -80,7 +63,7 @@ const ShakeInput = forwardRef(({
         styles.container,
         {
           transform: [{ translateX: shakeAnim }],
-          borderColor,
+          borderColor: hasError ? errorColor : '#E5E5EA',
         },
       ]}
     >

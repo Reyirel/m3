@@ -1,6 +1,6 @@
 // components/AreaStatsCard.js
-// Tarjeta de estadísticas mejorada para cada área con visual atractivo premium
-// ⚡ Optimizado con React.memo y reducción de animaciones loop
+// Tarjeta compacta con modal de detalle al tocar
+// Sin animaciones useNativeDriver:false para evitar bloqueo del cursor en web
 
 import React, { useRef, useEffect, useState, memo } from 'react';
 import {
@@ -8,17 +8,24 @@ import {
   Text,
   StyleSheet,
   Animated,
-  Dimensions,
   TouchableOpacity,
-  Easing,
-  Platform
+  Modal,
+  ScrollView,
+  Platform,
+  TouchableWithoutFeedback,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
-const { width: screenWidth } = Dimensions.get('window');
+// ── helpers de estado ──────────────────────────────────────────────────────
+function getStatus(rate) {
+  if (rate >= 85) return { color: '#059669', bg: '#ECFDF5', label: 'Excelente',    icon: 'checkmark-circle' };
+  if (rate >= 60) return { color: '#2563EB', bg: '#EFF6FF', label: 'En Progreso',  icon: 'arrow-forward-circle' };
+  if (rate >= 30) return { color: '#D97706', bg: '#FFFBEB', label: 'Atrasado',     icon: 'time' };
+  return           { color: '#DC2626', bg: '#FEF2F2', label: 'Crítico',       icon: 'alert-circle' };
+}
 
+// ── componente principal ───────────────────────────────────────────────────
 const AreaStatsCard = memo(function AreaStatsCard({
   areaName,
   completed,
@@ -28,519 +35,384 @@ const AreaStatsCard = memo(function AreaStatsCard({
   overdueTasks = 0,
   onPress,
   index = 0,
-  trend = 'stable', // 'up', 'down', 'stable'
-  trendValue = 0
+  trend = 'stable',
+  trendValue = 0,
 }) {
   const { theme, isDark } = useTheme();
-  const scaleAnim = useRef(new Animated.Value(0.92)).current;
+  const [modalVisible, setModalVisible] = useState(false);
+
+  // Solo animación de entrada — useNativeDriver:true para no bloquear JS thread
   const opacityAnim = useRef(new Animated.Value(0)).current;
-  const progressAnim = useRef(new Animated.Value(0)).current;
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
-  const pressAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim   = useRef(new Animated.Value(10)).current;
 
-  const completionRate = total > 0 ? (completed / total) * 100 : 0;
-  let statusColor = '#10B981'; // green
-  let statusLabel = 'Excelente';
-  let statusIcon = 'checkmark-circle';
+  const rate    = total > 0 ? (completed / total) * 100 : 0;
+  const status  = getStatus(rate);
+  const isSecretaria = areaName?.toLowerCase().includes('secretar');
+  const areaIcon = isSecretaria ? 'briefcase-outline' : 'folder-outline';
 
-  if (completionRate < 30) {
-    statusColor = '#DC2626'; // red
-    statusLabel = 'Crítico';
-    statusIcon = 'alert-circle';
-  } else if (completionRate < 60) {
-    statusColor = '#F59E0B'; // amber
-    statusLabel = 'Atrasado';
-    statusIcon = 'time';
-  } else if (completionRate < 85) {
-    statusColor = '#3B82F6'; // blue
-    statusLabel = 'En Progreso';
-    statusIcon = 'arrow-forward-circle';
-  }
-
-  // Determinar si es secretaría o dirección
-  const isSecretaria = areaName?.toLowerCase().includes('secretaría');
-  const areaIcon = isSecretaria ? 'briefcase' : 'folder-open';
-
-  // Animación de entrada (escalada + opacidad) con efecto springy
   useEffect(() => {
     Animated.sequence([
-      Animated.delay(index * 120),
+      Animated.delay(index * 60),
       Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          tension: 80,
-          friction: 8,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 450,
-          useNativeDriver: true,
-        }),
+        Animated.timing(opacityAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+        Animated.spring(slideAnim,   { toValue: 0, tension: 80, friction: 10, useNativeDriver: true }),
       ]),
     ]).start();
+  }, []);
 
-    // Animación de barra de progreso
-    Animated.timing(progressAnim, {
-      toValue: completionRate,
-      duration: 1200,
-      easing: Easing.bezier(0.4, 0, 0.2, 1),
-      useNativeDriver: false,
-    }).start();
-    
-    // ⚡ Optimización: Remover shimmer loop infinito que consume CPU
-    // El efecto shimmer solo se ejecuta una vez en lugar de loop
-    Animated.timing(shimmerAnim, {
-      toValue: 1,
-      duration: 2000,
-      easing: Easing.linear,
-      useNativeDriver: true,
-    }).start();
-    
-    // Glow pulsante solo una vez para áreas con buen rendimiento
-    if (completionRate >= 85) {
-      Animated.sequence([
-        Animated.timing(glowAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
-        Animated.timing(glowAnim, { toValue: 0.3, duration: 1500, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [completed, total]);
-  
-  // Handlers para micro-interacciones
-  const handlePressIn = () => {
-    Animated.spring(pressAnim, {
-      toValue: 0.97,
-      tension: 100,
-      friction: 10,
-      useNativeDriver: true,
-    }).start();
-  };
-  
-  const handlePressOut = () => {
-    Animated.spring(pressAnim, {
-      toValue: 1,
-      tension: 100,
-      friction: 10,
-      useNativeDriver: true,
-    }).start();
+  const handlePress = () => {
+    if (onPress) onPress(areaName);
+    setModalVisible(true);
   };
 
-  const getGradientColors = () => {
-    if (completionRate >= 85) return isDark ? ['#4F46E5', '#7C3AED'] : ['#6366F1', '#8B5CF6'];
-    if (completionRate >= 60) return isDark ? ['#2563EB', '#0891B2'] : ['#3B82F6', '#06B6D4'];
-    if (completionRate >= 30) return isDark ? ['#D97706', '#EA580C'] : ['#F59E0B', '#F97316'];
-    return isDark ? ['#B91C1C', '#7F1D1D'] : ['#DC2626', '#991B1B'];
-  };
-  
-  // Shimmer overlay animation
-  const shimmerTranslate = shimmerAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [-200, 400],
-  });
+  const trendColor = trend === 'up' ? '#059669' : trend === 'down' ? '#DC2626' : '#9CA3AF';
+  const trendIcon  = trend === 'up' ? 'trending-up' : trend === 'down' ? 'trending-down' : 'remove';
 
   return (
-    <TouchableOpacity 
-      style={[styles.touchable]}
-      onPress={onPress}
-      onPressIn={handlePressIn}
-      onPressOut={handlePressOut}
-      activeOpacity={1}
-    >
+    <>
+      {/* ── TARJETA COMPACTA ── */}
       <Animated.View
         style={[
-          styles.container,
+          styles.card,
           {
-            transform: [
-              { scale: Animated.multiply(scaleAnim, pressAnim) }
-            ],
+            backgroundColor: theme.card,
+            borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
+            borderLeftColor: status.color,
             opacity: opacityAnim,
+            transform: [{ translateY: slideAnim }],
           },
         ]}
       >
-        <LinearGradient
-          colors={getGradientColors()}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.gradientBackground}
-        >
-          {/* Shimmer effect overlay */}
-          <Animated.View
-            style={[
-              styles.shimmerOverlay,
-              {
-                transform: [{ translateX: shimmerTranslate }],
-              },
-            ]}
-          >
-            <LinearGradient
-              colors={['transparent', 'rgba(255,255,255,0.15)', 'transparent']}
-              start={{ x: 0, y: 0.5 }}
-              end={{ x: 1, y: 0.5 }}
-              style={styles.shimmerGradient}
-            />
-          </Animated.View>
-          
-          {/* Glow effect para áreas destacadas */}
-          {completionRate >= 85 && (
-            <Animated.View
-              style={[
-                styles.glowEffect,
-                { opacity: glowAnim }
-              ]}
-            />
-          )}
-
-          {/* Fondo superior con área translúcida */}
-          <View
-            style={[
-              styles.overlay,
-              { backgroundColor: isDark ? 'rgba(0, 0, 0, 0.4)' : 'rgba(255, 255, 255, 0.2)' },
-            ]}
-          />
-
-          {/* Contenido principal */}
-          <View style={styles.content}>
-            {/* Header: Icono de tipo + Nombre del área + Badge */}
-            <View style={styles.header}>
-              <View style={styles.titleContainer}>
-                {/* Icono del tipo de área */}
-                <View style={styles.areaTypeIcon}>
-                  <Ionicons name={areaIcon} size={16} color="rgba(255,255,255,0.7)" />
-                </View>
-                <Text
-                  style={[styles.areaName, { color: '#FFFFFF' }]}
-                  numberOfLines={2}
-                >
-                  {areaName}
-                </Text>
-                <View
-                  style={[
-                    styles.statusBadge,
-                    { backgroundColor: 'rgba(255,255,255,0.2)' },
-                  ]}
-                >
-                  <Ionicons name={statusIcon} size={12} color="#FFFFFF" style={{ marginRight: 4 }} />
-                  <Text style={[styles.statusLabel, { color: '#FFFFFF' }]}>
-                    {statusLabel}
-                  </Text>
-                </View>
-              </View>
-
-              {/* Trend indicator */}
-              <View style={styles.trendContainer}>
-                <Ionicons
-                  name={
-                    trend === 'up'
-                      ? 'arrow-up'
-                      : trend === 'down'
-                      ? 'arrow-down'
-                      : 'remove'
-                  }
-                  size={16}
-                  color={
-                    trend === 'up'
-                      ? '#10B981'
-                      : trend === 'down'
-                      ? '#DC2626'
-                      : '#6B7280'
-                  }
-                />
-                <Text
-                  style={[
-                    styles.trendValue,
-                    {
-                      color:
-                        trend === 'up'
-                          ? '#10B981'
-                          : trend === 'down'
-                          ? '#DC2626'
-                          : '#6B7280',
-                    },
-                  ]}
-                >
-                  {trendValue > 0 ? '+' : ''}{trendValue}%
-                </Text>
-              </View>
-            </View>
-
-            {/* Barra de progreso */}
-            <View style={styles.progressBarContainer}>
-              <Animated.View
-                style={[
-                  styles.progressBar,
-                  {
-                    width: progressAnim.interpolate({
-                      inputRange: [0, 100],
-                      outputRange: ['0%', '100%'],
-                    }),
-                  },
-                ]}
-              />
-            </View>
-
-            {/* Métricas principales */}
-            <View style={styles.metricsRow}>
-              <View style={styles.metricItem}>
-                <Text style={styles.metricValue}>
-                  {completed}
-                </Text>
-                <Text style={styles.metricLabel}>
-                  Completadas
-                </Text>
-              </View>
-
-              <View style={styles.metricDivider} />
-
-              <View style={styles.metricItem}>
-                <Text style={styles.metricValue}>
-                  {total}
-                </Text>
-                <Text style={styles.metricLabel}>
-                  Total
-                </Text>
-              </View>
-
-              <View style={styles.metricDivider} />
-
-              <View style={styles.metricItem}>
-                <Text style={[styles.metricValue, { color: '#A7F3D0' }]}>
-                  {Math.round(completionRate)}%
-                </Text>
-                <Text style={styles.metricLabel}>
-                  Progreso
-                </Text>
-              </View>
-            </View>
-
-            {/* Métricas secundarias */}
-            {(assignedUsers > 0 || overdueTasks > 0) && (
-              <View style={styles.secondaryMetrics}>
-                {assignedUsers > 0 && (
-                  <View style={styles.secondaryItem}>
-                    <Ionicons
-                      name="people-outline"
-                      size={14}
-                      color="rgba(255,255,255,0.7)"
-                    />
-                    <Text style={[styles.secondaryText, { color: 'rgba(255,255,255,0.8)' }]}>
-                      {assignedUsers} usuario{assignedUsers > 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                )}
-
-                {overdueTasks > 0 && (
-                  <View style={[styles.secondaryItem, { backgroundColor: 'rgba(220,38,38,0.2)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 }]}>
-                    <Ionicons
-                      name="alert-circle"
-                      size={14}
-                      color="#FCA5A5"
-                    />
-                    <Text style={[styles.secondaryText, { color: '#FCA5A5' }]}>
-                      {overdueTasks} atrasada{overdueTasks > 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                )}
-
-                {avgCompletionTime > 0 && (
-                  <View style={styles.secondaryItem}>
-                    <Ionicons
-                      name="time-outline"
-                      size={14}
-                      color="rgba(255,255,255,0.7)"
-                    />
-                    <Text style={[styles.secondaryText, { color: 'rgba(255,255,255,0.8)' }]}>
-                      {avgCompletionTime} días
-                    </Text>
-                  </View>
-                )}
-              </View>
-            )}
+        <TouchableOpacity onPress={handlePress} activeOpacity={0.72} style={styles.row}>
+          {/* Icono tipo área */}
+          <View style={[styles.iconWrap, { backgroundColor: isDark ? `${status.color}22` : status.bg }]}>
+            <Ionicons name={areaIcon} size={14} color={status.color} />
           </View>
 
-          {/* Ícono decorativo en esquina */}
-          <View style={styles.cornerIcon}>
-            <Ionicons
-              name="bar-chart-outline"
-              size={32}
-              color={`${statusColor}40`}
-            />
+          {/* Nombre + barra de progreso */}
+          <View style={styles.middle}>
+            <Text style={[styles.areaName, { color: theme.text }]} numberOfLines={1}>
+              {areaName}
+            </Text>
+            {/* Barra estática — sin Animated para no bloquear JS thread en web */}
+            <View style={[styles.track, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6' }]}>
+              <View style={[styles.fill, { width: `${Math.round(rate)}%`, backgroundColor: status.color }]} />
+            </View>
           </View>
-        </LinearGradient>
+
+          {/* Badge estado + % + flecha */}
+          <View style={styles.right}>
+            <View style={[styles.badge, { backgroundColor: isDark ? `${status.color}22` : status.bg }]}>
+              <Text style={[styles.badgeText, { color: status.color }]}>{status.label}</Text>
+            </View>
+            <Text style={[styles.pct, { color: status.color }]}>{Math.round(rate)}%</Text>
+            <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
+          </View>
+        </TouchableOpacity>
       </Animated.View>
-    </TouchableOpacity>
+
+      {/* ── MODAL DE DETALLE ── */}
+      <Modal
+        visible={modalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setModalVisible(false)}>
+          <View style={styles.overlay}>
+            <TouchableWithoutFeedback>
+              <View style={[styles.sheet, { backgroundColor: theme.card }]}>
+
+                {/* Cabecera modal */}
+                <View style={[styles.sheetHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6' }]}>
+                  <View style={[styles.sheetIconWrap, { backgroundColor: isDark ? `${status.color}22` : status.bg }]}>
+                    <Ionicons name={areaIcon} size={18} color={status.color} />
+                  </View>
+                  <View style={styles.sheetTitleBlock}>
+                    <Text style={[styles.sheetTitle, { color: theme.text }]} numberOfLines={2}>{areaName}</Text>
+                    <View style={[styles.badge, { backgroundColor: isDark ? `${status.color}22` : status.bg, alignSelf: 'flex-start', marginTop: 4 }]}>
+                      <Ionicons name={status.icon} size={11} color={status.color} style={{ marginRight: 3 }} />
+                      <Text style={[styles.badgeText, { color: status.color }]}>{status.label}</Text>
+                    </View>
+                  </View>
+                  <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
+                    <Ionicons name="close" size={20} color={theme.textSecondary} />
+                  </TouchableOpacity>
+                </View>
+
+                {/* Barra de progreso modal */}
+                <View style={styles.sheetProgressWrap}>
+                  <View style={[styles.sheetTrack, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6' }]}>
+                    <View style={[styles.sheetFill, { width: `${Math.round(rate)}%`, backgroundColor: status.color }]} />
+                  </View>
+                  <Text style={[styles.sheetPct, { color: status.color }]}>{Math.round(rate)}%</Text>
+                </View>
+
+                {/* Métricas 3 columnas */}
+                <View style={[styles.metricsRow, { borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6' }]}>
+                  <View style={styles.metricCol}>
+                    <Text style={[styles.metricVal, { color: theme.text }]}>{completed}</Text>
+                    <Text style={[styles.metricLbl, { color: theme.textSecondary }]}>COMPLETADAS</Text>
+                  </View>
+                  <View style={[styles.metricDiv, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]} />
+                  <View style={styles.metricCol}>
+                    <Text style={[styles.metricVal, { color: theme.text }]}>{total}</Text>
+                    <Text style={[styles.metricLbl, { color: theme.textSecondary }]}>TOTAL</Text>
+                  </View>
+                  <View style={[styles.metricDiv, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]} />
+                  <View style={styles.metricCol}>
+                    <Text style={[styles.metricVal, { color: theme.text }]}>{total - completed}</Text>
+                    <Text style={[styles.metricLbl, { color: theme.textSecondary }]}>PENDIENTES</Text>
+                  </View>
+                </View>
+
+                {/* Tags secundarios */}
+                <View style={styles.tagsRow}>
+                  {assignedUsers > 0 && (
+                    <View style={[styles.tagChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB' }]}>
+                      <Ionicons name="people-outline" size={13} color={theme.textSecondary} />
+                      <Text style={[styles.tagChipText, { color: theme.textSecondary }]}>
+                        {assignedUsers} {assignedUsers === 1 ? 'usuario' : 'usuarios'}
+                      </Text>
+                    </View>
+                  )}
+                  {overdueTasks > 0 && (
+                    <View style={[styles.tagChip, { backgroundColor: isDark ? 'rgba(220,38,38,0.15)' : '#FEF2F2' }]}>
+                      <Ionicons name="alert-circle-outline" size={13} color="#DC2626" />
+                      <Text style={[styles.tagChipText, { color: '#DC2626' }]}>
+                        {overdueTasks} vencida{overdueTasks > 1 ? 's' : ''}
+                      </Text>
+                    </View>
+                  )}
+                  {avgCompletionTime > 0 && (
+                    <View style={[styles.tagChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB' }]}>
+                      <Ionicons name="time-outline" size={13} color={theme.textSecondary} />
+                      <Text style={[styles.tagChipText, { color: theme.textSecondary }]}>
+                        Promedio {avgCompletionTime}d
+                      </Text>
+                    </View>
+                  )}
+                  {trendValue !== 0 && (
+                    <View style={[styles.tagChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB' }]}>
+                      <Ionicons name={trendIcon} size={13} color={trendColor} />
+                      <Text style={[styles.tagChipText, { color: trendColor }]}>
+                        {trendValue > 0 ? '+' : ''}{trendValue}% vs anterior
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Botón cerrar */}
+                <TouchableOpacity
+                  onPress={() => setModalVisible(false)}
+                  style={[styles.dismissBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' }]}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[styles.dismissText, { color: theme.textSecondary }]}>Cerrar</Text>
+                </TouchableOpacity>
+
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
+    </>
   );
 });
 
 AreaStatsCard.displayName = 'AreaStatsCard';
-
 export default AreaStatsCard;
 
 const styles = StyleSheet.create({
-  touchable: {
-    marginBottom: 14,
-    borderRadius: 20,
+  // ── tarjeta compacta ──────────────────────────────────────────────
+  card: {
+    borderRadius: 12,
+    borderWidth: 1,
+    borderLeftWidth: 4,
+    marginBottom: 8,
     overflow: 'hidden',
+    ...Platform.select({
+      ios:     { shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4 },
+      android: { elevation: 2 },
+    }),
   },
-  container: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-  },
-  gradientBackground: {
-    padding: 18,
-    minHeight: 220,
-    overflow: 'hidden',
-    position: 'relative',
-  },
-  shimmerOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 2,
-  },
-  shimmerGradient: {
-    width: 100,
-    height: '100%',
-  },
-  glowEffect: {
-    position: 'absolute',
-    top: -50,
-    right: -50,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    zIndex: 0,
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 20,
-  },
-  content: {
-    zIndex: 3,
-  },
-  header: {
+  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 14,
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    gap: 10,
   },
-  titleContainer: {
-    flex: 1,
-    marginRight: 8,
-  },
-  areaTypeIcon: {
-    width: 28,
-    height: 28,
+  iconWrap: {
+    width: 30,
+    height: 30,
     borderRadius: 8,
-    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    flexShrink: 0,
+  },
+  middle: {
+    flex: 1,
+    gap: 5,
   },
   areaName: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 10,
-    lineHeight: 20,
+    fontSize: 13,
+    fontWeight: '600',
+    lineHeight: 18,
   },
-  statusBadge: {
-    alignSelf: 'flex-start',
+  track: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  fill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  right: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
+    gap: 6,
+    flexShrink: 0,
   },
-  statusLabel: {
-    fontSize: 11,
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  badgeText: {
+    fontSize: 10,
     fontWeight: '700',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
-  trendContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-  },
-  trendValue: {
+  pct: {
     fontSize: 12,
     fontWeight: '700',
+    minWidth: 32,
+    textAlign: 'right',
   },
-  progressBarContainer: {
-    height: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: 5,
+
+  // ── modal ─────────────────────────────────────────────────────────
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    maxHeight: '80%',
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    gap: 12,
+  },
+  sheetIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+    marginTop: 2,
+  },
+  sheetTitleBlock: {
+    flex: 1,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: '700',
+    lineHeight: 22,
+  },
+  closeBtn: {
+    padding: 4,
+    marginTop: 2,
+  },
+  sheetProgressWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  sheetTrack: {
+    flex: 1,
+    height: 8,
+    borderRadius: 4,
     overflow: 'hidden',
-    marginBottom: 18,
   },
-  progressBar: {
+  sheetFill: {
     height: '100%',
-    borderRadius: 5,
-    backgroundColor: 'rgba(255,255,255,0.9)',
+    borderRadius: 4,
+  },
+  sheetPct: {
+    fontSize: 16,
+    fontWeight: '800',
+    minWidth: 46,
+    textAlign: 'right',
   },
   metricsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 14,
-    paddingVertical: 14,
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    borderRadius: 12,
-    paddingHorizontal: 12,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    marginHorizontal: 20,
+    paddingVertical: 16,
+    marginBottom: 16,
   },
-  metricItem: {
+  metricCol: {
     flex: 1,
     alignItems: 'center',
   },
-  metricValue: {
-    fontSize: 20,
+  metricVal: {
+    fontSize: 22,
     fontWeight: '800',
     marginBottom: 3,
-    color: '#FFFFFF',
   },
-  metricLabel: {
-    fontSize: 10,
+  metricLbl: {
+    fontSize: 9,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.7)',
-    textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
-  metricDivider: {
+  metricDiv: {
     width: 1,
-    height: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    marginHorizontal: 8,
+    height: 32,
   },
-  secondaryMetrics: {
+  tagsRow: {
     flexDirection: 'row',
-    gap: 12,
     flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 20,
+    marginBottom: 20,
   },
-  secondaryItem: {
+  tagChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  secondaryText: {
-    fontSize: 11,
+  tagChipText: {
+    fontSize: 12,
     fontWeight: '500',
   },
-  cornerIcon: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    opacity: 0.3,
+  dismissBtn: {
+    marginHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  dismissText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

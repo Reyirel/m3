@@ -1,7 +1,7 @@
 // components/Input.js
 // Input moderno con animaciones y validación visual
-import React, { useState, useRef, useEffect } from 'react';
-import { View, TextInput, Text, StyleSheet, Animated } from 'react-native';
+import { useState } from 'react';
+import { View, TextInput, Text, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -25,60 +25,28 @@ export default function Input({
 }) {
   const { theme } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
-  const borderColorAnim = useRef(new Animated.Value(0)).current;
-  const labelScaleAnim = useRef(new Animated.Value(value ? 1 : 0)).current;
 
-  useEffect(() => {
-    Animated.timing(borderColorAnim, {
-      toValue: isFocused ? 1 : error ? 2 : 0,
-      duration: 200,
-      useNativeDriver: false,
-    }).start();
-  }, [isFocused, error]);
-
-  useEffect(() => {
-    Animated.timing(labelScaleAnim, {
-      toValue: isFocused || value ? 1 : 0,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-  }, [isFocused, value]);
-
-  const borderColor = borderColorAnim.interpolate({
-    inputRange: [0, 1, 2],
-    outputRange: [theme.inputBorder, theme.inputBorderFocused, theme.error],
-  });
+  const borderColor = error ? theme.error : isFocused ? theme.inputBorderFocused : theme.inputBorder;
 
   return (
     <View style={[styles.container, style]}>
       {label && (
-        <Animated.Text
+        <Text
           style={[
             styles.label,
-            {
-              color: error ? theme.error : isFocused ? theme.primary : theme.textSecondary,
-              opacity: labelScaleAnim,
-              transform: [
-                {
-                  translateY: labelScaleAnim.interpolate({
-                    inputRange: [0, 1],
-                    outputRange: [10, 0],
-                  }),
-                },
-              ],
-            },
+            { color: error ? theme.error : isFocused ? theme.primary : theme.textSecondary },
           ]}
         >
           {label}
-        </Animated.Text>
+        </Text>
       )}
-      
-      <Animated.View
+
+      <View
         style={[
           styles.inputContainer,
           {
             backgroundColor: theme.inputBackground,
-            borderColor: borderColor,
+            borderColor,
             borderWidth: 2,
           },
           disabled && styles.inputDisabled,
@@ -128,7 +96,7 @@ export default function Input({
             />
           </View>
         )}
-      </Animated.View>
+      </View>
 
       {error && (
         <Text style={[styles.errorText, { color: theme.error }]}>

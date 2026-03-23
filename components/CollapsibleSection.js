@@ -46,28 +46,20 @@ const CollapsibleSection = ({
   const { theme, isDark } = useTheme();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
   const rotateAnim = useRef(new Animated.Value(defaultExpanded ? 1 : 0)).current;
-  const contentHeight = useRef(new Animated.Value(defaultExpanded ? 1 : 0)).current;
 
   const toggleExpanded = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    
+
     const newState = !isExpanded;
     setIsExpanded(newState);
-    
-    Animated.parallel([
-      Animated.spring(rotateAnim, {
-        toValue: newState ? 1 : 0,
-        tension: 100,
-        friction: 10,
-        useNativeDriver: true,
-      }),
-      Animated.timing(contentHeight, {
-        toValue: newState ? 1 : 0,
-        duration: 200,
-        useNativeDriver: false,
-      }),
-    ]).start();
-    
+
+    Animated.spring(rotateAnim, {
+      toValue: newState ? 1 : 0,
+      tension: 100,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
+
     if (onToggle) {
       onToggle(newState);
     }

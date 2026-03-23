@@ -1,17 +1,160 @@
 // components/SecretarioStatsCard.js
-// Componente para mostrar estadísticas de rendimiento de secretarios
+// Resumen compacto de secretarios con modal de detalle al tocar
+// Cada fila muestra: avatar + nombre + barra de progreso + % + chevron
+
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+  Modal,
+  ScrollView,
+  TouchableWithoutFeedback,
+  Platform,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { getSecretarioMetrics, formatCompletionTime } from '../services/analytics';
 import { SPACING, TYPOGRAPHY, RADIUS } from '../theme/tokens';
 
+function getStatusColor(rate) {
+  if (rate >= 80) return '#10B981';
+  if (rate >= 60) return '#F59E0B';
+  return '#EF4444';
+}
+
+function getStatusLabel(rate) {
+  if (rate >= 80) return 'Excelente';
+  if (rate >= 60) return 'Regular';
+  return 'Bajo';
+}
+
+// ── Modal de detalle para un secretario ────────────────────────────────────
+function SecretarioModal({ secretario, visible, onClose, theme, isDark }) {
+  if (!secretario) return null;
+
+  const color = getStatusColor(secretario.completionRate);
+
+  return (
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <TouchableWithoutFeedback onPress={onClose}>
+        <View style={styles.overlay}>
+          <TouchableWithoutFeedback>
+            <View style={[styles.sheet, { backgroundColor: theme.card }]}>
+
+              {/* Cabecera */}
+              <View style={[styles.sheetHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6' }]}>
+                <View style={[styles.avatarLg, { backgroundColor: `${color}22` }]}>
+                  <Text style={[styles.avatarLgText, { color }]}>
+                    {secretario.displayName.charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={styles.sheetTitleBlock}>
+                  <Text style={[styles.sheetTitle, { color: theme.text }]} numberOfLines={1}>
+                    {secretario.displayName}
+                  </Text>
+                  <Text style={[styles.sheetEmail, { color: theme.textSecondary }]} numberOfLines={1}>
+                    {secretario.email}
+                  </Text>
+                  {secretario.area ? (
+                    <Text style={[styles.sheetArea, { color }]} numberOfLines={1}>
+                      {secretario.area}
+                    </Text>
+                  ) : null}
+                </View>
+                <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
+                  <Ionicons name="close" size={20} color={theme.textSecondary} />
+                </TouchableOpacity>
+              </View>
+
+              {/* Barras de progreso */}
+              <View style={styles.sheetRates}>
+                {[
+                  { label: 'Completitud', value: secretario.completionRate },
+                  { label: 'A tiempo',    value: secretario.onTimeRate },
+                ].map(({ label, value }) => {
+                  const c = getStatusColor(value);
+                  return (
+                    <View key={label} style={styles.rateRow}>
+                      <Text style={[styles.rateLabel, { color: theme.textSecondary }]}>{label}</Text>
+                      <View style={[styles.rateTrack, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6' }]}>
+                        <View style={[styles.rateFill, { width: `${value}%`, backgroundColor: c }]} />
+                      </View>
+                      <Text style={[styles.rateValue, { color: c }]}>{value}%</Text>
+                    </View>
+                  );
+                })}
+              </View>
+
+              {/* Métricas 4 columnas */}
+              <View style={[styles.metricsRow, { borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6' }]}>
+                {[
+                  { val: secretario.totalCreated,   lbl: 'DELEGADAS',   color: theme.text },
+                  { val: secretario.totalCompleted, lbl: 'HECHAS',      color: '#10B981'  },
+                  { val: secretario.totalPending,   lbl: 'PENDIENTES',  color: '#F59E0B'  },
+                  { val: secretario.totalOverdue,   lbl: 'VENCIDAS',    color: secretario.totalOverdue > 0 ? '#EF4444' : theme.text },
+                ].map(({ val, lbl, color: c }, i, arr) => (
+                  <React.Fragment key={lbl}>
+                    <View style={styles.metricCol}>
+                      <Text style={[styles.metricVal, { color: c }]}>{val}</Text>
+                      <Text style={[styles.metricLbl, { color: theme.textSecondary }]}>{lbl}</Text>
+                    </View>
+                    {i < arr.length - 1 && (
+                      <View style={[styles.metricDiv, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB' }]} />
+                    )}
+                  </React.Fragment>
+                ))}
+              </View>
+
+              {/* Tags */}
+              <View style={styles.tagsRow}>
+                {secretario.avgCompletionTime > 0 && (
+                  <View style={[styles.tagChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB' }]}>
+                    <Ionicons name="time-outline" size={13} color={theme.textSecondary} />
+                    <Text style={[styles.tagText, { color: theme.textSecondary }]}>
+                      Promedio {formatCompletionTime(secretario.avgCompletionTime)}
+                    </Text>
+                  </View>
+                )}
+                <View style={[styles.tagChip, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB' }]}>
+                  <Ionicons name="calendar-outline" size={13} color={theme.textSecondary} />
+                  <Text style={[styles.tagText, { color: theme.textSecondary }]}>
+                    Esta semana: +{secretario.createdThisWeek} · {secretario.completedThisWeek} hechas
+                  </Text>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                onPress={onClose}
+                style={[styles.dismissBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' }]}
+                activeOpacity={0.7}
+              >
+                <Text style={[styles.dismissText, { color: theme.textSecondary }]}>Cerrar</Text>
+              </TouchableOpacity>
+
+            </View>
+          </TouchableWithoutFeedback>
+        </View>
+      </TouchableWithoutFeedback>
+    </Modal>
+  );
+}
+
+// ── Componente principal ───────────────────────────────────────────────────
 export default function SecretarioStatsCard({ onSecretarioPress }) {
   const { theme, isDark } = useTheme();
   const [loading, setLoading] = useState(true);
   const [secretarioData, setSecretarioData] = useState(null);
   const [expanded, setExpanded] = useState(false);
+  const [selectedSecretario, setSelectedSecretario] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
     loadSecretarioStats();
@@ -21,9 +164,7 @@ export default function SecretarioStatsCard({ onSecretarioPress }) {
     setLoading(true);
     try {
       const result = await getSecretarioMetrics();
-      if (result.success) {
-        setSecretarioData(result);
-      }
+      if (result.success) setSecretarioData(result);
     } catch (error) {
       if (__DEV__) console.error('Error loading secretario stats:', error);
     } finally {
@@ -31,16 +172,10 @@ export default function SecretarioStatsCard({ onSecretarioPress }) {
     }
   };
 
-  const getStatusColor = (rate) => {
-    if (rate >= 80) return '#4CAF50'; // Verde
-    if (rate >= 60) return '#FF9800'; // Naranja
-    return '#F44336'; // Rojo
-  };
-
-  const getStatusIcon = (rate) => {
-    if (rate >= 80) return 'checkmark-circle';
-    if (rate >= 60) return 'alert-circle';
-    return 'close-circle';
+  const handleRowPress = (secretario) => {
+    setSelectedSecretario(secretario);
+    setModalVisible(true);
+    if (onSecretarioPress) onSecretarioPress(secretario);
   };
 
   if (loading) {
@@ -68,218 +203,127 @@ export default function SecretarioStatsCard({ onSecretarioPress }) {
   const { secretarios, totals } = secretarioData;
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.card }]}>
-      {/* Header */}
-      <TouchableOpacity 
-        style={styles.header}
-        onPress={() => setExpanded(!expanded)}
-      >
-        <View style={styles.headerLeft}>
-          <Ionicons name="briefcase" size={24} color={theme.primary} />
-          <Text style={[styles.title, { color: theme.text }]}>
-            Rendimiento de Secretarios
-          </Text>
-        </View>
-        <Ionicons 
-          name={expanded ? "chevron-up" : "chevron-down"} 
-          size={24} 
-          color={theme.textSecondary} 
-        />
-      </TouchableOpacity>
+    <>
+      <View style={[styles.container, { backgroundColor: theme.card }]}>
 
-      {/* Resumen general */}
-      <View style={styles.summaryRow}>
-        <View style={[styles.summaryItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
-          <Text style={[styles.summaryValue, { color: theme.primary }]}>
-            {totals.totalSecretarios}
-          </Text>
-          <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Secretarios</Text>
-        </View>
-        <View style={[styles.summaryItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
-          <Text style={[styles.summaryValue, { color: '#4CAF50' }]}>
-            {totals.totalTasksCreated}
-          </Text>
-          <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Delegadas</Text>
-        </View>
-        <View style={[styles.summaryItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
-          <Text style={[styles.summaryValue, { color: '#2196F3' }]}>
-            {totals.totalTasksCompleted}
-          </Text>
-          <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Completadas</Text>
-        </View>
-        <View style={[styles.summaryItem, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
-          <Text style={[styles.summaryValue, { color: totals.totalTasksOverdue > 0 ? '#F44336' : theme.text }]}>
-            {totals.totalTasksOverdue}
-          </Text>
-          <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Vencidas</Text>
-        </View>
-      </View>
-
-      {/* Tasa promedio */}
-      <View style={[styles.avgRateContainer, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)' }]}>
-        <View style={styles.avgRateItem}>
-          <Ionicons 
-            name="trending-up" 
-            size={20} 
-            color={getStatusColor(parseFloat(totals.avgCompletionRate))} 
+        {/* Header con toggle */}
+        <TouchableOpacity style={styles.header} onPress={() => setExpanded(!expanded)}>
+          <View style={styles.headerLeft}>
+            <Ionicons name="briefcase" size={20} color={theme.primary} />
+            <Text style={[styles.title, { color: theme.text }]}>
+              Rendimiento de Secretarios
+            </Text>
+          </View>
+          <Ionicons
+            name={expanded ? 'chevron-up' : 'chevron-down'}
+            size={18}
+            color={theme.textSecondary}
           />
-          <Text style={[styles.avgRateValue, { color: getStatusColor(parseFloat(totals.avgCompletionRate)) }]}>
-            {totals.avgCompletionRate}%
-          </Text>
-          <Text style={[styles.avgRateLabel, { color: theme.textSecondary }]}>
-            Tasa Completitud
-          </Text>
-        </View>
-        <View style={styles.divider} />
-        <View style={styles.avgRateItem}>
-          <Ionicons 
-            name="time" 
-            size={20} 
-            color={getStatusColor(parseFloat(totals.avgOnTimeRate))} 
-          />
-          <Text style={[styles.avgRateValue, { color: getStatusColor(parseFloat(totals.avgOnTimeRate)) }]}>
-            {totals.avgOnTimeRate}%
-          </Text>
-          <Text style={[styles.avgRateLabel, { color: theme.textSecondary }]}>
-            A Tiempo
-          </Text>
-        </View>
-      </View>
+        </TouchableOpacity>
 
-      {/* Lista de secretarios expandible */}
-      {expanded && (
-        <ScrollView style={styles.secretariosList} nestedScrollEnabled>
-          {secretarios.map((secretario, index) => (
-            <TouchableOpacity
-              key={secretario.id}
-              style={[
-                styles.secretarioItem,
-                { 
-                  backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                  borderLeftColor: getStatusColor(secretario.completionRate)
-                }
-              ]}
-              onPress={() => onSecretarioPress && onSecretarioPress(secretario)}
-            >
-              <View style={styles.secretarioHeader}>
-                <View style={styles.secretarioInfo}>
-                  <View style={[styles.avatar, { backgroundColor: theme.primary + '30' }]}>
-                    <Text style={[styles.avatarText, { color: theme.primary }]}>
-                      {secretario.displayName.charAt(0).toUpperCase()}
-                    </Text>
-                  </View>
-                  <View style={styles.secretarioDetails}>
-                    <Text style={[styles.secretarioName, { color: theme.text }]}>
-                      {secretario.displayName}
-                    </Text>
-                    <Text style={[styles.secretarioEmail, { color: theme.textSecondary }]}>
-                      {secretario.email}
-                    </Text>
-                    {secretario.area && (
-                      <Text style={[styles.secretarioArea, { color: theme.primary }]}>
-                        {secretario.area}
-                      </Text>
-                    )}
-                  </View>
-                </View>
-                <Ionicons 
-                  name={getStatusIcon(secretario.completionRate)} 
-                  size={24} 
-                  color={getStatusColor(secretario.completionRate)} 
-                />
+        {/* Resumen 4 columnas */}
+        <View style={[styles.summaryStrip, { borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)' }]}>
+          {[
+            { val: totals.totalSecretarios,   lbl: 'Secretarios', color: theme.primary },
+            { val: totals.totalTasksCreated,   lbl: 'Delegadas',   color: theme.text    },
+            { val: totals.totalTasksCompleted, lbl: 'Hechas',      color: '#10B981'     },
+            { val: totals.totalTasksOverdue,   lbl: 'Vencidas',    color: totals.totalTasksOverdue > 0 ? '#EF4444' : theme.text },
+          ].map(({ val, lbl, color }, i, arr) => (
+            <React.Fragment key={lbl}>
+              <View style={styles.summaryCol}>
+                <Text style={[styles.summaryVal, { color }]}>{val}</Text>
+                <Text style={[styles.summaryLbl, { color: theme.textSecondary }]}>{lbl}</Text>
               </View>
-
-              <View style={styles.secretarioStats}>
-                <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: theme.text }]}>{secretario.totalCreated}</Text>
-                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Delegadas</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: '#4CAF50' }]}>{secretario.totalCompleted}</Text>
-                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Completadas</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: '#FF9800' }]}>{secretario.totalPending}</Text>
-                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Pendientes</Text>
-                </View>
-                <View style={styles.statItem}>
-                  <Text style={[styles.statValue, { color: secretario.totalOverdue > 0 ? '#F44336' : theme.text }]}>
-                    {secretario.totalOverdue}
-                  </Text>
-                  <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Vencidas</Text>
-                </View>
-              </View>
-
-              <View style={styles.secretarioRates}>
-                <View style={styles.rateBar}>
-                  <Text style={[styles.rateLabel, { color: theme.textSecondary }]}>Completitud</Text>
-                  <View style={[styles.progressBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}>
-                    <View 
-                      style={[
-                        styles.progressFill, 
-                        { 
-                          width: `${secretario.completionRate}%`,
-                          backgroundColor: getStatusColor(secretario.completionRate)
-                        }
-                      ]} 
-                    />
-                  </View>
-                  <Text style={[styles.rateValue, { color: getStatusColor(secretario.completionRate) }]}>
-                    {secretario.completionRate}%
-                  </Text>
-                </View>
-                <View style={styles.rateBar}>
-                  <Text style={[styles.rateLabel, { color: theme.textSecondary }]}>A tiempo</Text>
-                  <View style={[styles.progressBar, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)' }]}>
-                    <View 
-                      style={[
-                        styles.progressFill, 
-                        { 
-                          width: `${secretario.onTimeRate}%`,
-                          backgroundColor: getStatusColor(secretario.onTimeRate)
-                        }
-                      ]} 
-                    />
-                  </View>
-                  <Text style={[styles.rateValue, { color: getStatusColor(secretario.onTimeRate) }]}>
-                    {secretario.onTimeRate}%
-                  </Text>
-                </View>
-              </View>
-
-              {secretario.avgCompletionTime > 0 && (
-                <View style={styles.timeInfo}>
-                  <Ionicons name="timer-outline" size={14} color={theme.textSecondary} />
-                  <Text style={[styles.timeText, { color: theme.textSecondary }]}>
-                    Tiempo promedio: {formatCompletionTime(secretario.avgCompletionTime)}
-                  </Text>
-                </View>
+              {i < arr.length - 1 && (
+                <View style={[styles.summaryDiv, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB' }]} />
               )}
-
-              <View style={styles.weeklyStats}>
-                <Text style={[styles.weeklyLabel, { color: theme.textSecondary }]}>Esta semana:</Text>
-                <Text style={[styles.weeklyValue, { color: '#4CAF50' }]}>
-                  +{secretario.createdThisWeek} delegadas
-                </Text>
-                <Text style={[styles.weeklyValue, { color: '#2196F3' }]}>
-                  {secretario.completedThisWeek} completadas
-                </Text>
-              </View>
-            </TouchableOpacity>
+            </React.Fragment>
           ))}
-        </ScrollView>
-      )}
+        </View>
 
-      {!expanded && secretarios.length > 0 && (
-        <Text style={[styles.expandHint, { color: theme.textSecondary }]}>
-          Toca para ver detalles de {secretarios.length} secretario{secretarios.length !== 1 ? 's' : ''}
-        </Text>
-      )}
-    </View>
+        {/* Tasas promedio */}
+        <View style={[styles.ratesStrip, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', borderRadius: RADIUS.md }]}>
+          {[
+            { icon: 'trending-up', label: 'Completitud',    value: totals.avgCompletionRate },
+            { icon: 'time',        label: 'A Tiempo',        value: totals.avgOnTimeRate     },
+          ].map(({ icon, label, value }, i) => {
+            const c = getStatusColor(parseFloat(value));
+            return (
+              <React.Fragment key={label}>
+                {i > 0 && <View style={[styles.summaryDiv, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB', marginVertical: 8 }]} />}
+                <View style={styles.rateItem}>
+                  <Ionicons name={icon} size={16} color={c} />
+                  <Text style={[styles.rateItemVal, { color: c }]}>{value}%</Text>
+                  <Text style={[styles.rateItemLbl, { color: theme.textSecondary }]}>{label}</Text>
+                </View>
+              </React.Fragment>
+            );
+          })}
+        </View>
+
+        {/* Lista compacta de secretarios */}
+        {expanded && (
+          <View style={styles.list}>
+            {secretarios.map((sec) => {
+              const color = getStatusColor(sec.completionRate);
+              return (
+                <TouchableOpacity
+                  key={sec.id}
+                  style={[styles.row, { borderLeftColor: color }]}
+                  activeOpacity={0.72}
+                  onPress={() => handleRowPress(sec)}
+                >
+                  {/* Avatar inicial */}
+                  <View style={[styles.avatarSm, { backgroundColor: `${color}22` }]}>
+                    <Text style={[styles.avatarSmText, { color }]}>
+                      {sec.displayName.charAt(0).toUpperCase()}
+                    </Text>
+                  </View>
+
+                  {/* Nombre + barra */}
+                  <View style={styles.rowMiddle}>
+                    <Text style={[styles.rowName, { color: theme.text }]} numberOfLines={1}>
+                      {sec.displayName}
+                    </Text>
+                    <View style={[styles.rowTrack, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6' }]}>
+                      <View style={[styles.rowFill, { width: `${sec.completionRate}%`, backgroundColor: color }]} />
+                    </View>
+                  </View>
+
+                  {/* % + label + chevron */}
+                  <View style={styles.rowRight}>
+                    <View style={[styles.badge, { backgroundColor: isDark ? `${color}22` : `${color}18` }]}>
+                      <Text style={[styles.badgeText, { color }]}>{getStatusLabel(sec.completionRate)}</Text>
+                    </View>
+                    <Text style={[styles.rowPct, { color }]}>{sec.completionRate}%</Text>
+                    <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        )}
+
+        {!expanded && secretarios.length > 0 && (
+          <Text style={[styles.hint, { color: theme.textSecondary }]}>
+            Toca para ver {secretarios.length} secretario{secretarios.length !== 1 ? 's' : ''}
+          </Text>
+        )}
+      </View>
+
+      <SecretarioModal
+        secretario={selectedSecretario}
+        visible={modalVisible}
+        onClose={() => setModalVisible(false)}
+        theme={theme}
+        isDark={isDark}
+      />
+    </>
   );
 }
 
 const styles = StyleSheet.create({
+  // ── contenedor principal ──────────────────────────────────────────
   container: {
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
@@ -295,6 +339,8 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
     textAlign: 'center',
   },
+
+  // ── header ───────────────────────────────────────────────────────
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -307,171 +353,274 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   title: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.semibold,
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '700',
   },
-  summaryRow: {
+
+  // ── resumen strip ────────────────────────────────────────────────
+  summaryStrip: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginBottom: SPACING.sm,
   },
-  summaryItem: {
+  summaryCol: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: SPACING.sm,
-    marginHorizontal: 2,
-    borderRadius: RADIUS.sm,
+    paddingVertical: 10,
   },
-  summaryValue: {
-    fontSize: TYPOGRAPHY.sizes.xl,
-    fontWeight: TYPOGRAPHY.weights.bold,
+  summaryVal: {
+    fontSize: 18,
+    fontWeight: '800',
   },
-  summaryLabel: {
-    fontSize: TYPOGRAPHY.sizes.xs,
+  summaryLbl: {
+    fontSize: 10,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 0.2,
     marginTop: 2,
   },
-  avgRateContainer: {
+  summaryDiv: {
+    width: 1,
+    marginVertical: 8,
+  },
+
+  // ── tasas strip ──────────────────────────────────────────────────
+  ratesStrip: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    paddingVertical: SPACING.md,
-    borderRadius: RADIUS.md,
+    paddingVertical: 10,
     marginBottom: SPACING.md,
   },
-  avgRateItem: {
-    alignItems: 'center',
+  rateItem: {
     flex: 1,
+    alignItems: 'center',
+    gap: 3,
   },
-  avgRateValue: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.bold,
+  rateItemVal: {
+    fontSize: TYPOGRAPHY.sizes.md,
+    fontWeight: '700',
+  },
+  rateItemLbl: {
+    fontSize: 10,
+    fontWeight: '500',
+  },
+
+  // ── lista compacta ───────────────────────────────────────────────
+  list: {
+    gap: 6,
     marginTop: 4,
   },
-  avgRateLabel: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    marginTop: 2,
-  },
-  divider: {
-    width: 1,
-    height: 40,
-    backgroundColor: 'rgba(128,128,128,0.2)',
-  },
-  secretariosList: {
-    maxHeight: 400,
-  },
-  secretarioItem: {
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    borderLeftWidth: 4,
-  },
-  secretarioHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  secretarioInfo: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
+    borderLeftWidth: 3,
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    gap: 10,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
-  avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+  avatarSm: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SPACING.sm,
+    flexShrink: 0,
   },
-  avatarText: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.bold,
+  avatarSmText: {
+    fontSize: 14,
+    fontWeight: '700',
   },
-  secretarioDetails: {
+  rowMiddle: {
     flex: 1,
+    gap: 5,
   },
-  secretarioName: {
-    fontSize: TYPOGRAPHY.sizes.md,
-    fontWeight: TYPOGRAPHY.weights.semibold,
+  rowName: {
+    fontSize: 13,
+    fontWeight: '600',
   },
-  secretarioEmail: {
-    fontSize: TYPOGRAPHY.sizes.xs,
+  rowTrack: {
+    height: 4,
+    borderRadius: 2,
+    overflow: 'hidden',
   },
-  secretarioArea: {
-    fontSize: TYPOGRAPHY.sizes.xs,
+  rowFill: {
+    height: '100%',
+    borderRadius: 2,
+  },
+  rowRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
+  },
+  badge: {
+    paddingHorizontal: 7,
+    paddingVertical: 3,
+    borderRadius: 20,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  rowPct: {
+    fontSize: 12,
+    fontWeight: '700',
+    minWidth: 34,
+    textAlign: 'right',
+  },
+  hint: {
+    fontSize: 11,
+    textAlign: 'center',
+    marginTop: 6,
+  },
+
+  // ── modal ────────────────────────────────────────────────────────
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: Platform.OS === 'ios' ? 34 : 20,
+    maxHeight: '85%',
+  },
+  sheetHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    gap: 12,
+  },
+  avatarLg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
     marginTop: 2,
   },
-  secretarioStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: SPACING.sm,
+  avatarLgText: {
+    fontSize: 20,
+    fontWeight: '800',
   },
-  statItem: {
-    alignItems: 'center',
+  sheetTitleBlock: {
     flex: 1,
   },
-  statValue: {
-    fontSize: TYPOGRAPHY.sizes.lg,
-    fontWeight: TYPOGRAPHY.weights.bold,
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: '700',
   },
-  statLabel: {
-    fontSize: TYPOGRAPHY.sizes.xs,
+  sheetEmail: {
+    fontSize: 12,
+    marginTop: 2,
   },
-  secretarioRates: {
-    marginBottom: SPACING.sm,
+  sheetArea: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 2,
   },
-  rateBar: {
+  closeBtn: {
+    padding: 4,
+    marginTop: 2,
+  },
+  sheetRates: {
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    gap: 10,
+  },
+  rateRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    gap: 10,
   },
   rateLabel: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    width: 70,
+    fontSize: 12,
+    fontWeight: '500',
+    width: 80,
   },
-  progressBar: {
+  rateTrack: {
     flex: 1,
     height: 6,
     borderRadius: 3,
-    marginHorizontal: SPACING.sm,
     overflow: 'hidden',
   },
-  progressFill: {
+  rateFill: {
     height: '100%',
     borderRadius: 3,
   },
   rateValue: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    fontWeight: TYPOGRAPHY.weights.semibold,
-    width: 40,
+    fontSize: 13,
+    fontWeight: '700',
+    width: 42,
     textAlign: 'right',
   },
-  timeInfo: {
+  metricsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginBottom: SPACING.xs,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    marginHorizontal: 20,
+    paddingVertical: 14,
+    marginBottom: 14,
   },
-  timeText: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-  },
-  weeklyStats: {
-    flexDirection: 'row',
+  metricCol: {
+    flex: 1,
     alignItems: 'center',
-    gap: SPACING.sm,
+  },
+  metricVal: {
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 2,
+  },
+  metricLbl: {
+    fontSize: 9,
+    fontWeight: '600',
+    letterSpacing: 0.5,
+  },
+  metricDiv: {
+    width: 1,
+    height: 28,
+  },
+  tagsRow: {
+    flexDirection: 'row',
     flexWrap: 'wrap',
+    gap: 8,
+    paddingHorizontal: 20,
+    marginBottom: 16,
   },
-  weeklyLabel: {
-    fontSize: TYPOGRAPHY.sizes.xs,
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
   },
-  weeklyValue: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    fontWeight: TYPOGRAPHY.weights.medium,
+  tagText: {
+    fontSize: 12,
+    fontWeight: '500',
   },
-  expandHint: {
-    fontSize: TYPOGRAPHY.sizes.xs,
-    textAlign: 'center',
-    marginTop: SPACING.xs,
+  dismissBtn: {
+    marginHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  dismissText: {
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

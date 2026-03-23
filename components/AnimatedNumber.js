@@ -1,9 +1,7 @@
 // components/AnimatedNumber.js
-// Componente que anima el conteo de números con efecto de "counting up"
-// Útil para mostrar estadísticas que cambian de valor
-
-import React, { useEffect, useRef, useState } from 'react';
-import { Text, Animated, StyleSheet } from 'react-native';
+// Contador animado con setInterval — sin Animated API para evitar bloquear el hilo JS en web
+import { useEffect, useRef, useState } from 'react';
+import { Text, StyleSheet } from 'react-native';
 
 export default function AnimatedNumber({
   value = 0,
@@ -12,75 +10,59 @@ export default function AnimatedNumber({
   prefix = '',
   suffix = '',
   decimals = 0,
-  formatNumber = true, // Agrega comas para miles
+  formatNumber = true,
   delay = 0,
 }) {
   const [displayValue, setDisplayValue] = useState(0);
-  const animatedValue = useRef(new Animated.Value(0)).current;
   const prevValue = useRef(0);
 
   useEffect(() => {
-    const startValue = prevValue.current;
     const endValue = typeof value === 'number' ? value : parseFloat(value) || 0;
-
-    // Configurar animación con delay opcional
-    const timeout = setTimeout(() => {
-      animatedValue.setValue(startValue);
-      
-      Animated.timing(animatedValue, {
-        toValue: endValue,
-        duration,
-        useNativeDriver: false, // No se puede usar native driver con valores de texto
-      }).start();
-
-      // Listener para actualizar el display
-      const listener = animatedValue.addListener(({ value: v }) => {
-        setDisplayValue(v);
-      });
-
-      return () => {
-        animatedValue.removeListener(listener);
-      };
-    }, delay);
-
+    const startValue = prevValue.current;
     prevValue.current = endValue;
 
+    if (startValue === endValue) return;
+
+    let timeoutId;
+    let intervalId;
+
+    timeoutId = setTimeout(() => {
+      const steps = Math.max(1, Math.round(duration / 16)); // ~60fps
+      const diff = endValue - startValue;
+      let currentStep = 0;
+
+      intervalId = setInterval(() => {
+        currentStep++;
+        const progress = currentStep / steps;
+        // Ease out
+        const eased = 1 - Math.pow(1 - progress, 2);
+        setDisplayValue(startValue + diff * eased);
+        if (currentStep >= steps) {
+          setDisplayValue(endValue);
+          clearInterval(intervalId);
+        }
+      }, duration / steps);
+    }, delay);
+
     return () => {
-      clearTimeout(timeout);
+      clearTimeout(timeoutId);
+      clearInterval(intervalId);
     };
   }, [value, duration, delay]);
 
-  // Formatear el número
-  const formatDisplayValue = (num) => {
-    let formattedNum;
-    
-    if (decimals > 0) {
-      formattedNum = num.toFixed(decimals);
-    } else {
-      formattedNum = Math.round(num).toString();
-    }
-
+  const format = (num) => {
+    let str = decimals > 0 ? num.toFixed(decimals) : Math.round(num).toString();
     if (formatNumber) {
-      // Agregar separadores de miles
-      const parts = formattedNum.split('.');
+      const parts = str.split('.');
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-      formattedNum = parts.join('.');
+      str = parts.join('.');
     }
-
-    return `${prefix}${formattedNum}${suffix}`;
+    return `${prefix}${str}${suffix}`;
   };
 
-  return (
-    <Text style={[styles.defaultText, style]}>
-      {formatDisplayValue(displayValue)}
-    </Text>
-  );
+  return <Text style={[styles.defaultText, style]}>{format(displayValue)}</Text>;
 }
 
 const styles = StyleSheet.create({
-  defaultText: {
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#333',
-  },
+  defaultText: { fontSize: 24, fontWeight: '700', color: '#333' },
 });

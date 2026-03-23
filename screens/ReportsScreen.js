@@ -26,7 +26,8 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useResponsive } from '../utils/responsive';
 import { useTasks } from '../contexts/TasksContext';
-import { subscribeToSubtasks } from '../services/tasksMultiple';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { db } from '../firebase';
 import LoadingIndicator from '../components/LoadingIndicator';
 import ShimmerEffect from '../components/ShimmerEffect';
 import EmptyState from '../components/EmptyState';
@@ -146,8 +147,6 @@ export default function ReportsScreen({ navigation }) {
   // ✨ Nuevas animaciones premium
   const hierarchyAnim = useRef(new Animated.Value(0)).current;
   const hierarchySlide = useRef(new Animated.Value(40)).current;
-  const secretariaProgress = useRef(new Animated.Value(0)).current;
-  const direccionProgress = useRef(new Animated.Value(0)).current;
   const secretariaScale = useRef(new Animated.Value(0.9)).current;
   const direccionScale = useRef(new Animated.Value(0.9)).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
@@ -157,12 +156,9 @@ export default function ReportsScreen({ navigation }) {
   const useNativeDriver = Platform.OS !== 'web';
 
 
-  // Load subtasks for progress tracking
+  // Load subtasks for progress tracking — lectura puntual (no live updates para reportes)
   useEffect(() => {
     let mounted = true;
-    const unsubscribes = []; // Almacenar todas las funciones de unsub
-    const statsMap = new Map(); // Rastrear stats por tarea
-    let totalStats = { completed: 0, total: 0 };
 
     if (tasks.length === 0) {
       setTasksWithProgress([]);
@@ -170,69 +166,60 @@ export default function ReportsScreen({ navigation }) {
       return;
     }
 
-    // OPTIMIZACIÓN: Solo suscribirse a las primeras 20 tareas para evitar sobrecarga
-    // Las subtareas se usan principalmente para mostrar progreso visual
-    const tasksToSubscribe = tasks.slice(0, 20);
+    const tasksToLoad = tasks.slice(0, 20);
 
-    // Suscribirse a subtareas de cada tarea con manejo de errores
-    tasksToSubscribe.forEach((task) => {
+    const loadSubtasksStats = async () => {
       try {
-        const unsubscribe = subscribeToSubtasks(task.id, (subtasks) => {
-          if (!mounted) return;
+        // Lecturas paralelas — evita 20 subscripciones activas
+        const results = await Promise.all(
+          tasksToLoad.map(async (task) => {
+            try {
+              const subtasksRef = collection(db, 'tasks', task.id, 'subtasks');
+              const snapshot = await getDocs(query(subtasksRef, orderBy('createdAt', 'asc')));
+              const subtasks = snapshot.docs.map(d => d.data());
+              const completed = subtasks.filter(s => s.status === 'completada').length;
+              return { task, completed, total: subtasks.length };
+            } catch {
+              return { task, completed: 0, total: 0 };
+            }
+          })
+        );
 
-          const completed = subtasks.filter(s => s.status === 'completada').length;
-          const total = subtasks.length;
-          const progressPercent = total > 0 ? Math.round((completed / total) * 100) : 0;
+        if (!mounted) return;
 
-          // Actualizar stats de esta tarea
-          statsMap.set(task.id, { completed, total });
+        let totalCompleted = 0;
+        let totalAll = 0;
+        const withProgress = [];
 
-          // Recalcular totales
-          totalStats.completed = Array.from(statsMap.values()).reduce((sum, s) => sum + s.completed, 0);
-          totalStats.total = Array.from(statsMap.values()).reduce((sum, s) => sum + s.total, 0);
-
-          if (mounted) {
-            // Actualizar array de tareas con progreso
-            setTasksWithProgress(prev => {
-              const updated = prev.filter(t => t.id !== task.id);
-              const newTask = {
-                id: task.id,
-                title: task.title,
-                subtasksCompleted: completed,
-                subtasksTotal: total,
-                progress: progressPercent,
-                status: task.status
-              };
-              return [...updated, newTask].sort((a, b) => b.progress - a.progress).slice(0, 10);
-            });
-
-            // Actualizar estadísticas globales
-            setSubtasksStats({
-              completed: totalStats.completed,
-              pending: totalStats.total - totalStats.completed,
-              completionRate: totalStats.total > 0 ? Math.round((totalStats.completed / totalStats.total) * 100) : 0
+        results.forEach(({ task, completed, total }) => {
+          totalCompleted += completed;
+          totalAll += total;
+          if (total > 0) {
+            withProgress.push({
+              id: task.id,
+              title: task.title,
+              subtasksCompleted: completed,
+              subtasksTotal: total,
+              progress: Math.round((completed / total) * 100),
+              status: task.status,
             });
           }
         });
-        unsubscribes.push(unsubscribe);
-      } catch (error) {
-        if (__DEV__) console.warn(`Failed to subscribe to subtasks for task ${task.id}:`, error?.message);
-      }
-    });
 
-    // Limpiar todas las suscripciones al desmontar
-    return () => {
-      mounted = false;
-      unsubscribes.forEach(unsub => {
-        if (typeof unsub === 'function') {
-          try {
-            unsub();
-          } catch (error) {
-            if (__DEV__) console.warn('Error unsubscribing:', error);
-          }
-        }
-      });
+        setTasksWithProgress(withProgress.sort((a, b) => b.progress - a.progress).slice(0, 10));
+        setSubtasksStats({
+          completed: totalCompleted,
+          pending: totalAll - totalCompleted,
+          completionRate: totalAll > 0 ? Math.round((totalCompleted / totalAll) * 100) : 0,
+        });
+      } catch (error) {
+        if (__DEV__) console.warn('Error loading subtasks stats:', error?.message);
+      }
     };
+
+    loadSubtasksStats();
+
+    return () => { mounted = false; };
   }, [tasks]);
 
   // Sync loading state from context
@@ -329,9 +316,6 @@ export default function ReportsScreen({ navigation }) {
       hierarchySlide.setValue(40);
       secretariaScale.setValue(0.9);
       direccionScale.setValue(0.9);
-      secretariaProgress.setValue(0);
-      direccionProgress.setValue(0);
-      
       // Animación de entrada
       Animated.sequence([
         Animated.delay(50),
@@ -344,20 +328,6 @@ export default function ReportsScreen({ navigation }) {
           Animated.spring(secretariaScale, { toValue: 1, tension: 80, friction: 8, useNativeDriver }),
           Animated.spring(direccionScale, { toValue: 1, tension: 80, friction: 8, useNativeDriver }),
         ]),
-      ]).start();
-      
-      // Animar barras de progreso
-      Animated.parallel([
-        Animated.timing(secretariaProgress, { 
-          toValue: metricsByType.secretaria.avgRate, 
-          duration: 1200, 
-          useNativeDriver: false 
-        }),
-        Animated.timing(direccionProgress, { 
-          toValue: metricsByType.direccion.avgRate, 
-          duration: 1200, 
-          useNativeDriver: false 
-        }),
       ]).start();
       
       // OPTIMIZACIÓN: Pulso simple una vez en lugar de loop infinito
@@ -1133,21 +1103,10 @@ export default function ReportsScreen({ navigation }) {
                             </Animated.View>
                           </View>
                           
-                          {/* Barra de progreso animada */}
+                          {/* Barra de progreso */}
                           <View style={styles.hierarchyProgressWrapper}>
                             <View style={styles.hierarchyProgressTrack}>
-                              <Animated.View 
-                                style={[
-                                  styles.hierarchyProgressFill,
-                                  { 
-                                    width: secretariaProgress.interpolate({
-                                      inputRange: [0, 100],
-                                      outputRange: ['0%', '100%']
-                                    }),
-                                    backgroundColor: 'rgba(255,255,255,0.9)'
-                                  }
-                                ]} 
-                              />
+                              <View style={[styles.hierarchyProgressFill, { width: `${metricsByType.secretaria.avgRate}%`, backgroundColor: 'rgba(255,255,255,0.9)' }]} />
                             </View>
                           </View>
                           
@@ -1232,21 +1191,10 @@ export default function ReportsScreen({ navigation }) {
                             </Animated.View>
                           </View>
                           
-                          {/* Barra de progreso animada */}
+                          {/* Barra de progreso */}
                           <View style={styles.hierarchyProgressWrapper}>
                             <View style={styles.hierarchyProgressTrack}>
-                              <Animated.View 
-                                style={[
-                                  styles.hierarchyProgressFill,
-                                  { 
-                                    width: direccionProgress.interpolate({
-                                      inputRange: [0, 100],
-                                      outputRange: ['0%', '100%']
-                                    }),
-                                    backgroundColor: 'rgba(255,255,255,0.9)'
-                                  }
-                                ]} 
-                              />
+                              <View style={[styles.hierarchyProgressFill, { width: `${metricsByType.direccion.avgRate}%`, backgroundColor: 'rgba(255,255,255,0.9)' }]} />
                             </View>
                           </View>
                           
