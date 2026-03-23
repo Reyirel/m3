@@ -81,7 +81,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
 
     setTasks(areaTasks);
     calculateMetrics(areaTasks, directors);
-  }, [contextTasks, directors, currentUser]);
+  }, [contextTasks, directors, currentUser?.email]);
 
   const loadInitialData = async () => {
     setLoadError(false);

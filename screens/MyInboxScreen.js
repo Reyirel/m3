@@ -204,7 +204,7 @@ export default function MyInboxScreen({ navigation }) {
     if (tasks.length > 0) {
       loadRecentMessages();
     }
-  }, [currentUser, tasks]);
+  }, [currentUser?.email, tasks]);
 
   // Filtrar y ordenar tareas con búsqueda y filtros avanzados
   const filtered = tasks

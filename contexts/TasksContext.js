@@ -54,7 +54,7 @@ export function TasksProvider({ children }) {
   // 🔍 EFECTO 2: Suscribirse al listener SOLO cuando hay sesión
   useEffect(() => {
     if (!hasSession || !currentUser?.email) {
-      setTasks([]);
+      setTasks(prev => prev.length > 0 ? [] : prev);
       setIsLoading(true);
       return;
     }

@@ -14,7 +14,8 @@ import {
   Animated,
   ActivityIndicator,
   Alert,
-  InteractionManager
+  InteractionManager,
+  Modal,
 } from 'react-native';
 const LineChart = React.lazy(() => import('react-native-chart-kit').then(module => ({ default: module.LineChart })));
 const BarChart = React.lazy(() => import('react-native-chart-kit').then(module => ({ default: module.BarChart })));
@@ -128,6 +129,7 @@ export default function ReportsScreen({ navigation }) {
   const [workloadDistribution, setWorkloadDistribution] = useState({});
   const [predictions, setPredictions] = useState({});
   const [exporting, setExporting] = useState(false);
+  const [showChartsModal, setShowChartsModal] = useState(false);
   
   // Animations
   const headerOpacity = useRef(new Animated.Value(0)).current;
@@ -802,7 +804,7 @@ export default function ReportsScreen({ navigation }) {
                   ]}>{p.label}</Text>
                   <Text style={[
                     styles.periodTabFullLabel,
-                    { color: period === p.key ? 'rgba(255,255,255,0.8)' : theme.textTertiary }
+                    { color: period === p.key ? 'rgba(255,255,255,0.75)' : theme.textSecondary }
                   ]}>{p.fullLabel}</Text>
                 </TouchableOpacity>
               ))}
@@ -1023,188 +1025,48 @@ export default function ReportsScreen({ navigation }) {
             </TouchableOpacity>
           )}
 
-          {/* Subtasks Statistics (si hay subtareas) */}
-          {subtasksStats.completed > 0 || subtasksStats.pending > 0 ? (
-            <Animated.View style={{ 
-              opacity: statsOpacity,
-              transform: [{ translateY: statsSlide }]
-            }}>
-              <View style={styles.subtasksStatsSection}>
-                <SpringCard style={styles.subtaskCard}>
-                  <View style={styles.subtaskHeader}>
-                    <Ionicons name="checkmark-done" size={24} color={theme.primary} style={{ marginRight: 8 }} />
-                    <Text style={[styles.subtaskTitle, { color: theme.text }]}>Progreso de Subtareas</Text>
-                  </View>
-                  
-                  <View style={styles.subtaskStatsGrid}>
-                    <View style={styles.subtaskStat}>
-                      <Text style={[styles.subtaskStatValue, { color: '#10B981' }]}>
-                        {subtasksStats.completed}
-                      </Text>
-                      <Text style={[styles.subtaskStatLabel, { color: theme.textSecondary }]}>
-                        Completadas
-                      </Text>
-                    </View>
-                    
-                    <View style={styles.subtaskStat}>
-                      <Text style={[styles.subtaskStatValue, { color: '#F59E0B' }]}>
-                        {subtasksStats.pending}
-                      </Text>
-                      <Text style={[styles.subtaskStatLabel, { color: theme.textSecondary }]}>
-                        Pendientes
-                      </Text>
-                    </View>
-                    
-                    <View style={styles.subtaskStat}>
-                      <Text style={[styles.subtaskStatValue, { color: '#3B82F6' }]}>
-                        {subtasksStats.completionRate}%
-                      </Text>
-                      <Text style={[styles.subtaskStatLabel, { color: theme.textSecondary }]}>
-                        Completado
-                      </Text>
-                    </View>
-                  </View>
-
-                  {/* Progress Ring */}
-                  <View style={styles.progressRingContainer}>
-                    <View style={[styles.progressRing, { 
-                      width: 120, 
-                      height: 120
-                    }]}>
-                      <View style={[styles.progressRingFill, {
-                        borderColor: theme.primary,
-                        borderWidth: 8,
-                        borderRadius: 60,
-                        width: 120,
-                        height: 120,
-                        opacity: subtasksStats.completionRate / 100
-                      }]}>
-                        <View style={{justifyContent: 'center', alignItems: 'center', flex: 1}}>
-                          <Text style={{fontSize: 28, fontWeight: '800', color: theme.primary}}>
-                            {subtasksStats.completionRate}%
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
-                </SpringCard>
-              </View>
-            </Animated.View>
-          ) : null}
-
-          {/* Task Progress with Subtasks (Top 10) */}
-          {tasksWithProgress.length > 0 && (
-            <Animated.View style={{ 
-              opacity: Platform.OS === 'web' ? 1 : chartsOpacity,
-              transform: Platform.OS === 'web' ? [] : [{ translateY: chartsSlide }]
-            }}>
-              <SpringCard style={styles.chartCard}>
-                <Text style={[styles.chartTitle, { color: theme.text }]}>
-                  📊 Progreso de Tareas (top 10 con Subtareas)
-                </Text>
-                <View style={styles.tasksProgressContainer}>
-                  {tasksWithProgress
-                    .filter(t => t.subtasksTotal > 0) // Solo mostrar tareas con subtareas
-                    .map((taskProgress, index) => (
-                      <View key={taskProgress.id} style={styles.taskProgressItem}>
-                        <View style={styles.taskProgressHeader}>
-                          <Text style={[styles.taskProgressTitle, { color: theme.text }]} numberOfLines={1}>
-                            {index + 1}. {taskProgress.title}
-                          </Text>
-                          <Text style={[styles.taskProgressPercent, { color: theme.primary }]}>
-                            {taskProgress.progress}%
-                          </Text>
-                        </View>
-                        <View style={styles.taskProgressBar}>
-                          <View 
-                            style={[
-                              styles.taskProgressBarFill,
-                              { 
-                                width: `${taskProgress.progress}%`,
-                                backgroundColor: taskProgress.progress === 100 ? '#10B981' : 
-                                                taskProgress.progress >= 75 ? '#F59E0B' :
-                                                taskProgress.progress >= 50 ? '#3B82F6' : '#DC2626'
-                              }
-                            ]}
-                          />
-                        </View>
-                        <Text style={[styles.taskProgressDetail, { color: theme.textSecondary }]}>
-                          {taskProgress.subtasksCompleted}/{taskProgress.subtasksTotal} subtareas
-                        </Text>
-                      </View>
-                    ))}
+          {/* Botón: ver detalle de subtareas y gráficas históricas */}
+          {(subtasksStats.completed > 0 || subtasksStats.pending > 0 || dailyCompletions.length > 0 || priorityChartData.length > 0) && (
+            <TouchableOpacity
+              style={[styles.chartsButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+              onPress={() => setShowChartsModal(true)}
+              activeOpacity={0.8}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <View style={{ backgroundColor: theme.primary + '15', padding: 8, borderRadius: 10 }}>
+                  <Ionicons name="bar-chart" size={18} color={theme.primary} />
                 </View>
-              </SpringCard>
-            </Animated.View>
+                <View>
+                  <Text style={{ fontSize: 14, fontWeight: '700', color: theme.text }}>
+                    Gráficas detalladas
+                  </Text>
+                  <Text style={{ fontSize: 12, color: theme.textSecondary }}>
+                    Subtareas{subtasksStats.completed > 0 ? ` · ${subtasksStats.completionRate}% completadas` : ''}{dailyCompletions.length > 0 ? ' · Historial por día' : ''}
+                  </Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
+            </TouchableOpacity>
           )}
 
-          {/* Charts */}
-          <Animated.View style={{ 
-            opacity: Platform.OS === 'web' ? 1 : chartsOpacity,
-            transform: Platform.OS === 'web' ? [] : [{ translateY: chartsSlide }]
-          }}>
-            {/* Daily Completions Chart */}
-            {dailyCompletions.length > 0 && (
-              <SpringCard style={styles.chartCard}>
-                <Text style={[styles.chartTitle, { color: theme.text }]}>Tareas Completadas por Día</Text>
-                <Suspense fallback={<ShimmerEffect width={width - (padding * 2 + 40)} height={220} borderRadius={8} />}>
-                  <LineChart
-                    data={chartData}
-                    width={width - (padding * 2 + 40)}
-                    height={220}
-                    chartConfig={{
-                      backgroundColor: theme.card,
-                      backgroundGradientFrom: theme.card,
-                      backgroundGradientTo: theme.card,
-                      color: (opacity = 1) => `rgba(159, 34, 65, ${opacity})`,
-                      strokeWidth: 2,
-                      style: { borderRadius: 16 },
-                    }}
-                    style={styles.chart}
-                  />
-                </Suspense>
-              </SpringCard>
-            )}
-
-            {/* Priority Distribution */}
-            {priorityChartData.length > 0 && (
-              <SpringCard style={styles.chartCard}>
-                <Text style={[styles.chartTitle, { color: theme.text }]}>Distribución por Prioridad</Text>
-                <Suspense fallback={<ShimmerEffect width={width - (padding * 2 + 40)} height={220} borderRadius={8} />}>
-                  <PieChart
-                    data={priorityChartData}
-                    width={width - (padding * 2 + 40)}
-                    height={220}
-                    chartConfig={{
-                      color: (opacity = 1) => `rgba(255, 255, 255, ${opacity})`,
-                      style: { borderRadius: 16 },
-                    }}
-                    accessor="population"
-                    backgroundColor="transparent"
-                    paddingLeft="15"
-                  />
-                </Suspense>
-              </SpringCard>
-            )}
-
-            {/* Alerts for Areas Needing Attention */}
-            {displayAlerts.length > 0 && (
-              <View style={styles.alertSection}>
-                <View style={[styles.alertHeader, { backgroundColor: '#DC2626' + '20', borderColor: '#DC2626' }]}>
-                  <Ionicons name="alert-circle" size={20} color="#DC2626" />
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.alertTitle, { color: '#DC2626' }]}>
-                      {displayAlerts.length} Área{displayAlerts.length > 1 ? 's' : ''} Requiere Atención
-                    </Text>
-                    <Text style={[styles.alertSubtitle, { color: '#DC2626' }]}>
-                      Menos del 60% de tareas completadas
-                    </Text>
-                  </View>
+          {/* Áreas que requieren atención */}
+          {displayAlerts.length > 0 && (
+            <View style={[styles.alertSection, { marginBottom: 16 }]}>
+              <View style={[styles.alertHeader, { backgroundColor: '#DC2626' + '15', borderColor: '#DC262640', borderWidth: 1, borderRadius: 12, padding: 12 }]}>
+                <Ionicons name="alert-circle" size={18} color="#DC2626" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.alertTitle, { color: '#DC2626' }]}>
+                    {displayAlerts.length} área{displayAlerts.length > 1 ? 's' : ''} requiere atención
+                  </Text>
+                  <Text style={[styles.alertSubtitle, { color: theme.textSecondary }]}>
+                    Menos del 60% de tareas completadas
+                  </Text>
                 </View>
               </View>
-            )}
+            </View>
+          )}
 
-            {/* ✨ NUEVO: Resumen Jerárquico Premium por Tipo de Área */}
+            {/* Resumen Jerárquico por Tipo de Área */}
             {(metricsByType.secretaria.total > 0 || metricsByType.direccion.total > 0) && (
               <Animated.View style={{
                 opacity: Platform.OS === 'web' ? 1 : hierarchyAnim,
@@ -1699,9 +1561,122 @@ export default function ReportsScreen({ navigation }) {
                 </View>
               </SpringCard>
             )}
-          </Animated.View>
         </ScrollView>
       </View>
+
+      {/* Modal de gráficas detalladas */}
+      <Modal
+        visible={showChartsModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowChartsModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: theme.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%' }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: theme.border }}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: theme.text }}>Gráficas detalladas</Text>
+              <TouchableOpacity onPress={() => setShowChartsModal(false)}>
+                <Ionicons name="close-circle" size={26} color={theme.textSecondary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={{ padding: 16 }} showsVerticalScrollIndicator={false}>
+              {/* Subtareas */}
+              {(subtasksStats.completed > 0 || subtasksStats.pending > 0) && (
+                <View style={{ marginBottom: 20 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <Ionicons name="checkmark-done" size={18} color={theme.primary} />
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: theme.text }}>Progreso de subtareas</Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', gap: 10 }}>
+                    {[
+                      { label: 'Completadas', value: subtasksStats.completed, color: '#10B981' },
+                      { label: 'Pendientes', value: subtasksStats.pending, color: '#F59E0B' },
+                      { label: 'Completado', value: `${subtasksStats.completionRate}%`, color: theme.primary },
+                    ].map(s => (
+                      <View key={s.label} style={{ flex: 1, backgroundColor: theme.background, borderRadius: 12, padding: 12, alignItems: 'center' }}>
+                        <Text style={{ fontSize: 22, fontWeight: '800', color: s.color }}>{s.value}</Text>
+                        <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>{s.label}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              )}
+
+              {/* Progreso de tareas con subtareas */}
+              {tasksWithProgress.filter(t => t.subtasksTotal > 0).length > 0 && (
+                <View style={{ marginBottom: 20 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <Ionicons name="list" size={18} color={theme.primary} />
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: theme.text }}>Tareas con más avance (top 10)</Text>
+                  </View>
+                  {tasksWithProgress.filter(t => t.subtasksTotal > 0).map((tp, i) => (
+                    <View key={tp.id} style={{ marginBottom: 10 }}>
+                      <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text style={{ fontSize: 13, color: theme.text, flex: 1 }} numberOfLines={1}>{i + 1}. {tp.title}</Text>
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: theme.primary }}>{tp.progress}%</Text>
+                      </View>
+                      <View style={{ height: 6, backgroundColor: theme.border, borderRadius: 3, overflow: 'hidden' }}>
+                        <View style={{ width: `${tp.progress}%`, height: '100%', backgroundColor: tp.progress === 100 ? '#10B981' : tp.progress >= 50 ? '#3B82F6' : '#F59E0B', borderRadius: 3 }} />
+                      </View>
+                      <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>{tp.subtasksCompleted}/{tp.subtasksTotal} subtareas</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Gráfica de completadas por día */}
+              {dailyCompletions.length > 0 && (
+                <View style={{ marginBottom: 20 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <Ionicons name="trending-up" size={18} color={theme.primary} />
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: theme.text }}>Completadas por día</Text>
+                  </View>
+                  <Suspense fallback={<ShimmerEffect width="100%" height={180} borderRadius={8} />}>
+                    <LineChart
+                      data={chartData}
+                      width={width - (padding * 2 + 64)}
+                      height={180}
+                      chartConfig={{
+                        backgroundColor: theme.card,
+                        backgroundGradientFrom: theme.card,
+                        backgroundGradientTo: theme.card,
+                        color: (opacity = 1) => `rgba(159, 34, 65, ${opacity})`,
+                        strokeWidth: 2,
+                        style: { borderRadius: 12 },
+                        labelColor: () => theme.textSecondary,
+                      }}
+                      style={{ borderRadius: 12 }}
+                    />
+                  </Suspense>
+                </View>
+              )}
+
+              {/* Distribución por prioridad */}
+              {priorityChartData.length > 0 && (
+                <View style={{ marginBottom: 20 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+                    <Ionicons name="flag" size={18} color={theme.primary} />
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: theme.text }}>Distribución por prioridad</Text>
+                  </View>
+                  <Suspense fallback={<ShimmerEffect width="100%" height={180} borderRadius={8} />}>
+                    <PieChart
+                      data={priorityChartData}
+                      width={width - (padding * 2 + 64)}
+                      height={180}
+                      chartConfig={{ color: (opacity = 1) => `rgba(255,255,255,${opacity})` }}
+                      accessor="population"
+                      backgroundColor="transparent"
+                      paddingLeft="10"
+                    />
+                  </Suspense>
+                </View>
+              )}
+
+              <View style={{ height: 30 }} />
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -1819,39 +1794,39 @@ const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge, width,
     },
     // ✨ Period Card Premium
     periodCard: {
-      borderRadius: 16,
-      padding: 6,
-      marginBottom: 20,
+      borderRadius: 12,
+      padding: 4,
+      marginBottom: 16,
       borderWidth: 1,
     },
     periodTabs: {
       flexDirection: 'row',
-      gap: 6,
+      gap: 4,
     },
     periodTab: {
       flex: 1,
+      flexDirection: 'row',
       alignItems: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 12,
-      borderRadius: 12,
+      justifyContent: 'center',
+      paddingVertical: 8,
+      paddingHorizontal: 10,
+      borderRadius: 9,
+      gap: 5,
     },
     periodTabActive: {
       shadowColor: theme.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 4,
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.2,
+      shadowRadius: 4,
+      elevation: 2,
     },
     periodTabLabel: {
-      fontSize: 18,
-      fontWeight: '800',
-      letterSpacing: -0.5,
+      fontSize: 13,
+      fontWeight: '700',
     },
     periodTabFullLabel: {
-      fontSize: 11,
-      fontWeight: '600',
-      marginTop: 2,
-      letterSpacing: 0.3,
+      fontSize: 12,
+      fontWeight: '500',
     },
     // ✨ Stats Grid Premium
     // ✨ Summary Card Premium
@@ -2266,6 +2241,15 @@ const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge, width,
       fontWeight: '700',
     },
     // ✨ Estilos para botón de exportación
+    chartsButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      padding: 14,
+      borderRadius: 14,
+      borderWidth: 1,
+      marginBottom: 16,
+    },
     exportButton: {
       flexDirection: 'row',
       alignItems: 'center',

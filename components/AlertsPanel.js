@@ -24,6 +24,7 @@ export default function AlertsPanel({
   const { theme, isDark } = useTheme();
   const [expandedAlert, setExpandedAlert] = useState(null);
   const [dismissedAlerts, setDismissedAlerts] = useState(new Set());
+  const [suggestionsExpanded, setSuggestionsExpanded] = useState(false);
 
   if (alerts.length === 0 && suggestions.length === 0) {
     return null;
@@ -166,13 +167,30 @@ export default function AlertsPanel({
         </TouchableOpacity>
       ))}
 
-      {/* Sugerencias de optimización */}
+      {/* Sugerencias de optimización — colapsables */}
       {suggestions.length > 0 && (
         <View style={[styles.suggestionsContainer, { borderTopColor: theme.border }]}>
-          <Text style={[styles.suggestionsTitle, { color: theme.text }]}>
-            💡 Sugerencias de Optimización
-          </Text>
-          {suggestions.map((suggestion, index) => (
+          <TouchableOpacity
+            style={styles.suggestionsTrigger}
+            onPress={() => setSuggestionsExpanded(v => !v)}
+            activeOpacity={0.7}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Ionicons name="bulb-outline" size={16} color="#F59E0B" />
+              <Text style={[styles.suggestionsTitle, { color: theme.text }]}>
+                Sugerencias de optimización
+              </Text>
+              <View style={[styles.suggestionsBadge, { backgroundColor: '#F59E0B20' }]}>
+                <Text style={{ color: '#F59E0B', fontSize: 11, fontWeight: '700' }}>{suggestions.length}</Text>
+              </View>
+            </View>
+            <Ionicons
+              name={suggestionsExpanded ? 'chevron-up' : 'chevron-down'}
+              size={16}
+              color={theme.textSecondary}
+            />
+          </TouchableOpacity>
+          {suggestionsExpanded && suggestions.map((suggestion, index) => (
             <View key={index} style={[styles.suggestionItem, { backgroundColor: theme.card }]}>
               <Ionicons
                 name={
@@ -280,12 +298,21 @@ const styles = StyleSheet.create({
     paddingTop: 12,
     marginTop: 4
   },
+  suggestionsTrigger: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 4,
+    marginBottom: 8,
+  },
   suggestionsTitle: {
     fontSize: 13,
-    fontWeight: '700',
-    marginBottom: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5
+    fontWeight: '600',
+  },
+  suggestionsBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 8,
   },
   suggestionItem: {
     flexDirection: 'row',

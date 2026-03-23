@@ -106,12 +106,12 @@ const AdminReportsScreen = ({ navigation }) => {
 
   const getRoleLabel = (role) => {
     const labels = {
-      director: '📁 Directores',
-      secretario: '🏛️ Secretarios',
-      operativo: '👤 Operativos',
-      admin: '⭐ Administradores',
+      director: 'Directores',
+      secretario: 'Secretarios',
+      operativo: 'Operativos',
+      admin: 'Administradores',
     };
-    return labels[role] || '👤 Otros';
+    return labels[role] || 'Otros';
   };
 
   const getRoleBadgeColor = (role) => {
@@ -166,7 +166,7 @@ const AdminReportsScreen = ({ navigation }) => {
       }
     } else {
       Alert.alert(
-        '🗑️ Eliminar Reporte',
+        'Eliminar Reporte',
         '¿Estás seguro de que deseas eliminar este reporte? Esta acción no se puede deshacer.',
         [
           { text: 'Cancelar', style: 'cancel' },
