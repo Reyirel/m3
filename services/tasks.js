@@ -31,11 +31,10 @@ import { validateData } from '../utils/dataValidation';
 import * as productionLogger from '../utils/productionLogger';
 import { withRetry } from '../utils/errorRecovery';
 import { checkRateLimit } from '../utils/rateLimiter';
-import { 
-  cacheTasksLocally, 
-  getCachedTasks, 
+import {
+  cacheTasksLocally,
+  getCachedTasks,
   getConnectionState,
-  subscribeToConnectionState,
   queueOperation,
   OPERATION_TYPES,
   syncPendingOperations
@@ -247,7 +246,7 @@ export async function createTask(task) {
       department: task.department || '',
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      dueAt: task.dueAt || Date.now(),
+      dueAt: task.dueAt != null ? task.dueAt : Date.now(),
       tags: task.tags || [],
       estimatedHours: task.estimatedHours || null
     };

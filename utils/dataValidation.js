@@ -9,11 +9,12 @@ const SCHEMAS = {
     required: ['title', 'status', 'createdBy'],
     types: {
       title: 'string',
-      status: ['pendiente', 'en_proceso', 'en_revision', 'cerrada'],
+      // Incluye variantes usadas en distintas partes de la app
+      status: ['pendiente', 'en_proceso', 'en_revision', 'cerrada', 'en_progreso', 'en-progreso', 'completada'],
       createdBy: 'string',
       priority: ['alta', 'media', 'baja'],
       dueAt: 'number',
-      assignedTo: 'string',
+      assignedTo: 'array', // Siempre array — TaskCreator normaliza a array
       area: 'string',
     }
   },

@@ -15,22 +15,27 @@ const simpleHash = (text) => {
   return Math.abs(hash).toString(16);
 };
 
+// Normalizar email de forma consistente (misma función usada en login)
+const normalizeEmailForAuth = (email) =>
+  (email || '').replace(/[^a-zA-Z0-9@._\-+]/g, '').toLowerCase();
+
 // Registrar nuevo usuario
 export const registerUser = async (email, password, displayName, role = 'director') => {
   try {
+    const normalizedEmail = normalizeEmailForAuth(email);
     // Verificar si el usuario ya existe
     const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('email', '==', email.toLowerCase()));
+    const q = query(usersRef, where('email', '==', normalizedEmail));
     const querySnapshot = await getDocs(q);
-    
+
     if (!querySnapshot.empty) {
       return { success: false, error: 'El usuario ya existe' };
     }
-    
+
     // Crear nuevo usuario
-    const hashedPassword = simpleHash(password + email.toLowerCase());
+    const hashedPassword = simpleHash(password + normalizedEmail);
     const docRef = await addDoc(usersRef, {
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       password: hashedPassword,
       displayName: displayName,
       role: role, // 'admin', 'secretario', o 'director'
@@ -51,7 +56,7 @@ export const registerUser = async (email, password, displayName, role = 'directo
 // Iniciar sesión
 export const loginUser = async (email, password) => {
   try {
-    const normalizedEmail = email.replace(/[^a-zA-Z0-9@._\-+]/g, '').toLowerCase();
+    const normalizedEmail = normalizeEmailForAuth(email);
     
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where('email', '==', normalizedEmail));
@@ -120,7 +125,13 @@ export const logoutUser = async () => {
         console.error('Error limpiando caché en logout:', cleanupError);
       }
     }
-    
+
+    // Limpiar deleteManager (tareas marcadas como eliminadas localmente)
+    try {
+      const { deleteManager } = await import('../utils/deleteManager');
+      deleteManager.reset();
+    } catch (e) { /* silent */ }
+
     // Remover la sesión
     await AsyncStorage.removeItem('userSession');
     return { success: true };
@@ -136,7 +147,7 @@ export const getCurrentSession = async () => {
     if (sessionData) {
       const session = JSON.parse(sessionData);
       // Normalizar email: quitar espacios, caracteres invisibles y no-ASCII
-      session.email = (session.email || '').replace(/[^a-zA-Z0-9@._\-+]/g, '').toLowerCase();
+      session.email = normalizeEmailForAuth(session.email);
       await AsyncStorage.setItem('userSession', JSON.stringify(session));
 
       // Refrescar datos del usuario desde Firebase para obtener campos actualizados
@@ -147,10 +158,15 @@ export const getCurrentSession = async () => {
         
         if (!querySnapshot.empty) {
           const userData = querySnapshot.docs[0].data();
+          // Si el usuario fue desactivado, cerrar sesión
+          if (userData.active === false) {
+            await AsyncStorage.removeItem('userSession');
+            return { success: false, error: 'Usuario desactivado' };
+          }
           // Actualizar sesión con datos frescos de Firebase
           const updatedSession = {
             ...session,
-            email: (userData.email || session.email || '').toLowerCase().trim(),
+            email: normalizeEmailForAuth(userData.email || session.email),
             displayName: userData.displayName || session.displayName,
             role: userData.role || session.role,
             department: userData.department || session.department,
@@ -268,11 +284,13 @@ export const refreshSession = async () => {
     // Actualizar sesión con datos frescos de Firestore
     const updatedSession = {
       userId: userDoc.id,
-      email: userData.email,
+      email: normalizeEmailForAuth(userData.email),
       displayName: userData.displayName,
       role: userData.role,
       department: userData.department || '',
-      area: userData.area || userData.department || ''
+      area: userData.area || userData.department || '',
+      direcciones: userData.direcciones || [],
+      areasPermitidas: userData.areasPermitidas || []
     };
 
     await AsyncStorage.setItem('userSession', JSON.stringify(updatedSession));
