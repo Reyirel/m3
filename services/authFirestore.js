@@ -51,7 +51,7 @@ export const registerUser = async (email, password, displayName, role = 'directo
 // Iniciar sesión
 export const loginUser = async (email, password) => {
   try {
-    const normalizedEmail = email.toLowerCase();
+    const normalizedEmail = email.replace(/[^a-zA-Z0-9@._\-+]/g, '').toLowerCase();
     
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where('email', '==', normalizedEmail));
@@ -88,7 +88,7 @@ export const loginUser = async (email, password) => {
     // Guardar sesión en AsyncStorage
     const session = {
       userId: userDoc.id,
-      email: userData.email,
+      email: (userData.email || '').toLowerCase().trim(),
       displayName: userData.displayName,
       role: userData.role,
       department: userData.department || '',
@@ -135,11 +135,14 @@ export const getCurrentSession = async () => {
     const sessionData = await AsyncStorage.getItem('userSession');
     if (sessionData) {
       const session = JSON.parse(sessionData);
-      
+      // Normalizar email: quitar espacios, caracteres invisibles y no-ASCII
+      session.email = (session.email || '').replace(/[^a-zA-Z0-9@._\-+]/g, '').toLowerCase();
+      await AsyncStorage.setItem('userSession', JSON.stringify(session));
+
       // Refrescar datos del usuario desde Firebase para obtener campos actualizados
       try {
         const usersRef = collection(db, 'users');
-        const q = query(usersRef, where('email', '==', session.email.toLowerCase()));
+        const q = query(usersRef, where('email', '==', session.email));
         const querySnapshot = await getDocs(q);
         
         if (!querySnapshot.empty) {
@@ -147,6 +150,7 @@ export const getCurrentSession = async () => {
           // Actualizar sesión con datos frescos de Firebase
           const updatedSession = {
             ...session,
+            email: (userData.email || session.email || '').toLowerCase().trim(),
             displayName: userData.displayName || session.displayName,
             role: userData.role || session.role,
             department: userData.department || session.department,

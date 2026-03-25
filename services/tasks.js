@@ -151,14 +151,12 @@ export async function subscribeToTasks(callback) {
     };
 
     // Crear query y suscribirse
-    // Directores: filtro server-side por assignedTo (usa índice compuesto existente)
-    // Esto reduce lecturas de Firestore al no descargar todas las tareas
     let tasksQuery;
     if (userRole === 'director') {
+      // Sin orderBy para evitar requerir índice compuesto — se ordena client-side
       tasksQuery = query(
         collection(db, COLLECTION_NAME),
-        where('assignedTo', 'array-contains', userEmail),
-        orderBy('createdAt', 'desc')
+        where('assignedTo', 'array-contains', userEmail)
       );
     } else {
       // Admin y secretario: descargan todas las tareas (filtran client-side por área)
@@ -187,6 +185,8 @@ export async function subscribeToTasks(callback) {
         });
         
         const filteredTasks = filterTasksByRole(tasks);
+        // Ordenar por createdAt descendente (necesario cuando director no usa orderBy en query)
+        filteredTasks.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         callback(filteredTasks);
       },
       (error) => {
