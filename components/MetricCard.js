@@ -1,24 +1,28 @@
 // components/MetricCard.js
-// Tarjeta de métrica pequeña para mostrar en resumen rápido
+// Tarjeta de métrica pequeña para mostrar en resumen rápido - CON RIM GLOW GLASSMORPHIC
 // ✨ Metricas rápidas del desempeño
 // ⚡ Optimizado con React.memo
 
 import React, { useRef, useEffect, memo } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { GlassView } from '../utils/GlassView';
 
 const MetricCard = memo(function MetricCard({
   icon = 'checkmark-circle',
-  iconColor = '#10B981',
+  iconColor = null,
   label = 'Completadas',
   value = '0',
   subtitle = '',
-  borderColor = '#10B981',
+  borderColor = null,
   trend = null,  // { direction: 'up' | 'down', value: '5%', label: 'vs semana pasada' }
   animated = true,
 }) {
   const { theme, isDark } = useTheme();
+  const resolvedIconColor = iconColor ?? theme.success;
+  const resolvedBorderColor = borderColor ?? theme.success;
   const scaleAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -32,30 +36,34 @@ const MetricCard = memo(function MetricCard({
     } else {
       scaleAnim.setValue(1);
     }
-  }, [animated]);
+  }, [animated, scaleAnim]);
 
   return (
-    <Animated.View
-      style={[
-        styles.wrapper,
-        {
-          transform: [{ scale: scaleAnim }],
-        },
-      ]}
-    >
-      <View
+    <Animated.View style={[styles.wrapper, { transform: [{ scale: scaleAnim }] }]}>
+      {/* Blur layer for glassmorphism — native only */}
+      {Platform.OS !== 'web' && (
+        <View style={styles.blurContainer}>
+          <BlurView intensity={isDark ? 45 : 55} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+        </View>
+      )}
+
+      <GlassView
+        intensity={isDark ? 50 : 65}
+        tint={isDark ? 'dark' : 'light'}
+        noBlur
         style={[
           styles.container,
           {
-            backgroundColor: isDark ? '#2D3748' : '#FFFFFF',
-            borderColor: borderColor,
-            borderLeftColor: borderColor,
-          }
+            backgroundColor: isDark ? theme.glass : theme.glassStrong,
+            borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle,
+            borderLeftColor: resolvedBorderColor,
+            shadowColor: theme.glassShadow,
+          },
         ]}
       >
         <View style={styles.header}>
-          <View style={[styles.iconContainer, { backgroundColor: `${borderColor}15` }]}>
-            <Ionicons name={icon} size={20} color={iconColor} />
+          <View style={[styles.iconContainer, { backgroundColor: `${resolvedBorderColor}15` }]}>
+            <Ionicons name={icon} size={20} color={resolvedIconColor} />
           </View>
         </View>
 
@@ -64,7 +72,7 @@ const MetricCard = memo(function MetricCard({
             {label}
           </Text>
           <View style={styles.valueRow}>
-            <Text style={[styles.value, { color: borderColor }]}>
+            <Text style={[styles.value, { color: resolvedBorderColor }]}>
               {value}
             </Text>
             {trend && (
@@ -72,19 +80,19 @@ const MetricCard = memo(function MetricCard({
                 style={[
                   styles.trendBadge,
                   {
-                    backgroundColor: trend.direction === 'up' ? '#10B98115' : '#EF444415',
+                    backgroundColor: trend.direction === 'up' ? theme.successAlpha : theme.errorAlpha,
                   },
                 ]}
               >
                 <Ionicons
                   name={trend.direction === 'up' ? 'trending-up' : 'trending-down'}
                   size={12}
-                  color={trend.direction === 'up' ? '#10B981' : '#EF4444'}
+                  color={trend.direction === 'up' ? theme.success : theme.error}
                 />
                 <Text
                   style={[
                     styles.trendText,
-                    { color: trend.direction === 'up' ? '#10B981' : '#EF4444' },
+                    { color: trend.direction === 'up' ? theme.success : theme.error },
                   ]}
                 >
                   {trend.value}
@@ -103,7 +111,13 @@ const MetricCard = memo(function MetricCard({
             </Text>
           )}
         </View>
-      </View>
+
+        {/* Inner Rim Glow */}
+        <View style={[styles.rimGlow, {
+          borderColor: isDark ? theme.glassBorder : theme.glassBorderStrong,
+          borderWidth: 1,
+        }]} />
+      </GlassView>
     </Animated.View>
   );
 });
@@ -114,6 +128,11 @@ const styles = StyleSheet.create({
     flex: 1,
     maxWidth: 200,
   },
+  blurContainer: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
   container: {
     borderLeftWidth: 4,
     borderTopWidth: 1,
@@ -123,11 +142,10 @@ const styles = StyleSheet.create({
     padding: 12,
     minHeight: 100,
     justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
   },
   header: {
     alignItems: 'flex-end',
@@ -178,6 +196,11 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 10,
     fontWeight: '400',
+  },
+  rimGlow: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 12,
+    pointerEvents: 'none',
   },
 });
 

@@ -1,6 +1,6 @@
 // components/CollapsibleSection.js
 // Sección colapsable reutilizable para organizar contenido
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -74,10 +74,10 @@ const CollapsibleSection = ({
     container: {
       marginBottom: 12,
       borderRadius: 12,
-      backgroundColor: theme.card,
+      backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: theme.border,
+      borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
     },
     header: {
       flexDirection: 'row',

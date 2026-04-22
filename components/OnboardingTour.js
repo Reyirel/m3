@@ -1,6 +1,6 @@
 // components/OnboardingTour.js
 // Tour interactivo de onboarding — muestra pasos según el rol del usuario
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
   Animated,
   Dimensions,
   Platform,
-  ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -18,7 +17,7 @@ import { useTheme } from '../contexts/ThemeContext';
 
 // v3 key: force re-show for all users (new AI features added)
 const ONBOARDING_KEY = '@onboarding_v3';
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+Dimensions.get('window');
 
 // ─── Pasos por rol ────────────────────────────────────────────────────────────
 
@@ -206,7 +205,7 @@ const STEPS_DIRECTOR = [
   },
 ];
 
-const DEFAULT_STEPS = STEPS_ADMIN;
+const _DEFAULT_STEPS = STEPS_ADMIN;
 
 function getStepsForRole(role) {
   if (role === 'secretario') return STEPS_SECRETARIO;
@@ -250,11 +249,7 @@ export default function OnboardingTour({ userRole, onComplete, forceShow = false
     return () => { mounted = false; };
   }, [forceShow]);
 
-  useEffect(() => {
-    if (visible) animateStep();
-  }, [currentStep, visible]);
-
-  const animateStep = () => {
+  const animateStep = useCallback(() => {
     fadeAnim.setValue(0);
     slideAnim.setValue(40);
     scaleAnim.setValue(0.92);
@@ -263,7 +258,11 @@ export default function OnboardingTour({ userRole, onComplete, forceShow = false
       Animated.spring(slideAnim, { toValue: 0, friction: 8, tension: 42, useNativeDriver: true }),
       Animated.spring(scaleAnim, { toValue: 1, friction: 8, tension: 42, useNativeDriver: true }),
     ]).start();
-  };
+  }, [fadeAnim, slideAnim, scaleAnim]);
+
+  useEffect(() => {
+    if (visible) animateStep();
+  }, [currentStep, visible, animateStep]);
 
   const handleNext = () => {
     if (currentStep < steps.length - 1) setCurrentStep(s => s + 1);
@@ -277,7 +276,7 @@ export default function OnboardingTour({ userRole, onComplete, forceShow = false
   const handleComplete = async () => {
     try {
       await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
-    } catch (_) {}
+    } catch (_) { /* intencional */ }
     setVisible(false);
     onComplete?.();
   };

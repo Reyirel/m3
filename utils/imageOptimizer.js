@@ -40,10 +40,10 @@ export const getOptimizedImageUrl = (url, options = {}) => {
 
   const {
     width = 'auto',
-    height = 'auto',
+    height: _height = 'auto',
     format = 'webp', // 'webp', 'jpg', 'png'
     quality = 80,
-    fit = 'cover', // 'cover', 'contain', 'fill'
+    fit: _fit = 'cover', // 'cover', 'contain', 'fill'
   } = options;
 
   // Example using Vercel image optimization
@@ -51,7 +51,7 @@ export const getOptimizedImageUrl = (url, options = {}) => {
   // Otherwise, return URL with CDN parameters if available
   
   try {
-    const params = new URLSearchParams({
+    const _params = new URLSearchParams({
       w: width,
       q: quality,
       f: format,
@@ -165,7 +165,7 @@ export const OptimizedImage = React.memo(({
   onLoadEnd,
   ...props
 }) => {
-  const [isLoading, setIsLoading] = useState(false);
+  const [_isLoading, setIsLoading] = useState(false);
 
   // Handle both require() and URI sources
   const uri = typeof source === 'object' && source.uri ? source.uri : source;

@@ -104,7 +104,7 @@ export function hasPermission(user, permission) {
  * @param {Object} task - Tarea a reabrir
  * @returns {Object} {canReopen: boolean, reason: string}
  */
-export function canReopenTask(user, task) {
+export function canReopenTask(user, _task) {
   if (!user || !user.role) {
     return { canReopen: false, reason: 'Usuario no autenticado' };
   }
@@ -124,7 +124,7 @@ export function canReopenTask(user, task) {
  * @param {Object} task - Tarea a editar
  * @returns {Object} {canEdit: boolean, reason: string}
  */
-export function canEditTask(user, task) {
+export function canEditTask(user, _task) {
   if (!user || !user.role) {
     return { canEdit: false, reason: 'Usuario no autenticado' };
   }
@@ -144,7 +144,7 @@ export function canEditTask(user, task) {
  * @param {Object} task - Tarea (subtarea de área)
  * @returns {Object} {canAssign: boolean, reason: string, multiAssignAllowed: boolean}
  */
-export function canAssignAreaSubtask(user, task) {
+export function canAssignAreaSubtask(user, _task) {
   if (!user || !user.role) {
     return { canAssign: false, reason: 'Usuario no autenticado', multiAssignAllowed: false };
   }
@@ -173,7 +173,7 @@ export function canAssignAreaSubtask(user, task) {
  * @param {Object} task - Tarea a delegar
  * @returns {Object} {canDelegate: boolean, reason: string, allowedUsers: string[]}
  */
-export function canDelegateTask(user, task) {
+export function canDelegateTask(user, _task) {
   if (!user || !user.role) {
     return { canDelegate: false, reason: 'Usuario no autenticado', allowedUsers: [] };
   }
@@ -209,7 +209,7 @@ export function canDelegateTask(user, task) {
  * @param {Object} task - Tarea padre
  * @returns {Object} {canCreate: boolean, reason: string}
  */
-export function canCreateSubtask(user, task) {
+export function canCreateSubtask(user, _task) {
   if (!user || !user.role) {
     return { canCreate: false, reason: 'Usuario no autenticado' };
   }
@@ -297,7 +297,7 @@ export function canChangeTaskStatus(user, task, newStatus = null) {
  * @param {Object} task - Tarea
  * @returns {Object} {canDelete: boolean, reason: string}
  */
-export function canDeleteTask(user, task) {
+export function canDeleteTask(user, _task) {
   if (!user || !user.role) {
     return { canDelete: false, reason: 'Usuario no autenticado' };
   }

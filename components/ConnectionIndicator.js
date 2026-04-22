@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getDatabase, ref, onValue, onDisconnect, set } from 'firebase/database';
+import { getDatabase, ref, onValue } from 'firebase/database';
 import NetInfo from '@react-native-community/netinfo';
 import { useTheme } from '../contexts/ThemeContext';
 
@@ -9,6 +9,7 @@ export default function ConnectionIndicator() {
   const [isOnline, setIsOnline] = useState(true);
   const [showIndicator, setShowIndicator] = useState(false);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const hideTimerRef = useRef(null);
   const { theme } = useTheme();
 
   useEffect(() => {
@@ -16,9 +17,10 @@ export default function ConnectionIndicator() {
     const unsubscribeNetInfo = NetInfo.addEventListener(state => {
       const connected = state.isConnected && state.isInternetReachable !== false;
       setIsOnline(connected);
-      
+
       // Show indicator when offline, hide when online after 3 seconds
       if (!connected) {
+        if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
         setShowIndicator(true);
         Animated.timing(fadeAnim, {
           toValue: 1,
@@ -26,7 +28,7 @@ export default function ConnectionIndicator() {
           useNativeDriver: true
         }).start();
       } else {
-        setTimeout(() => {
+        hideTimerRef.current = setTimeout(() => {
           Animated.timing(fadeAnim, {
             toValue: 0,
             duration: 300,
@@ -54,13 +56,15 @@ export default function ConnectionIndicator() {
       return () => {
         unsubscribeNetInfo();
         unsubscribeFirebase();
+        if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       };
     } catch (error) {
       return () => {
         unsubscribeNetInfo();
+        if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
       };
     }
-  }, []);
+  }, [fadeAnim]);
 
   if (!showIndicator) return null;
 

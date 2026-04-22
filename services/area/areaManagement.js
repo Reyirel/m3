@@ -12,8 +12,6 @@ import {
   where,
   onSnapshot,
   serverTimestamp,
-  deleteDoc,
-  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getCurrentSession } from '../authFirestore';

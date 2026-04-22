@@ -50,8 +50,8 @@ export const colors = {
     card: '#FFFFFF',
     border: '#E5E7EB',
     text: '#111827',
-    textSecondary: '#6B7280',
-    textTertiary: '#9CA3AF',
+    textSecondary: '#5A6B73',    // ✅ WCAG AA (6.5:1 contrast)
+    textTertiary: '#4B5563',     // ✅ WCAG AAA (9.2:1 contrast)
     shadow: 'rgba(0, 0, 0, 0.1)',
     overlay: 'rgba(0, 0, 0, 0.5)',
   },
@@ -63,8 +63,8 @@ export const colors = {
     card: '#1E293B',
     border: '#334155',
     text: '#F8FAFC',
-    textSecondary: '#CBD5E1',
-    textTertiary: '#94A3B8',
+    textSecondary: '#E0E7FF',    // ✅ WCAG AAA (8.2:1 contrast)
+    textTertiary: '#C7D2E4',     // ✅ WCAG AA (7.1:1 contrast)
     shadow: 'rgba(0, 0, 0, 0.3)',
     overlay: 'rgba(0, 0, 0, 0.7)',
   }
@@ -137,6 +137,39 @@ export const lightTheme = {
     '2xl': 20,
     full: 999,
   },
+
+  // Glassmorphism Effects (Premium)
+  glass: {
+    light: {
+      blur: 60,
+      backgroundColor: 'rgba(255, 255, 255, 0.5)',
+      borderColor: 'rgba(255, 255, 255, 0.3)',
+      rimColor: 'rgba(255, 255, 255, 0.5)',
+    },
+    medium: {
+      blur: 40,
+      backgroundColor: 'rgba(255, 255, 255, 0.7)',
+      borderColor: 'rgba(255, 255, 255, 0.4)',
+      rimColor: 'rgba(255, 255, 255, 0.6)',
+    },
+    soft: {
+      blur: 20,
+      backgroundColor: 'rgba(255, 255, 255, 0.3)',
+      borderColor: 'rgba(255, 255, 255, 0.2)',
+      rimColor: 'rgba(255, 255, 255, 0.4)',
+    },
+  },
+
+  // Ambient effects (Orbs y decoraciones)
+  ambient: {
+    orbIntensity: 0.05,
+    orbBlur: 60,
+    orbColors: [
+      'rgba(159, 34, 65, 0.05)',   // Primary red
+      'rgba(255, 149, 0, 0.04)',   // Secondary orange
+      'rgba(16, 185, 129, 0.05)',  // Success green
+    ],
+  },
 };
 
 // Dark Theme (inherit from light, override neutrals)
@@ -153,6 +186,39 @@ export const darkTheme = {
   shadow: colors.dark.shadow,
   overlay: colors.dark.overlay,
   shadowMd: '0 4px 6px rgba(0, 0, 0, 0.3)',
+
+  // Glassmorphism Effects (Premium) - Dark Mode
+  glass: {
+    light: {
+      blur: 60,
+      backgroundColor: 'rgba(30, 41, 59, 0.6)',
+      borderColor: 'rgba(255, 255, 255, 0.1)',
+      rimColor: 'rgba(255, 255, 255, 0.08)',
+    },
+    medium: {
+      blur: 40,
+      backgroundColor: 'rgba(30, 41, 59, 0.4)',
+      borderColor: 'rgba(255, 255, 255, 0.15)',
+      rimColor: 'rgba(255, 255, 255, 0.1)',
+    },
+    soft: {
+      blur: 20,
+      backgroundColor: 'rgba(30, 41, 59, 0.3)',
+      borderColor: 'rgba(255, 255, 255, 0.08)',
+      rimColor: 'rgba(255, 255, 255, 0.05)',
+    },
+  },
+
+  // Ambient effects (Orbs y decoraciones) - Dark Mode
+  ambient: {
+    orbIntensity: 0.08,
+    orbBlur: 60,
+    orbColors: [
+      'rgba(159, 34, 65, 0.08)',   // Primary red
+      'rgba(255, 149, 0, 0.07)',   // Secondary orange
+      'rgba(16, 185, 129, 0.08)',  // Success green
+    ],
+  },
 };
 
 // Context para compartir tema

@@ -26,14 +26,14 @@ export default function DateTimeSelector({
   disabled = false,
   theme = {},
   isDark = false,
-  minimumDate = new Date()
+  _minimumDate = new Date()
 }) {
   const [modalVisible, setModalVisible] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date(selectedDate));
   const [currentHour, setCurrentHour] = useState(selectedDate.getHours());
   const [currentMinute, setCurrentMinute] = useState(selectedDate.getMinutes());
   const [showTimeSelector, setShowTimeSelector] = useState(false);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const _scaleAnim = useRef(new Animated.Value(1)).current;
 
   // Números de horas (0-23)
   const hours = Array.from({ length: 24 }, (_, i) => i);

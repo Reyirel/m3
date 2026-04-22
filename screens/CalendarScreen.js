@@ -4,23 +4,21 @@ import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, Animated, Platform, Easing, InteractionManager } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import EmptyState from '../components/EmptyState';
 import ShimmerEffect from '../components/ShimmerEffect';
 import SpringCard from '../components/SpringCard';
 import FadeInView from '../components/FadeInView';
-import CircularProgress from '../components/CircularProgress';
 import PulsingDot from '../components/PulsingDot';
-import AnimatedBadge from '../components/AnimatedBadge';
 import RippleButton from '../components/RippleButton';
 import { useTasks } from '../contexts/TasksContext';
-import { hapticLight, hapticMedium, hapticSuccess, hapticWarning } from '../utils/haptics';
+import { hapticLight, hapticMedium, hapticSuccess } from '../utils/haptics';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNotification } from '../contexts/NotificationContext';
-import OverdueAlert from '../components/OverdueAlert';
 import { useResponsive } from '../utils/responsive';
-import { SPACING, TYPOGRAPHY, RADIUS, SHADOWS, MAX_WIDTHS } from '../theme/tokens';
+import { SPACING, RADIUS, SHADOWS, MAX_WIDTHS } from '../theme/tokens';
 import WebSafeBlur from '../components/WebSafeBlur';
 import { toMs } from '../utils/dateUtils';
+import AmbientOrbs from '../components/AmbientOrbs';
+import { PremiumGlassCard, GlassmorphicHeader, GlassmorphicDivider, GlassmorphicEmptyState } from '../components'; // ✨ UPGRADED: Premium Glassmorphism
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -28,14 +26,13 @@ const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
 export default function CalendarScreen({ navigation }) {
   const { theme, isDark } = useTheme();
-  const { width, isDesktop, isTablet, columns, padding } = useResponsive();
+  const { width, isDesktop, isTablet, padding } = useResponsive();
   // 🌍 USAR EL CONTEXT GLOBAL DE TAREAS
-  const { tasks, isLoading, currentUser } = useTasks();
+  const { tasks, isLoading } = useTasks();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
   const { showSuccess, showInfo } = useNotification();
-  const [monthDirection, setMonthDirection] = useState(0); // -1 prev, 1 next
   const [compactTaskView, setCompactTaskView] = useState(false); // Vista compacta de tareas
   const [taskStatusFilter, setTaskStatusFilter] = useState('todas'); // Filtro por estado en modal
   
@@ -76,11 +73,10 @@ export default function CalendarScreen({ navigation }) {
     } else {
       startAnimations();
     }
-  }, []);
+  }, [calendarOpacity, calendarSlide, fabScale, headerOpacity, headerSlide, legendOpacity, legendSlide]);
   
   // Animación de transición de mes
   const animateMonthChange = useCallback((direction) => {
-    setMonthDirection(direction);
     monthTransition.setValue(direction * 30);
     Animated.spring(monthTransition, {
       toValue: 0,
@@ -134,42 +130,6 @@ export default function CalendarScreen({ navigation }) {
     return grouped;
   }, [tasks]);
 
-  // 📊 Estadísticas del mes actual
-  const monthStats = useMemo(() => {
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const monthTasks = tasks.filter(task => {
-      if (!task.dueAt) return false;
-      const taskDate = new Date(toMs(task.dueAt));
-      return taskDate.getFullYear() === year && taskDate.getMonth() === month;
-    });
-    
-    const totalTasks = monthTasks.length;
-    const completedTasks = monthTasks.filter(t => t.status === 'cerrada').length;
-    const highPriorityTasks = monthTasks.filter(t => t.priority === 'alta' && t.status !== 'cerrada').length;
-    const overdueTasks = monthTasks.filter(t => toMs(t.dueAt) < Date.now() && t.status !== 'cerrada').length;
-    const inProgressTasks = monthTasks.filter(t => t.status === 'en_proceso' || t.status === 'en-progreso').length;
-    
-    // Días con tareas
-    const daysWithTasks = new Set(monthTasks.map(t => {
-      const d = new Date(toMs(t.dueAt));
-      return `${d.getDate()}`;
-    })).size;
-    
-    // Completion rate
-    const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    
-    return {
-      totalTasks,
-      completedTasks,
-      highPriorityTasks,
-      overdueTasks,
-      inProgressTasks,
-      daysWithTasks,
-      completionRate
-    };
-  }, [tasks, currentDate]);
-
   const getTasksForDate = (date) => {
     if (!date) return [];
     const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
@@ -207,54 +167,46 @@ export default function CalendarScreen({ navigation }) {
     }
 
     const dayTasks = getTasksForDate(date);
-    const hasHighPriority = dayTasks.some(t => t.priority === 'alta');
+    const hasHighPriority = dayTasks.some(t => t.priority === 'alta' || t.priority === 'critica');
     const hasMediumPriority = dayTasks.some(t => t.priority === 'media');
     const isOverdue = dayTasks.some(t => toMs(t.dueAt) < Date.now() && t.status !== 'cerrada');
     const today = isToday(date);
     const hasTasks = dayTasks.length > 0;
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
     const completedCount = dayTasks.filter(t => t.status === 'cerrada').length;
-    const taskProgress = dayTasks.length > 0 ? (completedCount / dayTasks.length) * 100 : 0;
+    const allCompleted = hasTasks && completedCount === dayTasks.length;
 
     return (
-      <FadeInView 
-        key={date.toISOString()} 
-        duration={350} 
+      <FadeInView
+        key={date.toISOString()}
+        duration={350}
         delay={Math.min(index * 15, 300)}
         style={styles.dayWrapper}
       >
-        <SpringCard
-          style={[
-            styles.day,
-            today && styles.dayToday,
-            hasTasks && !today && styles.dayWithTasks,
-            hasHighPriority && !today && styles.dayHighPriority,
-            isOverdue && !today && styles.dayOverdue,
-            isWeekend && !today && !hasTasks && styles.dayWeekend,
-            completedCount === dayTasks.length && dayTasks.length > 0 && !today && styles.dayCompleted,
-          ]}
+        <TouchableOpacity
           onPress={() => {
+            hapticLight();
             if (hasTasks) {
-              hapticLight();
               openDayDetail(date);
             } else {
               showInfo('No hay tareas para este día');
             }
           }}
-          scaleDown={isDesktop ? 0.96 : 0.92}
-          springConfig={{ tension: isDesktop ? 300 : 350, friction: 15 }}
+          activeOpacity={0.75}
+          accessible
+          accessibilityLabel={`${date.getDate()} de ${MONTHS[date.getMonth()]}${hasTasks ? `, ${dayTasks.length} tareas` : ''}`}
+          accessibilityRole="button"
+          style={[
+            styles.day,
+            today && styles.dayToday,
+            hasTasks && !today && styles.dayWithTasks,
+            hasHighPriority && !today && styles.dayHighPriority,
+            isOverdue && !hasHighPriority && !today && styles.dayOverdue,
+            isWeekend && !today && !hasTasks && styles.dayWeekend,
+            allCompleted && !today && styles.dayCompleted,
+          ]}
         >
-          {/* Barra de progreso circular sutil */}
-          {hasTasks && taskProgress > 0 && taskProgress < 100 && !today && (
-            <View style={styles.dayProgressRing}>
-              <View style={[styles.dayProgressFill, { height: `${taskProgress}%` }]} />
-            </View>
-          )}
-          
-          {/* Círculo de fondo para día actual */}
-          {today && <View style={styles.todayCircle} />}
-          
-          {/* Badge de cantidad de tareas */}
+          {/* Badge de cantidad */}
           {hasTasks && dayTasks.length > 1 && (
             <View style={[styles.dayTaskCount, today && styles.dayTaskCountToday]}>
               <Text style={[styles.dayTaskCountText, today && { color: theme.primary }]}>
@@ -262,7 +214,7 @@ export default function CalendarScreen({ navigation }) {
               </Text>
             </View>
           )}
-          
+
           <View style={styles.dayContent}>
             <Text style={[
               styles.dayNumber,
@@ -274,17 +226,17 @@ export default function CalendarScreen({ navigation }) {
             ]}>
               {date.getDate()}
             </Text>
-            
+
             {hasTasks && (
               <View style={styles.taskIndicators}>
-                {dayTasks.slice(0, 3).map((task, idx) => (
+                {dayTasks.slice(0, 3).map((task) => (
                   <View
                     key={task.id}
                     style={[
                       styles.taskDot,
-                      task.priority === 'alta' && styles.taskDotHigh,
-                      task.priority === 'media' && styles.taskDotMedium,
-                      task.priority === 'baja' && styles.taskDotLow,
+                      task.priority === 'alta' || task.priority === 'critica' ? styles.taskDotHigh
+                        : task.priority === 'media' ? styles.taskDotMedium
+                        : styles.taskDotLow,
                       today && styles.taskDotToday,
                     ]}
                   />
@@ -296,12 +248,11 @@ export default function CalendarScreen({ navigation }) {
                     </Text>
                   </View>
                 )}
-                {/* Indicador pulsante para urgentes */}
-                {hasHighPriority && !today && <PulsingDot size={8} color="#EF4444" />}
+                {hasHighPriority && !today && <PulsingDot size={7} color={theme.error} />}
               </View>
             )}
           </View>
-        </SpringCard>
+        </TouchableOpacity>
       </FadeInView>
     );
   };
@@ -311,10 +262,10 @@ export default function CalendarScreen({ navigation }) {
       <RippleButton
         key={task.id}
         style={[
-          compactTaskView ? styles.modalTaskCardCompact : styles.modalTaskCard, 
-          { 
-            backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : theme.glass,
-            borderColor: isDark ? 'rgba(255,255,255,0.1)' : theme.borderLight,
+          compactTaskView ? styles.modalTaskCardCompact : styles.modalTaskCard,
+          {
+            backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : '#FAFAFA',
+            borderColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.07)',
           }
         ]}
         onPress={() => {
@@ -329,26 +280,26 @@ export default function CalendarScreen({ navigation }) {
           <View style={styles.compactTaskRow}>
             <View style={[
               styles.compactPriorityDot,
-              task.priority === 'alta' && { backgroundColor: '#EF4444' },
-              task.priority === 'media' && { backgroundColor: '#F59E0B' },
-              task.priority === 'baja' && { backgroundColor: '#10B981' }
+              task.priority === 'alta' && { backgroundColor: theme.error },
+              task.priority === 'media' && { backgroundColor: theme.warning },
+              task.priority === 'baja' && { backgroundColor: theme.success }
             ]} />
             <Text style={[styles.compactTaskTitle, { color: theme.text }]} numberOfLines={1}>
               {task.title}
             </Text>
             <View style={[
               styles.compactStatusBadge,
-              task.status === 'cerrada' && { backgroundColor: '#10B98120' },
-              task.status === 'en_proceso' && { backgroundColor: '#3B82F620' },
-              task.status === 'en_revision' && { backgroundColor: '#8B5CF620' },
-              task.status === 'pendiente' && { backgroundColor: '#F59E0B20' },
+              task.status === 'cerrada' && { backgroundColor: theme.successAlpha },
+              task.status === 'en_proceso' && { backgroundColor: theme.infoAlpha },
+              task.status === 'en_revision' && { backgroundColor: theme.primaryAlpha },
+              task.status === 'pendiente' && { backgroundColor: theme.warningAlpha },
             ]}>
               <Text style={[
                 styles.compactStatusText,
-                task.status === 'cerrada' && { color: '#10B981' },
-                task.status === 'en_proceso' && { color: '#3B82F6' },
-                task.status === 'en_revision' && { color: '#8B5CF6' },
-                task.status === 'pendiente' && { color: '#F59E0B' },
+                task.status === 'cerrada' && { color: theme.success },
+                task.status === 'en_proceso' && { color: theme.info },
+                task.status === 'en_revision' && { color: theme.secondary },
+                task.status === 'pendiente' && { color: theme.warning },
               ]}>
                 {task.status === 'cerrada' ? '✓' : task.status === 'en_proceso' ? '▶' : task.status === 'en_revision' ? '👁' : '⏳'}
               </Text>
@@ -396,12 +347,12 @@ export default function CalendarScreen({ navigation }) {
               ]}>
                 <Text style={[
                   styles.modalTaskStatusText,
-                  task.status === 'cerrada' && { color: '#10B981' },
-                  task.status === 'en_proceso' && { color: '#3B82F6' },
-                  task.status === 'en_revision' && { color: '#8B5CF6' },
+                  task.status === 'cerrada' && { color: theme.success },
+                  task.status === 'en_proceso' && { color: theme.info },
+                  task.status === 'en_revision' && { color: theme.secondary },
                 ]}>
-                  {task.status === 'en_proceso' ? 'En proceso' : 
-                   task.status === 'en_revision' ? 'En revisión' : 
+                  {task.status === 'en_proceso' ? 'En proceso' :
+                   task.status === 'en_revision' ? 'En revisión' :
                    task.status === 'cerrada' ? 'Completada' : 'Pendiente'}
                 </Text>
               </View>
@@ -439,10 +390,10 @@ export default function CalendarScreen({ navigation }) {
   // Mostrar shimmer mientras se cargan las tareas
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
           <LinearGradient
-            colors={isDark ? ['#2A1520', '#1A1A1A'] : ['#9F2241', '#7F1D35']}
+            colors={theme.gradientHeader}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.headerGradientInner}
@@ -483,44 +434,35 @@ export default function CalendarScreen({ navigation }) {
     opacity: legendOpacity,
   };
   
-  const fabAnimatedStyle = {
-    transform: [{ scale: fabScale }],
-    opacity: fabScale,
-  };
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+      {/* Premium Ambient Orbs - Glasmorfismo */}
+      <AmbientOrbs intensity="medium" />
+      
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
-      {/* Header con gradiente mejorado */}
-      <Animated.View style={[styles.headerGradient, headerAnimatedStyle]}>
-        <LinearGradient
-          colors={isDark ? ['#2A1520', '#1A1A1A'] : ['#9F2241', '#7F1D35']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerGradientInner}
-        >
-          <View style={styles.header}>
-            <View>
-              <Text style={styles.heading}>Calendario</Text>
-            </View>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <RippleButton
-                style={styles.todayButton}
-                onPress={() => {
-                  hapticMedium();
-                  animateMonthChange(0);
-                  setCurrentDate(new Date());
-                  showSuccess('✨ ¡Vista actualizada a hoy!');
-                  hapticSuccess();
-                }}
-                rippleColor="rgba(255,255,255,0.3)"
-              >
-                <Ionicons name="today-outline" size={16} color="#FFFFFF" style={{ marginRight: 6 }} />
-                <Text style={styles.todayButtonText}>HOY</Text>
-              </RippleButton>
-            </View>
-          </View>
-        </LinearGradient>
+      {/* ✨ Glassmorphic Header */}
+      <Animated.View style={[{ opacity: headerOpacity, transform: [{ translateY: headerSlide }] }]}>
+        <GlassmorphicHeader
+          title="Calendario"
+          subtitle="Vista mensual de tareas y eventos"
+          icon="calendar"
+          showGradient={true}
+          actions={[
+            {
+              icon: 'today-outline',
+              onPress: () => {
+                hapticMedium();
+                animateMonthChange(0);
+                setCurrentDate(new Date());
+                showSuccess('¡Vista actualizada a hoy!');
+                hapticSuccess();
+              },
+              disabled: false,
+              color: '#FFFFFF'
+            }
+          ]}
+        />
       </Animated.View>
 
       <ScrollView 
@@ -680,17 +622,17 @@ export default function CalendarScreen({ navigation }) {
             {selectedDateTasks.length > 0 && (
               <View style={styles.modalDayStats}>
                 {selectedDateTasks.filter(t => t.priority === 'alta' && t.status !== 'cerrada').length > 0 && (
-                  <View style={[styles.modalStatBadge, { backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#FEF2F2' }]}>
-                    <Ionicons name="alert-circle" size={14} color="#EF4444" />
-                    <Text style={[styles.modalStatText, { color: '#EF4444' }]}>
+                  <View style={[styles.modalStatBadge, { backgroundColor: theme.errorAlpha }]}>
+                    <Ionicons name="alert-circle" size={14} color={theme.error} />
+                    <Text style={[styles.modalStatText, { color: theme.error }]}>
                       {selectedDateTasks.filter(t => t.priority === 'alta' && t.status !== 'cerrada').length} urgentes
                     </Text>
                   </View>
                 )}
                 {selectedDateTasks.filter(t => t.status === 'en_proceso' || t.status === 'en-progreso').length > 0 && (
-                  <View style={[styles.modalStatBadge, { backgroundColor: isDark ? 'rgba(59,130,246,0.15)' : '#EFF6FF' }]}>
-                    <Ionicons name="sync" size={14} color="#3B82F6" />
-                    <Text style={[styles.modalStatText, { color: '#3B82F6' }]}>
+                  <View style={[styles.modalStatBadge, { backgroundColor: theme.infoAlpha }]}>
+                    <Ionicons name="sync" size={14} color={theme.info} />
+                    <Text style={[styles.modalStatText, { color: theme.info }]}>
                       {selectedDateTasks.filter(t => t.status === 'en_proceso' || t.status === 'en-progreso').length} en proceso
                     </Text>
                   </View>
@@ -716,7 +658,7 @@ export default function CalendarScreen({ navigation }) {
                         { 
                           backgroundColor: taskStatusFilter === filter.key 
                             ? theme.primary 
-                            : (isDark ? '#2a2a2a' : '#f0f0f0'),
+                            : (isDark ? theme.glass : theme.glassStrong),
                           borderColor: taskStatusFilter === filter.key 
                             ? theme.primary 
                             : (isDark ? '#444' : '#ddd'),
@@ -751,7 +693,7 @@ export default function CalendarScreen({ navigation }) {
                 <TouchableOpacity 
                   style={[
                     styles.modalCompactToggle, 
-                    { backgroundColor: compactTaskView ? theme.primary : (isDark ? '#2a2a2a' : '#f0f0f0') }
+                    { backgroundColor: compactTaskView ? theme.primary : (isDark ? theme.glass : theme.glassStrong) }
                   ]}
                   onPress={() => {
                     hapticLight();
@@ -789,9 +731,9 @@ export default function CalendarScreen({ navigation }) {
 }
 
 const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) => StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: theme.background,
+  container: {
+    flex: 1,
+    backgroundColor: 'transparent',
     ...(Platform.OS === 'web' ? {
       display: 'flex',
       flexDirection: 'column',
@@ -886,17 +828,12 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     borderRadius: 14,
     backgroundColor: isDark ? 'rgba(30, 30, 35, 0.95)' : '#FFFFFF',
     borderWidth: 1,
-    borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.05,
-        shadowRadius: 6,
-      },
-      android: { elevation: 2 },
-      default: {},
-    }),
+    borderColor: theme.glassBorder,
+    shadowColor: theme.glassShadow,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0.10 : 0.06,
+    shadowRadius: 6,
+    ...Platform.select({ android: { elevation: 2 } }),
   },
   quickStatInlineItem: {
     alignItems: 'center',
@@ -914,7 +851,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
   quickStatInlineDivider: {
     width: 1,
     height: 24,
-    backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB',
+    backgroundColor: theme.border,
   },
   completionPill: {
     paddingHorizontal: 10,
@@ -933,48 +870,34 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: isDesktop ? 8 : 6,
-    paddingVertical: isDesktop ? 8 : 6,
-    borderRadius: isDesktop ? 20 : 16,
-    backgroundColor: isDark ? 'rgba(30, 30, 35, 0.95)' : '#FFFFFF',
-    borderWidth: 1,
-    borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-      },
-      android: { elevation: 4 },
-      default: {},
-    }),
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 16,
+    backgroundColor: isDark ? theme.card : '#FFFFFF',
+    borderWidth: 0.5,
+    borderColor: theme.glassBorder,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: isDark ? 0.20 : 0.06,
+    shadowRadius: 8,
+    ...Platform.select({ android: { elevation: 2 } }),
   },
   monthButton: {
-    width: isDesktop ? 52 : isTablet ? 48 : 44,
-    height: isDesktop ? 52 : isTablet ? 48 : 44,
-    borderRadius: isDesktop ? 16 : 14,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     justifyContent: 'center',
     alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.35,
-        shadowRadius: 10,
-      },
-      android: { elevation: 6 },
-      default: {},
-    }),
+    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)',
   },
   monthDisplay: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 6,
   },
   monthText: {
-    fontSize: isDesktop ? 22 : isTablet ? 20 : 18,
-    fontWeight: '800',
+    fontSize: isDesktop ? 20 : 17,
+    fontWeight: '700',
     letterSpacing: -0.3,
   },
   yearText: {
@@ -985,48 +908,37 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
   // Calendario principal con glassmorphism premium
   calendarContainer: {
     borderRadius: isDesktop ? 24 : 20,
-    padding: isDesktop ? 20 : isTablet ? 18 : 14,
+    padding: isDesktop ? 20 : 14,
     marginBottom: SPACING.lg,
-    backgroundColor: isDark ? 'rgba(30, 30, 35, 0.95)' : '#FFFFFF',
-    borderWidth: 1,
-    borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.1,
-        shadowRadius: 16,
-      },
-      android: {
-        elevation: 6,
-      },
-      default: {},
-    }),
+    backgroundColor: isDark ? theme.card : '#FFFFFF',
+    borderWidth: 0.5,
+    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.06)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: isDark ? 0.30 : 0.08,
+    shadowRadius: 12,
+    ...Platform.select({ android: { elevation: 4 } }),
   },
   weekHeader: {
     flexDirection: 'row',
-    marginBottom: isDesktop ? 24 : 20,
-    paddingVertical: isDesktop ? 16 : 14,
-    paddingHorizontal: isDesktop ? 8 : 6,
-    borderRadius: isDesktop ? 18 : 14,
-    backgroundColor: isDark ? 'rgba(159,34,65,0.2)' : 'rgba(159,34,65,0.06)',
-    borderWidth: 0,
+    marginBottom: 12,
+    paddingVertical: 6,
   },
   weekDay: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 4,
   },
   weekDayText: {
-    fontSize: isDesktop ? 14 : 13,
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-    color: isDark ? 'rgba(255,255,255,0.85)' : '#6B7280',
+    color: isDark ? 'rgba(235,235,245,0.55)' : 'rgba(60,60,67,0.55)',
   },
   weekDayWeekend: {
     color: theme.primary,
-    fontWeight: '800',
+    opacity: 0.8,
   },
   calendar: {
     flexDirection: 'row',
@@ -1046,59 +958,30 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: isDesktop ? 16 : 12,
-    backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#FFFFFF',
-    borderWidth: 1,
-    borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB',
+    borderRadius: isDesktop ? 14 : 10,
+    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF',
+    borderWidth: 0.5,
+    borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
     position: 'relative',
     overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 2,
-      },
-      android: { elevation: 1 },
-      default: {},
-    }),
   },
   dayWithTasks: {
-    backgroundColor: isDark ? 'rgba(159,34,65,0.18)' : 'rgba(159,34,65,0.04)',
-    borderColor: isDark ? 'rgba(159,34,65,0.5)' : theme.primary,
-    borderWidth: 2,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.primary,
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
-      },
-      android: { elevation: 2 },
-      default: {},
-    }),
+    backgroundColor: isDark ? 'rgba(159,34,65,0.18)' : 'rgba(159,34,65,0.07)',
+    borderWidth: 1.5,
+    borderColor: isDark ? 'rgba(192,34,62,0.55)' : 'rgba(159,34,65,0.40)',
   },
   dayWeekend: {
-    backgroundColor: isDark ? 'rgba(159,34,65,0.06)' : 'rgba(159,34,65,0.02)',
-    borderColor: isDark ? 'rgba(159,34,65,0.15)' : 'rgba(159,34,65,0.1)',
+    backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(159,34,65,0.03)',
+    borderColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(159,34,65,0.12)',
   },
   dayToday: {
     backgroundColor: theme.primary,
-    borderColor: theme.primary,
     borderWidth: 0,
-    transform: [{ scale: 1.02 }],
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.primary,
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.5,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-      default: {},
-    }),
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.50,
+    shadowRadius: 10,
+    ...Platform.select({ android: { elevation: 6 } }),
   },
   todayCircle: {
     position: 'absolute',
@@ -1108,47 +991,23 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     backgroundColor: 'rgba(255,255,255,0.1)',
   },
   dayHighPriority: {
-    backgroundColor: isDark ? 'rgba(239,68,68,0.2)' : 'rgba(239,68,68,0.08)',
+    backgroundColor: isDark ? 'rgba(255,59,48,0.22)' : 'rgba(255,59,48,0.10)',
     borderWidth: 2,
-    borderColor: '#EF4444',
+    borderColor: '#FF3B30',
+    shadowColor: '#FF3B30',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 4,
   },
   dayOverdue: {
-    backgroundColor: isDark ? 'rgba(239,68,68,0.25)' : 'rgba(239,68,68,0.1)',
-    borderColor: '#EF4444',
-    borderWidth: 2,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#EF4444',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-      },
-      android: { elevation: 3 },
-      default: {},
-    }),
+    backgroundColor: isDark ? 'rgba(255,149,0,0.20)' : 'rgba(255,149,0,0.10)',
+    borderColor: '#FF9500',
+    borderWidth: 1.5,
   },
   dayCompleted: {
-    backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : 'rgba(16,185,129,0.08)',
-    borderColor: '#10B981',
-    borderWidth: 2,
-  },
-  dayProgressRing: {
-    position: 'absolute',
-    left: 2,
-    top: 2,
-    bottom: 2,
-    width: 3,
-    borderRadius: 2,
-    backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
-    overflow: 'hidden',
-  },
-  dayProgressFill: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#10B981',
-    borderRadius: 2,
+    backgroundColor: isDark ? 'rgba(48,209,88,0.16)' : 'rgba(52,199,89,0.10)',
+    borderColor: isDark ? '#30D158' : '#34C759',
+    borderWidth: 1.5,
   },
   dayTaskCount: {
     position: 'absolute',
@@ -1194,11 +1053,11 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     fontSize: isDesktop ? 20 : isTablet ? 18 : 17,
   },
   dayNumberAlert: {
-    color: '#EF4444',
+    color: theme.error,
     fontWeight: '800',
   },
   dayNumberWarning: {
-    color: '#F59E0B',
+    color: theme.warning,
     fontWeight: '700',
   },
   taskIndicators: {
@@ -1211,26 +1070,25 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     flexWrap: 'wrap',
   },
   taskDot: {
-    width: isDesktop ? 8 : 6,
-    height: isDesktop ? 8 : 6,
-    borderRadius: isDesktop ? 4 : 3,
-    backgroundColor: '#22C55E',
-    borderWidth: 0,
+    width: isDesktop ? 8 : 7,
+    height: isDesktop ? 8 : 7,
+    borderRadius: 99,
+    backgroundColor: '#34C759',
   },
   taskDotHigh: {
-    backgroundColor: '#EF4444',
+    backgroundColor: '#FF3B30',
   },
   taskDotMedium: {
-    backgroundColor: '#F59E0B',
+    backgroundColor: '#FF9500',
   },
   taskDotLow: {
-    backgroundColor: '#22C55E',
+    backgroundColor: '#34C759',
   },
   taskDotToday: {
     borderColor: 'rgba(255,255,255,0.95)',
-    borderWidth: 1,
-    width: isDesktop ? 8 : 7,
-    height: isDesktop ? 8 : 7,
+    borderWidth: 1.5,
+    width: isDesktop ? 9 : 8,
+    height: isDesktop ? 9 : 8,
   },
   moreTasksBadge: {
     backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(159,34,65,0.1)',
@@ -1252,19 +1110,14 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     marginTop: SPACING.sm,
     padding: isDesktop ? 20 : 16,
     borderRadius: isDesktop ? 16 : 14,
-    backgroundColor: isDark ? 'rgba(30, 30, 35, 0.9)' : '#FFFFFF',
+    backgroundColor: isDark ? 'rgba(30, 30, 35, 0.9)' : theme.glassStrong,
     borderWidth: 1,
-    borderColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.06,
-        shadowRadius: 10,
-      },
-      android: { elevation: 3 },
-      default: {},
-    }),
+    borderColor: theme.glassBorder,
+    shadowColor: theme.glassShadow,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: isDark ? 0.15 : 0.06,
+    shadowRadius: 10,
+    ...Platform.select({ android: { elevation: 3 } }),
   },
   legendHeader: {
     flexDirection: 'row',
@@ -1273,7 +1126,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     marginBottom: 14,
     paddingBottom: 12,
     borderBottomWidth: 1,
-    borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6',
+    borderBottomColor: isDark ? theme.glass : theme.glassStrong,
   },
   legendTitle: {
     fontSize: 14,
@@ -1293,7 +1146,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 10,
-    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#F9FAFB',
+    backgroundColor: isDark ? theme.glass : theme.glassStrong,
   },
   legendDot: {
     width: 12,
@@ -1429,17 +1282,17 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
   modalTaskPriority: {
     width: 4,
     borderRadius: 2,
-    backgroundColor: '#34C759',
+    backgroundColor: theme.success,
     alignSelf: 'stretch',
   },
   modalTaskPriorityHigh: {
-    backgroundColor: '#EF4444',
+    backgroundColor: theme.error,
   },
   modalTaskPriorityMedium: {
-    backgroundColor: '#F97316',
+    backgroundColor: theme.warning,
   },
   modalTaskPriorityLow: {
-    backgroundColor: '#22C55E',
+    backgroundColor: theme.success,
   },
   modalTaskContent: {
     flex: 1,

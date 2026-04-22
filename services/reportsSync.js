@@ -8,7 +8,6 @@ import {
   getPendingReports,
   markReportAsSynced,
   markReportAsFailed,
-  deletePendingReport,
   retryFailedReports,
 } from './offlineReportsService';
 
@@ -200,7 +199,7 @@ export const checkAndSyncPendingReports = async () => {
 /**
  * Limpiar reportes que fallaron muchas veces
  */
-export const cleanupFailedReports = async (maxAge = 7) => {
+export const cleanupFailedReports = async (_maxAge = 7) => {
   try {
     await retryFailedReports();
   } catch (error) {

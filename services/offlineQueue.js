@@ -7,7 +7,7 @@ import { createTask, updateTask, deleteTask } from './tasks';
 const log = __DEV__ ? console.log : () => {};
 
 const QUEUE_KEY = '@offline_queue';
-const SYNC_STATUS_KEY = '@sync_status';
+const _SYNC_STATUS_KEY = '@sync_status';
 
 // Tipos de operaciones
 export const OPERATION_TYPES = {

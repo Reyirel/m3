@@ -48,7 +48,7 @@ export async function calculateProductivityStreak(userEmail) {
     // Calcular racha actual
     let currentStreak = 0;
     const today = new Date();
-    const todayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+    const _todayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
     
     for (let i = 0; i < days.length; i++) {
       const day = days[i];

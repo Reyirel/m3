@@ -2,7 +2,7 @@
 // Panel de métricas de área para secretarios
 // Muestra el rendimiento de los directores de su área
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -30,19 +30,7 @@ const AreaMetricsPanel = ({
   const [sortBy, setSortBy] = useState('name'); // 'name', 'completed', 'pending', 'rate'
   const [sortOrder, setSortOrder] = useState('asc');
 
-  // Cargar directores del área
-  useEffect(() => {
-    loadDirectors();
-  }, [userArea]);
-
-  // Calcular métricas cuando cambian las tareas o directores
-  useEffect(() => {
-    if (directors.length > 0 && tasks.length > 0) {
-      calculateMetrics();
-    }
-  }, [directors, tasks]);
-
-  const loadDirectors = async () => {
+  const loadDirectors = useCallback(async () => {
     if (!userArea) {
       setLoading(false);
       return;
@@ -73,9 +61,9 @@ const AreaMetricsPanel = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [userArea]);
 
-  const calculateMetrics = () => {
+  const calculateMetrics = useCallback(() => {
     // Filtrar tareas del área (normalizar case-insensitive)
     const userAreaNorm = (userArea || '').toLowerCase().trim();
     const areaTasks = tasks.filter(t => (t.area || '').toLowerCase().trim() === userAreaNorm);
@@ -134,7 +122,19 @@ const AreaMetricsPanel = ({
       overdueTasks: overdue,
       avgCompletionRate: avgRate
     });
-  };
+  }, [userArea, tasks, directors]);
+
+  // Cargar directores del área
+  useEffect(() => {
+    loadDirectors();
+  }, [loadDirectors]);
+
+  // Calcular métricas cuando cambian las tareas o directores
+  useEffect(() => {
+    if (directors.length > 0 && tasks.length > 0) {
+      calculateMetrics();
+    }
+  }, [directors, tasks, calculateMetrics]);
 
   // Ordenar directores
   const sortedDirectors = [...directors].sort((a, b) => {
@@ -156,7 +156,7 @@ const AreaMetricsPanel = ({
         comparison = (b.overdue || 0) - (a.overdue || 0);
         break;
       default:
-        comparison = 0;
+        break;
     }
     return sortOrder === 'asc' ? comparison : -comparison;
   });
@@ -171,9 +171,9 @@ const AreaMetricsPanel = ({
   };
 
   const getRateColor = (rate) => {
-    if (rate >= 80) return '#10B981'; // Verde
-    if (rate >= 50) return '#F59E0B'; // Amarillo
-    return '#EF4444'; // Rojo
+    if (rate >= 80) return theme.success;
+    if (rate >= 50) return theme.warning;
+    return theme.error;
   };
 
   const getRateIcon = (rate) => {
@@ -184,7 +184,7 @@ const AreaMetricsPanel = ({
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.card }]}>
+      <View style={[styles.container, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.80)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         <ActivityIndicator size="large" color={theme.primary} />
         <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
           Cargando métricas del área...
@@ -194,9 +194,9 @@ const AreaMetricsPanel = ({
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.80)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
       {showHeader && (
-        <View style={[styles.header, { backgroundColor: theme.card }]}>
+        <View style={[styles.header, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)', borderBottomWidth: 1, borderBottomColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
           <View style={styles.headerLeft}>
             <Ionicons name="analytics" size={24} color={theme.primary} />
             <Text style={[styles.headerTitle, { color: theme.text }]}>
@@ -211,33 +211,33 @@ const AreaMetricsPanel = ({
 
       {/* Resumen General */}
       <View style={styles.summaryContainer}>
-        <View style={[styles.summaryCard, { backgroundColor: theme.card }]}>
-          <Ionicons name="document-text" size={24} color="#6366F1" />
+        <View style={[styles.summaryCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+          <Ionicons name="document-text" size={24} color={theme.secondary} />
           <Text style={[styles.summaryValue, { color: theme.text }]}>{metrics.totalTasks}</Text>
           <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Total Tareas</Text>
         </View>
-        
-        <View style={[styles.summaryCard, { backgroundColor: theme.card }]}>
-          <Ionicons name="checkmark-done" size={24} color="#10B981" />
+
+        <View style={[styles.summaryCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+          <Ionicons name="checkmark-done" size={24} color={theme.success} />
           <Text style={[styles.summaryValue, { color: theme.text }]}>{metrics.completedTasks}</Text>
           <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Completadas</Text>
         </View>
-        
-        <View style={[styles.summaryCard, { backgroundColor: theme.card }]}>
-          <Ionicons name="time" size={24} color="#F59E0B" />
+
+        <View style={[styles.summaryCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+          <Ionicons name="time" size={24} color={theme.warning} />
           <Text style={[styles.summaryValue, { color: theme.text }]}>{metrics.pendingTasks}</Text>
           <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Pendientes</Text>
         </View>
-        
-        <View style={[styles.summaryCard, { backgroundColor: theme.card }]}>
-          <Ionicons name="alert" size={24} color="#EF4444" />
+
+        <View style={[styles.summaryCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+          <Ionicons name="alert" size={24} color={theme.error} />
           <Text style={[styles.summaryValue, { color: theme.text }]}>{metrics.overdueTasks}</Text>
           <Text style={[styles.summaryLabel, { color: theme.textSecondary }]}>Vencidas</Text>
         </View>
       </View>
 
       {/* Promedio de cumplimiento */}
-      <View style={[styles.avgCard, { backgroundColor: theme.card }]}>
+      <View style={[styles.avgCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         <View style={styles.avgContent}>
           <Ionicons 
             name={getRateIcon(metrics.avgCompletionRate)} 
@@ -253,7 +253,7 @@ const AreaMetricsPanel = ({
             </Text>
           </View>
         </View>
-        <View style={[styles.progressBar, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
+        <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
           <View 
             style={[
               styles.progressFill, 
@@ -283,8 +283,8 @@ const AreaMetricsPanel = ({
                 styles.filterChip,
                 { 
                   backgroundColor: sortBy === filter.key 
-                    ? theme.primary 
-                    : isDark ? '#374151' : '#E5E7EB'
+                    ? theme.primary
+                    : theme.border
                 }
               ]}
               onPress={() => toggleSort(filter.key)}
@@ -312,7 +312,7 @@ const AreaMetricsPanel = ({
       {(currentUserRole === 'secretario' || currentUserRole === 'admin') && (
       <ScrollView style={styles.directorsList} showsVerticalScrollIndicator={false}>
         {sortedDirectors.length === 0 ? (
-          <View style={[styles.emptyState, { backgroundColor: theme.card }]}>
+          <View style={[styles.emptyState, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
             <Ionicons name="people-outline" size={48} color={theme.textSecondary} />
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
               No hay directores en esta área
@@ -322,7 +322,7 @@ const AreaMetricsPanel = ({
           sortedDirectors.map((director, index) => (
             <View 
               key={director.id || index} 
-              style={[styles.directorCard, { backgroundColor: theme.card }]}
+              style={[styles.directorCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}
             >
               <View style={styles.directorHeader}>
                 <View style={styles.directorInfo}>
@@ -359,7 +359,7 @@ const AreaMetricsPanel = ({
               </View>
               
               {/* Barra de progreso del director */}
-              <View style={[styles.directorProgress, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
+              <View style={[styles.directorProgress, { backgroundColor: theme.border }]}>
                 <View 
                   style={[
                     styles.progressFill, 
@@ -379,23 +379,23 @@ const AreaMetricsPanel = ({
                   <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Total</Text>
                 </View>
                 <View style={styles.metricItem}>
-                  <Ionicons name="checkmark-done-outline" size={14} color="#10B981" />
-                  <Text style={[styles.metricValue, { color: '#10B981' }]}>{director.completed || 0}</Text>
+                  <Ionicons name="checkmark-done-outline" size={14} color={theme.success} />
+                  <Text style={[styles.metricValue, { color: theme.success }]}>{director.completed || 0}</Text>
                   <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Compl.</Text>
                 </View>
                 <View style={styles.metricItem}>
-                  <Ionicons name="time-outline" size={14} color="#F59E0B" />
-                  <Text style={[styles.metricValue, { color: '#F59E0B' }]}>{director.pending || 0}</Text>
+                  <Ionicons name="time-outline" size={14} color={theme.warning} />
+                  <Text style={[styles.metricValue, { color: theme.warning }]}>{director.pending || 0}</Text>
                   <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Pend.</Text>
                 </View>
                 <View style={styles.metricItem}>
-                  <Ionicons name="alert-outline" size={14} color="#EF4444" />
-                  <Text style={[styles.metricValue, { color: '#EF4444' }]}>{director.overdue || 0}</Text>
+                  <Ionicons name="alert-outline" size={14} color={theme.error} />
+                  <Text style={[styles.metricValue, { color: theme.error }]}>{director.overdue || 0}</Text>
                   <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Venc.</Text>
                 </View>
                 <View style={styles.metricItem}>
-                  <Ionicons name="checkmark-circle-outline" size={14} color="#6366F1" />
-                  <Text style={[styles.metricValue, { color: '#6366F1' }]}>{director.confirmed || 0}</Text>
+                  <Ionicons name="checkmark-circle-outline" size={14} color={theme.secondary} />
+                  <Text style={[styles.metricValue, { color: theme.secondary }]}>{director.confirmed || 0}</Text>
                   <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Conf.</Text>
                 </View>
               </View>

@@ -3,8 +3,8 @@
 // Soporta tareas, subtareas, áreas, y eventos del sistema
 
 import * as Notifications from 'expo-notifications';
-import { toMs } from '../utils/dateUtils';
 import { Platform } from 'react-native';
+import { toMs } from '../utils/dateUtils';
 import {
   collection,
   addDoc,
@@ -15,6 +15,7 @@ import {
   updateDoc,
   doc,
   getDoc,
+  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getCurrentSession } from './authFirestore';
@@ -28,6 +29,7 @@ const NOTIFICATION_HISTORY_COLLECTION = 'notification_history';
  * Configurar notificaciones
  */
 export const configureNotifications = async () => {
+  if (Platform.OS === 'web') return false;
   // Solicitar permisos
   const { status } = await Notifications.requestPermissionsAsync();
   if (status !== 'granted') {
@@ -37,7 +39,7 @@ export const configureNotifications = async () => {
 
   // Configurar controlador de notificaciones
   Notifications.setNotificationHandler({
-    handleNotification: async (notification) => {
+    handleNotification: async (_notification) => {
       return {
         shouldShowAlert: true,
         shouldPlaySound: true,
@@ -54,6 +56,7 @@ export const configureNotifications = async () => {
  * @param {Object} options - { title, body, data?, delay? }
  */
 export const sendLocalNotification = async (options) => {
+  if (Platform.OS === 'web') return null;
   try {
     const { title, body, data = {}, delay = 1000 } = options;
 

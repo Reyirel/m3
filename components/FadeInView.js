@@ -20,7 +20,7 @@ const FadeInView = memo(function FadeInView({
       delay,
       useNativeDriver: true,
     }).start();
-  }, [duration, delay, to]);
+  }, [duration, delay, to, fadeAnim]);
 
   return (
     <Animated.View style={[{ opacity: fadeAnim }, style]}>

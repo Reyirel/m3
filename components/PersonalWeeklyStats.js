@@ -25,7 +25,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-const { width: screenWidth } = Dimensions.get('window');
+Dimensions.get('window');
 
 /**
  * PersonalWeeklyStats - Muestra estadísticas de productividad personal de la semana
@@ -34,7 +34,7 @@ const { width: screenWidth } = Dimensions.get('window');
  * @param {string} userName - Nombre para mostrar
  * @param {string} userRole - Rol del usuario ('admin', 'secretario', 'director', etc.)
  */
-function PersonalWeeklyStats({ tasks = [], userId, userName = 'tu', userRole = '' }) {
+function PersonalWeeklyStats({ tasks = [], userId, _userName = 'tu', userRole = '' }) {
   const { theme, isDark } = useTheme();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const rotateAnim = useRef(new Animated.Value(0)).current;
@@ -49,7 +49,7 @@ function PersonalWeeklyStats({ tasks = [], userId, userName = 'tu', userRole = '
         heightAnim.setValue(0);
       }
     });
-  }, []);
+  }, [heightAnim, rotateAnim]);
 
   // Toggle colapsar con animación
   const toggleCollapse = () => {
@@ -75,6 +75,7 @@ function PersonalWeeklyStats({ tasks = [], userId, userName = 'tu', userRole = '
   
   // Calcular estadísticas de la semana actual
   const weeklyStats = useMemo(() => {
+    // theme is used below for moodColor — access via closure
     const now = new Date();
     const startOfWeek = new Date(now);
     startOfWeek.setDate(now.getDate() - now.getDay()); // Domingo
@@ -163,30 +164,30 @@ function PersonalWeeklyStats({ tasks = [], userId, userName = 'tu', userRole = '
     ));
     
     // Determinar estado del ánimo
-    let mood = 'neutral';
-    let moodIcon = 'happy-outline';
-    let moodColor = theme.primary;
-    let moodMessage = 'Semana normal';
-    
+    let mood;
+    let moodIcon;
+    let moodColor;
+    let moodMessage;
+
     if (productivityScore >= 80) {
       mood = 'excellent';
       moodIcon = 'rocket';
-      moodColor = '#10B981';
+      moodColor = theme.success;
       moodMessage = '¡Semana excelente!';
     } else if (productivityScore >= 60) {
       mood = 'good';
       moodIcon = 'thumbs-up';
-      moodColor = '#3B82F6';
+      moodColor = theme.info;
       moodMessage = '¡Vas muy bien!';
     } else if (productivityScore >= 40) {
       mood = 'neutral';
       moodIcon = 'fitness';
-      moodColor = '#F59E0B';
+      moodColor = theme.warning;
       moodMessage = 'Puedes mejorar';
     } else {
       mood = 'low';
       moodIcon = 'cafe';
-      moodColor = '#EF4444';
+      moodColor = theme.error;
       moodMessage = 'Enfócate esta semana';
     }
     
@@ -203,7 +204,7 @@ function PersonalWeeklyStats({ tasks = [], userId, userName = 'tu', userRole = '
       moodColor,
       moodMessage,
     };
-  }, [tasks, userId, userRole]);
+  }, [tasks, userId, userRole, theme]);
 
   const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
 
@@ -212,7 +213,7 @@ function PersonalWeeklyStats({ tasks = [], userId, userName = 'tu', userRole = '
   const today = new Date().getDay();
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? theme.card : '#FFFFFF' }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
       {/* Header - Clickable para colapsar */}
       <TouchableOpacity 
         style={styles.header} 
@@ -251,8 +252,8 @@ function PersonalWeeklyStats({ tasks = [], userId, userName = 'tu', userRole = '
           {/* Métricas principales */}
           <View style={styles.metricsRow}>
             <View style={styles.metricItem}>
-              <View style={[styles.metricIcon, { backgroundColor: '#10B98120' }]}>
-                <Ionicons name="checkmark-done" size={18} color="#10B981" />
+              <View style={[styles.metricIcon, { backgroundColor: theme.successAlpha }]}>
+                <Ionicons name="checkmark-done" size={18} color={theme.success} />
               </View>
               <AnimatedNumber
                 value={weeklyStats.completed}
@@ -264,8 +265,8 @@ function PersonalWeeklyStats({ tasks = [], userId, userName = 'tu', userRole = '
             </View>
             
             <View style={styles.metricItem}>
-              <View style={[styles.metricIcon, { backgroundColor: '#3B82F620' }]}>
-                <Ionicons name="hourglass" size={18} color="#3B82F6" />
+              <View style={[styles.metricIcon, { backgroundColor: theme.infoAlpha }]}>
+                <Ionicons name="hourglass" size={18} color={theme.info} />
               </View>
               <AnimatedNumber
                 value={weeklyStats.pending}
@@ -277,8 +278,8 @@ function PersonalWeeklyStats({ tasks = [], userId, userName = 'tu', userRole = '
             </View>
             
             <View style={styles.metricItem}>
-              <View style={[styles.metricIcon, { backgroundColor: '#EF444420' }]}>
-                <Ionicons name="alert-circle" size={18} color="#EF4444" />
+              <View style={[styles.metricIcon, { backgroundColor: theme.errorAlpha }]}>
+                <Ionicons name="alert-circle" size={18} color={theme.error} />
               </View>
               <AnimatedNumber
                 value={weeklyStats.overdue}
@@ -290,8 +291,8 @@ function PersonalWeeklyStats({ tasks = [], userId, userName = 'tu', userRole = '
             </View>
             
             <View style={styles.metricItem}>
-              <View style={[styles.metricIcon, { backgroundColor: '#F59E0B20' }]}>
-                <Ionicons name="calendar" size={18} color="#F59E0B" />
+              <View style={[styles.metricIcon, { backgroundColor: theme.warningAlpha }]}>
+                <Ionicons name="calendar" size={18} color={theme.warning} />
               </View>
               <AnimatedNumber
                 value={weeklyStats.upcoming}
@@ -316,9 +317,9 @@ function PersonalWeeklyStats({ tasks = [], userId, userName = 'tu', userRole = '
                     styles.dayCircle,
                     isToday && styles.dayCircleToday,
                     { 
-                      backgroundColor: isToday ? theme.primary : 
-                                       isPast ? (isDark ? '#374151' : '#E5E7EB') : 
-                                       (isDark ? '#1F2937' : '#F3F4F6'),
+                      backgroundColor: isToday ? theme.primary :
+                                       isPast ? theme.border :
+                                       (isDark ? theme.glass : theme.glassStrong),
                     }
                   ]}
                 >
@@ -339,19 +340,19 @@ function PersonalWeeklyStats({ tasks = [], userId, userName = 'tu', userRole = '
                 <Text style={[styles.onTimeLabel, { color: theme.textSecondary }]}>
                   Completadas a tiempo
                 </Text>
-                <Text style={[styles.onTimeValue, { color: '#10B981' }]}>
+                <Text style={[styles.onTimeValue, { color: theme.success }]}>
                   {weeklyStats.onTime}/{weeklyStats.completed}
                 </Text>
               </View>
-              <View style={[styles.progressBar, { backgroundColor: isDark ? '#374151' : '#E5E7EB' }]}>
-                <View 
+              <View style={[styles.progressBar, { backgroundColor: theme.border }]}>
+                <View
                   style={[
-                    styles.progressFill, 
-                    { 
+                    styles.progressFill,
+                    {
                       width: `${(weeklyStats.onTime / weeklyStats.completed) * 100}%`,
-                      backgroundColor: '#10B981'
+                      backgroundColor: theme.success
                     }
-                  ]} 
+                  ]}
                 />
               </View>
             </View>
@@ -364,7 +365,7 @@ function PersonalWeeklyStats({ tasks = [], userId, userName = 'tu', userRole = '
 
 export default React.memo(PersonalWeeklyStats);
 
-const createStyles = (theme, isDark) => StyleSheet.create({
+const createStyles = (_theme, _isDark) => StyleSheet.create({
   container: {
     borderRadius: 16,
     padding: 16,

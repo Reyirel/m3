@@ -2,7 +2,7 @@
 // Sistema de alertas automáticas para áreas con problemas
 // Optimizado: Solo recalcula cuando hay cambios en tareas
 
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toMs } from '../utils/dateUtils';
 
@@ -134,7 +134,6 @@ export function subscribeToAreaAlerts(callback) {
  */
 export function getAreaAlerts(areaMetrics) {
   const alerts = [];
-  const now = Date.now();
 
   Object.entries(areaMetrics).forEach(([area, metrics]) => {
     const total = metrics.total || 0;

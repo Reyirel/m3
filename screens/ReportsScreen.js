@@ -8,7 +8,6 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
-  Dimensions,
   TouchableOpacity,
   Platform,
   Animated,
@@ -18,7 +17,6 @@ import {
   Modal,
 } from 'react-native';
 const LineChart = React.lazy(() => import('react-native-chart-kit').then(module => ({ default: module.LineChart })));
-const BarChart = React.lazy(() => import('react-native-chart-kit').then(module => ({ default: module.BarChart })));
 const PieChart = React.lazy(() => import('react-native-chart-kit').then(module => ({ default: module.PieChart })));
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,12 +26,8 @@ import { useResponsive } from '../utils/responsive';
 import { useTasks } from '../contexts/TasksContext';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { db } from '../firebase';
-import LoadingIndicator from '../components/LoadingIndicator';
 import ShimmerEffect from '../components/ShimmerEffect';
-import EmptyState from '../components/EmptyState';
-import StatCard from '../components/StatCard';
 import SpringCard from '../components/SpringCard';
-import RippleButton from '../components/RippleButton';
 import AreaStatsCard from '../components/AreaStatsCard';
 const AreaComparisonChart = React.lazy(() => import('../components/AreaComparisonChart'));
 import AreaRankingCard from '../components/AreaRankingCard';
@@ -43,7 +37,7 @@ import InsightsPanel from '../components/InsightsPanel';
 const ComplianceReport = React.lazy(() => import('../components/ComplianceReport'));
 import AreaMetricsPanel from '../components/AreaMetricsPanel';
 import { calculateDetailedAreaMetrics, generateAreaSummary, getAreasNeedingAttention } from '../services/areaMetrics';
-import { getAreaAlerts, getAreasForAttention } from '../services/AreaAlerts';
+import { getAreaAlerts } from '../services/AreaAlerts';
 import { 
   calculateMonthlyComparative, 
   identifyBottlenecks, 
@@ -51,13 +45,13 @@ import {
   analyzeWorkloadDistribution,
   getCachedAnalytics 
 } from '../services/AreaAnalytics';
-import { exportAreaReport, exportProductivityReport } from '../services/ReportsExport';
+import { exportAreaReport } from '../services/ReportsExport';
 import { subscribeToAreas } from '../services/area/areaManagement';
-import { getAreaType, SECRETARIAS, DIRECCIONES, getDireccionesBySecretaria } from '../config/areas';
+import { getAreaType } from '../config/areas';
 import { MAX_WIDTHS } from '../theme/tokens';
 import { toMs } from '../utils/dateUtils';
+import AmbientOrbs from '../components/AmbientOrbs';
 
-const { width: screenWidth } = Dimensions.get('window');
 
 export default function ReportsScreen({ navigation }) {
   const { theme, isDark } = useTheme();
@@ -101,7 +95,7 @@ export default function ReportsScreen({ navigation }) {
   const [priorityDistribution, setPriorityDistribution] = useState({});
   const [areaMetrics, setAreaMetrics] = useState({});
   const [detailedAreaMetrics, setDetailedAreaMetrics] = useState({});
-  const [areaSummary, setAreaSummary] = useState(null);
+  const [, setAreaSummary] = useState(null);
   const [selectedArea, setSelectedArea] = useState(null);
   const [areasNeedingAttention, setAreasNeedingAttention] = useState([]);
   const [filteredAreas, setFilteredAreas] = useState([]);
@@ -128,7 +122,7 @@ export default function ReportsScreen({ navigation }) {
   const [monthlyComparative, setMonthlyComparative] = useState(null);
   const [bottlenecks, setBottlenecks] = useState([]);
   const [workloadDistribution, setWorkloadDistribution] = useState({});
-  const [predictions, setPredictions] = useState({});
+  const [predictions] = useState({});
   const [exporting, setExporting] = useState(false);
   const [showChartsModal, setShowChartsModal] = useState(false);
   
@@ -149,7 +143,6 @@ export default function ReportsScreen({ navigation }) {
   const hierarchySlide = useRef(new Animated.Value(40)).current;
   const secretariaScale = useRef(new Animated.Value(0.9)).current;
   const direccionScale = useRef(new Animated.Value(0.9)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
 
   // ⚠️ En web, useNativeDriver puede causar problemas
@@ -233,8 +226,8 @@ export default function ReportsScreen({ navigation }) {
   useEffect(() => {
     if (tasks.length > 0 && currentUser) {
       calculateStats(tasks);
-    } else if (tasks.length === 0) {
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasks, currentUser]);
 
   // Suscribirse a áreas de Firestore para la estructura jerárquica
@@ -306,7 +299,8 @@ export default function ReportsScreen({ navigation }) {
         startAnimations();
       }
     }
-  }, [loading]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, filterAnim, filterSlide, statsOpacity, statsSlide, emptyStateAnim, emptyStateSlide, chartsOpacity, chartsSlide, headerOpacity, headerSlide]);
 
   // ✨ Animaciones para sección jerárquica cuando hay datos
   useEffect(() => {
@@ -337,7 +331,8 @@ export default function ReportsScreen({ navigation }) {
         Animated.timing(pulseAnim, { toValue: 1, duration: 400, useNativeDriver }),
       ]).start();
     }
-  }, [metricsByType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [metricsByType, hierarchyAnim, hierarchySlide, secretariaScale, direccionScale, pulseAnim]);
 
   const calculateStats = (allTasks) => {
     // Esperar a que currentUser esté disponible
@@ -351,9 +346,6 @@ export default function ReportsScreen({ navigation }) {
 
     // Mostrar tareas según el rol del usuario
     let userTasks;
-    const userEmail = currentUser.email?.toLowerCase().trim() || '';
-    const userAreaNorm = currentUser.area?.toLowerCase().trim() || '';
-    
     if (currentUser.role === 'admin') {
       // Admin ve todas las tareas
       userTasks = allTasks;
@@ -489,19 +481,10 @@ export default function ReportsScreen({ navigation }) {
 
     Object.entries(detailedMetrics).forEach(([areaName, metrics]) => {
       // Determinar el tipo de área usando la configuración o Firestore
-      let tipo = 'direccion'; // default
-      
-      // Primero intentar obtener de las áreas de Firestore
       const firestoreArea = firestoreAreas.find(a => a.nombre === areaName);
-      if (firestoreArea) {
-        tipo = firestoreArea.tipo;
-      } else {
-        // Fallback: usar la función de config/areas.js
-        tipo = getAreaType(areaName);
-        if (tipo === 'unknown') {
-          // Si no se encuentra, inferir del nombre
-          tipo = areaName.toLowerCase().includes('secretaría') ? 'secretaria' : 'direccion';
-        }
+      let tipo = firestoreArea ? firestoreArea.tipo : getAreaType(areaName);
+      if (tipo === 'unknown') {
+        tipo = areaName.toLowerCase().includes('secretaría') ? 'secretaria' : 'direccion';
       }
 
       // Agregar a la categoría correspondiente
@@ -649,7 +632,7 @@ export default function ReportsScreen({ navigation }) {
     } finally {
       setExporting(false);
     }
-  }, [areaMetrics, tasks, period]);
+  }, [areaMetrics, tasks, period, showError, showSuccess]);
 
   const currentStats = period === 'week' ? weeklyStats : period === 'month' ? monthlyStats : quarterlyStats;
 
@@ -664,9 +647,9 @@ export default function ReportsScreen({ navigation }) {
   }), [dailyCompletions]);
 
   const priorityChartData = useMemo(() => [
-    { name: 'Alta', population: priorityDistribution.alta || 0, color: '#DC2626', legendFontColor: theme.text },
-    { name: 'Media', population: priorityDistribution.media || 0, color: '#F59E0B', legendFontColor: theme.text },
-    { name: 'Baja', population: priorityDistribution.baja || 0, color: '#10B981', legendFontColor: theme.text },
+    { name: 'Alta', population: priorityDistribution.alta || 0, color: theme.errorDark, legendFontColor: theme.text },
+    { name: 'Media', population: priorityDistribution.media || 0, color: theme.warning, legendFontColor: theme.text },
+    { name: 'Baja', population: priorityDistribution.baja || 0, color: theme.success, legendFontColor: theme.text },
   ].filter(d => d.population > 0), [priorityDistribution, theme.text]);
 
   const isDesktopLarge = width >= 1440;
@@ -674,9 +657,9 @@ export default function ReportsScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         <LinearGradient
-          colors={isDark ? ['#9F2241', '#7A1A33'] : ['#9F2241', '#BC2E52']}
+          colors={theme.gradientHeader}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 0.8 }}
           style={{ paddingTop: 52, paddingBottom: 20, paddingHorizontal: 20 }}
@@ -702,11 +685,14 @@ export default function ReportsScreen({ navigation }) {
 
   return (
     <View style={[styles.container, Platform.OS === 'web' && { minHeight: '100vh' }]}>
+      {/* Premium Ambient Orbs - Glasmorfismo */}
+      <AmbientOrbs intensity="medium" />
+      
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }, Platform.OS === 'web' && { width: '100%', paddingHorizontal: padding }]}>
         {/* Header Premium Compacto */}
         <Animated.View style={{ opacity: Platform.OS === 'web' ? 1 : headerOpacity, transform: Platform.OS === 'web' ? [] : [{ translateY: headerSlide }] }}>
           <LinearGradient
-            colors={isDark ? ['#9F2241', '#7A1A33'] : ['#9F2241', '#BC2E52']}
+            colors={theme.gradientHeader}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0.8 }}
             style={styles.headerGradientInner}
@@ -751,13 +737,13 @@ export default function ReportsScreen({ navigation }) {
           showsVerticalScrollIndicator={false}
         >
           {/* Period Selector - Tabs Premium */}
-          <View style={[styles.periodCard, { backgroundColor: theme.card, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+          <View style={[styles.periodCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
             <View style={styles.periodTabs}>
               {[
                 { key: 'week', label: '7D', fullLabel: 'Semana', icon: 'today-outline' },
                 { key: 'month', label: '30D', fullLabel: 'Mes', icon: 'calendar-outline' },
                 { key: 'quarter', label: '90D', fullLabel: 'Trimestre', icon: 'calendar' }
-              ].map((p, idx) => (
+              ].map((p, _idx) => (
                 <TouchableOpacity
                   key={p.key}
                   onPress={() => setPeriod(p.key)}
@@ -816,10 +802,10 @@ export default function ReportsScreen({ navigation }) {
               opacity: Platform.OS === 'web' ? 1 : emptyStateAnim,
               transform: Platform.OS === 'web' ? [] : [{ translateY: emptyStateSlide }]
             }}>
-              <SpringCard style={{ 
-                background: isDark 
-                  ? 'linear-gradient(135deg, rgba(79, 70, 229, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%)'
-                  : 'linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(168, 85, 247, 0.08) 100%)',
+              <SpringCard style={{
+                backgroundColor: isDark
+                  ? 'rgba(79, 70, 229, 0.10)'
+                  : 'rgba(99, 102, 241, 0.08)',
                 borderLeftWidth: 0,
                 overflow: 'hidden',
                 paddingVertical: 24,
@@ -871,7 +857,7 @@ export default function ReportsScreen({ navigation }) {
             transform: Platform.OS === 'web' ? [] : [{ translateY: statsSlide }]
           }}>
             {/* Tarjeta Principal de Resumen */}
-            <View style={[styles.summaryCard, { backgroundColor: theme.card, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
+            <View style={[styles.summaryCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
               <View style={styles.summaryHeader}>
                 <View style={styles.summaryLeft}>
                   <View style={[styles.summaryIconBg, { backgroundColor: theme.primary }]}>
@@ -885,11 +871,11 @@ export default function ReportsScreen({ navigation }) {
                     </View>
                   </View>
                 </View>
-                <View style={[styles.summaryTrend, { backgroundColor: currentStats.completionRate >= 50 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)' }]}>
-                  <Ionicons 
-                    name={currentStats.completionRate >= 50 ? "trending-up" : "trending-down"} 
-                    size={18} 
-                    color={currentStats.completionRate >= 50 ? '#10B981' : '#EF4444'} 
+                <View style={[styles.summaryTrend, { backgroundColor: currentStats.completionRate >= 50 ? theme.successAlpha : theme.errorAlpha }]}>
+                  <Ionicons
+                    name={currentStats.completionRate >= 50 ? "trending-up" : "trending-down"}
+                    size={18}
+                    color={currentStats.completionRate >= 50 ? theme.success : theme.error}
                   />
                 </View>
               </View>
@@ -903,31 +889,31 @@ export default function ReportsScreen({ navigation }) {
             {/* Grid de Métricas Compactas */}
             <View style={styles.metricsRow}>
               {/* Completadas */}
-              <View style={[styles.metricItem, { backgroundColor: theme.card, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
-                <View style={[styles.metricDot, { backgroundColor: '#10B981' }]} />
+              <View style={[styles.metricItem, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+                <View style={[styles.metricDot, { backgroundColor: theme.success }]} />
                 <Text style={[styles.metricNumber, { color: theme.text }]}>{currentStats.completed}</Text>
                 <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Listas</Text>
               </View>
 
               {/* En Progreso */}
-              <View style={[styles.metricItem, { backgroundColor: theme.card, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
-                <View style={[styles.metricDot, { backgroundColor: '#3B82F6' }]} />
+              <View style={[styles.metricItem, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+                <View style={[styles.metricDot, { backgroundColor: theme.info }]} />
                 <Text style={[styles.metricNumber, { color: theme.text }]}>{currentStats.inProgress}</Text>
                 <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Activas</Text>
               </View>
 
               {/* Pendientes */}
-              <View style={[styles.metricItem, { backgroundColor: theme.card, borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
-                <View style={[styles.metricDot, { backgroundColor: '#F59E0B' }]} />
+              <View style={[styles.metricItem, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+                <View style={[styles.metricDot, { backgroundColor: theme.warning }]} />
                 <Text style={[styles.metricNumber, { color: theme.text }]}>{currentStats.pending}</Text>
                 <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Espera</Text>
               </View>
 
               {/* Vencidas */}
-              <View style={[styles.metricItem, styles.metricItemAlert, { backgroundColor: currentStats.overdue > 0 ? 'rgba(239,68,68,0.08)' : theme.card, borderColor: currentStats.overdue > 0 ? 'rgba(239,68,68,0.3)' : isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)' }]}>
-                <View style={[styles.metricDot, { backgroundColor: '#EF4444' }]} />
-                <Text style={[styles.metricNumber, { color: currentStats.overdue > 0 ? '#EF4444' : theme.text }]}>{currentStats.overdue}</Text>
-                <Text style={[styles.metricLabel, { color: currentStats.overdue > 0 ? '#EF4444' : theme.textSecondary }]}>Vencidas</Text>
+              <View style={[styles.metricItem, styles.metricItemAlert, { backgroundColor: currentStats.overdue > 0 ? theme.errorAlpha : (isDark ? theme.glass : 'rgba(255,255,255,0.85)'), borderColor: currentStats.overdue > 0 ? theme.errorDark + '50' : (isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)') }]}>
+                <View style={[styles.metricDot, { backgroundColor: theme.error }]} />
+                <Text style={[styles.metricNumber, { color: currentStats.overdue > 0 ? theme.error : theme.text }]}>{currentStats.overdue}</Text>
+                <Text style={[styles.metricLabel, { color: currentStats.overdue > 0 ? theme.error : theme.textSecondary }]}>Vencidas</Text>
               </View>
             </View>
           </Animated.View>
@@ -998,7 +984,7 @@ export default function ReportsScreen({ navigation }) {
           {/* Botón: ver detalle de subtareas y gráficas históricas */}
           {(subtasksStats.completed > 0 || subtasksStats.pending > 0 || dailyCompletions.length > 0 || priorityChartData.length > 0) && (
             <TouchableOpacity
-              style={[styles.chartsButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+              style={[styles.chartsButton, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}
               onPress={() => setShowChartsModal(true)}
               activeOpacity={0.8}
             >
@@ -1022,10 +1008,10 @@ export default function ReportsScreen({ navigation }) {
           {/* Áreas que requieren atención */}
           {displayAlerts.length > 0 && (
             <View style={[styles.alertSection, { marginBottom: 16 }]}>
-              <View style={[styles.alertHeader, { backgroundColor: '#DC2626' + '15', borderColor: '#DC262640', borderWidth: 1, borderRadius: 12, padding: 12 }]}>
-                <Ionicons name="alert-circle" size={18} color="#DC2626" />
+              <View style={[styles.alertHeader, { backgroundColor: theme.errorAlpha, borderColor: theme.error + '40', borderWidth: 1, borderRadius: 12, padding: 12 }]}>
+                <Ionicons name="alert-circle" size={18} color={theme.error} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.alertTitle, { color: '#DC2626' }]}>
+                  <Text style={[styles.alertTitle, { color: theme.error }]}>
                     {displayAlerts.length} área{displayAlerts.length > 1 ? 's' : ''} requiere atención
                   </Text>
                   <Text style={[styles.alertSubtitle, { color: theme.textSecondary }]}>
@@ -1042,11 +1028,11 @@ export default function ReportsScreen({ navigation }) {
                 opacity: Platform.OS === 'web' ? 1 : hierarchyAnim,
                 transform: Platform.OS === 'web' ? [] : [{ translateY: hierarchySlide }]
               }}>
-                <View style={[styles.hierarchySectionWrapper, { backgroundColor: theme.card }]}>
+                <View style={[styles.hierarchySectionWrapper, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
                   {/* Header de sección */}
                   <View style={styles.hierarchySectionHeader}>
                     <LinearGradient
-                      colors={isDark ? ['#9F2241', '#691830'] : ['#9F2241', '#BE3356']}
+                      colors={theme.gradientHeader}
                       start={{ x: 0, y: 0 }}
                       end={{ x: 1, y: 1 }}
                       style={styles.hierarchySectionIcon}
@@ -1075,7 +1061,7 @@ export default function ReportsScreen({ navigation }) {
                         style={styles.hierarchyCardTouchable}
                       >
                         <LinearGradient
-                          colors={isDark ? ['#9F2241', '#691830'] : ['#9F2241', '#BE3356']}
+                          colors={theme.gradientHeader}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 1 }}
                           style={styles.hierarchyCardGradient}
@@ -1163,7 +1149,7 @@ export default function ReportsScreen({ navigation }) {
                         style={styles.hierarchyCardTouchable}
                       >
                         <LinearGradient
-                          colors={isDark ? ['#0EA5E9', '#0369A1'] : ['#0EA5E9', '#38BDF8']}
+                          colors={[theme.info, isDark ? theme.info + 'CC' : theme.info]}
                           start={{ x: 0, y: 0 }}
                           end={{ x: 1, y: 1 }}
                           style={styles.hierarchyCardGradient}
@@ -1394,7 +1380,7 @@ export default function ReportsScreen({ navigation }) {
                 <View style={styles.selectedAreaStats}>
                   <View style={styles.statBlock}>
                     <Text style={[styles.statBlockLabel, { color: theme.textSecondary }]}>Completadas</Text>
-                    <Text style={[styles.statBlockValue, { color: '#10B981' }]}>
+                    <Text style={[styles.statBlockValue, { color: theme.success }]}>
                       {displayAreaMetrics[selectedArea].completed}
                     </Text>
                   </View>
@@ -1406,7 +1392,7 @@ export default function ReportsScreen({ navigation }) {
                   </View>
                   <View style={styles.statBlock}>
                     <Text style={[styles.statBlockLabel, { color: theme.textSecondary }]}>Atrasadas</Text>
-                    <Text style={[styles.statBlockValue, { color: '#DC2626' }]}>
+                    <Text style={[styles.statBlockValue, { color: theme.error }]}>
                       {displayAreaMetrics[selectedArea].overdue || 0}
                     </Text>
                   </View>
@@ -1441,16 +1427,16 @@ export default function ReportsScreen({ navigation }) {
                 </View>
                 
                 <View style={styles.quickMetricsGrid}>
-                  {Object.entries(displayAreaMetrics).map(([area, metrics], index) => {
+                  {Object.entries(displayAreaMetrics).map(([area, metrics], _index) => {
                     const rate = metrics.total > 0 ? (metrics.completed / metrics.total) * 100 : 0;
-                    const statusColor = rate >= 75 ? '#10B981' : rate >= 50 ? '#F59E0B' : '#DC2626';
-                    const statusBg = rate >= 75 ? '#10B98115' : rate >= 50 ? '#F59E0B15' : '#DC262615';
+                    const statusColor = rate >= 75 ? theme.success : rate >= 50 ? theme.warning : theme.error;
+                    const statusBg = rate >= 75 ? theme.successAlpha : rate >= 50 ? theme.warningAlpha : theme.errorAlpha;
                     const statusIcon = rate >= 75 ? 'checkmark-circle' : rate >= 50 ? 'time' : 'alert-circle';
                     
                     return (
                       <TouchableOpacity 
                         key={area} 
-                        style={[styles.quickMetricCard, { backgroundColor: isDark ? theme.card : '#F8FAFC', borderColor: theme.border }]}
+                        style={[styles.quickMetricCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}
                         onPress={() => setSelectedArea(area)}
                         activeOpacity={0.7}
                       >
@@ -1497,7 +1483,7 @@ export default function ReportsScreen({ navigation }) {
                         {/* Indicador de vencidas si hay */}
                         {metrics.overdue > 0 && (
                           <View style={styles.quickMetricOverdueTag}>
-                            <Ionicons name="warning" size={10} color="#DC2626" />
+                            <Ionicons name="warning" size={10} color={theme.error} />
                             <Text style={styles.quickMetricOverdueText}>
                               {metrics.overdue} vencida{metrics.overdue > 1 ? 's' : ''}
                             </Text>
@@ -1537,11 +1523,11 @@ export default function ReportsScreen({ navigation }) {
                   </View>
                   <View style={{ flexDirection: 'row', gap: 10 }}>
                     {[
-                      { label: 'Completadas', value: subtasksStats.completed, color: '#10B981' },
-                      { label: 'Pendientes', value: subtasksStats.pending, color: '#F59E0B' },
+                      { label: 'Completadas', value: subtasksStats.completed, color: theme.success },
+                      { label: 'Pendientes', value: subtasksStats.pending, color: theme.warning },
                       { label: 'Completado', value: `${subtasksStats.completionRate}%`, color: theme.primary },
                     ].map(s => (
-                      <View key={s.label} style={{ flex: 1, backgroundColor: theme.background, borderRadius: 12, padding: 12, alignItems: 'center' }}>
+                      <View key={s.label} style={{ flex: 1, backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }}>
                         <Text style={{ fontSize: 22, fontWeight: '800', color: s.color }}>{s.value}</Text>
                         <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>{s.label}</Text>
                       </View>
@@ -1564,7 +1550,7 @@ export default function ReportsScreen({ navigation }) {
                         <Text style={{ fontSize: 13, fontWeight: '700', color: theme.primary }}>{tp.progress}%</Text>
                       </View>
                       <View style={{ height: 6, backgroundColor: theme.border, borderRadius: 3, overflow: 'hidden' }}>
-                        <View style={{ width: `${tp.progress}%`, height: '100%', backgroundColor: tp.progress === 100 ? '#10B981' : tp.progress >= 50 ? '#3B82F6' : '#F59E0B', borderRadius: 3 }} />
+                        <View style={{ width: `${tp.progress}%`, height: '100%', backgroundColor: tp.progress === 100 ? theme.success : tp.progress >= 50 ? theme.info : theme.warning, borderRadius: 3 }} />
                       </View>
                       <Text style={{ fontSize: 11, color: theme.textSecondary, marginTop: 2 }}>{tp.subtasksCompleted}/{tp.subtasksTotal} subtareas</Text>
                     </View>
@@ -1629,14 +1615,14 @@ export default function ReportsScreen({ navigation }) {
   );
 }
 
-const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge, width, padding) => {
+const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge, width, _padding) => {
   const responsiveHeaderPadding = isDesktopLarge ? 48 : isDesktop ? 32 : isTablet ? 24 : 16;
   const responsiveContentPadding = isDesktopLarge ? 48 : isDesktop ? 32 : isTablet ? 24 : 16;
 
   return StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: theme.background,
+      backgroundColor: 'transparent',
       alignItems: 'center',
     },
     contentWrapper: {
@@ -1701,7 +1687,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge, width,
     headerAlertBadge: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: '#EF4444',
+      backgroundColor: theme.error,
       paddingHorizontal: 10,
       paddingVertical: 5,
       borderRadius: 20,
@@ -1876,7 +1862,9 @@ const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge, width,
     // Legacy stat styles (for compatibility)
     stat: {
       width: isDesktop ? '23%' : '48%',
-      backgroundColor: theme.card,
+      backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+      borderWidth: 1,
+      borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
       padding: 16,
       borderRadius: 16,
       alignItems: 'center',
@@ -1903,7 +1891,9 @@ const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge, width,
       fontWeight: '600',
     },
     chartCard: {
-      backgroundColor: theme.card,
+      backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+      borderWidth: 1,
+      borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
       padding: 20,
       borderRadius: 16,
       marginBottom: 20,
@@ -2595,7 +2585,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge, width,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 4,
-      backgroundColor: '#DC262615',
+      backgroundColor: theme.errorAlpha,
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderRadius: 6,
@@ -2603,7 +2593,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge, width,
     quickMetricOverdueText: {
       fontSize: 10,
       fontWeight: '600',
-      color: '#DC2626',
+      color: theme.error,
     },
   });
 };

@@ -16,7 +16,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { toMs } from '../utils/dateUtils';
 
 const PRIORITY_LABEL = { alta: 'Alta', media: 'Media', baja: 'Baja' };
-const PRIORITY_COLOR = { alta: '#EF4444', media: '#F59E0B', baja: '#6B7280' };
 
 function formatTimeOverdue(diffHours) {
   const abs = Math.abs(diffHours);
@@ -38,6 +37,7 @@ function formatTimeLeft(diffHours) {
 
 export default function OverdueAlert({ tasks, currentUserEmail, role = 'director', onTaskPress }) {
   const { theme, isDark } = useTheme();
+  const getPriorityColor = (priority) => ({ alta: theme.error, media: theme.warning, baja: theme.textMuted }[priority] || theme.textMuted);
   const [modalVisible, setModalVisible] = useState(false);
   const [activeTab, setActiveTab] = useState('overdue'); // 'overdue' | 'urgent'
   const slideAnim = useRef(new Animated.Value(-60)).current;
@@ -79,7 +79,7 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
         Animated.timing(opacityAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
       ]).start();
     }
-  }, [total]);
+  }, [total, slideAnim, opacityAnim]);
 
   if (total === 0) return null;
 
@@ -94,8 +94,8 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
         style={[
           styles.banner,
           {
-            backgroundColor: isDark ? '#1F1F23' : '#FFF8F0',
-            borderColor: hasOverdue ? '#EF4444' : '#F59E0B',
+            backgroundColor: isDark ? theme.glass : theme.errorAlpha,
+            borderColor: hasOverdue ? theme.error : theme.warning,
             opacity: opacityAnim,
             transform: [{ translateY: slideAnim }],
           },
@@ -105,20 +105,20 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
           <Ionicons
             name={hasOverdue ? 'alert-circle' : 'time'}
             size={18}
-            color={hasOverdue ? '#EF4444' : '#F59E0B'}
+            color={hasOverdue ? theme.error : theme.warning}
           />
           {hasOverdue ? (
             <Text style={[styles.bannerText, { color: theme.text }]}>
-              <Text style={{ color: '#EF4444', fontWeight: '700' }}>{overdue.length} vencida{overdue.length !== 1 ? 's' : ''}</Text>
+              <Text style={{ color: theme.error, fontWeight: '700' }}>{overdue.length} vencida{overdue.length !== 1 ? 's' : ''}</Text>
               {hasUrgent ? <Text style={{ color: theme.textSecondary }}> · </Text> : null}
-              {hasUrgent ? <Text style={{ color: '#F59E0B', fontWeight: '700' }}>{urgent.length} urgente{urgent.length !== 1 ? 's' : ''}</Text> : null}
+              {hasUrgent ? <Text style={{ color: theme.warning, fontWeight: '700' }}>{urgent.length} urgente{urgent.length !== 1 ? 's' : ''}</Text> : null}
             </Text>
           ) : (
-            <Text style={[styles.bannerText, { color: '#F59E0B', fontWeight: '700' }]}>{urgent.length} tarea{urgent.length !== 1 ? 's' : ''} urgente{urgent.length !== 1 ? 's' : ''}</Text>
+            <Text style={[styles.bannerText, { color: theme.warning, fontWeight: '700' }]}>{urgent.length} tarea{urgent.length !== 1 ? 's' : ''} urgente{urgent.length !== 1 ? 's' : ''}</Text>
           )}
         </View>
         <TouchableOpacity
-          style={[styles.bannerBtn, { backgroundColor: hasOverdue ? '#EF4444' : '#F59E0B' }]}
+          style={[styles.bannerBtn, { backgroundColor: hasOverdue ? theme.error : theme.warning }, Platform.OS === 'web' && { cursor: 'pointer' }]}
           onPress={() => {
             setActiveTab(hasOverdue ? 'overdue' : 'urgent');
             setModalVisible(true);
@@ -137,11 +137,16 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
         onRequestClose={() => setModalVisible(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { backgroundColor: theme.card }]}>
+          <View style={[styles.modalSheet, {
+            backgroundColor: isDark ? 'rgba(15,10,25,0.96)' : 'rgba(255,255,255,0.97)',
+            borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+            borderWidth: 1,
+            borderBottomWidth: 0,
+          }]}>
             {/* Header */}
             <View style={styles.modalHeader}>
               <View style={styles.modalTitleRow}>
-                <Ionicons name="notifications-circle" size={26} color="#EF4444" style={{ marginRight: 10 }} />
+                <Ionicons name="notifications-circle" size={26} color={theme.error} style={{ marginRight: 10 }} />
                 <View>
                   <Text style={[styles.modalTitle, { color: theme.text }]}>Alertas de Tareas</Text>
                   <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
@@ -155,25 +160,25 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
             </View>
 
             {/* Tabs */}
-            <View style={[styles.tabs, { backgroundColor: isDark ? '#2C2C2E' : '#F3F4F6' }]}>
+            <View style={[styles.tabs, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}>
               {hasOverdue && (
                 <TouchableOpacity
-                  style={[styles.tab, activeTab === 'overdue' && { backgroundColor: '#EF4444' }]}
+                  style={[styles.tab, activeTab === 'overdue' && { backgroundColor: theme.error }]}
                   onPress={() => setActiveTab('overdue')}
                 >
-                  <Ionicons name="alert-circle" size={15} color={activeTab === 'overdue' ? '#FFF' : '#EF4444'} />
-                  <Text style={[styles.tabText, { color: activeTab === 'overdue' ? '#FFF' : '#EF4444' }]}>
+                  <Ionicons name="alert-circle" size={15} color={activeTab === 'overdue' ? '#FFF' : theme.error} />
+                  <Text style={[styles.tabText, { color: activeTab === 'overdue' ? '#FFF' : theme.error }]}>
                     Vencidas ({overdue.length})
                   </Text>
                 </TouchableOpacity>
               )}
               {hasUrgent && (
                 <TouchableOpacity
-                  style={[styles.tab, activeTab === 'urgent' && { backgroundColor: '#F59E0B' }]}
+                  style={[styles.tab, activeTab === 'urgent' && { backgroundColor: theme.warning }]}
                   onPress={() => setActiveTab('urgent')}
                 >
-                  <Ionicons name="timer" size={15} color={activeTab === 'urgent' ? '#FFF' : '#F59E0B'} />
-                  <Text style={[styles.tabText, { color: activeTab === 'urgent' ? '#FFF' : '#F59E0B' }]}>
+                  <Ionicons name="timer" size={15} color={activeTab === 'urgent' ? '#FFF' : theme.warning} />
+                  <Text style={[styles.tabText, { color: activeTab === 'urgent' ? '#FFF' : theme.warning }]}>
                     Urgentes ({urgent.length})
                   </Text>
                 </TouchableOpacity>
@@ -184,7 +189,7 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
             <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
               {displayList.map((task) => {
                 const isOverdueTask = activeTab === 'overdue';
-                const accentColor = isOverdueTask ? '#EF4444' : '#F59E0B';
+                const accentColor = isOverdueTask ? theme.error : theme.warning;
                 const timeLabel = isOverdueTask
                   ? formatTimeOverdue(task._diffHours)
                   : formatTimeLeft(task._diffHours);
@@ -196,7 +201,7 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
                 return (
                   <TouchableOpacity
                     key={task.id}
-                    style={[styles.taskCard, { backgroundColor: isDark ? '#2C2C2E' : '#FAFAFA', borderLeftColor: accentColor }]}
+                    style={[styles.taskCard, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderLeftColor: accentColor }]}
                     onPress={() => {
                       setModalVisible(false);
                       onTaskPress?.(task);
@@ -220,8 +225,8 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
                         ) : null}
                       </View>
                       <View style={styles.taskRight}>
-                        <View style={[styles.priorityBadge, { backgroundColor: `${PRIORITY_COLOR[priority]}20` }]}>
-                          <Text style={[styles.priorityText, { color: PRIORITY_COLOR[priority] }]}>
+                        <View style={[styles.priorityBadge, { backgroundColor: `${getPriorityColor(priority)}20` }]}>
+                          <Text style={[styles.priorityText, { color: getPriorityColor(priority) }]}>
                             {PRIORITY_LABEL[priority] || priority}
                           </Text>
                         </View>

@@ -1,7 +1,7 @@
 // screens/SecretarioDashboardScreen.js
 // Dashboard exclusivo para Secretarios con métricas de sus direcciones y directores
 
-import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View,
@@ -10,10 +10,10 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
   Dimensions,
   Alert,
   Modal,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -26,6 +26,7 @@ import ProgressBar from '../components/ProgressBar';
 import Avatar from '../components/Avatar';
 import ShimmerEffect from '../components/ShimmerEffect';
 import { toMs } from '../utils/dateUtils';
+import AmbientOrbs from '../components/AmbientOrbs';
 
 const { width } = Dimensions.get('window');
 
@@ -53,6 +54,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
 
   useEffect(() => {
     if (currentUser) loadInitialData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser?.email]);
 
   // Recalcular métricas cuando cambian las tareas del context o los directores
@@ -82,6 +84,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
 
     setTasks(areaTasks);
     calculateMetrics(areaTasks, directors);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contextTasks, directors, currentUser?.email]);
 
   const loadInitialData = async () => {
@@ -212,6 +215,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
     setRefreshing(true);
     await loadInitialData();
     setRefreshing(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Pre-compute per-direction task data to avoid repeated filter() in render
@@ -233,16 +237,16 @@ export default function SecretarioDashboardScreen({ navigation }) {
   }, [tasks, currentUser]);
 
   const getCompletionColor = (rate) => {
-    if (rate >= 80) return '#34C759';
-    if (rate >= 50) return '#FF9500';
-    return '#FF3B30';
+    if (rate >= 80) return theme.success;
+    if (rate >= 50) return theme.warning;
+    return theme.error;
   };
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         <LinearGradient
-          colors={isDark ? ['#2A1520', '#1A1A1A'] : ['#9F2241', '#7F1D35']}
+          colors={theme.gradientHeader}
           style={[styles.header, { justifyContent: 'flex-end', paddingBottom: 20 }]}
         >
           <ShimmerEffect width={200} height={20} borderRadius={8} style={{ marginBottom: 8 }} />
@@ -266,7 +270,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
 
   if (loadError) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: 32 }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', padding: 32 }]}>
         <Ionicons name="cloud-offline-outline" size={56} color={theme.textSecondary} />
         <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text, marginTop: 16, textAlign: 'center' }}>
           Error al cargar
@@ -288,11 +292,16 @@ export default function SecretarioDashboardScreen({ navigation }) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+      {/* Premium Ambient Orbs - Glasmorfismo */}
+      <AmbientOrbs intensity="medium" />
+      
       {/* Header */}
       <LinearGradient
-        colors={isDark ? ['#2A1520', '#1A1A1A'] : ['#9F2241', '#7F1D35']}
-        style={styles.header}
+        colors={theme.gradientHeader}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={[styles.header, { shadowColor: theme.primary }]}
       >
         <View style={styles.headerContent}>
           <View>
@@ -301,7 +310,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
             <Text style={styles.headerSubtitle}>{currentUser?.area || 'Sin área asignada'}</Text>
           </View>
           <TouchableOpacity
-            style={styles.refreshButton}
+            style={[styles.refreshButton, Platform.OS === 'web' && { cursor: 'pointer' }]}
             onPress={onRefresh}
             accessibilityLabel="Actualizar"
             accessibilityRole="button"
@@ -319,40 +328,40 @@ export default function SecretarioDashboardScreen({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         {/* Resumen General */}
-        <View style={[styles.section, { backgroundColor: theme.card }]}>
+        <View style={[styles.section, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle, shadowColor: theme.glassShadow, shadowOpacity: isDark ? 0.20 : 0.06 }]}>
           <View style={styles.sectionHeader}>
             <Ionicons name="stats-chart" size={20} color={theme.primary} />
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Resumen General</Text>
           </View>
           
           <View style={styles.statsGrid}>
-            <View style={[styles.statCard, { backgroundColor: isDark ? '#2A2A30' : '#F0F9FF' }]}>
-              <View style={[styles.statIcon, { backgroundColor: '#3B82F620' }]}>
-                <Ionicons name="document-text" size={20} color="#3B82F6" />
+            <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(59,130,246,0.10)' : 'rgba(59,130,246,0.06)' }]}>
+              <View style={[styles.statIcon, { backgroundColor: theme.infoAlpha }]}>
+                <Ionicons name="document-text" size={20} color={theme.info} />
               </View>
               <Text style={[styles.statValue, { color: theme.text }]}>{metrics.totalTasks}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total</Text>
             </View>
             
-            <View style={[styles.statCard, { backgroundColor: isDark ? '#2A2A30' : '#FEF3C7' }]}>
-              <View style={[styles.statIcon, { backgroundColor: '#F5920020' }]}>
-                <Ionicons name="time" size={20} color="#F59E0B" />
+            <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(245,158,11,0.10)' : 'rgba(245,158,11,0.06)' }]}>
+              <View style={[styles.statIcon, { backgroundColor: theme.warningAlpha }]}>
+                <Ionicons name="time" size={20} color={theme.warning} />
               </View>
               <Text style={[styles.statValue, { color: theme.text }]}>{metrics.pendingTasks}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Pendientes</Text>
             </View>
             
-            <View style={[styles.statCard, { backgroundColor: isDark ? '#2A2A30' : '#ECFDF5' }]}>
-              <View style={[styles.statIcon, { backgroundColor: '#34C75920' }]}>
-                <Ionicons name="checkmark-circle" size={20} color="#34C759" />
+            <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(16,185,129,0.10)' : 'rgba(16,185,129,0.06)' }]}>
+              <View style={[styles.statIcon, { backgroundColor: theme.successAlpha }]}>
+                <Ionicons name="checkmark-circle" size={20} color={theme.success} />
               </View>
               <Text style={[styles.statValue, { color: theme.text }]}>{metrics.completedTasks}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Completadas</Text>
             </View>
             
-            <View style={[styles.statCard, { backgroundColor: isDark ? '#2A2A30' : '#FEF2F2' }]}>
-              <View style={[styles.statIcon, { backgroundColor: '#EF444420' }]}>
-                <Ionicons name="alert-circle" size={20} color="#EF4444" />
+            <View style={[styles.statCard, { backgroundColor: isDark ? 'rgba(239,68,68,0.10)' : 'rgba(239,68,68,0.06)' }]}>
+              <View style={[styles.statIcon, { backgroundColor: theme.errorAlpha }]}>
+                <Ionicons name="alert-circle" size={20} color={theme.error} />
               </View>
               <Text style={[styles.statValue, { color: theme.text }]}>{metrics.overdueTasks}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Vencidas</Text>
@@ -379,20 +388,20 @@ export default function SecretarioDashboardScreen({ navigation }) {
 
         {/* Tareas de Coordinación */}
         {metrics.coordinationTasks > 0 && (
-          <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <View style={[styles.section, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle, shadowColor: theme.glassShadow, shadowOpacity: isDark ? 0.20 : 0.06 }]}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="git-branch" size={20} color="#9C27B0" />
+              <Ionicons name="git-branch" size={20} color={theme.secondary} />
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Tareas de Coordinación</Text>
               {metrics.coordinationPending > 0 && (
-                <View style={[styles.badge, { backgroundColor: '#9C27B0' }]}>
+                <View style={[styles.badge, { backgroundColor: theme.secondary }]}>
                   <Text style={styles.badgeText}>{metrics.coordinationPending}</Text>
                 </View>
               )}
             </View>
-            
-            <View style={[styles.coordinationCard, { backgroundColor: isDark ? '#2A2A30' : '#F3E5F5' }]}>
+
+            <View style={[styles.coordinationCard, { backgroundColor: theme.primaryAlpha }]}>
               <View style={styles.coordinationInfo}>
-                <Text style={[styles.coordinationValue, { color: '#9C27B0' }]}>
+                <Text style={[styles.coordinationValue, { color: theme.secondary }]}>
                   {metrics.coordinationTasks}
                 </Text>
                 <Text style={[styles.coordinationLabel, { color: theme.textSecondary }]}>
@@ -401,34 +410,34 @@ export default function SecretarioDashboardScreen({ navigation }) {
               </View>
               <View style={styles.coordinationStats}>
                 <View style={styles.coordinationStat}>
-                  <Ionicons name="hourglass" size={16} color="#FF9500" />
+                  <Ionicons name="hourglass" size={16} color={theme.warning} />
                   <Text style={[styles.coordinationStatText, { color: theme.text }]}>
                     {metrics.coordinationPending} pendientes
                   </Text>
                 </View>
                 <View style={styles.coordinationStat}>
-                  <Ionicons name="checkmark" size={16} color="#34C759" />
+                  <Ionicons name="checkmark" size={16} color={theme.success} />
                   <Text style={[styles.coordinationStatText, { color: theme.text }]}>
                     {metrics.coordinationTasks - metrics.coordinationPending} completadas
                   </Text>
                 </View>
               </View>
             </View>
-            
-            <TouchableOpacity 
-              style={[styles.viewAllButton, { borderColor: '#9C27B0' }]}
+
+            <TouchableOpacity
+              style={[styles.viewAllButton, { borderColor: theme.secondary }]}
               onPress={() => navigation.navigate('Home', { filter: 'coordination' })}
             >
-              <Text style={[styles.viewAllText, { color: '#9C27B0' }]}>
+              <Text style={[styles.viewAllText, { color: theme.secondary }]}>
                 Ver tareas de coordinación
               </Text>
-              <Ionicons name="arrow-forward" size={16} color="#9C27B0" />
+              <Ionicons name="arrow-forward" size={16} color={theme.secondary} />
             </TouchableOpacity>
           </View>
         )}
 
         {/* Resumen del Área - Solo métricas generales, sin exponer compañeros */}
-        <View style={[styles.section, { backgroundColor: theme.card }]}>
+        <View style={[styles.section, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle, shadowColor: theme.glassShadow, shadowOpacity: isDark ? 0.20 : 0.06 }]}>
           <View style={styles.sectionHeader}>
             <Ionicons name="analytics" size={20} color={theme.primary} />
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Resumen General del Área</Text>
@@ -442,18 +451,18 @@ export default function SecretarioDashboardScreen({ navigation }) {
                 <Text style={[styles.areaSummaryLabel, { color: theme.textSecondary }]}>Total Tareas</Text>
               </View>
               <View style={styles.areaSummaryStat}>
-                <Ionicons name="checkmark-circle" size={24} color="#34C759" />
-                <Text style={[styles.areaSummaryValue, { color: '#34C759' }]}>{metrics.completedTasks}</Text>
+                <Ionicons name="checkmark-circle" size={24} color={theme.success} />
+                <Text style={[styles.areaSummaryValue, { color: theme.success }]}>{metrics.completedTasks}</Text>
                 <Text style={[styles.areaSummaryLabel, { color: theme.textSecondary }]}>Completadas</Text>
               </View>
               <View style={styles.areaSummaryStat}>
-                <Ionicons name="time" size={24} color="#FF9500" />
-                <Text style={[styles.areaSummaryValue, { color: '#FF9500' }]}>{metrics.pendingTasks}</Text>
+                <Ionicons name="time" size={24} color={theme.warning} />
+                <Text style={[styles.areaSummaryValue, { color: theme.warning }]}>{metrics.pendingTasks}</Text>
                 <Text style={[styles.areaSummaryLabel, { color: theme.textSecondary }]}>Pendientes</Text>
               </View>
               <View style={styles.areaSummaryStat}>
-                <Ionicons name="alert-circle" size={24} color="#EF4444" />
-                <Text style={[styles.areaSummaryValue, { color: '#EF4444' }]}>{metrics.overdueTasks}</Text>
+                <Ionicons name="alert-circle" size={24} color={theme.error} />
+                <Text style={[styles.areaSummaryValue, { color: theme.error }]}>{metrics.overdueTasks}</Text>
                 <Text style={[styles.areaSummaryLabel, { color: theme.textSecondary }]}>Vencidas</Text>
               </View>
             </View>
@@ -476,9 +485,9 @@ export default function SecretarioDashboardScreen({ navigation }) {
         </View>
 
         {/* Tareas Pendientes por Dirección */}
-        <View style={[styles.section, { backgroundColor: theme.card }]}>
+        <View style={[styles.section, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle, shadowColor: theme.glassShadow, shadowOpacity: isDark ? 0.20 : 0.06 }]}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="folder-open" size={20} color="#F59E0B" />
+            <Ionicons name="folder-open" size={20} color={theme.warning} />
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Tareas Pendientes por Dirección</Text>
           </View>
           
@@ -489,11 +498,11 @@ export default function SecretarioDashboardScreen({ navigation }) {
               return (
                 <TouchableOpacity 
                   key={index}
-                  style={[styles.directionCard, { backgroundColor: isDark ? '#2A2A30' : '#FFFBEB' }]}
+                  style={[styles.directionCard, { backgroundColor: isDark ? 'rgba(245,158,11,0.10)' : 'rgba(245,158,11,0.06)' }]}
                   onPress={() => navigation.navigate('Home', { filterArea: direccion })}
                 >
                   <View style={styles.directionIcon}>
-                    <Ionicons name="business" size={20} color="#F59E0B" />
+                    <Ionicons name="business" size={20} color={theme.warning} />
                   </View>
                   <View style={styles.directionInfo}>
                     <Text style={[styles.directionName, { color: theme.text }]} numberOfLines={1}>
@@ -502,7 +511,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
                     <Text style={[styles.directionStats, { color: theme.textSecondary }]}>
                       {directionTasks.length} pendientes
                       {overdue.length > 0 && (
-                        <Text style={{ color: '#EF4444' }}> • {overdue.length} vencidas</Text>
+                        <Text style={{ color: theme.error }}> • {overdue.length} vencidas</Text>
                       )}
                     </Text>
                   </View>
@@ -522,11 +531,11 @@ export default function SecretarioDashboardScreen({ navigation }) {
 
         {/* Directores Adscritos */}
         {directorMetrics.length > 0 && (
-          <View style={[styles.section, { backgroundColor: theme.card }]}>
+          <View style={[styles.section, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle, shadowColor: theme.glassShadow, shadowOpacity: isDark ? 0.20 : 0.06 }]}>
             <View style={styles.sectionHeader}>
-              <Ionicons name="people" size={20} color="#8B5CF6" />
+              <Ionicons name="people" size={20} color={theme.secondary} />
               <Text style={[styles.sectionTitle, { color: theme.text }]}>Directores Adscritos</Text>
-              <View style={[styles.badge, { backgroundColor: '#8B5CF6' }]}>
+              <View style={[styles.badge, { backgroundColor: theme.secondary }]}>
                 <Text style={styles.badgeText}>{directorMetrics.length}</Text>
               </View>
             </View>
@@ -534,7 +543,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
             {directorMetrics.map((director) => (
               <View
                 key={director.id}
-                style={[styles.directorCard, { backgroundColor: isDark ? '#2A2A30' : '#F8F7FF', borderColor: isDark ? '#3A3A45' : '#E5E7EB' }]}
+                style={[styles.directorCard, { backgroundColor: theme.glass, borderColor: theme.glassBorder }]}
               >
                 {/* Cabecera: avatar + nombre + badge cumplimiento */}
                 <View style={styles.directorHeader}>
@@ -561,15 +570,15 @@ export default function SecretarioDashboardScreen({ navigation }) {
                     <Text style={[styles.directorStatLabel, { color: theme.textSecondary }]}>Total</Text>
                   </View>
                   <View style={styles.directorStat}>
-                    <Text style={[styles.directorStatValue, { color: '#F59E0B' }]}>{director.areaPendingTasks}</Text>
+                    <Text style={[styles.directorStatValue, { color: theme.warning }]}>{director.areaPendingTasks}</Text>
                     <Text style={[styles.directorStatLabel, { color: theme.textSecondary }]}>Pendientes</Text>
                   </View>
                   <View style={styles.directorStat}>
-                    <Text style={[styles.directorStatValue, { color: '#EF4444' }]}>{director.areaOverdueTasks}</Text>
+                    <Text style={[styles.directorStatValue, { color: theme.error }]}>{director.areaOverdueTasks}</Text>
                     <Text style={[styles.directorStatLabel, { color: theme.textSecondary }]}>Vencidas</Text>
                   </View>
                   <View style={styles.directorStat}>
-                    <Text style={[styles.directorStatValue, { color: '#34C759' }]}>{director.areaCompletedTasks}</Text>
+                    <Text style={[styles.directorStatValue, { color: theme.success }]}>{director.areaCompletedTasks}</Text>
                     <Text style={[styles.directorStatLabel, { color: theme.textSecondary }]}>Completadas</Text>
                   </View>
                 </View>
@@ -591,11 +600,11 @@ export default function SecretarioDashboardScreen({ navigation }) {
                     <Text style={[styles.directorActionText, { color: theme.textSecondary }]}>Ver tareas</Text>
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.directorActionBtn, { borderColor: '#3B82F6', backgroundColor: '#3B82F620' }]}
+                    style={[styles.directorActionBtn, { borderColor: theme.info, backgroundColor: theme.infoAlpha }]}
                     onPress={() => setSelectedDirector(director)}
                   >
-                    <Ionicons name="chatbubble-outline" size={15} color="#3B82F6" />
-                    <Text style={[styles.directorActionText, { color: '#3B82F6' }]}>Mensajear</Text>
+                    <Ionicons name="chatbubble-outline" size={15} color={theme.info} />
+                    <Text style={[styles.directorActionText, { color: theme.info }]}>Mensajear</Text>
                   </TouchableOpacity>
                 </View>
               </View>
@@ -604,7 +613,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
         )}
 
         {/* Acciones Rápidas */}
-        <View style={[styles.section, { backgroundColor: theme.card }]}>
+        <View style={[styles.section, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle, shadowColor: theme.glassShadow, shadowOpacity: isDark ? 0.20 : 0.06 }]}>
           <View style={styles.sectionHeader}>
             <Ionicons name="flash" size={20} color={theme.primary} />
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Acciones Rápidas</Text>
@@ -612,7 +621,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
           
           <View style={styles.actionsGrid}>
             <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: '#6B728020' }]}
+              style={[styles.actionButton, { backgroundColor: theme.glass }]}
               onPress={() => {
                 Alert.alert(
                   'Acción no permitida',
@@ -621,31 +630,31 @@ export default function SecretarioDashboardScreen({ navigation }) {
                 );
               }}
             >
-              <Ionicons name="lock-closed" size={28} color="#6B7280" />
-              <Text style={[styles.actionText, { color: '#6B7280' }]}>Nueva Tarea (Bloqueado)</Text>
+              <Ionicons name="lock-closed" size={28} color={theme.textSecondary} />
+              <Text style={[styles.actionText, { color: theme.textSecondary }]}>Nueva Tarea (Bloqueado)</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: '#3B82F620' }]}
+              style={[styles.actionButton, { backgroundColor: theme.infoAlpha }]}
               onPress={() => navigation.navigate('MyAreaReports')}
             >
-              <Ionicons name="document-text" size={28} color="#3B82F6" />
+              <Ionicons name="document-text" size={28} color={theme.info} />
               <Text style={[styles.actionText, { color: theme.text }]}>Ver Reportes</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: '#34C75920' }]}
+              style={[styles.actionButton, { backgroundColor: theme.successAlpha }]}
               onPress={() => navigation.navigate('Kanban')}
             >
-              <Ionicons name="apps" size={28} color="#34C759" />
+              <Ionicons name="apps" size={28} color={theme.success} />
               <Text style={[styles.actionText, { color: theme.text }]}>Tablero</Text>
             </TouchableOpacity>
             
             <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: '#F59E0B20' }]}
+              style={[styles.actionButton, { backgroundColor: theme.warningAlpha }]}
               onPress={() => navigation.navigate('Calendar')}
             >
-              <Ionicons name="calendar" size={28} color="#F59E0B" />
+              <Ionicons name="calendar" size={28} color={theme.warning} />
               <Text style={[styles.actionText, { color: theme.text }]}>Calendario</Text>
             </TouchableOpacity>
           </View>
@@ -662,7 +671,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
         onRequestClose={() => setSelectedDirector(null)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle, shadowColor: theme.glassShadow, shadowOpacity: isDark ? 0.20 : 0.06 }]}>
             <View style={styles.modalHeader}>
               <View style={{ flex: 1 }}>
                 <Text style={[styles.modalTitle, { color: theme.text }]} numberOfLines={1}>
@@ -697,20 +706,20 @@ export default function SecretarioDashboardScreen({ navigation }) {
                     }}
                   >
                     <View style={[styles.taskStatusIcon, {
-                      backgroundColor: task.status === 'en_proceso' ? '#3B82F620'
-                        : task.status === 'en_revision' ? '#9C27B020' : '#F59E0B20'
+                      backgroundColor: task.status === 'en_proceso' ? theme.infoAlpha
+                        : task.status === 'en_revision' ? theme.primaryAlpha : theme.warningAlpha
                     }]}>
                       <Ionicons
                         name={task.status === 'en_proceso' ? 'play-circle' : task.status === 'en_revision' ? 'eye' : 'time'}
                         size={16}
-                        color={task.status === 'en_proceso' ? '#3B82F6' : task.status === 'en_revision' ? '#9C27B0' : '#F59E0B'}
+                        color={task.status === 'en_proceso' ? theme.info : task.status === 'en_revision' ? theme.secondary : theme.warning}
                       />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={[styles.taskRowTitle, { color: theme.text }]} numberOfLines={1}>{task.title}</Text>
                       <Text style={[styles.taskRowArea, { color: theme.textSecondary }]} numberOfLines={1}>{task.area || 'Sin área'}</Text>
                     </View>
-                    <Ionicons name="chatbubble-outline" size={18} color="#3B82F6" />
+                    <Ionicons name="chatbubble-outline" size={18} color={theme.info} />
                   </TouchableOpacity>
                 ))}
 
@@ -748,8 +757,15 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: 50,
-    paddingBottom: 20,
+    paddingBottom: 28,
     paddingHorizontal: 20,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 12,
+    overflow: 'hidden',
   },
   headerContent: {
     flexDirection: 'row',
@@ -757,43 +773,61 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   greeting: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.72)',
     marginBottom: 4,
+    fontWeight: '500',
+    letterSpacing: 0.3,
   },
   headerTitle: {
-    fontSize: 24,
-    fontWeight: '700',
+    fontSize: 30,
+    fontWeight: '800',
     color: '#FFFFFF',
+    letterSpacing: -0.5,
+    textShadowColor: 'rgba(0,0,0,0.20)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   headerSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.7)',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.72)',
     marginTop: 4,
+    fontWeight: '500',
   },
   refreshButton: {
-    padding: 8,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.20)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   scrollContent: {
     padding: 16,
+    paddingTop: 20,
   },
   section: {
-    borderRadius: 16,
+    borderRadius: 20,
     padding: 16,
     marginBottom: 16,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 3 },
+    shadowRadius: 10,
+    elevation: 3,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 16,
-    gap: 8,
+    gap: 10,
   },
   sectionTitle: {
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: '700',
     flex: 1,
+    letterSpacing: -0.3,
   },
   badge: {
     paddingHorizontal: 8,

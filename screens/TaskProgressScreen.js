@@ -5,13 +5,13 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   Animated,
   Dimensions,
   SafeAreaView,
   RefreshControl,
-  Alert
+  Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,13 +19,13 @@ import { subscribeToTaskProgress } from '../services/taskProgress';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
 import ProgressBar from '../components/ProgressBar';
-import LoadingIndicator from '../components/LoadingIndicator';
 import ShimmerEffect from '../components/ShimmerEffect';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
 import { toMs } from '../utils/dateUtils';
+import AmbientOrbs from '../components/AmbientOrbs';
 
-const { width } = Dimensions.get('window');
+Dimensions.get('window');
 
 export default function TaskProgressScreen({ route, navigation }) {
   const { taskId, task } = route.params;
@@ -65,7 +65,7 @@ export default function TaskProgressScreen({ route, navigation }) {
     });
 
     return () => unsubscribe();
-  }, [taskId]);
+  }, [taskId, fadeAnim, slideAnim]);
 
   const onRefresh = () => {
     setRefreshing(true);
@@ -81,7 +81,7 @@ export default function TaskProgressScreen({ route, navigation }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]}>
         {/* Header bar shimmer */}
         <ShimmerEffect width="100%" height={56} borderRadius={0} />
         <View style={{ flex: 1, padding: 16 }}>
@@ -102,7 +102,7 @@ export default function TaskProgressScreen({ route, navigation }) {
 
   if (!progressData) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         <View style={styles.emptyContainer}>
           <Ionicons name="alert-circle" size={64} color={theme.textSecondary} />
           <Text style={[styles.emptyText, { color: theme.text }]}>
@@ -116,34 +116,35 @@ export default function TaskProgressScreen({ route, navigation }) {
   const { overallProgress, progressByAssignee, subtaskStats, isComplete } = progressData;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+    <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]}>
+      <AmbientOrbs intensity="medium" />
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       {/* Header */}
-      <View style={[styles.headerBar, { backgroundColor: theme.primary }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton} accessibilityLabel="Volver" accessibilityRole="button">
+      <LinearGradient colors={theme.gradientHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.headerBar, { shadowColor: theme.primary }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.closeButton, Platform.OS === 'web' && { cursor: 'pointer' }]} accessibilityLabel="Volver" accessibilityRole="button">
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <View style={styles.headerTitleContainer}>
           <Ionicons name="trending-up" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
           <Text style={styles.headerTitle}>Progreso de Tarea</Text>
         </View>
-        <TouchableOpacity onPress={onRefresh} style={styles.headerButton} accessibilityLabel="Actualizar" accessibilityRole="button">
+        <TouchableOpacity onPress={onRefresh} style={[styles.headerButton, Platform.OS === 'web' && { cursor: 'pointer' }]} accessibilityLabel="Actualizar" accessibilityRole="button">
           <Ionicons name="refresh" size={20} color="#FFFFFF" />
         </TouchableOpacity>
         {currentUser && (currentUser.role === 'admin') && (
-          <TouchableOpacity onPress={handleEdit} style={styles.headerButton} accessibilityLabel="Editar tarea" accessibilityRole="button">
+          <TouchableOpacity onPress={handleEdit} style={[styles.headerButton, Platform.OS === 'web' && { cursor: 'pointer' }]} accessibilityLabel="Editar tarea" accessibilityRole="button">
             <Ionicons name="pencil" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         )}
         <TouchableOpacity
           onPress={() => navigation.navigate('TaskReportsAndActivity', { taskId, taskTitle: progressData?.titulo })}
-          style={styles.headerButton}
+          style={[styles.headerButton, Platform.OS === 'web' && { cursor: 'pointer' }]}
           accessibilityLabel="Ver reportes"
           accessibilityRole="button"
         >
           <Ionicons name="document-text" size={20} color="#FFFFFF" />
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       <Animated.ScrollView
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
@@ -158,13 +159,13 @@ export default function TaskProgressScreen({ route, navigation }) {
         showsVerticalScrollIndicator={false}
       >
         {/* CARD PROGRESO GENERAL */}
-        <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
+        <View style={[styles.card, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
           <View style={styles.cardHeader}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Progreso General</Text>
             {isComplete && (
-              <View style={styles.completionBadge}>
-                <Ionicons name="checkmark-circle" size={16} color="#10B981" />
-                <Text style={styles.completionBadgeText}>Completada</Text>
+              <View style={[styles.completionBadge, { backgroundColor: theme.successAlpha }]}>
+                <Ionicons name="checkmark-circle" size={16} color={theme.success} />
+                <Text style={[styles.completionBadgeText, { color: theme.success }]}>Completada</Text>
               </View>
             )}
           </View>
@@ -180,7 +181,7 @@ export default function TaskProgressScreen({ route, navigation }) {
 
           <View style={[styles.statsGrid, { marginTop: 20 }]}>
             <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: '#10B981' }]}>
+              <Text style={[styles.statNumber, { color: theme.success }]}>
                 {subtaskStats.completada}
               </Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
@@ -188,7 +189,7 @@ export default function TaskProgressScreen({ route, navigation }) {
               </Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: '#F59E0B' }]}>
+              <Text style={[styles.statNumber, { color: theme.warning }]}>
                 {subtaskStats.en_proceso}
               </Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
@@ -196,7 +197,7 @@ export default function TaskProgressScreen({ route, navigation }) {
               </Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={[styles.statNumber, { color: '#EF4444' }]}>
+              <Text style={[styles.statNumber, { color: theme.error }]}>
                 {subtaskStats.pendiente}
               </Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
@@ -215,7 +216,7 @@ export default function TaskProgressScreen({ route, navigation }) {
         </View>
 
         {/* CARD PROGRESO POR ASIGNADO */}
-        <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
+        <View style={[styles.card, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
           <Text style={[styles.cardTitle, { color: theme.text, marginBottom: 16 }]}>
             Progreso por Asignado
           </Text>
@@ -243,10 +244,10 @@ export default function TaskProgressScreen({ route, navigation }) {
                       {
                         backgroundColor:
                           progress.status === 'completada'
-                            ? '#D1FAE5'
+                            ? theme.successAlpha
                             : progress.status === 'en-progreso'
-                            ? '#FEF3C7'
-                            : '#FEE2E2'
+                            ? theme.warningAlpha
+                            : theme.errorAlpha
                       }
                     ]}
                   >
@@ -256,10 +257,10 @@ export default function TaskProgressScreen({ route, navigation }) {
                         {
                           color:
                             progress.status === 'completada'
-                              ? '#047857'
+                              ? theme.success
                               : progress.status === 'en-progreso'
-                              ? '#92400E'
-                              : '#991B1B'
+                              ? theme.warning
+                              : theme.error
                         }
                       ]}
                     >
@@ -288,7 +289,7 @@ export default function TaskProgressScreen({ route, navigation }) {
 
         {/* CARD SUBTAREAS */}
         {progressData.subtasks && progressData.subtasks.length > 0 && (
-          <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
+          <View style={[styles.card, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="checklist" size={20} color={theme.primary} />
               <Text style={[styles.cardTitle, { color: theme.text, marginLeft: 8, flex: 1 }]}>
@@ -305,11 +306,11 @@ export default function TaskProgressScreen({ route, navigation }) {
               progress={progressData.overallProgress}
               size="small"
               showLabel={true}
-              color={progressData.isComplete ? '#34C759' : theme.primary}
+              color={progressData.isComplete ? theme.success : theme.primary}
             />
 
             <View style={styles.subtasksList}>
-              {progressData.subtasks.map((subtask, index) => {
+              {progressData.subtasks.map((subtask, _index) => {
                 const isExpanded = expandedSubtask === subtask.id;
                 const isCompleted = subtask.status === 'completada';
                 
@@ -320,8 +321,8 @@ export default function TaskProgressScreen({ route, navigation }) {
                     style={[
                       styles.subtaskItem,
                       {
-                        borderColor: isCompleted ? '#10B981' : theme.border,
-                        backgroundColor: isCompleted ? '#F0FDF4' : isDark ? '#2a2a2e' : '#f5f5f7',
+                        borderColor: isCompleted ? theme.success : theme.border,
+                        backgroundColor: isCompleted ? theme.successAlpha : (isDark ? theme.glass : theme.glassStrong),
                         paddingBottom: isExpanded ? 16 : 12,
                       }
                     ]}
@@ -331,7 +332,7 @@ export default function TaskProgressScreen({ route, navigation }) {
                     <View style={styles.subtaskHeader}>
                       <View style={styles.subtaskStatus}>
                         {isCompleted ? (
-                          <Ionicons name="checkmark-circle" size={24} color="#34C759" />
+                          <Ionicons name="checkmark-circle" size={24} color={theme.success} />
                         ) : (
                           <Ionicons name="radio-button-off" size={24} color={theme.textSecondary} />
                         )}
@@ -376,7 +377,7 @@ export default function TaskProgressScreen({ route, navigation }) {
                           </Text>
                         )}
                         {isCompleted && subtask.completedAt && (
-                          <Text style={[styles.subtaskTimestamp, { color: '#34C759' }]}>
+                          <Text style={[styles.subtaskTimestamp, { color: theme.success }]}>
                             ✓ Completada: {new Date(toMs(subtask.completedAt)).toLocaleDateString()}
                           </Text>
                         )}
@@ -391,7 +392,7 @@ export default function TaskProgressScreen({ route, navigation }) {
 
         {/* TIMELINE DE ACTIVIDADES */}
         {progressData.lastActivity && (
-          <View style={[styles.card, { backgroundColor: theme.cardBackground }]}>
+          <View style={[styles.card, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="time" size={20} color={theme.primary} />
               <Text style={[styles.cardTitle, { color: theme.text, marginLeft: 8 }]}>
@@ -437,29 +438,33 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 16,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    shadowColor: '#9F2241',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6
+    paddingTop: 48,
+    paddingBottom: 20,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 12,
+    overflow: 'hidden',
   },
   closeButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.20)',
     justifyContent: 'center',
     alignItems: 'center'
   },
   headerButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.3)',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.20)',
     justifyContent: 'center',
     alignItems: 'center'
   },
@@ -493,7 +498,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12
+    marginBottom: 12,
+    gap: 8,
   },
   cardTitle: {
     fontSize: 16,
@@ -503,7 +509,6 @@ const styles = StyleSheet.create({
   completionBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#D1FAE5',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
@@ -512,7 +517,6 @@ const styles = StyleSheet.create({
   completionBadgeText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#047857'
   },
   spacer: {
     height: 16
@@ -553,7 +557,6 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#9F2241',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12
@@ -633,12 +636,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
   },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    gap: 8,
-  },
   progressBadge: {
     paddingHorizontal: 10,
     paddingVertical: 6,
@@ -652,14 +649,6 @@ const styles = StyleSheet.create({
   subtaskBullet: {
     marginRight: 12,
     paddingTop: 2
-  },
-  subtaskTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 4
-  },
-  subtaskMeta: {
-    fontSize: 12
   },
   activityItem: {
     flexDirection: 'row',

@@ -2,7 +2,7 @@
 // Servicio para enviar notificaciones por email
 // Requiere configurar SendGrid API Key en variables de entorno
 
-const SENDGRID_API_KEY = 'TU_API_KEY_DE_SENDGRID'; // Cambiar por tu key
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || ''; // Configurar en .env o variables de entorno
 import { toMs } from '../utils/dateUtils';
 const FROM_EMAIL = 'noreply@todoapp.com'; // Cambiar por tu email verificado
 
@@ -11,6 +11,10 @@ const FROM_EMAIL = 'noreply@todoapp.com'; // Cambiar por tu email verificado
  * @param {Object} params - {to, subject, html}
  */
 async function sendEmail({ to, subject, html }) {
+  if (!SENDGRID_API_KEY) {
+    console.warn('sendEmail: SENDGRID_API_KEY no configurada, email no enviado');
+    return { success: false, error: 'SENDGRID_API_KEY no configurada' };
+  }
   try {
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
       method: 'POST',

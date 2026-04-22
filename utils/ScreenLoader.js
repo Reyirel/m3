@@ -39,7 +39,7 @@ export const ScreenFallback = ({ theme = {} }) => (
  *   { timeout: 5000 }
  * );
  */
-export const lazyScreen = (importFunc, options = {}) => {
+export const lazyScreen = (importFunc, _options = {}) => {
   const LazyComponent = lazy(importFunc);
   
   const LazyScreenWrapper = (props) => (

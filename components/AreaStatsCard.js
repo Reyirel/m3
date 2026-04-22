@@ -10,20 +10,12 @@ import {
   Animated,
   TouchableOpacity,
   Modal,
-  ScrollView,
   Platform,
   TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
-
-// ── helpers de estado ──────────────────────────────────────────────────────
-function getStatus(rate) {
-  if (rate >= 85) return { color: '#059669', bg: '#ECFDF5', label: 'Excelente',    icon: 'checkmark-circle' };
-  if (rate >= 60) return { color: '#2563EB', bg: '#EFF6FF', label: 'En Progreso',  icon: 'arrow-forward-circle' };
-  if (rate >= 30) return { color: '#D97706', bg: '#FFFBEB', label: 'Atrasado',     icon: 'time' };
-  return           { color: '#DC2626', bg: '#FEF2F2', label: 'Crítico',       icon: 'alert-circle' };
-}
+import GlassCard from './GlassCard';
 
 // ── componente principal ───────────────────────────────────────────────────
 const AreaStatsCard = memo(function AreaStatsCard({
@@ -40,6 +32,13 @@ const AreaStatsCard = memo(function AreaStatsCard({
 }) {
   const { theme, isDark } = useTheme();
   const [modalVisible, setModalVisible] = useState(false);
+
+  const getStatus = (rate) => {
+    if (rate >= 85) return { color: theme.success, bg: theme.successAlpha, label: 'Excelente',   icon: 'checkmark-circle' };
+    if (rate >= 60) return { color: theme.info,    bg: theme.infoAlpha,    label: 'En Progreso', icon: 'arrow-forward-circle' };
+    if (rate >= 30) return { color: theme.warning, bg: theme.warningAlpha, label: 'Atrasado',    icon: 'time' };
+    return           { color: theme.error,   bg: theme.errorAlpha,   label: 'Crítico',     icon: 'alert-circle' };
+  };
 
   // Solo animación de entrada — useNativeDriver:true para no bloquear JS thread
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -58,14 +57,14 @@ const AreaStatsCard = memo(function AreaStatsCard({
         Animated.spring(slideAnim,   { toValue: 0, tension: 80, friction: 10, useNativeDriver: true }),
       ]),
     ]).start();
-  }, []);
+  }, [index, opacityAnim, slideAnim]);
 
   const handlePress = () => {
     if (onPress) onPress(areaName);
     setModalVisible(true);
   };
 
-  const trendColor = trend === 'up' ? '#059669' : trend === 'down' ? '#DC2626' : '#9CA3AF';
+  const trendColor = trend === 'up' ? theme.success : trend === 'down' ? theme.error : theme.textMuted;
   const trendIcon  = trend === 'up' ? 'trending-up' : trend === 'down' ? 'trending-down' : 'remove';
 
   return (
@@ -75,8 +74,8 @@ const AreaStatsCard = memo(function AreaStatsCard({
         style={[
           styles.card,
           {
-            backgroundColor: theme.card,
-            borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
+            backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+            borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.06)',
             borderLeftColor: status.color,
             opacity: opacityAnim,
             transform: [{ translateY: slideAnim }],
@@ -177,9 +176,9 @@ const AreaStatsCard = memo(function AreaStatsCard({
                     </View>
                   )}
                   {overdueTasks > 0 && (
-                    <View style={[styles.tagChip, { backgroundColor: isDark ? 'rgba(220,38,38,0.15)' : '#FEF2F2' }]}>
-                      <Ionicons name="alert-circle-outline" size={13} color="#DC2626" />
-                      <Text style={[styles.tagChipText, { color: '#DC2626' }]}>
+                    <View style={[styles.tagChip, { backgroundColor: theme.errorAlpha }]}>
+                      <Ionicons name="alert-circle-outline" size={13} color={theme.error} />
+                      <Text style={[styles.tagChipText, { color: theme.error }]}>
                         {overdueTasks} vencida{overdueTasks > 1 ? 's' : ''}
                       </Text>
                     </View>

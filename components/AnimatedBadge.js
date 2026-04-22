@@ -2,7 +2,7 @@
 // Badge con contador animado y efectos de entrada
 // ⚡ Optimizado con React.memo
 import React, { useEffect, useRef, memo } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import { Text, StyleSheet, Animated } from 'react-native';
 
 const AnimatedBadge = memo(function AnimatedBadge({ 
   count = 0,
@@ -55,7 +55,7 @@ const AnimatedBadge = memo(function AnimatedBadge({
     }
 
     prevCount.current = count;
-  }, [count]);
+  }, [count, scaleAnim, fadeAnim]);
 
   if (count === 0 && !showZero) {
     return null;

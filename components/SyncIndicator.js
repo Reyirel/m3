@@ -1,7 +1,7 @@
 // components/SyncIndicator.js
 // Indicador de sincronización offline
 import React, { useEffect, useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { subscribeSyncStatus, syncQueue, getPendingCount } from '../services/offlineQueue';
@@ -50,7 +50,7 @@ const SyncIndicator = () => {
       pulseAnim.setValue(1);
     }
     return () => { if (pulseLoopRef.current) pulseLoopRef.current.stop(); };
-  }, [syncing]);
+  }, [syncing, pulseAnim]);
 
   const loadPendingCount = async () => {
     const count = await getPendingCount();
@@ -70,7 +70,7 @@ const SyncIndicator = () => {
 
   return (
     <TouchableOpacity
-      style={[styles.container, { backgroundColor: syncing ? '#F59E0B' : '#EF4444' }]}
+      style={[styles.container, { backgroundColor: syncing ? theme.warning : theme.error }]}
       onPress={handlePress}
       activeOpacity={0.8}
       disabled={syncing}

@@ -7,7 +7,6 @@ import {
   Modal,
   ScrollView,
   TextInput,
-  FlatList,
   Dimensions,
   Platform
 } from 'react-native';
@@ -47,11 +46,6 @@ export default function AreaSelectorModal({
   const getAreaColor = useCallback((areaType) => {
     if (areaType === 'secretaria') return '#9F2241';
     return '#0EA5E9';
-  }, []);
-
-  const getAreaIcon = useCallback((areaType) => {
-    if (areaType === 'secretaria') return 'briefcase';
-    return 'folder-outline';
   }, []);
 
   // Filtrar y agrupar áreas

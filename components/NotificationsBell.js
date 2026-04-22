@@ -12,18 +12,17 @@ let cachedCount = 0;
 let lastFetchTime = 0;
 const CACHE_DURATION = 60000; // 1 minuto de cache
 
-export default function NotificationsBell({ onPress, theme }) {
+export default function NotificationsBell({ onPress, _theme }) {
+  const { theme } = useTheme();
   const [unreadCount, setUnreadCount] = useState(cachedCount);
   const isMountedRef = useRef(true);
 
   const loadUnreadCount = useCallback(async (forceRefresh = false) => {
     const now = Date.now();
-    
+
     // Usar cache si no ha expirado y no se fuerza refresh
     if (!forceRefresh && cachedCount > 0 && (now - lastFetchTime) < CACHE_DURATION) {
-      if (isMountedRef.current && unreadCount !== cachedCount) {
-        setUnreadCount(cachedCount);
-      }
+      setUnreadCount(prev => prev !== cachedCount ? cachedCount : prev);
       return;
     }
 
@@ -31,14 +30,14 @@ export default function NotificationsBell({ onPress, theme }) {
       const count = await getUnreadNotificationsCount();
       cachedCount = count;
       lastFetchTime = now;
-      
+
       if (isMountedRef.current) {
         setUnreadCount(count);
       }
     } catch (error) {
       // Silent fail - mantener el último conteo
     }
-  }, [unreadCount]);
+  }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -53,12 +52,16 @@ export default function NotificationsBell({ onPress, theme }) {
       isMountedRef.current = false;
       clearInterval(interval);
     };
-  }, []);
+  }, [loadUnreadCount]);
 
   const handlePress = useCallback(() => {
     onPress();
-    // Refrescar en background después de abrir
-    setTimeout(() => loadUnreadCount(true), 1000);
+    // Refrescar en background después de abrir (solo si sigue montado)
+    const t = setTimeout(() => {
+      if (isMountedRef.current) loadUnreadCount(true);
+    }, 1000);
+    // No necesita cleanup: el isMountedRef.current ya guarda el setState
+    return () => clearTimeout(t);
   }, [onPress, loadUnreadCount]);
 
   return (
@@ -69,7 +72,7 @@ export default function NotificationsBell({ onPress, theme }) {
     >
       <Ionicons name="notifications" size={24} color="#FFFFFF" />
       {unreadCount > 0 && (
-        <View style={[styles.badge, { backgroundColor: '#FF3B30' }]}>
+        <View style={[styles.badge, { backgroundColor: theme.error }]}>
           <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
         </View>
       )}

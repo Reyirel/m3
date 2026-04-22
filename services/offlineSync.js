@@ -1,12 +1,11 @@
 // services/offlineSync.js
 // Servicio de sincronización offline-first
 // 🚨 PRODUCCION: logs deshabilitados
-const __DEV__ = false;
 const log = __DEV__ ? console.log : () => {};
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-import { collection, addDoc, updateDoc, deleteDoc, doc, getDocs, getDoc, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, deleteDoc, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const OFFLINE_TASKS_KEY = '@offline_tasks';

@@ -1,14 +1,12 @@
 // components/AreaRankingCard.js
 // Componente para mostrar ranking de áreas con información detallada
 
-import React, { useRef, useEffect } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
-  Animated,
-  Easing,
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +15,7 @@ import { useTheme } from '../contexts/ThemeContext';
 export default function AreaRankingCard({
   areaMetrics = {},
   onAreaPress,
-  taskCountByArea = {},
+  _taskCountByArea = {},
   overdueByArea = {},
 }) {
   const { theme, isDark } = useTheme();
@@ -61,15 +59,15 @@ export default function AreaRankingCard({
   };
 
   const getStatusColor = (rate) => {
-    if (rate >= 85) return '#10B981';
-    if (rate >= 60) return '#3B82F6';
-    if (rate >= 30) return '#F59E0B';
-    return '#DC2626';
+    if (rate >= 85) return theme.success;
+    if (rate >= 60) return theme.info;
+    if (rate >= 30) return theme.warning;
+    return theme.error;
   };
 
   if (ranking.length === 0) {
     return (
-      <View style={[styles.empty, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <View style={[styles.empty, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         <Ionicons name="podium-outline" size={48} color={theme.textSecondary} />
         <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
           Sin datos de clasificación
@@ -121,10 +119,10 @@ export default function AreaRankingCard({
               </Text>
               <View style={styles.stats}>
                 <View style={styles.statItem}>
-                  <Ionicons 
-                    name="checkmark-done" 
-                    size={12} 
-                    color="#10B981"
+                  <Ionicons
+                    name="checkmark-done"
+                    size={12}
+                    color={theme.success}
                   />
                   <Text style={[styles.statText, { color: theme.textSecondary }]}>
                     {area.completed}
@@ -135,12 +133,12 @@ export default function AreaRankingCard({
                   <>
                     <Text style={[styles.statSeparator, { color: theme.border }]}>•</Text>
                     <View style={styles.statItem}>
-                      <Ionicons 
-                        name="alert-circle" 
-                        size={12} 
-                        color="#DC2626"
+                      <Ionicons
+                        name="alert-circle"
+                        size={12}
+                        color={theme.error}
                       />
-                      <Text style={[styles.statText, { color: '#DC2626' }]}>
+                      <Text style={[styles.statText, { color: theme.error }]}>
                         {area.overdue}
                       </Text>
                     </View>
@@ -185,7 +183,7 @@ export default function AreaRankingCard({
       </View>
 
       {/* Estadísticas generales */}
-      <View style={[styles.generalStats, { backgroundColor: isDark ? theme.card : theme.background }]}>
+      <View style={[styles.generalStats, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         <View style={styles.statBox}>
           <Text style={[styles.statBoxLabel, { color: theme.textSecondary }]}>
             Promedio General
@@ -205,7 +203,7 @@ export default function AreaRankingCard({
             <Text style={[styles.bestPerformerName, { color: '#FBBF24' }]}>
               {ranking[0]?.name}
             </Text>
-            <Text style={[styles.bestPerformerRate, { color: '#10B981' }]}>
+            <Text style={[styles.bestPerformerRate, { color: theme.success }]}>
               {ranking[0]?.completionRate}%
             </Text>
           </View>

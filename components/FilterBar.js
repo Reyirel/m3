@@ -1,10 +1,12 @@
 // components/FilterBar.js
 // Barra de filtros y búsqueda reutilizable. Permite filtrar por área, responsable, prioridad, vencidas y buscar por título.
 import React, { useState, useCallback, useRef, useEffect, memo } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useTheme } from '../contexts/ThemeContext';
 import { AREAS } from '../config/areas';
+import { GlassmorphicButton } from './index';
 
 const FilterBar = memo(function FilterBar({ onFilterChange }) {
   const { theme, isDark } = useTheme();
@@ -83,42 +85,66 @@ const FilterBar = memo(function FilterBar({ onFilterChange }) {
   const hasActiveFilters = selectedArea || selectedPriority || showOverdue;
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? theme.surface : '#FAFAFA' }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       {/* Barra compacta con búsqueda y botón de filtros */}
       <View style={styles.compactBar}>
-        <View style={[styles.searchContainer, { 
-          backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF',
-          borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA'
+        {/* Glasmorphic Search Container */}
+        <View style={[styles.searchContainer, {
+          backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.80)',
+          borderColor: theme.glassBorder,
         }]}>
-          <Ionicons name="search" size={18} color={isDark ? '#999' : '#666'} />
+          {Platform.OS !== 'web' && (
+            <View style={StyleSheet.absoluteFillObject}>
+              <BlurView
+                intensity={isDark ? 40 : 35}
+                tint={isDark ? 'dark' : 'light'}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+          )}
+          <Ionicons name="search" size={18} color={theme.primary} style={{ zIndex: 2 }} />
           <TextInput
             placeholder="Buscar tareas..."
-            placeholderTextColor={isDark ? '#999' : '#666'}
+            placeholderTextColor={isDark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)'}
             value={searchText}
             onChangeText={handleSearchChange}
-            style={[styles.searchInput, { color: theme.text }]}
+            style={[styles.searchInput, { color: theme.text, zIndex: 2 }]}
           />
           {searchText.length > 0 && (
-            <TouchableOpacity onPress={() => handleSearchChange('')}>
-              <Ionicons name="close-circle" size={18} color={isDark ? '#999' : '#666'} />
+            <TouchableOpacity onPress={() => handleSearchChange('')} style={{ zIndex: 2 }}>
+              <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
             </TouchableOpacity>
           )}
         </View>
         
+        {/* Glasmorphic Filter Button */}
         <TouchableOpacity 
           onPress={() => setIsExpanded(!isExpanded)}
-          style={[styles.filterButton, { 
-            backgroundColor: hasActiveFilters ? theme.primary : (isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF'),
-            borderColor: hasActiveFilters ? theme.primary : (isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA')
-          }]}
+          style={[
+            styles.filterButton, 
+            { 
+              backgroundColor: hasActiveFilters ? theme.primary : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.80)'),
+              borderColor: hasActiveFilters ? theme.primary : theme.glassBorder
+            }
+          ]}
         >
+          {Platform.OS !== 'web' && !hasActiveFilters && (
+            <View style={StyleSheet.absoluteFillObject}>
+              <BlurView
+                intensity={isDark ? 40 : 35}
+                tint={isDark ? 'dark' : 'light'}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+          )}
           <Ionicons 
-            name="filter" 
+            name={isExpanded ? 'filter' : 'filter'} 
             size={18} 
-            color={hasActiveFilters ? '#FFFFFF' : (isDark ? '#999' : '#666')} 
+            color={hasActiveFilters ? '#FFFFFF' : theme.primary}
+            style={{ zIndex: 2 }}
           />
           {hasActiveFilters && (
-            <View style={styles.filterBadge}>
+            <View style={[styles.filterBadge, { backgroundColor: theme.error }]}>
               <Text style={styles.filterBadgeText}>
                 {[selectedArea, selectedPriority, showOverdue].filter(Boolean).length}
               </Text>
@@ -127,12 +153,22 @@ const FilterBar = memo(function FilterBar({ onFilterChange }) {
         </TouchableOpacity>
       </View>
 
-      {/* Panel de filtros expandible */}
+      {/* Panel de filtros expandible con glasmorphism */}
       {isExpanded && (
-        <View style={styles.expandedFilters}>
+        <View style={[styles.expandedFilters, { backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : 'rgba(255,255,255,0.2)' }]}>
+          {Platform.OS !== 'web' && (
+            <View style={StyleSheet.absoluteFillObject}>
+              <BlurView
+                intensity={isDark ? 50 : 45}
+                tint={isDark ? 'dark' : 'light'}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+          )}
+          
           {/* Áreas */}
-          <View style={styles.filterSection}>
-            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>ÁREA</Text>
+          <View style={[styles.filterSection, { zIndex: 2 }]}>
+            <Text style={[styles.sectionLabel, { color: theme.primary }]}>ÁREA</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={styles.chipRow}>
                 {AREAS.map(area => (
@@ -142,8 +178,8 @@ const FilterBar = memo(function FilterBar({ onFilterChange }) {
                     style={[
                       styles.compactChip,
                       {
-                        backgroundColor: selectedArea === area ? theme.primary : (isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF'),
-                        borderColor: selectedArea === area ? theme.primary : (isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA')
+                        backgroundColor: selectedArea === area ? theme.primary : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.80)'),
+                        borderColor: selectedArea === area ? theme.primary : theme.glassBorderSubtle
                       }
                     ]}
                   >
@@ -160,8 +196,8 @@ const FilterBar = memo(function FilterBar({ onFilterChange }) {
           </View>
 
           {/* Prioridades */}
-          <View style={styles.filterSection}>
-            <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>PRIORIDAD</Text>
+          <View style={[styles.filterSection, { zIndex: 2 }]}>
+            <Text style={[styles.sectionLabel, { color: theme.primary }]}>PRIORIDAD</Text>
             <View style={styles.chipRow}>
               {priorities.map(priority => (
                 <TouchableOpacity
@@ -170,8 +206,8 @@ const FilterBar = memo(function FilterBar({ onFilterChange }) {
                   style={[
                     styles.compactChip,
                     {
-                      backgroundColor: selectedPriority === priority ? theme.primary : (isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF'),
-                      borderColor: selectedPriority === priority ? theme.primary : (isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA')
+                      backgroundColor: selectedPriority === priority ? theme.primary : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.80)'),
+                      borderColor: selectedPriority === priority ? theme.primary : theme.glassBorderSubtle
                     }
                   ]}
                 >
@@ -190,8 +226,8 @@ const FilterBar = memo(function FilterBar({ onFilterChange }) {
                 style={[
                   styles.compactChip,
                   {
-                    backgroundColor: showOverdue ? '#DC2626' : (isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF'),
-                    borderColor: showOverdue ? '#DC2626' : (isDark ? 'rgba(255,255,255,0.15)' : '#E5E5EA')
+                    backgroundColor: showOverdue ? theme.error : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.80)'),
+                    borderColor: showOverdue ? theme.error : theme.glassBorderSubtle
                   }
                 ]}
               >
@@ -205,12 +241,19 @@ const FilterBar = memo(function FilterBar({ onFilterChange }) {
             </View>
           </View>
 
-          {/* Botón limpiar */}
+          {/* Botón limpiar con GlassmorphicButton */}
           {hasActiveFilters && (
-            <TouchableOpacity onPress={clearAll} style={styles.clearButton}>
-              <Ionicons name="close-circle" size={16} color={theme.primary} />
-              <Text style={[styles.clearButtonText, { color: theme.primary }]}>Limpiar filtros</Text>
-            </TouchableOpacity>
+            <View style={[styles.clearButtonContainer, { zIndex: 2 }]}>
+              <GlassmorphicButton
+                onPress={clearAll}
+                variant="secondary"
+                size="small"
+                icon="close-circle"
+                style={{ flex: 1 }}
+              >
+                Limpiar filtros
+              </GlassmorphicButton>
+            </View>
           )}
         </View>
       )}
@@ -256,7 +299,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: -4,
     right: -4,
-    backgroundColor: '#EF4444',
+    backgroundColor: 'transparent',
     borderRadius: 8,
     minWidth: 16,
     height: 16,
@@ -272,6 +315,11 @@ const styles = StyleSheet.create({
   expandedFilters: {
     marginTop: 12,
     gap: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    position: 'relative',
   },
   filterSection: {
     gap: 8,
@@ -296,6 +344,12 @@ const styles = StyleSheet.create({
   compactChipText: {
     fontSize: 12,
     fontWeight: '600',
+  },
+  clearButtonContainer: {
+    marginTop: 12,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
   },
   clearButton: {
     flexDirection: 'row',

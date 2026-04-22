@@ -45,7 +45,7 @@ export default function SuccessIndicator({ message = 'Guardado', visible = true,
 
       return () => clearTimeout(timer);
     }
-  }, [visible]);
+  }, [visible, duration, onHide, fadeAnim, scaleAnim]);
 
   if (!visible) return null;
 

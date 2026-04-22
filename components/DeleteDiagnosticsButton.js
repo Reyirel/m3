@@ -16,7 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import Button from './Button';
 
-export default function DeleteDiagnosticsButton({ isDarkMode = false }) {
+export default function DeleteDiagnosticsButton({ _isDarkMode = false }) {
   const { theme } = useTheme();
   const [showModal, setShowModal] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
@@ -75,7 +75,7 @@ export default function DeleteDiagnosticsButton({ isDarkMode = false }) {
   };
 
   const exportLogs = () => {
-    const logText = logs.map(log => `[${log.type.toUpperCase()}] ${log.message}`).join('\n');
+    const _logText = logs.map(log => `[${log.type.toUpperCase()}] ${log.message}`).join('\n');
     Alert.alert(
       'Logs copiados',
       'Los logs han sido copiados al portapapeles\nPuedes compartirlos para debuggeo',

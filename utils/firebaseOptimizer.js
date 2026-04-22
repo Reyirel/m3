@@ -16,7 +16,6 @@
  */
 
 import { useCallback, useState, useEffect, useRef } from 'react';
-import { Platform } from 'react-native';
 
 /**
  * Firebase Cache Management
@@ -193,7 +192,7 @@ export const usePaginatedQuery = (collection, options = {}) => {
     pageSize = 20,
     filters = {},
     orderBy = 'createdAt',
-    direction = 'desc',
+    direction: _direction = 'desc',
   } = options;
 
   const [data, setData] = useState([]);
@@ -211,7 +210,7 @@ export const usePaginatedQuery = (collection, options = {}) => {
   /**
    * Build Firestore query
    */
-  const buildQuery = useCallback((direction = 'next') => {
+  const buildQuery = useCallback((_direction = 'next') => {
     // This is a template - implement based on your Firebase service
     // Example structure:
     const queryConfig = {
@@ -262,7 +261,7 @@ export const usePaginatedQuery = (collection, options = {}) => {
     } finally {
       setLoading(false);
     }
-  }, [hasMore, loading, buildQuery]);
+  }, [hasMore, loading, buildQuery, pageSize]);
 
   /**
    * Load previous page
@@ -345,7 +344,7 @@ export const usePaginatedQuery = (collection, options = {}) => {
  * @param {Object} queryConfig - Query configuration
  * @returns {Promise<Array>} Documents
  */
-const simulatePaginatedFetch = async (queryConfig) => {
+const simulatePaginatedFetch = async (_queryConfig) => {
   // This is a placeholder - implement with your actual Firebase service
   // Example:
   // const q = query(
@@ -374,7 +373,7 @@ const simulatePaginatedFetch = async (queryConfig) => {
  *   'users'
  * );
  */
-export const batchRead = async (docIds, collection) => {
+export const batchRead = async (docIds, _collection) => {
   // Firebase recommendation: max 100 docs per read, batch into 10 operations max
 
   if (docIds.length === 0) return [];
@@ -392,7 +391,7 @@ export const batchRead = async (docIds, collection) => {
     const results = [];
     
     // This is a template - implement with your Firebase service
-    for (const batch of batches) {
+    for (const _batch of batches) {
       // const q = query(
       //   collection(db, collection),
       //   where('__name__', 'in', batch)

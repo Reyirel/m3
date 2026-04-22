@@ -72,7 +72,7 @@ export const createUserProfile = async (userId, data) => {
 export const updateUserProfile = async (userId, updates) => {
   try {
     // No permitir cambio de rol desde aquí (solo admin)
-    const { role, ...safeUpdates } = updates;
+    const { role: _role, ...safeUpdates } = updates;
     await updateDoc(doc(db, 'users', userId), {
       ...safeUpdates,
       updatedAt: new Date().toISOString()

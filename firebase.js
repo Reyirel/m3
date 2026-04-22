@@ -6,7 +6,6 @@ import {
   getFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
-  memoryLocalCache,
   serverTimestamp,
   collection,
   doc,
@@ -47,8 +46,10 @@ const firebaseConfig = {
   measurementId: extra.FIREBASE_MEASUREMENT_ID || process.env.FIREBASE_MEASUREMENT_ID || "G-T987W215LH"
 };
 
-if (!firebaseConfig.apiKey) {
-  // Firebase no configurado
+// Advertir en desarrollo si se usan los valores de fallback hardcodeados
+// (Las credenciales Firebase web son públicas por diseño; la seguridad real está en las Firestore Security Rules)
+if (__DEV__ && !extra.FIREBASE_API_KEY && !process.env.FIREBASE_API_KEY) {
+  console.warn('firebase.js: usando credenciales de fallback. Configura las variables de entorno en .env o app.config.js para producción.');
 }
 
 // Inicializar Firebase App (solo si no existe)

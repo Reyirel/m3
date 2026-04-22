@@ -4,7 +4,7 @@
  */
 
 import React, { useContext } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Switch, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemeContext } from '../theme/enhancedTheme';
 
@@ -13,7 +13,7 @@ export default function DarkModeToggle({ variant = 'switch' }) {
 
   if (variant === 'switch') {
     return (
-      <View style={[styles.container, { backgroundColor: theme.card }]}>
+      <View style={[styles.container, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         <View style={styles.row}>
           <View style={styles.labelContainer}>
             <Ionicons 
@@ -42,7 +42,7 @@ export default function DarkModeToggle({ variant = 'switch' }) {
         onPress={toggleDarkMode}
         style={[
           styles.buttonContainer,
-          { backgroundColor: theme.card, borderColor: theme.border },
+          { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' },
         ]}
       >
         <Ionicons
@@ -59,7 +59,7 @@ export default function DarkModeToggle({ variant = 'switch' }) {
 
   if (variant === 'card') {
     return (
-      <View style={[styles.cardContainer, { backgroundColor: theme.card, borderColor: theme.border }]}>
+      <View style={[styles.cardContainer, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         <View style={styles.cardContent}>
           <View style={styles.iconContainer}>
             <Ionicons

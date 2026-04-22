@@ -14,7 +14,12 @@ import { hapticMedium, hapticLight } from '../utils/haptics';
  * @param {array} tasks - All tasks (to extract tags)
  */
 const AdvancedFilters = ({ filters, onApplyFilters, areas = [], users = [], tasks = [] }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+  const chipBaseStyle = {
+    backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : theme.glassStrong,
+    borderColor: theme.glassBorder,
+  };
+  const chipTextColor = { color: isDark ? '#E5E7EB' : theme.text };
   const [modalVisible, setModalVisible] = useState(false);
   const [tempFilters, setTempFilters] = useState(filters);
 
@@ -87,16 +92,16 @@ const AdvancedFilters = ({ filters, onApplyFilters, areas = [], users = [], task
   }, 0);
 
   const priorities = [
-    { key: 'alta', label: 'Alta', color: '#EF4444' },
-    { key: 'media', label: 'Media', color: '#F59E0B' },
-    { key: 'baja', label: 'Baja', color: '#10B981' },
+    { key: 'alta', label: 'Alta', color: theme.error },
+    { key: 'media', label: 'Media', color: theme.warning },
+    { key: 'baja', label: 'Baja', color: theme.success },
   ];
 
   const statuses = [
-    { key: 'pendiente', label: 'Pendiente', color: '#FF9800' },
-    { key: 'en_proceso', label: 'En proceso', color: '#2196F3' },
-    { key: 'en_revision', label: 'En revisión', color: '#9C27B0' },
-    { key: 'cerrada', label: 'Cerrada', color: '#4CAF50' },
+    { key: 'pendiente', label: 'Pendiente', color: theme.warning },
+    { key: 'en_proceso', label: 'En proceso', color: theme.info },
+    { key: 'en_revision', label: 'En revisión', color: theme.secondary },
+    { key: 'cerrada', label: 'Cerrada', color: theme.success },
   ];
 
   return (
@@ -106,11 +111,11 @@ const AdvancedFilters = ({ filters, onApplyFilters, areas = [], users = [], task
         onPress={openModal}
         activeOpacity={0.8}
       >
-        <View style={[styles.filterGradient, { backgroundColor: activeCount > 0 ? theme.primary : '#F3F4F6' }]}>
+        <View style={[styles.filterGradient, { backgroundColor: activeCount > 0 ? theme.primary : theme.glassStrong }]}>
           <Ionicons
             name="filter"
             size={20}
-            color={activeCount > 0 ? '#FFFFFF' : '#6B7280'}
+            color={activeCount > 0 ? '#FFFFFF' : theme.textSecondary}
           />
           {activeCount > 0 && (
             <View style={styles.badge}>
@@ -127,7 +132,7 @@ const AdvancedFilters = ({ filters, onApplyFilters, areas = [], users = [], task
         onRequestClose={closeModal}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: theme.background }]}>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? theme.card : '#FFFFFF' }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>Filtros Avanzados</Text>
               <TouchableOpacity onPress={closeModal}>
@@ -145,7 +150,8 @@ const AdvancedFilters = ({ filters, onApplyFilters, areas = [], users = [], task
                       key={key}
                       style={[
                         styles.chip,
-                        (tempFilters.priorities || []).includes(key) && { backgroundColor: color },
+                        chipBaseStyle,
+                        (tempFilters.priorities || []).includes(key) && { backgroundColor: color, borderColor: color },
                       ]}
                       onPress={() => toggleArrayFilter('priorities', key)}
                       activeOpacity={0.7}
@@ -153,6 +159,7 @@ const AdvancedFilters = ({ filters, onApplyFilters, areas = [], users = [], task
                       <Text
                         style={[
                           styles.chipText,
+                          chipTextColor,
                           (tempFilters.priorities || []).includes(key) && styles.chipTextActive,
                         ]}
                         numberOfLines={1}
@@ -174,7 +181,8 @@ const AdvancedFilters = ({ filters, onApplyFilters, areas = [], users = [], task
                       key={key}
                       style={[
                         styles.chip,
-                        (tempFilters.statuses || []).includes(key) && { backgroundColor: color },
+                        chipBaseStyle,
+                        (tempFilters.statuses || []).includes(key) && { backgroundColor: color, borderColor: color },
                       ]}
                       onPress={() => toggleArrayFilter('statuses', key)}
                       activeOpacity={0.7}
@@ -182,6 +190,7 @@ const AdvancedFilters = ({ filters, onApplyFilters, areas = [], users = [], task
                       <Text
                         style={[
                           styles.chipText,
+                          chipTextColor,
                           (tempFilters.statuses || []).includes(key) && styles.chipTextActive,
                         ]}
                         numberOfLines={1}
@@ -204,7 +213,8 @@ const AdvancedFilters = ({ filters, onApplyFilters, areas = [], users = [], task
                         key={area}
                         style={[
                           styles.chip,
-                          (tempFilters.areas || []).includes(area) && { ...styles.chipActive, backgroundColor: theme.primary, borderColor: theme.primary },
+                          chipBaseStyle,
+                          (tempFilters.areas || []).includes(area) && { backgroundColor: theme.primary, borderColor: theme.primary },
                         ]}
                         onPress={() => toggleArrayFilter('areas', area)}
                         activeOpacity={0.7}
@@ -212,6 +222,7 @@ const AdvancedFilters = ({ filters, onApplyFilters, areas = [], users = [], task
                         <Text
                           style={[
                             styles.chipText,
+                            chipTextColor,
                             (tempFilters.areas || []).includes(area) && styles.chipTextActive,
                           ]}
                           numberOfLines={1}
@@ -235,7 +246,8 @@ const AdvancedFilters = ({ filters, onApplyFilters, areas = [], users = [], task
                         key={user}
                         style={[
                           styles.chip,
-                          (tempFilters.responsible || []).includes(user) && { ...styles.chipActive, backgroundColor: theme.primary, borderColor: theme.primary },
+                          chipBaseStyle,
+                          (tempFilters.responsible || []).includes(user) && { backgroundColor: theme.primary, borderColor: theme.primary },
                         ]}
                         onPress={() => toggleArrayFilter('responsible', user)}
                         activeOpacity={0.7}
@@ -243,6 +255,7 @@ const AdvancedFilters = ({ filters, onApplyFilters, areas = [], users = [], task
                         <Text
                           style={[
                             styles.chipText,
+                            chipTextColor,
                             (tempFilters.responsible || []).includes(user) && styles.chipTextActive,
                           ]}
                           numberOfLines={1}
@@ -264,7 +277,7 @@ const AdvancedFilters = ({ filters, onApplyFilters, areas = [], users = [], task
                   activeOpacity={0.7}
                 >
                   <View style={styles.toggleLeft}>
-                    <Ionicons name="alert-circle" size={24} color="#EF4444" />
+                    <Ionicons name="alert-circle" size={24} color={theme.error} />
                     <Text style={[styles.toggleText, { color: theme.text }]}>Solo vencidas</Text>
                   </View>
                   <View

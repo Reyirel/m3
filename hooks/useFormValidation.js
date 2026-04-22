@@ -5,7 +5,7 @@
  */
 
 import { useState, useCallback, useMemo } from 'react';
-import { FormValidator, validateFormAgainstSchema } from '../utils/ValidationRules';
+import { validateFormAgainstSchema } from '../utils/ValidationRules';
 
 /**
  * useFormValidation hook

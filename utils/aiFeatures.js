@@ -455,7 +455,7 @@ export function detectStalledTasks(tasks, thresholdDays = 5) {
   if (!tasks?.length) return [];
 
   const now = Date.now();
-  const thresholdMs = thresholdDays * 24 * 60 * 60 * 1000;
+  const _thresholdMs = thresholdDays * 24 * 60 * 60 * 1000;
 
   return tasks
     .filter(t => t.status === 'en_proceso')

@@ -3,6 +3,7 @@
 // ⚡ Optimizado con useMemo para evitar re-renders innecesarios
 
 import React, { createContext, useState, useEffect, useRef, useMemo } from 'react';
+import logger from '../services/Logger';
 import { subscribeToTasks } from '../services/tasks';
 import { getCurrentSession } from '../services/authFirestore';
 import { deleteManager } from '../utils/deleteManager';
@@ -27,6 +28,7 @@ export function TasksProvider({ children }) {
     const MAX_CHECKS = 30; // 3 segundos a 100ms por check
 
     const checkSession = async () => {
+      let sessionFound = false;
       while (mounted && checkCount < MAX_CHECKS) {
         const sessionResult = await getCurrentSession();
         if (!mounted) return;
@@ -39,7 +41,7 @@ export function TasksProvider({ children }) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
       // Si se alcanza MAX_CHECKS sin sesión, marcar como listo
-      if (mounted && !hasSession) {
+      if (mounted && !sessionFound) {
         setIsLoading(false);
       }
     };
@@ -79,17 +81,20 @@ export function TasksProvider({ children }) {
           retryCount = 0;
         });
       } catch (error) {
-        if (__DEV__) console.error('❌ Error en setupSubscription:', error.message);
+        logger.error('TasksContext', 'Failed to setup task subscription', error, {
+          retryCount,
+          userEmail: currentUser?.email,
+        });
         if (retryCount < MAX_RETRIES && mounted) {
           retryCount++;
           const delayMs = 500 * retryCount;
-          if (__DEV__) console.warn(`Reintentando suscripción (${retryCount}/${MAX_RETRIES}) en ${delayMs}ms...`);
+          logger.warn('TasksContext', `Retrying subscription (${retryCount}/${MAX_RETRIES}) in ${delayMs}ms`);
           setTimeout(() => {
             if (mounted) setupSubscription();
           }, delayMs);
         } else {
           setIsLoading(false);
-          if (__DEV__) console.error('❌ Agotados reintentos de suscripción a tareas');
+          logger.error('TasksContext', 'Max retries exceeded for task subscription');
         }
       }
     };

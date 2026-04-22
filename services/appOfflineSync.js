@@ -12,11 +12,11 @@ import { useOfflineReportsSync } from '../hooks/useOfflineReportsSync';
 import { cleanupOldSyncedReports } from './offlineReportsService';
 
 /**
- * OPCIÓN 1: Agregar al componente principal de App
- * 
- * En el useEffect principal de tu App.js:
+ * OPCIÓN 1: Hook para agregar al componente principal de App
+ *
+ * En tu App.js: useSetupOfflineSync()
  */
-export const setupOfflineSync = () => {
+export const useSetupOfflineSync = () => {
   useEffect(() => {
     const initializeSync = async () => {
       console.log('🚀 Inicializando sincronización offline...');
@@ -30,6 +30,9 @@ export const setupOfflineSync = () => {
   }, []);
 };
 
+/** @deprecated Usar useSetupOfflineSync() en su lugar */
+export const setupOfflineSync = useSetupOfflineSync;
+
 /**
  * OPCIÓN 2: Crear un componente wrapper
  * 
@@ -37,8 +40,6 @@ export const setupOfflineSync = () => {
  */
 export function OfflineReportsSyncProvider({ children }) {
   const {
-    syncStats,
-    isSyncing,
     manualSync,
     hasPendingReports,
     isOnline,

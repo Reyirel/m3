@@ -1,117 +1,147 @@
 // components/Button.js
-// Botón moderno reutilizable con variantes y animaciones
+// Botón moderno con variantes, gradiente y glasmorfismo
 import React, { useRef } from 'react';
-import { TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
+import { TouchableOpacity, Text, StyleSheet, Animated, View, ActivityIndicator, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
-export default function Button({ 
-  title, 
-  onPress, 
-  variant = 'primary', // primary, secondary, ghost, danger
-  size = 'medium', // small, medium, large
+export default function Button({
+  title,
+  onPress,
+  variant = 'primary', // primary | secondary | ghost | danger | glass
+  size = 'medium',      // small | medium | large
   icon = null,
-  iconPosition = 'left', // left, right
+  iconPosition = 'left',
   loading = false,
   disabled = false,
   fullWidth = false,
   accessibilityLabel,
   accessibilityHint,
   testID,
-  style 
+  style,
 }) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const shadowAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.96,
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 0.965,
+        friction: 8,
+        tension: 200,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shadowAnim, {
+        toValue: 0,
+        duration: 100,
+        useNativeDriver: false,
+      }),
+    ]).start();
   };
-
   const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      friction: 3,
-      tension: 40,
-      useNativeDriver: true,
-    }).start();
+    Animated.parallel([
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 5,
+        tension: 80,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shadowAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: false,
+      }),
+    ]).start();
   };
 
-  const getVariantStyles = () => {
-    switch (variant) {
-      case 'primary':
-        return {
-          background: theme.gradientPrimary,
-          textColor: '#FFFFFF',
-        };
-      case 'secondary':
-        return {
-          background: [theme.buttonSecondaryBg, theme.buttonSecondaryBg],
-          textColor: theme.buttonSecondaryText,
-        };
-      case 'ghost':
-        return {
-          background: ['transparent', 'transparent'],
-          textColor: theme.primary,
-          border: true,
-        };
-      case 'danger':
-        return {
-          background: theme.gradientError,
-          textColor: '#FFFFFF',
-        };
-      default:
-        return {
-          background: theme.gradientPrimary,
-          textColor: '#FFFFFF',
-        };
-    }
+  const sizeMap = {
+    small:  { py: 10, px: 18, fs: 14, icon: 16, minH: 44, radius: 12 },
+    medium: { py: 14, px: 24, fs: 15, icon: 19, minH: 50, radius: 14 },
+    large:  { py: 17, px: 30, fs: 17, icon: 21, minH: 56, radius: 16 },
   };
-
-  const getSizeStyles = () => {
-    switch (size) {
-      case 'small':
-        return {
-          paddingVertical: 12,        // ✨ Mejorado: 10 → 12 (cumple WCAG 44px min height)
-          paddingHorizontal: 16,
-          fontSize: 14,
-          iconSize: 16,
-          minHeight: 44,              // ✨ Nuevo: Touch target mínimo WCAG
-        };
-      case 'large':
-        return {
-          paddingVertical: 18,
-          paddingHorizontal: 28,
-          fontSize: 18,
-          iconSize: 24,
-          minHeight: 56,              // ✨ Nuevo: Large touch target
-        };
-      default: // medium
-        return {
-          paddingVertical: 14,
-          paddingHorizontal: 20,
-          fontSize: 16,
-          iconSize: 20,
-          minHeight: 48,              // ✨ Nuevo: Recomendado by iOS/Android (44-48px)
-        };
-    }
-  };
-
-  const variantStyles = getVariantStyles();
-  const sizeStyles = getSizeStyles();
+  const sz = sizeMap[size] || sizeMap.medium;
   const isDisabled = disabled || loading;
 
+  const variantConfig = {
+    primary: {
+      gradientColors: [theme.primary, theme.primaryDark],
+      textColor: '#FFFFFF',
+      shadowColor: theme.primary,
+      borderWidth: 0,
+      borderColor: 'transparent',
+    },
+    secondary: {
+      gradientColors: isDark
+        ? [theme.surfaceL2, theme.surfaceL2]
+        : [theme.surfaceL2, theme.surfaceL2],
+      textColor: theme.primary,
+      shadowColor: 'transparent',
+      borderWidth: 1,
+      borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.08)',
+    },
+    ghost: {
+      gradientColors: ['transparent', 'transparent'],
+      textColor: theme.primary,
+      shadowColor: 'transparent',
+      borderWidth: 1.5,
+      borderColor: isDark ? theme.primary + '66' : theme.primary + '44',
+    },
+    danger: {
+      gradientColors: [theme.error, theme.errorDark],
+      textColor: '#FFFFFF',
+      shadowColor: theme.error,
+      borderWidth: 0,
+      borderColor: 'transparent',
+    },
+    glass: {
+      gradientColors: isDark
+        ? [theme.glass, theme.glass]
+        : [theme.glassStrong, theme.glassStrong],
+      textColor: isDark ? '#FFFFFF' : theme.primary,
+      shadowColor: '#000',
+      borderWidth: 1,
+      borderColor: theme.glassBorder,
+      blurIntensity: isDark ? 50 : 70,
+      useBlur: true,
+    },
+  };
+
+  const cfg = variantConfig[variant] || variantConfig.primary;
+
+  const shadowOpacity = shadowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.08, 0.28],
+  });
+  const shadowElevation = shadowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [1, 5],
+  });
+
   return (
-    <Animated.View style={[{ transform: [{ scale: scaleAnim }] }, fullWidth && { width: '100%' }]}>
+    <Animated.View
+      style={[
+        {
+          transform: [{ scale: scaleAnim }],
+          ...(Platform.OS !== 'web' ? { shadowOpacity, elevation: shadowElevation } : {}),
+        },
+        fullWidth && { width: '100%' },
+      ]}
+    >
+      {/* Glass Blur Layer */}
+      {cfg.useBlur && (
+        <View style={[StyleSheet.absoluteFill, { borderRadius: sz.radius, overflow: 'hidden' }]}>
+          <BlurView intensity={cfg.blurIntensity} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+        </View>
+      )}
       <TouchableOpacity
         onPress={onPress}
         onPressIn={handlePressIn}
         onPressOut={handlePressOut}
         disabled={isDisabled}
-        activeOpacity={0.9}
+        activeOpacity={0.88}
         accessible={true}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel || title}
@@ -119,92 +149,85 @@ export default function Button({
         accessibilityState={{ disabled: isDisabled, busy: loading }}
         testID={testID}
         style={[
-          styles.button,
-          variantStyles.border && styles.buttonGhost,
-          isDisabled && styles.buttonDisabled,
+          styles.touchable,
+          {
+            borderRadius: sz.radius,
+            borderWidth: cfg.borderWidth,
+            borderColor: cfg.borderColor,
+            shadowColor: cfg.shadowColor,
+          },
+          isDisabled && styles.disabled,
           fullWidth && { width: '100%' },
           style,
         ]}
       >
-        <View
-          style={[
-            styles.gradient,
-            {
-              paddingVertical: sizeStyles.paddingVertical,
-              paddingHorizontal: sizeStyles.paddingHorizontal,
-              minHeight: sizeStyles.minHeight,           // ✨ Aplicar minHeight
-              backgroundColor: Array.isArray(variantStyles.background) ? variantStyles.background[0] : variantStyles.background,
-            },
-            variantStyles.border && { backgroundColor: 'transparent' },
-          ]}
+        <LinearGradient
+          colors={cfg.gradientColors}
           start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
+          end={{ x: 1, y: 0.8 }}
+          style={[
+            styles.inner,
+            {
+              paddingVertical: sz.py,
+              paddingHorizontal: sz.px,
+              minHeight: sz.minH,
+              borderRadius: sz.radius,
+            },
+          ]}
         >
-          {icon && iconPosition === 'left' && (
-            <Ionicons 
-              name={icon} 
-              size={sizeStyles.iconSize} 
-              color={variantStyles.textColor} 
-              style={{ marginRight: 8 }} 
-            />
+          {loading ? (
+            <>
+              <ActivityIndicator size="small" color={cfg.textColor} />
+              <Text style={[styles.text, { color: cfg.textColor, fontSize: sz.fs, marginLeft: 8 }]}>
+                Cargando...
+              </Text>
+            </>
+          ) : (
+            <>
+              {icon && iconPosition === 'left' && (
+                <Ionicons name={icon} size={sz.icon} color={cfg.textColor} style={{ marginRight: 8 }} />
+              )}
+              <Text style={[styles.text, { color: cfg.textColor, fontSize: sz.fs }]}>
+                {title}
+              </Text>
+              {icon && iconPosition === 'right' && (
+                <Ionicons name={icon} size={sz.icon} color={cfg.textColor} style={{ marginLeft: 8 }} />
+              )}
+            </>
           )}
-          
-          <Text
-            style={[
-              styles.text,
-              {
-                color: variantStyles.textColor,
-                fontSize: sizeStyles.fontSize,
-              },
-              isDisabled && styles.textDisabled,
-            ]}
-          >
-            {loading ? 'Cargando...' : title}
-          </Text>
-
-          {icon && iconPosition === 'right' && !loading && (
-            <Ionicons 
-              name={icon} 
-              size={sizeStyles.iconSize} 
-              color={variantStyles.textColor} 
-              style={{ marginLeft: 8 }} 
-            />
-          )}
-        </View>
+        </LinearGradient>
+        {/* Rim Glow para glass */}
+        {cfg.useBlur && (
+          <View style={[StyleSheet.absoluteFill, {
+            borderRadius: sz.radius,
+            borderWidth: 1.5,
+            borderColor: isDark ? 'rgba(255,255,255,0.18)' : theme.glassBorderSubtle,
+            pointerEvents: 'none',
+          }]} />
+        )}
       </TouchableOpacity>
     </Animated.View>
   );
 }
 
 const styles = StyleSheet.create({
-  button: {
-    borderRadius: 14,
+  touchable: {
     overflow: 'hidden',
-    shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowOpacity: 0.28,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  buttonGhost: {
-    borderWidth: 2,
-    borderColor: 'rgba(159, 34, 65, 0.3)',
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-  gradient: {
+  inner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
   text: {
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
-  textDisabled: {
-    opacity: 0.6,
+  disabled: {
+    opacity: 0.42,
   },
 });

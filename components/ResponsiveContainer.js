@@ -8,9 +8,9 @@ export default function ResponsiveContainer({
   children,
   style = {},
   contentStyle = {},
-  safeAreaEnabled = false,
+  _safeAreaEnabled = false,
 }) {
-  const { isDesktop, isDesktopLarge, paddingObj, width } = useResponsive();
+  const { isDesktop, isDesktopLarge, paddingObj } = useResponsive();
   const isWeb = Platform.OS === 'web';
 
   // Ancho máximo del contenedor

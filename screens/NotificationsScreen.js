@@ -6,10 +6,8 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   RefreshControl,
-  ListRenderItem,
   FlatList,
   Platform,
   Alert,
@@ -21,20 +19,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { toMs } from '../utils/dateUtils';
 import { getMyNotifications, markNotificationAsRead, deleteNotification } from '../services/notificationsAdvanced';
-import { hapticSuccess, hapticLight, hapticWarning } from '../utils/haptics';
+import { hapticSuccess, hapticLight } from '../utils/haptics';
 import ShimmerEffect from '../components/ShimmerEffect';
 import { getSwipeable } from '../utils/platformComponents';
 const Swipeable = getSwipeable();
 import { useNotification } from '../contexts/NotificationContext';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
+import AmbientOrbs from '../components/AmbientOrbs';
 
 const NotificationCard = React.memo(({ item, onPress, onDelete, theme, isDark, getColor, getIcon }) => (
   <View
     style={[
       cardStyles.notificationCard,
       {
-        backgroundColor: item.read ? (isDark ? '#1a1a1f' : '#f9f9fb') : (isDark ? '#2a2a2e' : '#f0f0f5'),
+        backgroundColor: item.read ? (isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)') : (isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)'),
         borderColor: item.read ? theme.border : getColor(item.type),
         borderLeftWidth: item.read ? 1 : 4,
       },
@@ -67,7 +66,7 @@ const NotificationCard = React.memo(({ item, onPress, onDelete, theme, isDark, g
         style={({ pressed }) => [cardStyles.deleteButton, pressed && { opacity: 0.5, transform: [{ scale: 0.95 }] }]}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
       >
-        <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+        <Ionicons name="trash-outline" size={18} color={theme.error} />
       </Pressable>
     )}
   </View>
@@ -85,6 +84,7 @@ export default function NotificationsScreen({ navigation }) {
 
   useEffect(() => {
     loadNotifications();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadNotifications = async () => {
@@ -116,6 +116,7 @@ export default function NotificationsScreen({ navigation }) {
       await loadNotifications();
       showError('Error al marcar como leídas');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [notifications]);
 
   const onRefresh = () => {
@@ -123,7 +124,7 @@ export default function NotificationsScreen({ navigation }) {
     loadNotifications();
   };
 
-  const handleNotificationPress = async (notification) => {
+  const handleNotificationPress = useCallback(async (notification) => {
     hapticLight();
     // Marcar como leída
     if (!notification.read) {
@@ -148,7 +149,7 @@ export default function NotificationsScreen({ navigation }) {
     } else if (notification.areaId && notification.type === 'area_created') {
       navigation.navigate('AreaManagement');
     }
-  };
+  }, [navigation]);
 
   const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
 
@@ -165,7 +166,7 @@ export default function NotificationsScreen({ navigation }) {
     }
   }, [notifications, filter]);
 
-  const handleDeleteNotification = async (notificationId, notificationTitle) => {
+  const handleDeleteNotification = useCallback(async (notificationId, notificationTitle) => {
     // En web, Alert.alert no funciona - usar confirm nativo
     if (Platform.OS === 'web') {
       const confirmed = window.confirm(`¿Deseas eliminar "${notificationTitle}"?`);
@@ -204,7 +205,8 @@ export default function NotificationsScreen({ navigation }) {
         { cancelable: false }
       );
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showSuccess, showError]);
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -225,22 +227,22 @@ export default function NotificationsScreen({ navigation }) {
     }
   };
 
-  const getNotificationColor = (type) => {
+  const getNotificationColor = useCallback((type) => {
     switch (type) {
       case 'subtask_completed':
-        return '#34C759';
+        return theme.success;
       case 'task_due_soon':
-        return '#FF9500';
+        return theme.warning;
       case 'area_created':
-        return '#9F2241';
+        return theme.primary;
       case 'area_chief_assigned':
-        return '#5E72E4';
+        return theme.secondary;
       case 'new_report':
-        return '#3B82F6';
+        return theme.info;
       default:
         return theme.primary;
     }
-  };
+  }, [theme.primary, theme.success, theme.warning, theme.secondary, theme.info]);
 
   const renderNotifSwipeActions = useCallback((progress, dragX, item) => {
     const trans = dragX.interpolate({
@@ -253,7 +255,7 @@ export default function NotificationsScreen({ navigation }) {
         <TouchableOpacity
           onPress={() => handleDeleteNotification(item.id, item.title)}
           style={{
-            backgroundColor: '#FF3B30',
+            backgroundColor: theme.error,
             justifyContent: 'center',
             alignItems: 'center',
             width: 80,
@@ -294,11 +296,11 @@ export default function NotificationsScreen({ navigation }) {
         {card}
       </Swipeable>
     );
-  }, [handleNotificationPress, handleDeleteNotification, theme, isDark, renderNotifSwipeActions]);
+  }, [handleNotificationPress, handleDeleteNotification, getNotificationColor, theme, isDark, renderNotifSwipeActions]);
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background, paddingHorizontal: 16, paddingTop: 60 }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent', paddingHorizontal: 16, paddingTop: 60 }]}>
         {[...Array(6)].map((_, i) => (
           <View key={i} style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <ShimmerEffect width={44} height={44} borderRadius={22} />
@@ -313,14 +315,17 @@ export default function NotificationsScreen({ navigation }) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+      {/* Premium Ambient Orbs - Glasmorfismo */}
+      <AmbientOrbs intensity="medium" />
+      
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       {/* Header */}
       <LinearGradient
-        colors={[theme.primary, theme.primary + '80']}
+        colors={theme.gradientHeader}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { shadowColor: theme.primary }]}
       >
         <View style={styles.headerContent}>
           <View>
@@ -333,7 +338,7 @@ export default function NotificationsScreen({ navigation }) {
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
             {unreadCount > 0 && (
               <TouchableOpacity
-                style={[styles.closeButton, { backgroundColor: 'rgba(255,255,255,0.15)' }]}
+                style={[styles.closeButton, { backgroundColor: 'rgba(255,255,255,0.15)' }, Platform.OS === 'web' && { cursor: 'pointer' }]}
                 onPress={handleMarkAllAsRead}
                 accessibilityLabel="Marcar todas como leídas"
                 accessibilityRole="button"
@@ -341,7 +346,7 @@ export default function NotificationsScreen({ navigation }) {
                 <Ionicons name="checkmark-done" size={20} color="#FFFFFF" />
               </TouchableOpacity>
             )}
-            <TouchableOpacity style={styles.closeButton} onPress={() => navigation.goBack()} accessibilityLabel="Cerrar notificaciones" accessibilityRole="button">
+            <TouchableOpacity style={[styles.closeButton, Platform.OS === 'web' && { cursor: 'pointer' }]} onPress={() => navigation.goBack()} accessibilityLabel="Cerrar notificaciones" accessibilityRole="button">
               <Ionicons name="close" size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
@@ -359,13 +364,10 @@ export default function NotificationsScreen({ navigation }) {
             accessibilityLabel={f === 'all' ? 'Todas' : f === 'unread' ? 'No leídas' : f === 'tasks' ? 'Tareas' : 'Áreas'}
             style={[
               styles.filterButton,
-              filter === f && {
-                backgroundColor: theme.primary,
-                borderColor: theme.primary,
-              },
-              {
-                borderColor: theme.border,
-              },
+              filter === f
+                ? { backgroundColor: theme.primary, borderColor: theme.primary }
+                : { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' },
+              Platform.OS === 'web' && { cursor: 'pointer' },
             ]}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -397,8 +399,8 @@ export default function NotificationsScreen({ navigation }) {
       {/* Lista de notificaciones */}
       {error ? (
         <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? '#1E1E22' : '#FFF0EE' }]}>
-            <Ionicons name="cloud-offline-outline" size={48} color="#FF3B30" />
+          <View style={[styles.emptyIconWrapper, { backgroundColor: theme.errorAlpha }]}>
+            <Ionicons name="cloud-offline-outline" size={48} color={theme.error} />
           </View>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>Error de conexión</Text>
           <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>No se pudieron cargar las notificaciones.</Text>
@@ -427,8 +429,8 @@ export default function NotificationsScreen({ navigation }) {
         />
       ) : (
         <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? '#1E1E22' : '#F5F5F7' }]}>
-            <Ionicons name="notifications-off-outline" size={48} color={isDark ? '#444' : '#C7C7CC'} />
+          <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+            <Ionicons name="notifications-off-outline" size={48} color={theme.textMuted} />
           </View>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>
             {filter === 'all' ? 'Sin notificaciones' : 'Sin notificaciones aquí'}
@@ -478,8 +480,15 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: 48,
-    paddingBottom: 20,
+    paddingBottom: 24,
     paddingHorizontal: 16,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 12,
+    overflow: 'hidden',
   },
   headerContent: {
     flexDirection: 'row',
@@ -487,49 +496,56 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   title: {
-    fontSize: 28,
-    fontWeight: '900',
+    fontSize: 30,
+    fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.5,
+    textShadowColor: 'rgba(0,0,0,0.20)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   subtitle: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255,255,255,0.72)',
     marginTop: 4,
+    fontWeight: '500',
   },
   closeButton: {
-    width: 44,
-    height: 44,
+    width: 38,
+    height: 38,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.20)',
   },
   filterContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     flexDirection: 'row',
     gap: 8,
+    flexWrap: 'wrap',
   },
   filterButton: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 99,
     borderWidth: 1,
   },
   filterLabel: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   listContent: {
     paddingHorizontal: 16,
     paddingVertical: 12,
-    gap: 12,
+    gap: 10,
   },
   notificationCard: {
     flexDirection: 'row',
-    padding: 12,
-    borderRadius: 12,
+    padding: 14,
+    borderRadius: 16,
     borderWidth: 1,
     alignItems: 'center',
     gap: 8,
@@ -544,7 +560,7 @@ const styles = StyleSheet.create({
   notificationIcon: {
     width: 44,
     height: 44,
-    borderRadius: 10,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },

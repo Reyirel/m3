@@ -4,6 +4,7 @@
 // Compatible con Web, iOS y Android
 
 import { Platform } from 'react-native';
+import { toMs } from '../utils/dateUtils';
 
 // Imports condicionales para Expo modules (no disponibles en web)
 let FileSystem = null;
@@ -61,7 +62,7 @@ function generateCSV(headers, rows) {
  * @param {Array} allTasks - Todas las tareas
  * @param {String} period - 'week' | 'month' | 'quarter'
  */
-export async function exportAreaReport(areaMetrics, allTasks, period = 'month') {
+export async function exportAreaReport(areaMetrics, allTasks, _period = 'month') {
   try {
     const sections = [];
 

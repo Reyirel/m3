@@ -1,24 +1,31 @@
+// screens/HomeScreen.js
+// Estilos → screens/kanban/HomeScreenStyles.js
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, RefreshControl, Animated, Platform, Modal, ScrollView, Easing } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { getSwipeable } from '../utils/platformComponents';
 import TaskItem from '../components/TaskItem';
+import TaskCard from '../components/TaskCard'; // ✨ NEW: Glassmorphic task card for lists
 import SearchBar from '../components/SearchBar';
 import ThemeToggle from '../components/ThemeToggle';
 import EmptyState from '../components/EmptyState';
+import CompactSearchHeader from '../components/CompactSearchHeader';
 import ConfettiCelebration from '../components/ConfettiCelebration';
+import { PremiumGlassCard, GlassmorphicEmptyState } from '../components'; // ✨ UPGRADED: Premium Glassmorphism + Accessibility
+import { useGlassPreset } from '../hooks/useGlassmorphism'; // ✨ NEW: Glassmorphism configuration
 import { useNotification } from '../contexts/NotificationContext';
 import { deleteManager } from '../utils/deleteManager';
 import QuickActionButton from '../components/QuickActionButton';
+import AmbientOrbs from '../components/AmbientOrbs';
+import { PremiumSkeletonLoader, GlowEffect } from '../components';
 import { toMs } from '../utils/dateUtils';
 import { generateDailySummary, detectStalledTasks } from '../utils/aiFeatures';
-import ShimmerEffect from '../components/ShimmerEffect';
-import SkeletonLoader from '../components/SkeletonLoader';
 import OverdueAlert from '../components/OverdueAlert';
+import ShimmerEffect from '../components/ShimmerEffect';
 import OnboardingTour from '../components/OnboardingTour';
-import LoadingIndicator from '../components/LoadingIndicator';
 import SyncIndicator from '../components/SyncIndicator';
 import QuickTip, { TIPS } from '../components/QuickTip';
 import { useTheme } from '../contexts/ThemeContext';
@@ -26,9 +33,11 @@ import { useTasks } from '../contexts/TasksContext';
 import { deleteTask as deleteTaskFirebase, updateTask, createTask } from '../services/tasks';
 import { hapticLight, hapticMedium, hapticHeavy } from '../utils/haptics';
 import { useResponsive } from '../utils/responsive';
+import { useAccessibility } from '../hooks/useAccessibility'; // ✨ NEW: Accessibility helpers
 import { SPACING, RADIUS, SHADOWS, MAX_WIDTHS } from '../theme/tokens';
 import { canChangeTaskStatus, canDeleteTask } from '../services/permissions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { createHomeStyles } from './kanban/HomeScreenStyles';
 
 const Swipeable = getSwipeable();
 
@@ -38,6 +47,7 @@ export default function HomeScreen({ navigation }) {
   const { theme, isDark } = useTheme();
   const { width, isDesktop, isTablet, padding } = useResponsive();
   const { showSuccess, showError, showWarning, showInfo, showNotification } = useNotification();
+  const { getTaskLabel, getTouchableProps, announce } = useAccessibility(); // ✨ NEW: Accessibility helpers
 
   // 🌍 USAR EL CONTEXT GLOBAL DE TAREAS
   const { tasks, setTasks, isLoading: tasksLoading, currentUser } = useTasks();
@@ -139,7 +149,7 @@ export default function HomeScreen({ navigation }) {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, []);
+  }, [headerOpacity, headerSlide, searchOpacity, searchSlide, listOpacity, listSlide]);
   const [showUrgentModal, setShowUrgentModal] = useState(false);
   const [isUndoing, setIsUndoing] = useState(false);
 
@@ -187,7 +197,7 @@ export default function HomeScreen({ navigation }) {
         }, 1200);
       }
     }
-  }, [tasksLoading]);
+  }, [tasksLoading, tasks, fadeAnim]);
 
   const openDetail = useCallback((task) => {
     navigation.navigate('TaskDetail', { task });
@@ -233,7 +243,7 @@ export default function HomeScreen({ navigation }) {
           deleteManager.cancelDelete(taskId);
           deletingTasksRef.current.delete(taskId);
           if (taskToDelete) {
-            const { id, ...taskWithoutId } = taskToDelete;
+            const { id: _id, ...taskWithoutId } = taskToDelete;
             await createTask(taskWithoutId);
             showInfo('Tarea restaurada');
           }
@@ -251,14 +261,14 @@ export default function HomeScreen({ navigation }) {
         // ✅ Solo desmarcar después de éxito confirmado
         deleteManager.confirmDelete(taskId);
       })
-      .catch(error => {
+      .catch(_error => {
         // Si falla en Firebase, mantener marcado para evitar que reaparezca
       })
       .finally(() => {
         // ✅ LIMPIAR MARCA LOCAL DE EN PROCESO
         deletingTasksRef.current.delete(taskId);
       });
-  }, [currentUser, isUndoing, tasks, showNotification, showError, showInfo]);
+  }, [currentUser, isUndoing, tasks, setTasks, showNotification, showError, showInfo]);
 
   const toggleComplete = useCallback(async (task) => {
     try {
@@ -307,7 +317,7 @@ export default function HomeScreen({ navigation }) {
       showError(`Error al actualizar: ${error.message}`);
     }
     // La actualización del estado se hace automáticamente por el listener
-  }, [currentUser, isUndoing]);
+  }, [currentUser, isUndoing, showError, showInfo, showNotification, showWarning]);
 
   const changeTaskStatus = useCallback(async (taskId, newStatus) => {
     const statusLabels = {
@@ -357,7 +367,7 @@ export default function HomeScreen({ navigation }) {
     } catch (error) {
       showError(`Error: ${error.message}`);
     }
-  }, [showNotification, showInfo, showError, tasks, isUndoing]);
+  }, [showNotification, showInfo, showError, showWarning, tasks, isUndoing, currentUser]);
 
   const reopenTask = useCallback(async (task) => {
     // Solo admin puede reabrir
@@ -406,7 +416,7 @@ export default function HomeScreen({ navigation }) {
     } catch (error) {
       showError('Error al copiar');
     }
-  }, []);
+  }, [showSuccess, showError]);
 
   // Renderizar acción de deslizar para eliminar
   const renderRightActions = useCallback((progress, dragX, task) => {
@@ -427,7 +437,7 @@ export default function HomeScreen({ navigation }) {
         <TouchableOpacity
           onPress={() => deleteTask(task.id, true)}
           style={{
-            backgroundColor: '#FF3B30',
+            backgroundColor: theme.error,
             justifyContent: 'center',
             alignItems: 'center',
             width: 80,
@@ -507,6 +517,16 @@ export default function HomeScreen({ navigation }) {
     });
   }, [tasks, searchText, quickStatusFilter]);
 
+  const filterCounts = useMemo(() => {
+    const c = { todas: tasks.length };
+    tasks.forEach(t => {
+      if (t.status === 'pendiente') c.pendiente = (c.pendiente || 0) + 1;
+      if (t.status === 'en_progreso' || t.status === 'en_proceso' || t.status === 'en-progreso') c['en-progreso'] = (c['en-progreso'] || 0) + 1;
+      if (t.status === 'en_revision' || t.status === 'revision') c.revision = (c.revision || 0) + 1;
+      if (t.status === 'cerrada') c.cerrada = (c.cerrada || 0) + 1;
+    });
+    return c;
+  }, [tasks]);
 
   // Callbacks
   const handleSearch = useCallback((text) => {
@@ -516,75 +536,56 @@ export default function HomeScreen({ navigation }) {
 
 
   // Create theme-aware and responsive styles
-  const styles = React.useMemo(() => createStyles(theme, isDark, isDesktop, isTablet, width, padding), [theme, isDark, isDesktop, isTablet, width, padding]);
+  const styles = React.useMemo(() => createHomeStyles(theme, isDark, isDesktop, isTablet, width, padding), [theme, isDark, isDesktop, isTablet, width, padding]);
+
+  // keyExtractor debe estar antes de cualquier early return (reglas de hooks)
+  const keyExtractor = useCallback((item) => item.id, []);
 
   // Show shimmer loading state
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         <LinearGradient
-          colors={isDark ? ['#2A1520', '#1A1A1A'] : ['#9F2241', '#7F1D35']}
+          colors={theme.gradientHeader}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
         >
+          <View style={styles.headerHighlight} />
           <View style={styles.header}>
             <View>
-              <ShimmerEffect width={150} height={20} borderRadius={10} style={{ marginBottom: 8 }} />
-              <ShimmerEffect width={200} height={32} borderRadius={10} />
+              <ShimmerEffect width={120} height={14} borderRadius={7} style={{ marginBottom: 6 }} />
+              <ShimmerEffect width={190} height={30} borderRadius={10} />
             </View>
-            <ShimmerEffect width={56} height={56} borderRadius={28} />
+            <PremiumSkeletonLoader type="avatar" />
           </View>
         </LinearGradient>
         
         <View style={{ padding: 20, gap: 16 }}>
-          <SkeletonLoader type="card" count={5} />
+          <PremiumSkeletonLoader type="card" count={5} />
         </View>
       </View>
     );
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+      {/* Premium Ambient Orbs - Glasmorfismo */}
+      <AmbientOrbs intensity="medium" />
+      
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
         <Animated.View style={{ opacity: headerOpacity, transform: [{ translateY: headerSlide }] }}>
-          <LinearGradient
-            colors={isDark ? ['#2A1520', '#1A1A1A'] : ['#9F2241', '#7F1D35']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.headerGradient}
-          >
-            <View style={styles.header}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.heading}>Mis Tareas</Text>
-              </View>
-              <View style={styles.headerActions}>
-                <TouchableOpacity
-                  style={styles.notificationButton}
-                  onPress={() => { hapticLight(); setShowBriefingModal(true); }}
-                >
-                  <Ionicons
-                    name={smartBriefing.overdueCount > 0 ? 'warning-outline' : smartBriefing.urgentCount > 0 ? 'time-outline' : 'sparkles-outline'}
-                    size={22}
-                    color={smartBriefing.overdueCount > 0 ? '#FCA5A5' : smartBriefing.urgentCount > 0 ? '#FCD34D' : '#FFFFFF'}
-                  />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.notificationButton}
-                  onPress={() => { hapticLight(); setShowHelpModal(true); }}
-                >
-                  <Ionicons name="help-circle-outline" size={22} color="#FFFFFF" />
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={styles.notificationButton}
-                  onPress={() => navigation.navigate('Notifications')}
-                >
-                  <Ionicons name="notifications-outline" size={22} color="#FFFFFF" />
-                </TouchableOpacity>
-                <ThemeToggle size={22} />
-              </View>
-            </View>
-          </LinearGradient>
+          <CompactSearchHeader
+            userName={currentUser?.displayName || 'Usuario'}
+            userEmail={currentUser?.email || 'email@example.com'}
+            role={currentUser?.role?.toUpperCase() || 'USUARIO'}
+            onSearch={handleSearch}
+            searchText={searchText}
+            quickStatusFilter={quickStatusFilter}
+            onFilterChange={setQuickStatusFilter}
+            statusCounts={statusCounts}
+            navigation={navigation}
+          />
         </Animated.View>
 
         {/* Banner de tareas vencidas / urgentes */}
@@ -603,10 +604,10 @@ export default function HomeScreen({ navigation }) {
           onRequestClose={() => setShowUrgentModal(false)}
         >
           <View style={styles.modalOverlay}>
-            <View style={[styles.urgentModalContent, { backgroundColor: theme.card }]}>
+            <View style={[styles.urgentModalContent, { backgroundColor: isDark ? 'rgba(15,10,25,0.97)' : 'rgba(255,255,255,0.98)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)', borderWidth: 1 }]}>
             <View style={styles.urgentModalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="alarm" size={28} color="#FF3B30" style={{ marginRight: 12 }} />
+                <Ionicons name="alarm" size={28} color={theme.error} style={{ marginRight: 12 }} />
                 <View>
                   <Text style={[styles.urgentModalTitle, { color: theme.text }]}>¡Tareas Urgentes!</Text>
                   <Text style={[styles.urgentModalSubtitle, { color: theme.textSecondary }]}>
@@ -630,9 +631,9 @@ export default function HomeScreen({ navigation }) {
                 return (
                   <TouchableOpacity
                     key={task.id}
-                    style={[styles.urgentTaskCard, { 
-                      backgroundColor: theme.surface,
-                      borderColor: hoursLeft < 2 ? '#FF3B30' : '#FF9500'
+                    style={[styles.urgentTaskCard, {
+                      backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+                      borderColor: hoursLeft < 2 ? theme.error : theme.warning
                     }]}
                     onPress={() => {
                       setShowUrgentModal(false);
@@ -643,7 +644,7 @@ export default function HomeScreen({ navigation }) {
                       <Ionicons 
                         name={hoursLeft < 2 ? "alert-circle" : "time"} 
                         size={24} 
-                        color={hoursLeft < 2 ? '#FF3B30' : '#FF9500'} 
+                        color={hoursLeft < 2 ? theme.error : theme.warning} 
                       />
                       <View style={{ flex: 1, marginLeft: 12 }}>
                         <Text style={[styles.urgentTaskTitle, { color: theme.text }]} numberOfLines={2}>
@@ -655,11 +656,11 @@ export default function HomeScreen({ navigation }) {
                       </View>
                     </View>
                     <View style={[styles.urgentTaskTimer, { 
-                      backgroundColor: hoursLeft < 2 ? 'rgba(255, 59, 48, 0.1)' : 'rgba(255, 149, 0, 0.1)' 
+                      backgroundColor: hoursLeft < 2 ? theme.errorAlpha : theme.warningAlpha 
                     }]}>
-                      <Ionicons name="hourglass" size={16} color={hoursLeft < 2 ? '#FF3B30' : '#FF9500'} />
+                      <Ionicons name="hourglass" size={16} color={hoursLeft < 2 ? theme.error : theme.warning} />
                       <Text style={[styles.urgentTaskTime, { 
-                        color: hoursLeft < 2 ? '#FF3B30' : '#FF9500' 
+                        color: hoursLeft < 2 ? theme.error : theme.warning 
                       }]}>
                         {hoursLeft}h {minutesLeft}m restantes
                       </Text>
@@ -680,30 +681,13 @@ export default function HomeScreen({ navigation }) {
           </View>
         </Modal>
 
-        {/* Search Bar */}
-        <Animated.View style={{ 
-          opacity: searchOpacity, 
-          transform: [{ translateY: searchSlide }],
-          marginHorizontal: 16,
-          marginTop: 12,
-          marginBottom: 8,
-        }}>
-          <View style={[
-            styles.searchBarContainer,
-            {
-              backgroundColor: isDark ? 'rgba(30, 30, 35, 0.95)' : 'rgba(255, 255, 255, 0.98)',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-            }
-          ]}>
-            <SearchBar onSearch={handleSearch} placeholder="Buscar tareas..." />
-          </View>
-        </Animated.View>
+
 
         <Animated.View style={{ flex: 1, opacity: listOpacity, transform: [{ translateY: listSlide }] }}>
           <FlatList
           ref={flatListRef}
           data={filteredTasks}
-          keyExtractor={(i) => i.id}
+          keyExtractor={keyExtractor}
           showsVerticalScrollIndicator={false}
           getItemLayout={(_, index) => ({
             length: 120,
@@ -719,79 +703,44 @@ export default function HomeScreen({ navigation }) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor="#007AFF"
-              colors={['#007AFF']}
+              tintColor={theme.primary}
+              colors={[theme.primary]}
               title={refreshing ? 'Actualizando...' : ''}
-              titleColor="#007AFF"
+              titleColor={theme.primary}
             />
           }
           contentContainerStyle={styles.listContent}
         ListHeaderComponent={
           isLoading ? (
-            <SkeletonLoader type="bento" />
+            <PremiumSkeletonLoader type="bento" />
           ) : (
           <View style={styles.bentoGrid}>
 
-            {/* Chips de filtro rápido por estado */}
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false} 
-              style={styles.quickFiltersScroll}
-              contentContainerStyle={styles.quickFiltersContent}
-            >
-              {[
-                { key: 'todas', label: 'Todas', icon: 'apps' },
-                { key: 'pendiente', label: 'Pendiente', icon: 'time-outline' },
-                { key: 'en-progreso', label: 'En progreso', icon: 'play-circle' },
-                { key: 'revision', label: 'Revisión', icon: 'eye' },
-                { key: 'cerrada', label: 'Cerradas', icon: 'checkmark-circle' },
-              ].map(filter => (
-                <TouchableOpacity
-                  key={filter.key}
-                  style={[
-                    styles.quickFilterChip,
-                    {
-                      backgroundColor: quickStatusFilter === filter.key
-                        ? theme.primary
-                        : (isDark ? '#2a2a2a' : '#f0f0f0'),
-                      borderColor: quickStatusFilter === filter.key
-                        ? theme.primary
-                        : (isDark ? '#444' : '#ddd'),
-                    }
-                  ]}
-                  onPress={() => {
-                    hapticLight();
-                    setQuickStatusFilter(filter.key);
-                  }}
-                  accessibilityLabel={`Filtrar por ${filter.label}`}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: quickStatusFilter === filter.key }}
-                >
-                  <Ionicons 
-                    name={filter.icon} 
-                    size={14} 
-                    color={quickStatusFilter === filter.key ? '#fff' : theme.textSecondary} 
-                  />
-                  <Text style={[
-                    styles.quickFilterLabel,
-                    { color: quickStatusFilter === filter.key ? '#fff' : theme.text }
-                  ]}>
-                    {filter.label}
+            {/* Section label */}
+            <View style={styles.sectionLabelRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.sectionLabelTitle, { color: theme.text }]}>
+                  {quickStatusFilter === 'todas' ? 'Mis tareas' :
+                   quickStatusFilter === 'pendiente' ? 'Pendientes' :
+                   quickStatusFilter === 'en-progreso' ? 'En progreso' :
+                   quickStatusFilter === 'revision' ? 'En revisión' :
+                   'Cerradas'}
+                </Text>
+                <Text style={[styles.sectionLabelSub, { color: theme.textSecondary }]}>
+                  {filteredTasks.length === tasks.length
+                    ? `${filteredTasks.length} tarea${filteredTasks.length !== 1 ? 's' : ''}`
+                    : `${filteredTasks.length} de ${tasks.length} tareas`}
+                </Text>
+              </View>
+              {smartBriefing.urgentCount > 0 && (
+                <View style={[styles.sectionLabelBadge, { backgroundColor: theme.warningAlpha, borderColor: theme.warning }]}>
+                  <Ionicons name="time" size={11} color={theme.warning} />
+                  <Text style={[styles.sectionLabelBadgeText, { color: theme.warning }]}>
+                    {smartBriefing.urgentCount} urgente{smartBriefing.urgentCount !== 1 ? 's' : ''}
                   </Text>
-                  <View style={[
-                    styles.quickFilterBadge,
-                    { backgroundColor: quickStatusFilter === filter.key ? 'rgba(255,255,255,0.3)' : (isDark ? '#444' : '#ddd') }
-                  ]}>
-                    <Text style={[
-                      styles.quickFilterBadgeText,
-                      { color: quickStatusFilter === filter.key ? '#fff' : theme.textSecondary }
-                    ]}>
-                      {statusCounts[filter.key]}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
+                </View>
+              )}
+            </View>
           </View>
           )
         }
@@ -801,27 +750,33 @@ export default function HomeScreen({ navigation }) {
           const isSecretario = currentUser?.role === 'secretario';
           
           const content = (
-            <TaskItem 
+            <TaskCard
               task={item}
-              index={index}
-              compact={false}
-              onPress={() => openDetail(item)} // 👈 Abre detalle de tarea consistente con otras pantallas
-              // Solo admin puede eliminar tareas
-              onDelete={isAdmin ? () => deleteTask(item.id) : undefined}
-              onToggleComplete={() => toggleComplete(item)}
-              // Solo admin puede reabrir tareas
-              onReopen={isAdmin ? reopenTask : undefined}
-              // Solo admin y secretario pueden duplicar tareas
-              onDuplicate={isAdmin || isSecretario ? () => duplicateTask(item) : undefined}
-              onShare={() => shareTask(item)}
-              onChangeStatus={(task, newStatus) => changeTaskStatus(task.id, newStatus)}
-              currentUserRole={currentUser?.role || 'director'}
+              onPress={() => {
+                announce(`Abriendo: ${item.title}`);
+                openDetail(item);
+              }}
+              onLongPress={() => {
+                // Long press for quick actions on mobile
+                if (currentUser?.role === 'admin') {
+                  hapticMedium();
+                  if (item.status === 'completado') {
+                    reopenTask(item);
+                  } else {
+                    toggleComplete(item);
+                  }
+                }
+              }}
             />
           );
 
+          // TaskCard already includes PremiumGlassCard wrapper internally,
+          // so we don't need to wrap it again
+          const wrappedContent = content;
+
           // En web, no usar swipe
           if (Platform.OS === 'web' || !currentUser || currentUser.role !== 'admin') {
-            return content;
+            return wrappedContent;
           }
 
           // En móvil con admin, usar swipe
@@ -831,18 +786,26 @@ export default function HomeScreen({ navigation }) {
               friction={2}
               overshootRight={false}
             >
-              {content}
+              {wrappedContent}
             </Swipeable>
           );
         }}
           ListEmptyComponent={
-            <EmptyState
+            <GlassmorphicEmptyState
               icon="checkbox-outline"
               title="Sin tareas"
               message={searchText || quickStatusFilter !== 'todas'
                 ? "No hay tareas que coincidan con los filtros aplicados"
                 : "No tienes tareas pendientes. ¡Toca el botón + para crear una nueva!"
               }
+              action={{
+                label: 'Crear tarea',
+                onPress: () => {
+                  hapticMedium();
+                  navigation.navigate('TaskDetail', {});
+                },
+              }}
+              fullScreen={false}
             />
           }
         />
@@ -851,16 +814,16 @@ export default function HomeScreen({ navigation }) {
         {/* Modal SmartBriefing compacto */}
         <Modal visible={showBriefingModal} transparent animationType="fade" onRequestClose={() => setShowBriefingModal(false)}>
           <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowBriefingModal(false)}>
-            <TouchableOpacity activeOpacity={1} style={[styles.briefingModal, { backgroundColor: theme.card }]}>
+            <TouchableOpacity activeOpacity={1} style={[styles.briefingModal, { backgroundColor: isDark ? 'rgba(15,10,25,0.97)' : 'rgba(255,255,255,0.98)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)', borderWidth: 1 }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
                 <View style={{
                   width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center',
-                  backgroundColor: smartBriefing.overdueCount > 0 ? '#EF444420' : smartBriefing.urgentCount > 0 ? '#F59E0B20' : '#10B98120'
+                  backgroundColor: smartBriefing.overdueCount > 0 ? theme.errorAlpha : smartBriefing.urgentCount > 0 ? theme.warningAlpha : theme.successAlpha
                 }}>
                   <Ionicons
                     name={smartBriefing.overdueCount > 0 ? 'warning' : smartBriefing.urgentCount > 0 ? 'time' : 'sparkles'}
                     size={20}
-                    color={smartBriefing.overdueCount > 0 ? '#EF4444' : smartBriefing.urgentCount > 0 ? '#F59E0B' : '#10B981'}
+                    color={smartBriefing.overdueCount > 0 ? theme.error : smartBriefing.urgentCount > 0 ? theme.warning : theme.success}
                   />
                 </View>
                 <Text style={{ flex: 1, fontSize: 15, fontWeight: '700', color: theme.text }}>{smartBriefing.headline}</Text>
@@ -877,12 +840,12 @@ export default function HomeScreen({ navigation }) {
               {stalledTasks.length > 0 && (
                 <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.border }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                    <Ionicons name="pause-circle" size={14} color="#F59E0B" />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#F59E0B' }}>Tareas estancadas ({stalledTasks.length})</Text>
+                    <Ionicons name="pause-circle" size={14} color={theme.warning} />
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: theme.warning }}>Tareas estancadas ({stalledTasks.length})</Text>
                   </View>
                   {stalledTasks.map(({ task, stalledDays }) => (
                     <View key={task.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3 }}>
-                      <Ionicons name="ellipse" size={6} color="#F59E0B" style={{ marginTop: 1 }} />
+                      <Ionicons name="ellipse" size={6} color={theme.warning} style={{ marginTop: 1 }} />
                       <Text style={{ fontSize: 12, color: theme.textSecondary, flex: 1 }} numberOfLines={1}>
                         {task.title} · {stalledDays}d sin movimiento
                       </Text>
@@ -897,7 +860,7 @@ export default function HomeScreen({ navigation }) {
         {/* Modal de Ayuda */}
         <Modal visible={showHelpModal} transparent animationType="fade" onRequestClose={() => setShowHelpModal(false)}>
           <View style={styles.modalOverlay}>
-            <View style={[styles.urgentModalContent, { backgroundColor: theme.card }]}>
+            <View style={[styles.urgentModalContent, { backgroundColor: isDark ? 'rgba(15,10,25,0.97)' : 'rgba(255,255,255,0.98)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)', borderWidth: 1 }]}>
               <View style={[styles.urgentModalHeader, { borderBottomWidth: 1, borderBottomColor: theme.border, paddingBottom: 12 }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Ionicons name="help-circle" size={28} color={theme.primary} />
@@ -947,75 +910,53 @@ export default function HomeScreen({ navigation }) {
         <SyncIndicator />
       </View>
       
-      
       {/* FAB con acciones rápidas - Admin */}
       {currentUser && (currentUser.role === 'admin') && (
-        <QuickActionButton
-          actions={[
-            {
-              icon: 'add-circle',
-              label: 'Nueva tarea',
-              color: theme.primary,
-              onPress: () => navigation.navigate('TaskDetail'),
-            },
-            {
-              icon: 'notifications',
-              label: 'Notificaciones',
-              color: '#2196F3',
-              onPress: () => navigation.navigate('Notifications'),
-            },
-            {
-              icon: 'stats-chart',
-              label: 'Estadísticas',
-              color: '#4CAF50',
-              onPress: () => navigation.navigate('ExecutiveDashboard'),
-            },
-          ]}
-          position="bottom-right"
-        />
+        <GlowEffect size="large" color={theme.primary} intensity={0.7}>
+          <QuickActionButton
+            actions={[
+              {
+                icon: 'add-circle',
+                label: 'Nueva tarea',
+                color: theme.primary,
+                onPress: () => navigation.navigate('TaskDetail', {}),
+              },
+              {
+                icon: 'notifications',
+                label: 'Notificaciones',
+                color: theme.info,
+                onPress: () => navigation.navigate('Notifications'),
+              },
+              {
+                icon: 'stats-chart',
+                label: 'Estadísticas',
+                color: theme.success,
+                onPress: () => navigation.navigate('ExecutiveDashboard'),
+              },
+            ]}
+            position="bottom-right"
+          />
+        </GlowEffect>
       )}
       
       {/* FAB simple para otros roles - Solo ver notificaciones */}
       {currentUser && (currentUser.role === 'secretario' || currentUser.role === 'director') && (
-        <QuickActionButton
-          actions={[
-            {
-              icon: 'notifications',
-              label: 'Notificaciones',
-              color: '#2196F3',
-              onPress: () => navigation.navigate('Notifications'),
-            },
-          ]}
-          position="bottom-right"
-        />
+        <GlowEffect size="medium" color={theme.info} intensity={0.6}>
+          <QuickActionButton
+            actions={[
+              {
+                icon: 'notifications',
+                label: 'Notificaciones',
+                color: theme.info,
+                onPress: () => navigation.navigate('Notifications'),
+              },
+            ]}
+            position="bottom-right"
+          />
+        </GlowEffect>
       )}
       
       {/* Loading Indicator — removed (savingProgress no longer used) */}
-      {false && (
-        <View style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.3)',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
-          <View style={{
-            backgroundColor: '#FFF',
-            padding: 24,
-            borderRadius: 16,
-            alignItems: 'center',
-            gap: 12
-          }}>
-            <LoadingIndicator type="spinner" color={theme.primary} size={12} />
-            <Text style={{ fontSize: 16, fontWeight: '600', color: '#1A1A1A' }}>
-              Guardando...
-            </Text>
-          </View>
-        </View>
-      )}
       
       {/* Tip de ayuda para usuarios nuevos */}
       <QuickTip
@@ -1031,689 +972,3 @@ export default function HomeScreen({ navigation }) {
     </View>
   );
 }
-
-const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) => StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: theme.background
-  },
-  contentWrapper: {
-    flex: 1,
-    alignSelf: 'center',
-    width: '100%'
-  },
-  headerGradient: {
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 14,
-    elevation: 10,
-    paddingHorizontal: padding,
-    paddingTop: isDesktop ? SPACING.xxl : 44,
-    paddingBottom: 18
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  notificationButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  greetingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12
-  },
-  greeting: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    opacity: 0.95,
-    letterSpacing: 0.4,
-    textShadowColor: 'rgba(0,0,0,0.15)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
-  },
-  heading: { 
-    fontSize: 32, 
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -1.5,
-    textShadowColor: 'rgba(0,0,0,0.15)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3
-  },
-  urgentBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 59, 48, 0.95)',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.lg,
-    gap: SPACING.xs,
-    marginRight: SPACING.md,
-    ...SHADOWS.md,
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.3)',
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4
-  },
-  urgentBadgeText: {
-    color: '#FFF',
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-    textTransform: 'uppercase'
-  },
-  urgentAlert: {
-    marginHorizontal: padding,
-    marginTop: SPACING.sm,
-    marginBottom: SPACING.md,
-    padding: SPACING.md,
-    borderRadius: RADIUS.lg,
-    borderWidth: 2,
-    ...SHADOWS.sm
-  },
-  urgentAlertContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  urgentAlertTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4,
-  },
-  urgentAlertText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  addButton: {
-    borderRadius: 30,
-    overflow: 'hidden',
-    shadowColor: '#DAA520',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 12
-  },
-  addButtonGradient: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2.5,
-    borderColor: 'rgba(255,255,255,0.9)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 6
-  },
-  listContent: {
-    padding: padding,
-    paddingTop: SPACING.sm,
-    paddingBottom: 80
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: 100,
-    paddingHorizontal: padding * 2
-  },
-  emptyText: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: theme.text,
-    marginBottom: 12,
-    letterSpacing: -0.8,
-    textShadowColor: 'rgba(0,0,0,0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
-  },
-  emptySubtext: {
-    fontSize: 16,
-    color: theme.textSecondary,
-    textAlign: 'center',
-    lineHeight: 26,
-    fontWeight: '700',
-    letterSpacing: -0.2
-  },
-  // Bento Grid Styles
-  bentoGrid: {
-    gap: SPACING.xs,
-    marginBottom: SPACING.sm,
-    paddingHorizontal: padding
-  },
-  bentoRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginBottom: 10
-  },
-  bentoCard: {
-    borderRadius: RADIUS.xl,
-    overflow: 'hidden',
-    ...SHADOWS.lg,
-    width: isDesktop ? (screenWidth > 1440 ? '23%' : '32%') : isTablet ? '48%' : '100%',
-    shadowColor: isDark ? theme.primary : '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: isDark ? 0.2 : 0.15,
-    shadowRadius: 14,
-    elevation: 5,
-    borderWidth: 1.5,
-    borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'
-  },
-  bentoLarge: {
-    flex: 2,
-    minHeight: 180
-  },
-  bentoMedium: {
-    flex: 1,
-    minHeight: 180
-  },
-  bentoSmall: {
-    flex: 1,
-    minHeight: 140
-  },
-  bentoWide: {
-    flex: 1,
-    backgroundColor: theme.card,
-    borderWidth: 2,
-    borderColor: theme.border,
-    padding: 16,
-    minHeight: 100,
-    shadowColor: isDark ? theme.primary : '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: isDark ? 0.15 : 0.1,
-    shadowRadius: 10,
-    elevation: 3
-  },
-  bentoGradient: {
-    flex: 1,
-    padding: 14,
-    justifyContent: 'flex-start'
-  },
-  bentoGradientSmall: {
-    flex: 1,
-    padding: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8
-  },
-  bentoIconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)'
-  },
-  bentoIconCircleSmall: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.3)'
-  },
-  bentoContent: {
-    flex: 1,
-    justifyContent: 'flex-end'
-  },
-  bentoTitleLarge: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 0.6,
-    marginBottom: 10,
-    textTransform: 'uppercase',
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 3
-  },
-  bentoTitleSmall: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 0.6,
-    marginBottom: 10,
-    textTransform: 'uppercase',
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
-  },
-  bentoNumberLarge: {
-    fontSize: 72,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -3.2,
-    marginBottom: 6,
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: { width: 0, height: 3 },
-    textShadowRadius: 8
-  },
-  bentoNumberMedium: {
-    fontSize: 58,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -2.8,
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6
-  },
-  bentoNumberSmall: {
-    fontSize: 44,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -2.2,
-    textShadowColor: 'rgba(0,0,0,0.4)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6
-  },
-  bentoSubtext: {
-    fontSize: 15,
-    color: '#FFFFFF',
-    fontWeight: '700',
-    letterSpacing: 0.3,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 16,
-    marginTop: 8,
-  },
-  statItemContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  statItem: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '600',
-    opacity: 0.9,
-  },
-  bentoLabel: {
-    fontSize: 12,
-    color: '#FFFFFF',
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
-  },
-  areasContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-    marginTop: 14
-  },
-  areaTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.card,
-    paddingVertical: 12,
-    paddingHorizontal: 18,
-    borderRadius: 20,
-    gap: 12,
-    borderWidth: 2,
-    borderColor: theme.border,
-    shadowColor: theme.shadow,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-    maxWidth: '100%',
-    flexShrink: 1
-  },
-  areaName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: theme.text,
-    letterSpacing: 0.2,
-    flex: 1,
-    flexShrink: 1
-  },
-  areaBadge: {
-    backgroundColor: theme.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    minWidth: 28,
-    alignItems: 'center'
-  },
-  areaCount: {
-    fontSize: 13,
-    fontWeight: '900',
-    color: '#FFFFFF'
-  },
-  // Estilos para la alerta información
-  infoAlert: {
-    borderRadius: RADIUS.lg,
-    padding: 14,
-    marginBottom: 20,
-    borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    ...SHADOWS.md,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 4
-  },
-  infoAlertContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    gap: 12
-  },
-  infoAlertIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0
-  },
-  infoAlertTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    lineHeight: 20,
-    letterSpacing: -0.3
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    letterSpacing: -0.3,
-    flex: 1,
-  },
-  sectionTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    marginTop: 8,
-    paddingTop: 12,
-    paddingHorizontal: 4,
-    gap: 10,
-    borderTopWidth: 1,
-  },
-  sectionIconSmall: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  sectionIconBadge: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.primary,
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  taskCountBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 10,
-    minWidth: 32,
-    alignItems: 'center',
-  },
-  taskCountText: {
-    fontSize: 13,
-    fontWeight: '800',
-    color: '#FFFFFF',
-  },
-  searchBarContainer: {
-    borderRadius: 20,
-    borderWidth: 1.5,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  fab: {
-    position: 'absolute',
-    right: 24,
-    bottom: 104,
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 10
-  },
-  fabGradient: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20
-  },
-  urgentModalContent: {
-    width: '100%',
-    maxWidth: MAX_WIDTHS.modal,
-    maxHeight: '80%',
-    borderRadius: RADIUS.xl,
-    ...SHADOWS.xl
-  },
-  urgentModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    padding: 24,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 59, 48, 0.2)'
-  },
-  urgentModalTitle: {
-    fontSize: 28,
-    fontWeight: '900',
-    marginBottom: 6,
-    letterSpacing: -0.6,
-    textShadowColor: 'rgba(0,0,0,0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
-  },
-  urgentModalSubtitle: {
-    fontSize: 14,
-    fontWeight: '500'
-  },
-  urgentModalScroll: {
-    padding: 20
-  },
-  urgentTaskCard: {
-    padding: 16,
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3
-  },
-  urgentTaskHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 12
-  },
-  urgentTaskTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 4
-  },
-  urgentTaskArea: {
-    fontSize: 13,
-    fontWeight: '500'
-  },
-  urgentTaskTimer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 8,
-    borderRadius: 8,
-    gap: 6
-  },
-  urgentTaskTime: {
-    fontSize: 14,
-    fontWeight: '700'
-  },
-  urgentModalFooter: {
-    padding: 20,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0, 0, 0, 0.1)'
-  },
-  urgentModalButton: {
-    paddingVertical: 18,
-    borderRadius: 14,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4
-  },
-  urgentModalButtonText: {
-    color: '#FFFFFF',
-    fontSize: 17,
-    fontWeight: '900',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase'
-  },
-  // Estilos para filtros rápidos
-  compactToggle: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 'auto',
-  },
-  quickFiltersScroll: {
-    marginTop: 8,
-    marginBottom: 12,
-  },
-  quickFiltersContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-  },
-  quickFilterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 6,
-  },
-  quickFilterLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  quickFilterBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  quickFilterBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  // IA Feature 1: SmartBriefing
-  briefingCard: {
-    marginHorizontal: 16,
-    marginTop: 12,
-    marginBottom: 4,
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: 12,
-  },
-  briefingIconWrap: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 1,
-  },
-  briefingHeadline: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 4,
-    lineHeight: 19,
-  },
-  briefingDetail: {
-    fontSize: 12,
-    lineHeight: 17,
-    marginTop: 1,
-  },
-  briefingModal: {
-    marginHorizontal: 20,
-    borderRadius: 16,
-    padding: 16,
-    maxWidth: 480,
-    alignSelf: 'center',
-    width: '100%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.18,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-});

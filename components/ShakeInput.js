@@ -1,7 +1,7 @@
 // components/ShakeInput.js
 // Input con animación de shake para errores y feedback visual
-import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
-import { TextInput, View, Animated, StyleSheet } from 'react-native';
+import React, { useState, useRef, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
+import { TextInput, Animated, StyleSheet } from 'react-native';
 import { hapticMedium } from '../utils/haptics';
 
 const ShakeInput = forwardRef(({ 
@@ -26,7 +26,7 @@ const ShakeInput = forwardRef(({
     },
   }));
 
-  const triggerShake = () => {
+  const triggerShake = useCallback(() => {
     hapticMedium();
     Animated.sequence([
       Animated.timing(shakeAnim, {
@@ -50,12 +50,12 @@ const ShakeInput = forwardRef(({
         useNativeDriver: true,
       }),
     ]).start();
-  };
+  }, [shakeAnim]);
 
   useEffect(() => {
     setHasError(error);
     if (error) triggerShake();
-  }, [error]);
+  }, [error, triggerShake]);
 
   return (
     <Animated.View

@@ -3,13 +3,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { 
-  subscribeToConnectionState, 
+import {
+  subscribeToConnectionState,
   getPendingCount,
-  syncPendingOperations 
+  syncPendingOperations
 } from '../services/offlineSync';
+import { useTheme } from '../contexts/ThemeContext';
 
-export default function OfflineIndicator({ theme = {}, style = {} }) {
+export default function OfflineIndicator({ _theme = {}, style = {} }) {
+  const { theme } = useTheme();
   const [isOnline, setIsOnline] = useState(true);
   const [pendingCount, setPendingCount] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
@@ -71,7 +73,7 @@ export default function OfflineIndicator({ theme = {}, style = {} }) {
       unsubscribe();
       if (pulseLoopRef.current) pulseLoopRef.current.stop();
     };
-  }, [isSyncing]);
+  }, [isSyncing, pulseAnim, slideAnim]);
 
   // Actualizar pendientes periódicamente
   useEffect(() => {
@@ -98,9 +100,9 @@ export default function OfflineIndicator({ theme = {}, style = {} }) {
 
   if (!showBanner) return null;
 
-  const backgroundColor = isOnline 
-    ? (pendingCount > 0 ? '#F59E0B' : '#10B981')
-    : '#EF4444';
+  const backgroundColor = isOnline
+    ? (pendingCount > 0 ? theme.warning : theme.success)
+    : theme.error;
 
   const statusText = !isOnline 
     ? 'Sin conexión'

@@ -11,7 +11,7 @@ try {
   if (typeof window !== 'undefined') {
     window.identical = window.identical || function(a, b) { return a === b; };
   }
-} catch (e) {}
+} catch (e) { /* intencional */ }
 if (typeof global !== 'undefined') {
   global.identical = global.identical || function(a, b) { return a === b; };
 }

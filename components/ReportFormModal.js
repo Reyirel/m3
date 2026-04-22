@@ -20,9 +20,10 @@ import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '../contexts/ThemeContext';
 import { createTaskReport, uploadReportImage } from '../services/reportsService';
 import { getCurrentSession } from '../services/authFirestore';
-import { savePendingReport, updatePendingReportImages } from '../services/offlineReportsService';
+import { savePendingReport } from '../services/offlineReportsService';
 import { useNotification } from '../contexts/NotificationContext';
 import WebSafeBlur from './WebSafeBlur';
+import { GlassmorphicButton } from './index';
 
 const { width } = Dimensions.get('window');
 
@@ -126,11 +127,15 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     },
     sheet: {
       maxHeight: '90%',
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      backgroundColor: isDark ? '#1a1a1a' : '#fff',
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      backgroundColor: theme.card,
+      borderTopWidth: 1,
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)',
       paddingHorizontal: 16,
-      paddingTop: 24,
+      paddingTop: 8,
       paddingBottom: 24,
       flexDirection: 'column',
       display: 'flex',
@@ -150,7 +155,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     title: {
       fontSize: 20,
       fontWeight: 'bold',
-      color: isDark ? '#fff' : '#000',
+      color: theme.text,
     },
     connectionBadge: {
       flexDirection: 'row',
@@ -167,12 +172,12 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     },
     subtitle: {
       fontSize: 13,
-      color: isDark ? '#888' : '#666',
+      color: theme.textSecondary,
     },
     offlineWarning: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? '#3d2800' : '#fff3e0',
+      backgroundColor: theme.warningAlpha,
       padding: 12,
       borderRadius: 8,
       marginBottom: 16,
@@ -181,7 +186,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     offlineWarningText: {
       flex: 1,
       fontSize: 12,
-      color: isDark ? '#FFB74D' : '#E65100',
+      color: theme.warning,
     },
     section: {
       marginBottom: 24,
@@ -189,18 +194,18 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     label: {
       fontSize: 14,
       fontWeight: '600',
-      color: isDark ? '#fff' : '#000',
+      color: theme.text,
       marginBottom: 8,
     },
     input: {
       borderRadius: 8,
       borderWidth: 1,
-      borderColor: isDark ? '#333' : '#ddd',
+      borderColor: theme.border,
       paddingHorizontal: 12,
       paddingVertical: 10,
       fontSize: 14,
-      color: isDark ? '#fff' : '#000',
-      backgroundColor: isDark ? '#272727' : '#f9f9f9',
+      color: theme.text,
+      backgroundColor: isDark ? theme.glass : theme.glassStrong,
     },
     multilineInput: {
       minHeight: 100,
@@ -217,7 +222,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       borderRadius: 22,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: isDark ? '#272727' : '#f0f0f0',
+      backgroundColor: isDark ? theme.glass : theme.glassStrong,
     },
     starActive: {
       backgroundColor: '#FFD700',
@@ -268,7 +273,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     uploadSummary: {
       flexDirection: 'row',
       alignItems: 'center',
-      backgroundColor: isDark ? '#272727' : '#f0f0f0',
+      backgroundColor: isDark ? theme.glass : theme.glassStrong,
       paddingVertical: 8,
       paddingHorizontal: 12,
       borderRadius: 8,
@@ -290,7 +295,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       borderColor: theme.primary,
       justifyContent: 'center',
       alignItems: 'center',
-      backgroundColor: isDark ? '#272727' : '#f9f9f9',
+      backgroundColor: isDark ? theme.glass : theme.glassStrong,
     },
     addImageText: {
       fontSize: 12,
@@ -313,26 +318,13 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       flexDirection: 'row',
       gap: 8,
     },
-    cancelButton: {
-      flex: 1,
-      paddingVertical: 12,
-      borderRadius: 8,
-      backgroundColor: isDark ? '#272727' : '#f0f0f0',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
     buttonText: {
       fontSize: 14,
       fontWeight: '600',
       color: '#fff',
     },
-    cancelButtonText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: isDark ? '#fff' : '#000',
-    },
     errorText: {
-      color: '#FF3B30',
+      color: theme.error,
       fontSize: 12,
       marginTop: 4,
     },
@@ -353,7 +345,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     templatesTitle: {
       fontSize: 13,
       fontWeight: '600',
-      color: isDark ? '#aaa' : '#666',
+      color: theme.textSecondary,
     },
     templatesToggle: {
       fontSize: 12,
@@ -371,9 +363,9 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       paddingHorizontal: 12,
       paddingVertical: 10,
       borderRadius: 10,
-      backgroundColor: isDark ? '#272727' : '#f5f5f5',
+      backgroundColor: isDark ? theme.glass : theme.glassStrong,
       borderWidth: 1,
-      borderColor: isDark ? '#333' : '#e0e0e0',
+      borderColor: theme.border,
       gap: 6,
     },
     templateChipActive: {
@@ -386,7 +378,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     templateLabel: {
       fontSize: 13,
       fontWeight: '600',
-      color: isDark ? '#fff' : '#333',
+      color: theme.text,
     },
   }), [isDark, theme]);
 
@@ -705,12 +697,12 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
                 {/* Indicador de conexión */}
                 <View style={[
                   styles.connectionBadge,
-                  { backgroundColor: isOnline ? '#4CAF50' : '#FF9800' }
+                  { backgroundColor: isOnline ? theme.success : theme.warning }
                 ]}>
-                  <Ionicons 
-                    name={isOnline ? 'wifi' : 'cloud-offline'} 
-                    size={12} 
-                    color="#fff" 
+                  <Ionicons
+                    name={isOnline ? 'wifi' : 'cloud-offline'}
+                    size={12}
+                    color="#fff"
                   />
                   <Text style={styles.connectionText}>
                     {isOnline ? 'Online' : 'Offline'}
@@ -725,7 +717,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
             {/* Aviso de modo offline */}
             {!isOnline && (
               <View style={styles.offlineWarning}>
-                <Ionicons name="information-circle" size={18} color="#FF9800" />
+                <Ionicons name="information-circle" size={18} color={theme.warning} />
                 <Text style={styles.offlineWarningText}>
                   Sin conexión. El reporte se guardará localmente y se enviará cuando tengas internet.
                 </Text>
@@ -738,18 +730,18 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
                 <View style={styles.templatesHeader}>
                   <Text style={styles.templatesTitle}>📋 Plantillas rápidas</Text>
                   <TouchableOpacity onPress={() => setShowTemplates(false)}>
-                    <Ionicons name="close-circle-outline" size={20} color={isDark ? '#888' : '#666'} />
+                    <Ionicons name="close-circle-outline" size={20} color={theme.textSecondary} />
                   </TouchableOpacity>
                 </View>
                 <View style={styles.templatesGrid}>
                   {REPORT_TEMPLATES.map(template => (
                     <TouchableOpacity 
                       key={template.id} 
-                      style={[styles.templateChip, { backgroundColor: isDark ? '#2d2d2d' : '#f0f0f0' }]} 
+                      style={[styles.templateChip, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}
                       onPress={() => applyTemplate(template)}
                     >
                       <Text style={styles.templateIcon}>{template.icon}</Text>
-                      <Text style={[styles.templateLabel, { color: isDark ? '#fff' : '#333' }]}>{template.label}</Text>
+                      <Text style={[styles.templateLabel, { color: theme.text }]}>{template.label}</Text>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -825,12 +817,12 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
                           )}
                           {imageStatus?.status === 'success' && (
                             <View style={styles.successBadge}>
-                              <Ionicons name="checkmark-circle" size={32} color="#4CAF50" />
+                              <Ionicons name="checkmark-circle" size={32} color={theme.success} />
                             </View>
                           )}
                           {imageStatus?.status === 'error' && (
                             <View style={styles.errorBadge}>
-                              <Ionicons name="close-circle" size={32} color="#FF3B30" />
+                              <Ionicons name="close-circle" size={32} color={theme.error} />
                             </View>
                           )}
                         </View>
@@ -913,7 +905,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
                     <Ionicons
                       name={rating >= star ? 'star' : 'star-outline'}
                       size={24}
-                      color={rating >= star ? '#000' : isDark ? '#666' : '#ccc'}
+                      color={rating >= star ? theme.text : theme.textMuted}
                     />
                   </TouchableOpacity>
                 ))}
@@ -939,29 +931,29 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
 
           {/* Action Buttons */}
           <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={styles.cancelButton}
+            <GlassmorphicButton
               onPress={handleClose}
               disabled={loading}
+              variant="secondary"
+              size="medium"
+              style={{ flex: 1 }}
             >
-              <Text style={styles.cancelButtonText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.saveButton}
+              Cancelar
+            </GlassmorphicButton>
+            <GlassmorphicButton
               onPress={handleSubmit}
               disabled={loading}
+              variant="primary"
+              size="medium"
+              style={{ flex: 1 }}
+              icon={loading ? undefined : 'checkmark-done'}
             >
               {loading ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <>
-                  <Ionicons name="checkmark-done" size={18} color="#fff" />
-                  <Text style={styles.buttonText}>
-                    {isOnline ? 'Enviar Reporte' : 'Guardar Offline'}
-                  </Text>
-                </>
+                isOnline ? 'Enviar Reporte' : 'Guardar Offline'
               )}
-            </TouchableOpacity>
+            </GlassmorphicButton>
           </View>
         </View>
         </KeyboardAvoidingView>

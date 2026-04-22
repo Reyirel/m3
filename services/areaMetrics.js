@@ -1,7 +1,6 @@
 // services/areaMetrics.js
 // Servicio mejorado para calcular y gestionar métricas por área
 
-import { getCurrentSession } from './authFirestore';
 import { toMs } from '../utils/dateUtils';
 
 // No importamos Firebase aquí porque areaMetrics solo calcula datos locales

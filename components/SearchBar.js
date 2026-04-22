@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, memo } from 'react';
-import { View, TextInput, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, TextInput, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
 import { useTheme } from '../contexts/ThemeContext';
 import { hapticLight } from '../utils/haptics';
 
@@ -13,7 +14,7 @@ import { hapticLight } from '../utils/haptics';
  * @param {number} debounceMs - Debounce delay in milliseconds (default: 100)
  */
 const SearchBar = memo(function SearchBar({ onSearch, placeholder = 'Buscar tareas...', debounceMs = 100 }) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const [searchText, setSearchText] = useState('');
   const [isFocused, setIsFocused] = useState(false);
 
@@ -34,14 +35,56 @@ const SearchBar = memo(function SearchBar({ onSearch, placeholder = 'Buscar tare
 
   return (
     <View style={[
-      styles.container, 
-      { 
-        backgroundColor: theme.searchBackground,
-        borderColor: isFocused ? theme.primary : theme.searchBorder,
+      styles.container,
+      {
+        backgroundColor: isDark ? theme.glass : theme.glassStrong,
+        borderColor: isFocused
+          ? theme.primary
+          : (isDark ? theme.glassBorder : theme.glassBorderSubtle),
         borderWidth: isFocused ? 2 : 1,
-      }
+        shadowColor: isFocused ? theme.primary : theme.glassShadow,
+      },
     ]}>
-      <Ionicons name="search" size={20} color={theme.textSecondary} style={styles.icon} />
+      {/* Blur layer */}
+      {Platform.OS !== 'web' && (
+        <View style={[StyleSheet.absoluteFillObject, styles.blurLayer]}>
+          <BlurView
+            intensity={isDark ? 50 : 45}
+            tint={isDark ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
+      )}
+      {Platform.OS === 'web' && (
+        <View
+          style={[
+            StyleSheet.absoluteFillObject,
+            styles.blurLayer,
+            {
+              backdropFilter: `blur(${isDark ? 14 : 10}px)`,
+              WebkitBackdropFilter: `blur(${isDark ? 14 : 10}px)`,
+            },
+          ]}
+        />
+      )}
+      {/* Top highlight stripe */}
+      <View
+        pointerEvents="none"
+        style={[
+          styles.highlight,
+          { backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.72)' },
+        ]}
+      />
+      {/* Rim glow */}
+      <View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFillObject,
+          styles.rim,
+          { borderColor: theme.glassBorderSubtle },
+        ]}
+      />
+      <Ionicons name="search" size={20} color={isFocused ? theme.primary : theme.textSecondary} style={styles.icon} />
       <TextInput
         style={[styles.input, { color: theme.text }]}
         placeholder={placeholder}
@@ -75,19 +118,45 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 13,
     marginHorizontal: 20,
     marginVertical: 12,
+    overflow: 'hidden',
+    position: 'relative',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 10,
+    elevation: 4,
+  },
+  blurLayer: {
+    borderRadius: 16,
+    overflow: 'hidden',
+  },
+  highlight: {
+    position: 'absolute',
+    top: 0,
+    left: 16,
+    right: 16,
+    height: 1,
+    borderRadius: 1,
+    zIndex: 2,
+  },
+  rim: {
+    borderRadius: 16,
+    borderWidth: 1,
+    zIndex: 2,
   },
   icon: {
     marginRight: 12,
+    zIndex: 3,
   },
   input: {
     flex: 1,
     fontSize: 16,
     fontWeight: '500',
+    zIndex: 3,
   },
 });
 

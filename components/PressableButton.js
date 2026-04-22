@@ -1,7 +1,7 @@
 // components/PressableButton.js
 // Botón con micro-interacciones (scale/bounce) para mejor feedback
 import React, { useRef } from 'react';
-import { TouchableOpacity, Animated, StyleSheet } from 'react-native';
+import { TouchableOpacity, Animated } from 'react-native';
 import { hapticLight } from '../utils/haptics';
 
 const PressableButton = ({ 

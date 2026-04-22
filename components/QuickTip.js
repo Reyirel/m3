@@ -14,7 +14,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 
-const { width } = Dimensions.get('window');
+Dimensions.get('window');
 
 /**
  * QuickTip - Muestra un tip de ayuda una sola vez al usuario
@@ -38,7 +38,7 @@ const QuickTip = ({
   showOnce = true, // Si se muestra solo una vez
 }) => {
   const { theme, isDark } = useTheme();
-  const [visible, setVisible] = useState(false);
+  const [_visible, setVisible] = useState(false);
   const [shouldRender, setShouldRender] = useState(false);
   
   const slideAnim = useRef(new Animated.Value(position === 'top' ? -100 : 100)).current;
@@ -47,6 +47,7 @@ const QuickTip = ({
 
   useEffect(() => {
     checkAndShow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const checkAndShow = async () => {

@@ -1,6 +1,6 @@
 // components/SuggestedAreasPanel.js
 // Panel que muestra áreas sugeridas basado en usuarios seleccionados
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { SECRETARIAS_DIRECCIONES, getDireccionesBySecretaria, getSecretariaByDireccion } from '../config/areas';
+import { SECRETARIAS_DIRECCIONES, getDireccionesBySecretaria } from '../config/areas';
 
 export default function SuggestedAreasPanel({
   selectedUsers = [],
@@ -26,11 +26,7 @@ export default function SuggestedAreasPanel({
   const { isDark } = useTheme();
 
   // Cargar áreas sugeridas cuando cambien los usuarios seleccionados
-  useEffect(() => {
-    loadSuggestedAreas();
-  }, [selectedUsers, selectedAreas]);
-
-  const loadSuggestedAreas = async () => {
+  const loadSuggestedAreas = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -107,7 +103,11 @@ export default function SuggestedAreasPanel({
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedUsers, selectedAreas]);
+
+  useEffect(() => {
+    loadSuggestedAreas();
+  }, [loadSuggestedAreas]);
 
   // No mostrar si hay secretarios (para evitar duplicar con SuggestedDirectionsPanel)
   // O si no hay usuarios o si todas las áreas ya están seleccionadas

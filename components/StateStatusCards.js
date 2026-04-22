@@ -6,13 +6,6 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
-const STATES = [
-  { key: 'completed',  label: 'Completadas', icon: 'checkmark-done-sharp', color: '#10B981' },
-  { key: 'inProgress', label: 'En Proceso',  icon: 'play-circle',          color: '#3B82F6' },
-  { key: 'pending',    label: 'Pendientes',  icon: 'alert-circle',         color: '#F59E0B' },
-  { key: 'inReview',   label: 'En Revisión', icon: 'eye-outline',          color: '#8B5CF6' },
-];
-
 export default function StateStatusCards({
   completed = 0,
   pending = 0,
@@ -22,13 +15,20 @@ export default function StateStatusCards({
 }) {
   const { theme, isDark } = useTheme();
 
+  const STATES = [
+    { key: 'completed',  label: 'Completadas', icon: 'checkmark-done-sharp', color: theme.success },
+    { key: 'inProgress', label: 'En Proceso',  icon: 'play-circle',          color: theme.info },
+    { key: 'pending',    label: 'Pendientes',  icon: 'alert-circle',         color: theme.warning },
+    { key: 'inReview',   label: 'En Revisión', icon: 'eye-outline',          color: theme.secondary },
+  ];
+
   const values = { completed, inProgress, pending, inReview };
 
   return (
     <View style={styles.container}>
       <Text style={[styles.sectionTitle, { color: theme.text }]}>Por Estado</Text>
 
-      <View style={[styles.strip, { backgroundColor: theme.card, borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)' }]}>
+      <View style={[styles.strip, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         {STATES.map((state, i) => {
           const value = values[state.key];
           return (

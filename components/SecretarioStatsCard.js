@@ -10,7 +10,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Modal,
-  ScrollView,
   TouchableWithoutFeedback,
   Platform,
 } from 'react-native';
@@ -19,10 +18,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import { getSecretarioMetrics, formatCompletionTime } from '../services/analytics';
 import { SPACING, TYPOGRAPHY, RADIUS } from '../theme/tokens';
 
-function getStatusColor(rate) {
-  if (rate >= 80) return '#10B981';
-  if (rate >= 60) return '#F59E0B';
-  return '#EF4444';
+function getStatusColor(rate, theme) {
+  if (rate >= 80) return theme.success;
+  if (rate >= 60) return theme.warning;
+  return theme.error;
 }
 
 function getStatusLabel(rate) {
@@ -35,7 +34,7 @@ function getStatusLabel(rate) {
 function SecretarioModal({ secretario, visible, onClose, theme, isDark }) {
   if (!secretario) return null;
 
-  const color = getStatusColor(secretario.completionRate);
+  const color = getStatusColor(secretario.completionRate, theme);
 
   return (
     <Modal
@@ -80,7 +79,7 @@ function SecretarioModal({ secretario, visible, onClose, theme, isDark }) {
                   { label: 'Completitud', value: secretario.completionRate },
                   { label: 'A tiempo',    value: secretario.onTimeRate },
                 ].map(({ label, value }) => {
-                  const c = getStatusColor(value);
+                  const c = getStatusColor(value, theme);
                   return (
                     <View key={label} style={styles.rateRow}>
                       <Text style={[styles.rateLabel, { color: theme.textSecondary }]}>{label}</Text>
@@ -97,9 +96,9 @@ function SecretarioModal({ secretario, visible, onClose, theme, isDark }) {
               <View style={[styles.metricsRow, { borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6' }]}>
                 {[
                   { val: secretario.totalCreated,   lbl: 'DELEGADAS',   color: theme.text },
-                  { val: secretario.totalCompleted, lbl: 'HECHAS',      color: '#10B981'  },
-                  { val: secretario.totalPending,   lbl: 'PENDIENTES',  color: '#F59E0B'  },
-                  { val: secretario.totalOverdue,   lbl: 'VENCIDAS',    color: secretario.totalOverdue > 0 ? '#EF4444' : theme.text },
+                  { val: secretario.totalCompleted, lbl: 'HECHAS',      color: theme.success },
+                  { val: secretario.totalPending,   lbl: 'PENDIENTES',  color: theme.warning },
+                  { val: secretario.totalOverdue,   lbl: 'VENCIDAS',    color: secretario.totalOverdue > 0 ? theme.error : theme.text },
                 ].map(({ val, lbl, color: c }, i, arr) => (
                   <React.Fragment key={lbl}>
                     <View style={styles.metricCol}>
@@ -180,7 +179,7 @@ export default function SecretarioStatsCard({ onSecretarioPress }) {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.card }]}>
+      <View style={[styles.container, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         <ActivityIndicator size="small" color={theme.primary} />
         <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
           Cargando estadísticas de secretarios...
@@ -191,7 +190,7 @@ export default function SecretarioStatsCard({ onSecretarioPress }) {
 
   if (!secretarioData || secretarioData.secretarios.length === 0) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.card }]}>
+      <View style={[styles.container, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         <Ionicons name="people-outline" size={40} color={theme.textSecondary} />
         <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
           No hay secretarios registrados
@@ -204,7 +203,7 @@ export default function SecretarioStatsCard({ onSecretarioPress }) {
 
   return (
     <>
-      <View style={[styles.container, { backgroundColor: theme.card }]}>
+      <View style={[styles.container, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
 
         {/* Header con toggle */}
         <TouchableOpacity style={styles.header} onPress={() => setExpanded(!expanded)}>
@@ -226,8 +225,8 @@ export default function SecretarioStatsCard({ onSecretarioPress }) {
           {[
             { val: totals.totalSecretarios,   lbl: 'Secretarios', color: theme.primary },
             { val: totals.totalTasksCreated,   lbl: 'Delegadas',   color: theme.text    },
-            { val: totals.totalTasksCompleted, lbl: 'Hechas',      color: '#10B981'     },
-            { val: totals.totalTasksOverdue,   lbl: 'Vencidas',    color: totals.totalTasksOverdue > 0 ? '#EF4444' : theme.text },
+            { val: totals.totalTasksCompleted, lbl: 'Hechas',      color: theme.success },
+            { val: totals.totalTasksOverdue,   lbl: 'Vencidas',    color: totals.totalTasksOverdue > 0 ? theme.error : theme.text },
           ].map(({ val, lbl, color }, i, arr) => (
             <React.Fragment key={lbl}>
               <View style={styles.summaryCol}>
@@ -247,7 +246,7 @@ export default function SecretarioStatsCard({ onSecretarioPress }) {
             { icon: 'trending-up', label: 'Completitud',    value: totals.avgCompletionRate },
             { icon: 'time',        label: 'A Tiempo',        value: totals.avgOnTimeRate     },
           ].map(({ icon, label, value }, i) => {
-            const c = getStatusColor(parseFloat(value));
+            const c = getStatusColor(parseFloat(value), theme);
             return (
               <React.Fragment key={label}>
                 {i > 0 && <View style={[styles.summaryDiv, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB', marginVertical: 8 }]} />}
@@ -265,7 +264,7 @@ export default function SecretarioStatsCard({ onSecretarioPress }) {
         {expanded && (
           <View style={styles.list}>
             {secretarios.map((sec) => {
-              const color = getStatusColor(sec.completionRate);
+              const color = getStatusColor(sec.completionRate, theme);
               return (
                 <TouchableOpacity
                   key={sec.id}

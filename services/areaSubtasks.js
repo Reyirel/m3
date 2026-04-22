@@ -2,7 +2,7 @@
 // Sistema de subtareas automáticas por área
 // Cuando una tarea se asigna a múltiples áreas, se crean subtareas coordinadas
 
-import { collection, doc, getDoc, addDoc, updateDoc, query, where, getDocs, Timestamp, writeBatch, onSnapshot } from 'firebase/firestore';
+import { collection, doc, getDoc, updateDoc, query, where, getDocs, Timestamp, writeBatch, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 
 /**

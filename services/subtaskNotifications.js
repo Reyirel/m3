@@ -4,7 +4,6 @@ import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firesto
 import { db } from '../firebase';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
-import { notifyNewComment } from './fcm';
 
 const TASKS_COLLECTION = 'tasks';
 const USERS_COLLECTION = 'users';
@@ -87,26 +86,7 @@ export async function notifySubtaskCompletion(taskId, subtaskId, completedBy, su
       }
     }
 
-    // Enviar notificaciones por correo a los asignados
-    if (notifyEmails.length > 0) {
-      try {
-        for (const email of notifyEmails) {
-          const user = await getUserByEmail(email);
-          if (user && user.emailNotifications !== false) {
-            // Aquí iría la integración con FCM o email service
-            await sendSubtaskCompletionEmail(email, {
-              taskTitle: task.title,
-              subtaskTitle: subtask.title,
-              completedBy: completedByUser.displayName || completedBy,
-              taskId: taskId,
-              priority: task.priority || 'media'
-            });
-          }
-        }
-      } catch (error) {
-        console.warn('Error sending email notifications:', error);
-      }
-    }
+    // Email notifications via server-side service (not yet configured)
 
   } catch (error) {
     console.error('Error notifying subtask completion:', error);
@@ -140,66 +120,6 @@ async function getUserDisplayName(email) {
   }
 }
 
-/**
- * Obtener usuario completo por email
- * @param {string} email 
- * @returns {object|null}
- */
-async function getUserByEmail(email) {
-  try {
-    const usersRef = collection(db, USERS_COLLECTION);
-    const q = query(usersRef, where('email', '==', email));
-    const snapshot = await getDocs(q);
-    
-    if (!snapshot.empty) {
-      const userData = snapshot.docs[0].data();
-      return {
-        id: snapshot.docs[0].id,
-        ...userData
-      };
-    }
-    
-    return null;
-  } catch (error) {
-    console.warn('Error getting user:', error);
-    return null;
-  }
-}
-
-/**
- * Enviar email de notificación de subtarea completada
- * @param {string} email - Email del destinatario
- * @param {object} data - Datos del evento
- */
-async function sendSubtaskCompletionEmail(email, data) {
-  try {
-    // Llamar al API endpoint para enviar email
-    const response = await fetch('/api/send-email', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        to: email,
-        template: 'subtask_completion',
-        data: {
-          taskTitle: data.taskTitle,
-          subtaskTitle: data.subtaskTitle,
-          completedBy: data.completedBy,
-          taskId: data.taskId,
-          priority: data.priority,
-          actionUrl: `https://app.example.com/task/${data.taskId}`
-        }
-      })
-    });
-
-    if (!response.ok) {
-      console.warn('Email notification failed:', response.status);
-    }
-  } catch (error) {
-    console.warn('Error sending subtask completion email:', error);
-  }
-}
 
 /**
  * Notificar cuando una tarea cambia de estado
@@ -214,20 +134,15 @@ export async function notifyTaskStatusChange(taskId, oldStatus, newStatus, chang
     const changedByUser = await getUserDisplayName(changedBy);
     
     let title = '';
-    let icon = '';
-    
+
     if (newStatus === 'cerrada' || newStatus === 'completada') {
       title = '✅ Tarea Completada';
-      icon = '✅';
     } else if (newStatus === 'en_proceso') {
       title = '🚀 Tarea en Progreso';
-      icon = '🚀';
     } else if (newStatus === 'pendiente') {
       title = '⏳ Tarea Pendiente';
-      icon = '⏳';
     } else if (newStatus === 'revisada' || newStatus === 'en_revison') {
       title = '👀 Tarea en Revisión';
-      icon = '👀';
     }
     
     const message = `${changedByUser.displayName || changedBy} cambió el estado de "${task.title}" a ${newStatus}`;

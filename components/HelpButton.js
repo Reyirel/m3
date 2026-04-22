@@ -14,9 +14,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
-import { SPACING, RADIUS, SHADOWS } from '../theme/tokens';
+import { RADIUS, SHADOWS } from '../theme/tokens';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+Dimensions.get('window');
 
 /**
  * HelpButton - Botón de ayuda contextual
@@ -66,7 +66,7 @@ export default function HelpButton({
       slideAnim.setValue(50);
       scaleAnim.setValue(0.9);
     }
-  }, [modalVisible]);
+  }, [modalVisible, fadeAnim, scaleAnim, slideAnim]);
 
   const buttonSizes = {
     small: { width: 28, height: 28, iconSize: 14 },
@@ -210,16 +210,11 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 20,
     right: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-      },
-      android: { elevation: 6 },
-      default: {},
-    }),
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    ...Platform.select({ android: { elevation: 6 } }),
   },
   modalOverlay: {
     flex: 1,

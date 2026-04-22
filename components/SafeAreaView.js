@@ -1,7 +1,8 @@
 // components/SafeAreaView.js
 // Wrapper de SafeArea compatible con web, iOS y Android
 import React from 'react';
-import { View, Platform, StyleSheet, useSafeAreaInsets } from 'react-native';
+import { View, Platform, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function SafeAreaWrapper({
   children,
@@ -9,7 +10,8 @@ export default function SafeAreaWrapper({
   edges = ['bottom'],
   backgroundColor,
 }) {
-  const insets = Platform.OS !== 'web' ? useSafeAreaInsets() : { top: 0, bottom: 0, left: 0, right: 0 };
+  const nativeInsets = useSafeAreaInsets();
+  const insets = Platform.OS !== 'web' ? nativeInsets : { top: 0, bottom: 0, left: 0, right: 0 };
 
   const styles = StyleSheet.create({
     container: {

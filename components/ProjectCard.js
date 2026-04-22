@@ -36,7 +36,7 @@ const ProjectCard = memo(function ProjectCard({
 
   if (loading) {
     return (
-      <View style={[styles.skeleton, { backgroundColor: theme.card }]}>
+      <View style={[styles.skeleton, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)' }]}>
         <View style={[styles.skeletonLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }]} />
         <View style={[styles.skeletonLine, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)', width: '70%' }]} />
       </View>
@@ -47,10 +47,10 @@ const ProjectCard = memo(function ProjectCard({
   const isComplete = progress === 100;
 
   const getHealthColor = () => {
-    if (progress >= 80) return '#10B981';
-    if (progress >= 50) return '#F59E0B';
-    if (progress >= 20) return '#EF4444';
-    return '#9CA3AF';
+    if (progress >= 80) return theme.success;
+    if (progress >= 50) return theme.warning;
+    if (progress >= 20) return theme.error;
+    return theme.textMuted;
   };
 
   const healthColor = getHealthColor();
@@ -62,8 +62,8 @@ const ProjectCard = memo(function ProjectCard({
       style={[
         styles.container,
         {
-          backgroundColor: theme.card,
-          borderColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)',
+          backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+          borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
           borderLeftColor: healthColor,
         },
         compact && styles.compactContainer,
@@ -83,7 +83,7 @@ const ProjectCard = memo(function ProjectCard({
           </Text>
         </View>
         {isComplete ? (
-          <Ionicons name="checkmark-circle" size={18} color="#10B981" style={styles.completeBadge} />
+          <Ionicons name="checkmark-circle" size={18} color={theme.success} style={styles.completeBadge} />
         ) : (
           <Text style={[styles.progressPct, { color: healthColor }]}>{Math.round(progress)}%</Text>
         )}
@@ -104,21 +104,21 @@ const ProjectCard = memo(function ProjectCard({
       {!compact && progressData && (
         <View style={[styles.stats, { borderTopColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }]}>
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#10B981' }]}>
+            <Text style={[styles.statValue, { color: theme.success }]}>
               {progressData.subtaskStats.completada}
             </Text>
             <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Hechas</Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#F59E0B' }]}>
+            <Text style={[styles.statValue, { color: theme.warning }]}>
               {progressData.subtaskStats.en_proceso}
             </Text>
             <Text style={[styles.statLabel, { color: theme.textSecondary }]}>En Proceso</Text>
           </View>
           <View style={[styles.statDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)' }]} />
           <View style={styles.statItem}>
-            <Text style={[styles.statValue, { color: '#EF4444' }]}>
+            <Text style={[styles.statValue, { color: theme.error }]}>
               {progressData.subtaskStats.pendiente}
             </Text>
             <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Pendientes</Text>

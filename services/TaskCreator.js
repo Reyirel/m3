@@ -20,9 +20,7 @@
 
 import {
   collection,
-  addDoc,
   updateDoc,
-  deleteDoc,
   doc,
   getDocs,
   query,
@@ -30,11 +28,9 @@ import {
   serverTimestamp,
   Timestamp,
   writeBatch,
-  getDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getCurrentSession } from './authFirestore';
-import { getConnectionState, queueOperation, OPERATION_TYPES } from './offlineSync';
 import { toMs } from '../utils/dateUtils';
 import { ValidationRules, Validator } from '../utils/ValidationRules';
 

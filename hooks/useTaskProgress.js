@@ -46,6 +46,8 @@ export function useMultipleTasksProgress(taskIds) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  const taskIdsKey = taskIds?.join(',');
+
   useEffect(() => {
     if (!taskIds || taskIds.length === 0) {
       setProgressList([]);
@@ -65,7 +67,7 @@ export function useMultipleTasksProgress(taskIds) {
       setError(err);
       setLoading(false);
     }
-  }, [taskIds?.join(',')]); // Hacer que recalcule cuando cambian los IDs
+  }, [taskIdsKey, taskIds]); // Recalcular cuando cambian los IDs
 
   return { progressList, loading, error };
 }

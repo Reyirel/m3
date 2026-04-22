@@ -1,6 +1,5 @@
 // components/AlertBanner.js
-// ✨ Banner de alerta profesional con 4 variantes
-// Reemplaza emojis con iconos reales y diseño moderno
+// Banner de alerta profesional con 4 variantes
 
 import React, { useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, Animated, TouchableOpacity } from 'react-native';
@@ -44,45 +43,45 @@ export default function AlertBanner({
       slideAnim.setValue(1);
       scaleAnim.setValue(1);
     }
-  }, [animated]);
+  }, [animated, slideAnim, scaleAnim]);
 
   const getAlertStyles = () => {
     switch (type) {
       case 'success':
         return {
-          backgroundColor: isDark ? '#064E3B' : '#ECFDF5',
-          borderColor: isDark ? '#10B981' : '#10B981',
-          iconColor: isDark ? '#6EE7B7' : '#10B981',
-          titleColor: isDark ? '#6EE7B7' : '#047857',
-          messageColor: isDark ? '#D1FAE5' : '#065F46',
+          backgroundColor: isDark ? theme.successAlpha : 'rgba(16,185,129,0.08)',
+          borderColor: isDark ? theme.success + '70' : theme.success,
+          iconColor: isDark ? theme.successLight : theme.success,
+          titleColor: isDark ? theme.successLight : theme.successDark,
+          messageColor: isDark ? theme.success : theme.successDark,
           iconName: icon || 'checkmark-circle',
         };
       case 'warning':
         return {
-          backgroundColor: isDark ? '#78350F' : '#FFFBEB',
-          borderColor: isDark ? '#FBBF24' : '#F59E0B',
-          iconColor: isDark ? '#FCD34D' : '#F59E0B',
-          titleColor: isDark ? '#FCD34D' : '#D97706',
-          messageColor: isDark ? '#FEF3C7' : '#92400E',
+          backgroundColor: isDark ? theme.warningAlpha : 'rgba(245,158,11,0.08)',
+          borderColor: isDark ? theme.warning + '70' : theme.warning,
+          iconColor: isDark ? theme.warningLight : theme.warning,
+          titleColor: isDark ? theme.warningLight : theme.warningDark,
+          messageColor: isDark ? theme.warning : theme.warningDark,
           iconName: icon || 'alert-circle',
         };
       case 'error':
         return {
-          backgroundColor: isDark ? '#7F1D1D' : '#FEE2E2',
-          borderColor: isDark ? '#F87171' : '#EF4444',
-          iconColor: isDark ? '#FCA5A5' : '#EF4444',
-          titleColor: isDark ? '#FCA5A5' : '#DC2626',
-          messageColor: isDark ? '#FECACA' : '#991B1B',
+          backgroundColor: isDark ? theme.errorAlpha : 'rgba(239,68,68,0.08)',
+          borderColor: isDark ? theme.error + '70' : theme.error,
+          iconColor: isDark ? theme.errorLight : theme.error,
+          titleColor: isDark ? theme.errorLight : theme.errorDark,
+          messageColor: isDark ? theme.error : theme.errorDark,
           iconName: icon || 'close-circle',
         };
       case 'info':
       default:
         return {
-          backgroundColor: isDark ? '#0C42A3' : '#EFF6FF',
-          borderColor: isDark ? '#60A5FA' : '#3B82F6',
-          iconColor: isDark ? '#93C5FD' : '#3B82F6',
-          titleColor: isDark ? '#93C5FD' : '#1E40AF',
-          messageColor: isDark ? '#DBEAFE' : '#1E3A8A',
+          backgroundColor: isDark ? theme.infoAlpha : 'rgba(59,130,246,0.08)',
+          borderColor: isDark ? theme.info + '70' : theme.info,
+          iconColor: isDark ? theme.infoLight : theme.info,
+          titleColor: isDark ? theme.infoLight : theme.infoDark,
+          messageColor: isDark ? theme.info : theme.infoDark,
           iconName: icon || 'information-circle',
         };
     }
@@ -114,6 +113,7 @@ export default function AlertBanner({
           {
             backgroundColor: alertStyles.backgroundColor,
             borderColor: alertStyles.borderColor,
+            shadowColor: theme.glassShadow,
           },
         ]}
       >
@@ -121,7 +121,7 @@ export default function AlertBanner({
         <View
           style={[
             styles.iconContainer,
-            { backgroundColor: `${alertStyles.iconColor}15` },
+            { backgroundColor: alertStyles.iconColor + '22' },
           ]}
         >
           <Ionicons
@@ -197,7 +197,7 @@ export default function AlertBanner({
             <Ionicons
               name="trash-outline"
               size={20}
-              color="#FF3B30"
+              color={theme.error}
             />
           </TouchableOpacity>
         )}
@@ -214,18 +214,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    shadowColor: '#000',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderLeftWidth: 3.5,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
   },
   iconContainer: {
     width: 44,
     height: 44,
-    borderRadius: 10,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,

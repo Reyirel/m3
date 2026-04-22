@@ -1,5 +1,4 @@
 // Service para exportar reportes a PDF con fotos
-import { getCurrentSession } from './authFirestore';
 
 const log = __DEV__ ? console.log : () => {};
 
@@ -340,7 +339,7 @@ export const exportReportToPDF = async (report, images = [], task = {}) => {
  * @param {string} fileName - File name for sharing
  * @returns {Promise<void>}
  */
-export const sharePDF = async (pdfUri, fileName = 'Reporte.pdf') => {
+export const sharePDF = async (pdfUri, _fileName = 'Reporte.pdf') => {
   try {
     if (Sharing && Sharing.isAvailableAsync && Sharing.shareAsync) {
       const isAvailable = await Sharing.isAvailableAsync();

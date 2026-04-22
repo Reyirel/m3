@@ -1,9 +1,10 @@
 // services/tasks.js
 // Servicio para gestionar tareas con Firebase Firestore en tiempo real
 // Con soporte OFFLINE-FIRST
-/* global __DEV__ */
+// __DEV__ ya está declarado como global en eslint.config.js
 const _isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV === 'development';
 const log = _isDev ? console.log : () => {};
+import logger from './Logger';
 import { toMs } from '../utils/dateUtils';
 import { isTaskAssignedToUser, normalizeStatus } from '../utils/taskHelpers';
 import { getDireccionesBySecretaria, resolveAreaName } from '../config/areas';
@@ -36,8 +37,7 @@ import {
   getCachedTasks,
   getConnectionState,
   queueOperation,
-  OPERATION_TYPES,
-  syncPendingOperations
+  OPERATION_TYPES
 } from './offlineSync';
 
 const COLLECTION_NAME = 'tasks';
@@ -59,11 +59,11 @@ function detectEmulator() {
   }
 }
 
-const isEmulatorActive = detectEmulator();
+const _isEmulatorActive = detectEmulator();
 
 // Cache eliminado para tiempo real verdadero
-let activeSubscriptions = 0;
-const MAX_SUBSCRIPTIONS = 3; // Aumentar suscripciones permitidas
+let _activeSubscriptions = 0;
+const _MAX_SUBSCRIPTIONS = 3; // Aumentar suscripciones permitidas
 
 /**
  * Esperar a que la sesión esté disponible (con retry logic)
@@ -104,18 +104,22 @@ async function waitForSession(maxRetries = 30, initialDelay = 100) {
  */
 export async function subscribeToTasks(callback) {
   try {
-    activeSubscriptions++;
+    logger.debug('TasksService', 'subscribeToTasks called');
+    logger.perfStart('subscribeToTasks');
+    _activeSubscriptions++;
 
     const session = await waitForSession();
     
     if (!session) {
-      activeSubscriptions--;
+      _activeSubscriptions--;
+      logger.warn('TasksService', 'No session available for task subscription');
       callback([]);
-      return () => { activeSubscriptions--; };
+      return () => { _activeSubscriptions--; };
     }
     
     const userRole = session.role;
     const userEmail = session.email;
+    logger.debug('TasksService', 'Task subscription setup', { userRole, userEmail });
 
     // Construir lista de áreas permitidas
     const secAreaCanonical = resolveAreaName(session.area || '');
@@ -186,10 +190,11 @@ export async function subscribeToTasks(callback) {
         const filteredTasks = filterTasksByRole(tasks);
         // Ordenar por createdAt descendente (necesario cuando director no usa orderBy en query)
         filteredTasks.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        logger.debug('TasksService', `Loaded ${filteredTasks.length} tasks`);
         callback(filteredTasks);
       },
       (error) => {
-        console.error('❌ Error en listener:', error);
+        logger.error('TasksService', 'Snapshot listener error', error);
         callback([]);
       }
     );
@@ -197,14 +202,15 @@ export async function subscribeToTasks(callback) {
     // Retornar función de cleanup
     return () => {
       isSubscribed = false;
-      activeSubscriptions--;
+      _activeSubscriptions--;
+      logger.debug('TasksService', 'Task subscription cleanup');
       if (unsubscribeListener) {
         unsubscribeListener();
       }
     };
   } catch (error) {
-    console.error('❌ Error crítico en subscribeToTasks:', error);
-    activeSubscriptions--;
+    logger.error('TasksService', 'Critical error in subscribeToTasks', error);
+    _activeSubscriptions--;
     callback([]);
     return () => {};
   }
@@ -361,6 +367,7 @@ export async function createTask(task) {
  * @returns {Promise<void>}
  */
 export async function updateTask(taskId, updates) {
+  let cacheUserEmail;
   try {
     // Si el status cambia a "cerrada", añadir completedBy automáticamente
     if (updates.status === 'cerrada') {
@@ -368,7 +375,7 @@ export async function updateTask(taskId, updates) {
         const sessionResult = await getCurrentSession();
         if (sessionResult.success && sessionResult.session) {
           const userEmail = sessionResult.session.email;
-          const userName = sessionResult.session.displayName || userEmail;
+          const _userName = sessionResult.session.displayName || userEmail;
           
           // Obtener la tarea actual para ver los asignados
           const taskRef = doc(db, COLLECTION_NAME, taskId);
@@ -404,7 +411,6 @@ export async function updateTask(taskId, updates) {
     }
     
     // Obtener email del usuario para usar cache por usuario
-    let cacheUserEmail;
     try {
       const sess = await getCurrentSession();
       cacheUserEmail = sess.success ? sess.session?.email : undefined;

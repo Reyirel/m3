@@ -20,7 +20,7 @@ const RippleButton = ({
   const rippleAnim = useRef(new Animated.Value(0)).current;
   const rippleOpacity = useRef(new Animated.Value(1)).current;
 
-  const handlePressIn = (event) => {
+  const handlePressIn = (_event) => {
     rippleAnim.setValue(0);
     rippleOpacity.setValue(1);
     

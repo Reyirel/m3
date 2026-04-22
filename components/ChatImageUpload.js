@@ -1,18 +1,8 @@
 // components/ChatImageUpload.js
-// Componente para capturar/seleccionar y enviar imágenes en el chat
-
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  Image,
-  Modal,
-  SafeAreaView,
-  Alert,
-  ActivityIndicator,
-  Platform
+  View, Text, StyleSheet, TouchableOpacity, Image,
+  Modal, SafeAreaView, Alert, ActivityIndicator, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -20,349 +10,258 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 
-export default function ChatImageUpload({ 
-  onImageCapture = () => {},
-  disabled = false 
-}) {
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [previewModalVisible, setPreviewModalVisible] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
+export default function ChatImageUpload({ onImageCapture = () => {}, disabled = false }) {
+  const [selectedImage, setSelectedImage]           = useState(null);
+  const [previewVisible, setPreviewVisible]         = useState(false);
+  const [sourceMenuVisible, setSourceMenuVisible]   = useState(false);
+  const [uploading, setUploading]                   = useState(false);
+  const [uploadProgress, setUploadProgress]         = useState(0);
 
-  // Solicitar permisos
-  const requestPermissions = async () => {
-    const cameraPermission = await ImagePicker.requestCameraPermissionsAsync();
-    const libraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    
-    if (cameraPermission.status !== 'granted' || libraryPermission.status !== 'granted') {
-      Alert.alert('Permiso denegado', 'Necesitas permisos de cámara y galería');
-      return false;
+  // ── permisos ────────────────────────────────────────────────────────────────
+  const requestPermissions = async (needsCamera) => {
+    if (needsCamera) {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso denegado', 'Necesitas permiso de cámara para tomar fotos.');
+        return false;
+      }
+    } else {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso denegado', 'Necesitas permiso de galería para seleccionar fotos.');
+        return false;
+      }
     }
     return true;
   };
 
-  // Redimensionar imagen para optimización (más pequeña para web/base64)
-  const compressImage = async (imageUri) => {
+  // ── comprimir ────────────────────────────────────────────────────────────────
+  const compressImage = async (uri) => {
     try {
-      // En web, comprimir más para base64
-      const maxSize = Platform.OS === 'web' ? 600 : 1280;
-      const quality = Platform.OS === 'web' ? 0.5 : 0.7;
-      
-      const manipResult = await ImageManipulator.manipulateAsync(
-        imageUri,
+      const maxSize = Platform.OS === 'web' ? 800 : 1280;
+      const quality = Platform.OS === 'web' ? 0.6 : 0.75;
+      const result = await ImageManipulator.manipulateAsync(
+        uri,
         [{ resize: { width: maxSize, height: maxSize } }],
-        { compress: quality, format: ImageManipulator.SaveFormat.JPEG, base64: Platform.OS === 'web' }
+        { compress: quality, format: ImageManipulator.SaveFormat.JPEG },
       );
-      return {
-        uri: manipResult.uri,
-        base64: manipResult.base64 || null
-      };
-    } catch (error) {
-      if (__DEV__) console.error('Error comprimiendo imagen:', error);
-      return { uri: imageUri, base64: null }; // Si falla, usar original
+      return result.uri;
+    } catch {
+      return uri;
     }
   };
 
-  // Capturar foto con cámara
-  const takePicture = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
-
+  // ── seleccionar fuente ───────────────────────────────────────────────────────
+  const openCamera = async () => {
+    setSourceMenuVisible(false);
+    const ok = await requestPermissions(true);
+    if (!ok) return;
     try {
       const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8
+        allowsEditing: true, aspect: [4, 3], quality: 0.8,
       });
-
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const compressed = await compressImage(result.assets[0].uri);
-        setSelectedImage({
-          uri: compressed.uri,
-          base64: compressed.base64 || null,
-          type: 'photo'
-        });
-        setPreviewModalVisible(true);
+      if (!result.canceled && result.assets?.[0]) {
+        const uri = await compressImage(result.assets[0].uri);
+        setSelectedImage({ uri, type: 'photo' });
+        setPreviewVisible(true);
       }
-    } catch (error) {
-      if (__DEV__) console.error('Error capturando foto:', error);
-      Alert.alert('Error', 'No se pudo capturar la foto');
+    } catch {
+      Alert.alert('Error', 'No se pudo abrir la cámara.');
     }
   };
 
-  // Seleccionar de galería
-  const pickFromGallery = async () => {
-    const hasPermission = await requestPermissions();
-    if (!hasPermission) return;
-
+  const openGallery = async () => {
+    setSourceMenuVisible(false);
+    const ok = await requestPermissions(false);
+    if (!ok) return;
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ['images'],
-        allowsEditing: true,
-        aspect: [4, 3],
-        quality: 0.8
+        mediaTypes: ['images'], allowsEditing: true, aspect: [4, 3], quality: 0.8,
       });
-
-      if (!result.canceled && result.assets && result.assets[0]) {
-        const compressed = await compressImage(result.assets[0].uri);
-        setSelectedImage({
-          uri: compressed.uri,
-          base64: compressed.base64 || null,
-          type: 'gallery'
-        });
-        setPreviewModalVisible(true);
+      if (!result.canceled && result.assets?.[0]) {
+        const uri = await compressImage(result.assets[0].uri);
+        setSelectedImage({ uri, type: 'gallery' });
+        setPreviewVisible(true);
       }
-    } catch (error) {
-      if (__DEV__) console.error('Error seleccionando imagen:', error);
-      Alert.alert('Error', 'No se pudo seleccionar la imagen');
+    } catch {
+      Alert.alert('Error', 'No se pudo abrir la galería.');
     }
   };
 
-  // Enviar imagen
+  // ── enviar ───────────────────────────────────────────────────────────────────
   const sendImage = async () => {
     if (!selectedImage) return;
-    
-    try {
-      setUploading(true);
-      setUploadProgress(0);
+    setUploading(true);
+    setUploadProgress(0);
 
-      const timestamp = Date.now();
-      const filename = `${timestamp}-${Math.random().toString(36).substr(2, 9)}.jpg`;
-      
-      // Helper para convertir base64 a Blob
-      const base64ToBlob = (base64, mimeType = 'image/jpeg') => {
-        try {
-          const byteCharacters = atob(base64);
-          const byteNumbers = new Array(byteCharacters.length);
-          for (let i = 0; i < byteCharacters.length; i++) {
-            byteNumbers[i] = byteCharacters.charCodeAt(i);
-          }
-          const byteArray = new Uint8Array(byteNumbers);
-          return new Blob([byteArray], { type: mimeType });
-        } catch (e) {
-          if (__DEV__) console.error('[ChatImageUpload] base64ToBlob error:', e);
-          throw e;
-        }
-      };
-      
-      // Verificar si Storage está disponible
+    try {
       if (!storage) {
-        // Sin Storage, usar base64 como fallback (no recomendado)
-        if (selectedImage.base64) {
-          const imageUri = `data:image/jpeg;base64,${selectedImage.base64}`;
-          onImageCapture({
-            uri: imageUri,
-            name: filename,
-            type: 'image',
-            isBase64: true,
-            localUri: selectedImage.uri
-          });
-          setSelectedImage(null);
-          setPreviewModalVisible(false);
-          setUploadProgress(0);
-          return;
-        }
         Alert.alert('No disponible', 'El almacenamiento de imágenes no está configurado.');
         return;
       }
-      
-      // Crear referencia en Storage
+
+      const filename = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.jpg`;
       const storageRef = ref(storage, `chat-images/${filename}`);
       setUploadProgress(20);
-      
+
+      // Obtener blob
       let blob;
-      
-      // En web o con base64, convertir a blob
-      if (Platform.OS === 'web' || selectedImage.base64) {
-        if (selectedImage.base64) {
-          blob = base64ToBlob(selectedImage.base64);
-        } else {
-          // En web sin base64, intentar fetch
-          try {
-            const response = await fetch(selectedImage.uri);
-            blob = await response.blob();
-          } catch (fetchError) {
-            if (__DEV__) console.error('Error fetch en web:', fetchError);
-            // Fallback a base64 si no funciona
-            if (selectedImage.base64) {
-              blob = base64ToBlob(selectedImage.base64);
-            } else {
-              throw new Error('No se pudo procesar la imagen');
-            }
-          }
-        }
-      } else {
-        // Para móvil nativo
+      try {
         const response = await fetch(selectedImage.uri);
         blob = await response.blob();
+      } catch (fetchErr) {
+        if (__DEV__) console.error('[ChatImageUpload] fetch blob error:', fetchErr);
+        throw new Error('No se pudo procesar la imagen seleccionada.');
       }
-      
+
+      // Verificar tamaño — máximo 4 MB
+      if (blob.size > 4 * 1024 * 1024) {
+        Alert.alert('Imagen muy grande', 'La imagen debe ser menor a 4 MB. Intenta con otra.');
+        return;
+      }
+
       setUploadProgress(50);
-
-      // Subir a Firebase Storage
       await uploadBytes(storageRef, blob);
-      setUploadProgress(80);
+      setUploadProgress(85);
 
-      // Obtener URL descargable
       const downloadURL = await getDownloadURL(storageRef);
       setUploadProgress(100);
 
-      onImageCapture({
-        uri: downloadURL,
-        name: filename,
-        type: 'image',
-        localUri: selectedImage.uri
-      });
-
-      // Limpiar
+      onImageCapture({ uri: downloadURL, name: filename, type: 'image' });
       setSelectedImage(null);
-      setPreviewModalVisible(false);
+      setPreviewVisible(false);
       setUploadProgress(0);
 
     } catch (error) {
-      if (__DEV__) console.error('Error subiendo imagen:', error);
-      
-      // Si falla Storage, intentar con base64 como fallback
-      if (selectedImage.base64 || Platform.OS === 'web') {
-        try {
-          const imageUri = selectedImage.base64 
-            ? `data:image/jpeg;base64,${selectedImage.base64}` 
-            : selectedImage.uri;
-            
-          onImageCapture({
-            uri: imageUri,
-            name: `fallback-${Date.now()}.jpg`,
-            type: 'image',
-            isBase64: true
-          });
-          
-          setSelectedImage(null);
-          setPreviewModalVisible(false);
-          setUploadProgress(0);
-          return;
-        } catch (fallbackError) {
-          if (__DEV__) console.error('Fallback también falló:', fallbackError);
-        }
-      }
-      
-      Alert.alert('Error', 'No se pudo enviar la imagen. Intenta de nuevo.');
+      if (__DEV__) console.error('[ChatImageUpload] upload error:', error);
+      Alert.alert('Error al enviar', error.message || 'No se pudo subir la imagen. Intenta de nuevo.');
       setUploadProgress(0);
     } finally {
       setUploading(false);
     }
   };
 
-  const cancelSelection = () => {
+  const cancel = () => {
     setSelectedImage(null);
-    setPreviewModalVisible(false);
+    setPreviewVisible(false);
     setUploadProgress(0);
   };
 
+  // ── render ───────────────────────────────────────────────────────────────────
   return (
-    <View style={styles.container}>
-      {/* Botón de acción para imagen */}
+    <View>
+      {/* Botón del composer */}
       <TouchableOpacity
-        style={[styles.imageButton, disabled && styles.buttonDisabled]}
-        onPress={pickFromGallery}
-        onLongPress={takePicture}
+        style={[styles.imageBtn, (disabled || uploading) && styles.imageBtnDisabled]}
+        onPress={() => setSourceMenuVisible(true)}
         disabled={disabled || uploading}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        accessibilityLabel="Adjuntar imagen"
+        accessibilityRole="button"
       >
-        <Ionicons
-          name="image"
-          size={22}
-          color={disabled || uploading ? '#CCC' : '#9F2241'}
-        />
+        {uploading
+          ? <ActivityIndicator size="small" color="#9F2241" />
+          : <Ionicons name="image" size={22} color={(disabled || uploading) ? '#CCC' : '#9F2241'} />
+        }
       </TouchableOpacity>
+
+      {/* Menú: Cámara o Galería */}
+      <Modal
+        visible={sourceMenuVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setSourceMenuVisible(false)}
+      >
+        <TouchableOpacity
+          style={styles.menuOverlay}
+          activeOpacity={1}
+          onPress={() => setSourceMenuVisible(false)}
+        >
+          <View style={styles.menuSheet}>
+            <Text style={styles.menuTitle}>Adjuntar imagen</Text>
+
+            <TouchableOpacity style={styles.menuOption} onPress={openCamera}>
+              <View style={styles.menuIconBg}>
+                <Ionicons name="camera" size={22} color="#9F2241" />
+              </View>
+              <View>
+                <Text style={styles.menuOptionLabel}>Cámara</Text>
+                <Text style={styles.menuOptionSub}>Tomar una foto ahora</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuOption} onPress={openGallery}>
+              <View style={styles.menuIconBg}>
+                <Ionicons name="images" size={22} color="#9F2241" />
+              </View>
+              <View>
+                <Text style={styles.menuOptionLabel}>Galería</Text>
+                <Text style={styles.menuOptionSub}>Elegir de tus fotos</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.menuCancel} onPress={() => setSourceMenuVisible(false)}>
+              <Text style={styles.menuCancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Modal de vista previa */}
       <Modal
-        visible={previewModalVisible}
+        visible={previewVisible}
         animationType="slide"
-        transparent={true}
-        onRequestClose={cancelSelection}
+        transparent={false}
+        onRequestClose={cancel}
       >
-        <SafeAreaView style={styles.modalContainer}>
+        <SafeAreaView style={styles.previewContainer}>
           {/* Header */}
-          <View style={styles.modalHeader}>
-            <TouchableOpacity
-              onPress={cancelSelection}
-              disabled={uploading}
-              style={styles.closeButton}
-            >
-              <Ionicons name="close" size={24} color="#333" />
+          <View style={styles.previewHeader}>
+            <TouchableOpacity onPress={cancel} disabled={uploading} style={styles.previewHeaderBtn}>
+              <Ionicons name="close" size={24} color="#FFF" />
             </TouchableOpacity>
-            <Text style={styles.modalTitle}>Vista Previa</Text>
+            <Text style={styles.previewTitle}>Vista previa</Text>
             <TouchableOpacity
               onPress={sendImage}
               disabled={uploading}
-              style={[styles.sendButton, uploading && styles.sendButtonDisabled]}
+              style={[styles.previewSendBtn, uploading && styles.previewSendBtnDisabled]}
             >
-              <Ionicons name="send" size={20} color="#FFF" />
+              <Ionicons name="send" size={18} color="#FFF" />
+              <Text style={styles.previewSendLabel}>Enviar</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Contenido */}
-          <View style={styles.previewContent}>
+          {/* Imagen */}
+          <View style={styles.previewImageWrap}>
             {selectedImage && (
-              <Image
-                source={{ uri: selectedImage.uri }}
-                style={styles.previewImage}
-                resizeMode="contain"
-              />
+              <Image source={{ uri: selectedImage.uri }} style={styles.previewImage} resizeMode="contain" />
             )}
 
-            {/* Progreso de carga */}
+            {/* Overlay de progreso */}
             {uploading && (
-              <View style={styles.uploadingOverlay}>
-                <View style={styles.uploadingContent}>
-                  <ActivityIndicator size="large" color="#9F2241" />
-                  <Text style={styles.uploadingText}>Subiendo imagen...</Text>
-                  <Text style={styles.uploadingPercent}>{uploadProgress}%</Text>
-                  
-                  {/* Barra de progreso */}
-                  <View style={styles.progressBar}>
-                    <View
-                      style={[
-                        styles.progressFill,
-                        { width: `${uploadProgress}%` }
-                      ]}
-                    />
-                  </View>
+              <View style={styles.uploadOverlay}>
+                <ActivityIndicator size="large" color="#FFFFFF" />
+                <Text style={styles.uploadText}>Subiendo imagen…</Text>
+                <Text style={styles.uploadPercent}>{uploadProgress}%</Text>
+                <View style={styles.progressBar}>
+                  <View style={[styles.progressFill, { width: `${uploadProgress}%` }]} />
                 </View>
               </View>
             )}
           </View>
 
-          {/* Footer con información */}
-          <View style={styles.modalFooter}>
-            <View style={styles.infoContainer}>
-              <Ionicons name="information-circle-outline" size={16} color="#666" />
-              <Text style={styles.infoText}>
-                La imagen se comprimirá automáticamente para optimizar
-              </Text>
-            </View>
-
-            <View style={styles.actionButtons}>
-              <TouchableOpacity
-                style={[styles.footerButton, styles.cancelButton]}
-                onPress={cancelSelection}
-                disabled={uploading}
-              >
-                <Text style={styles.cancelButtonText}>Cancelar</Text>
+          {/* Footer */}
+          {!uploading && (
+            <View style={styles.previewFooter}>
+              <TouchableOpacity style={styles.cancelBtn} onPress={cancel}>
+                <Text style={styles.cancelBtnText}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.footerButton,
-                  styles.confirmButton,
-                  uploading && styles.confirmButtonDisabled
-                ]}
-                onPress={sendImage}
-                disabled={uploading}
-              >
-                <Text style={styles.confirmButtonText}>Enviar</Text>
+              <TouchableOpacity style={styles.confirmBtn} onPress={sendImage}>
+                <Ionicons name="send" size={16} color="#FFF" />
+                <Text style={styles.confirmBtnText}>Enviar foto</Text>
               </TouchableOpacity>
             </View>
-          </View>
+          )}
         </SafeAreaView>
       </Modal>
     </View>
@@ -370,171 +269,193 @@ export default function ChatImageUpload({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    // No ocupar todo el ancho
+  // Botón en el composer
+  imageBtn: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(159,34,65,0.10)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(159,34,65,0.22)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  imageBtnDisabled: {
+    opacity: 0.45,
   },
 
-  imageButton: {
+  // Menú fuente
+  menuOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.50)',
+    justifyContent: 'flex-end',
+  },
+  menuSheet: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 36,
+    gap: 4,
+  },
+  menuTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#8E8E93',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+    marginBottom: 12,
+    paddingHorizontal: 4,
+  },
+  menuOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+    borderBottomWidth: 0.5,
+    borderBottomColor: 'rgba(0,0,0,0.08)',
+  },
+  menuIconBg: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(159, 34, 65, 0.1)',
+    backgroundColor: 'rgba(159,34,65,0.10)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(159, 34, 65, 0.2)',
+  },
+  menuOptionLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1C1C1E',
+  },
+  menuOptionSub: {
+    fontSize: 13,
+    color: '#8E8E93',
+    marginTop: 1,
+  },
+  menuCancel: {
+    marginTop: 12,
+    paddingVertical: 14,
+    backgroundColor: '#F2F2F7',
+    borderRadius: 14,
+    alignItems: 'center',
+  },
+  menuCancelText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FF3B30',
   },
 
-  buttonDisabled: {
-    opacity: 0.5,
-  },
-
-  // MODAL STYLES
-  modalContainer: {
+  // Modal vista previa
+  previewContainer: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: '#000000',
   },
-
-  modalHeader: {
+  previewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#1A1A1A',
-    borderBottomWidth: 1,
-    borderBottomColor: '#333',
+    paddingVertical: 14,
+    backgroundColor: '#111111',
   },
-
-  closeButton: {
-    padding: 8,
+  previewHeaderBtn: {
+    padding: 6,
   },
-
-  modalTitle: {
-    color: '#FFF',
+  previewTitle: {
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '600',
-    flex: 1,
-    textAlign: 'center',
+    fontWeight: '700',
   },
-
-  sendButton: {
+  previewSendBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
     backgroundColor: '#9F2241',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 6,
+    borderRadius: 20,
   },
-
-  sendButtonDisabled: {
+  previewSendBtnDisabled: {
     opacity: 0.5,
   },
-
-  previewContent: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#000',
+  previewSendLabel: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
   },
-
+  previewImageWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   previewImage: {
     width: '100%',
     height: '100%',
   },
-
-  uploadingOverlay: {
+  uploadOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0,0,0,0.72)',
     justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
   },
-
-  uploadingContent: {
-    alignItems: 'center',
-    gap: 16,
-  },
-
-  uploadingText: {
-    color: '#FFF',
+  uploadText: {
+    color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: '600',
   },
-
-  uploadingPercent: {
-    color: '#9F2241',
-    fontSize: 24,
-    fontWeight: '700',
+  uploadPercent: {
+    color: '#FF9F9F',
+    fontSize: 28,
+    fontWeight: '800',
   },
-
   progressBar: {
-    width: 200,
+    width: 180,
     height: 4,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.20)',
     borderRadius: 2,
     overflow: 'hidden',
   },
-
   progressFill: {
     height: '100%',
     backgroundColor: '#9F2241',
+    borderRadius: 2,
   },
-
-  modalFooter: {
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    backgroundColor: '#1A1A1A',
-    borderTopWidth: 1,
-    borderTopColor: '#333',
-  },
-
-  infoContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 16,
-    gap: 8,
-    paddingHorizontal: 8,
-  },
-
-  infoText: {
-    color: '#AAA',
-    fontSize: 12,
-    flex: 1,
-  },
-
-  actionButtons: {
+  previewFooter: {
     flexDirection: 'row',
     gap: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    backgroundColor: '#111111',
   },
-
-  footerButton: {
+  cancelBtn: {
     flex: 1,
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
+    borderRadius: 14,
     alignItems: 'center',
+    backgroundColor: '#2C2C2E',
   },
-
-  cancelButton: {
-    backgroundColor: '#333',
-    borderWidth: 1,
-    borderColor: '#555',
-  },
-
-  cancelButtonText: {
-    color: '#FFF',
+  cancelBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '600',
-    fontSize: 14,
   },
-
-  confirmButton: {
+  confirmBtn: {
+    flex: 2,
+    flexDirection: 'row',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
     backgroundColor: '#9F2241',
   },
-
-  confirmButtonDisabled: {
-    opacity: 0.5,
-  },
-
-  confirmButtonText: {
-    color: '#FFF',
-    fontWeight: '600',
-    fontSize: 14,
+  confirmBtnText: {
+    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
   },
 });

@@ -1,6 +1,6 @@
 // components/SuggestedDirectionsPanel.js
 // Panel que muestra las direcciones (áreas a cargo) de secretarios seleccionados
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -26,11 +26,7 @@ export default function SuggestedDirectionsPanel({
   const { isDark } = useTheme();
 
   // Cargar direcciones cuando cambien los usuarios seleccionados
-  useEffect(() => {
-    loadSuggestedDirections();
-  }, [selectedUsers, selectedAreas]);
-
-  const loadSuggestedDirections = async () => {
+  const loadSuggestedDirections = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -111,7 +107,11 @@ export default function SuggestedDirectionsPanel({
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedUsers, selectedAreas]);
+
+  useEffect(() => {
+    loadSuggestedDirections();
+  }, [loadSuggestedDirections]);
 
   // No mostrar si no hay secretarios seleccionados o no hay direcciones
   if (!selectedUsers.some(u => u.role === 'secretario')) {

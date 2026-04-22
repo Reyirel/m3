@@ -1,14 +1,13 @@
 // screens/AdminScreen.js
 // Pantalla de configuración y administración
 import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Modal, Alert, KeyboardAvoidingView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Modal, Alert, KeyboardAvoidingView } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ensurePermissions, getAllScheduledNotifications, cancelAllNotifications } from '../services/notifications';
-import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import * as Notifications from 'expo-notifications';
-import { registerUser } from '../services/authFirestore';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNotification } from '../contexts/NotificationContext';
 import OverdueAlert from '../components/OverdueAlert';
@@ -19,36 +18,26 @@ import { hapticMedium, hapticLight } from '../utils/haptics';
 import { useTasks } from '../contexts/TasksContext';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
+import CreateUserForm from '../components/admin/CreateUserForm';
+import PasswordResetForm from '../components/admin/PasswordResetForm';
+import UserListPanel from '../components/admin/UserListPanel';
+import AmbientOrbs from '../components/AmbientOrbs';
 
-const ROLE_LABELS = { director: 'Director', secretario: 'Secretario', admin: 'Admin', otros: 'Otros' };
-const ROLE_COLORS = { director: '#0EA5E9', secretario: '#8B5CF6', admin: '#EF4444', otros: '#F59E0B' };
 
 export default function AdminScreen({ navigation, onLogout }) {
   const { isDark, toggleTheme, theme } = useTheme();
   const { isDesktop } = useResponsive();
+  const styles = React.useMemo(() => createAdminStyles(theme, isDark), [theme, isDark]);
   const { tasks, currentUser } = useTasks();
   const isUserAdmin = currentUser?.role === 'admin';
-  const { showSuccess, showError, showWarning } = useNotification();
+  const { showError } = useNotification();
   const [notificationCount, setNotificationCount] = useState(0);
-  const [userName, setUserName] = useState('');
-  const [userEmail, setUserEmail] = useState('');
-  const [userPassword, setUserPassword] = useState('');
-  const [userRole, setUserRole] = useState('director');
   const [allUsers, setAllUsers] = useState([]);
-  const [showUserList, setShowUserList] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [newPassword, setNewPassword] = useState('');
   const [showUrgentModal, setShowUrgentModal] = useState(false);
   const [urgentTasks, setUrgentTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showFlowModal, setShowFlowModal] = useState(false);
   const [showOrgModal, setShowOrgModal] = useState(false);
-  const [editingRoleUserId, setEditingRoleUserId] = useState(null);
-  const [userSearch, setUserSearch] = useState('');
-  const [deleteConfirmUser, setDeleteConfirmUser] = useState(null); // { id, displayName }
-  const [passwordUser, setPasswordUser] = useState(null);          // usuario seleccionado
-  const [newTempPassword, setNewTempPassword] = useState('');
-  const [showTempPass, setShowTempPass] = useState(false);
 
 
 
@@ -66,6 +55,7 @@ export default function AdminScreen({ navigation, onLogout }) {
       }
     };
     loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Conteos de usuarios por rol — memoizados para evitar filter() en cada render
@@ -131,164 +121,6 @@ export default function AdminScreen({ navigation, onLogout }) {
     } catch (error) {
       if (__DEV__) console.error('Error loading users:', error);
       setAllUsers([]);
-    }
-  };
-
-  const resetUserPassword = async () => {
-    if (!resetEmail.trim() || !newPassword.trim()) {
-      showError('Por favor completa email y nueva contraseña');
-      return;
-    }
-
-    if (newPassword.length < 6) {
-      showError('La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-
-    if (!isUserAdmin) {
-      showWarning('Solo los administradores pueden resetear contraseñas');
-      return;
-    }
-
-    try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', resetEmail.toLowerCase()));
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
-        showError('Usuario no encontrado');
-        return;
-      }
-
-      const userDoc = querySnapshot.docs[0];
-      const simpleHash = (text) => {
-        let hash = 0;
-        for (let i = 0; i < text.length; i++) {
-          const char = text.charCodeAt(i);
-          hash = ((hash << 5) - hash) + char;
-          hash = hash & hash;
-        }
-        return Math.abs(hash).toString(16);
-      };
-
-      const hashedPassword = simpleHash(newPassword + resetEmail.toLowerCase());
-      await updateDoc(doc(db, 'users', userDoc.id), {
-        password: hashedPassword
-      });
-
-      showSuccess('La contraseña ha sido actualizada');
-      setResetEmail('');
-      setNewPassword('');
-    } catch (error) {
-      showError('No se pudo resetear la contraseña: ' + error.message);
-    }
-  };
-
-  const deleteUserAccount = (userId, userName) => {
-    if (userId === currentUser?.userId) {
-      showWarning('No puedes eliminar tu propia cuenta');
-      return;
-    }
-    setDeleteConfirmUser({ id: userId, displayName: userName });
-  };
-
-  const confirmDeleteUser = async () => {
-    if (!deleteConfirmUser) return;
-    try {
-      hapticMedium();
-      await deleteDoc(doc(db, 'users', deleteConfirmUser.id));
-      showSuccess(`Cuenta de ${deleteConfirmUser.displayName} eliminada`);
-      setDeleteConfirmUser(null);
-      loadAllUsers();
-    } catch (error) {
-      showError('No se pudo eliminar: ' + error.message);
-      setDeleteConfirmUser(null);
-    }
-  };
-
-  const simpleHash = (text) => {
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-      const char = text.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16);
-  };
-
-  const saveUserPassword = async () => {
-    if (!passwordUser || !newTempPassword.trim()) return;
-    try {
-      const hashed = simpleHash(newTempPassword.trim() + passwordUser.email.toLowerCase());
-      await updateDoc(doc(db, 'users', passwordUser.id), {
-        password: hashed,
-        tempPassword: newTempPassword.trim(),
-      });
-      showSuccess('Contraseña actualizada');
-      setShowTempPass(true);
-      loadAllUsers();
-    } catch (error) {
-      showError('Error al guardar: ' + error.message);
-    }
-  };
-
-  const changeUserRole = async (userId, newRole, userName) => {
-    if (userId === currentUser?.userId) {
-      showWarning('No puedes cambiar tu propio rol');
-      return;
-    }
-    try {
-      hapticLight();
-      await updateDoc(doc(db, 'users', userId), { role: newRole });
-      showSuccess(`${userName} ahora es ${ROLE_LABELS[newRole]}`);
-      setEditingRoleUserId(null);
-      loadAllUsers();
-    } catch (error) {
-      showError('No se pudo cambiar el rol: ' + error.message);
-    }
-  };
-
-  const validateEmail = (email) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
-  };
-
-  const createUser = async () => {
-    if (!userName.trim() || !userEmail.trim() || !userPassword.trim()) {
-      showError('Por favor completa nombre, email y contraseña');
-      return;
-    }
-
-    if (!validateEmail(userEmail.trim())) {
-      showError('Por favor ingresa un email válido');
-      return;
-    }
-
-    if (userPassword.length < 6) {
-      showError('La contraseña debe tener al menos 6 caracteres');
-      return;
-    }
-
-    if (!isUserAdmin) {
-      showWarning('Solo los administradores pueden crear usuarios');
-      return;
-    }
-
-    try {
-      const result = await registerUser(userEmail.trim(), userPassword, userName.trim(), userRole);
-
-      if (result.success) {
-        showSuccess(`${userName} ha sido agregado como ${userRole}`);
-        setUserName('');
-        setUserEmail('');
-        setUserPassword('');
-        setUserRole('director');
-        loadAllUsers(); // Recargar lista
-      } else {
-        showError(result.error);
-      }
-    } catch (error) {
-      showError('No se pudo crear el usuario: ' + error.message);
     }
   };
 
@@ -364,7 +196,7 @@ export default function AdminScreen({ navigation, onLogout }) {
   // Show shimmer while fetching data
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
         {/* Header shimmer */}
         <ShimmerEffect width="100%" height={110} borderRadius={0} style={{ marginBottom: 16 }} />
         {/* Stat cards row 1 */}
@@ -386,7 +218,7 @@ export default function AdminScreen({ navigation, onLogout }) {
   // Show error if no user session
   if (!currentUser) {
     return (
-      <View style={[styles.container, styles.loadingContainer, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: 'transparent' }]}>
         <Ionicons name="alert-circle" size={60} color={theme.text} style={{ marginBottom: 16, opacity: 0.5 }} />
         <Text style={[styles.loadingText, { color: theme.text, marginBottom: 24 }]}>No hay sesión activa</Text>
         <TouchableOpacity 
@@ -400,7 +232,10 @@ export default function AdminScreen({ navigation, onLogout }) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+      {/* Premium Ambient Orbs - Glasmorfismo */}
+      <AmbientOrbs intensity="medium" />
+      
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       {/* Modal de Tareas Urgentes */}
       <Modal
@@ -413,7 +248,7 @@ export default function AdminScreen({ navigation, onLogout }) {
           <View style={[styles.urgentModalContent, { backgroundColor: theme.card }]}>
             <View style={styles.urgentModalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                <Ionicons name="warning" size={32} color="#FF3B30" style={{ marginRight: 12 }} />
+                <Ionicons name="warning" size={32} color={theme.error} style={{ marginRight: 12 }} />
                 <View>
                   <Text style={[styles.urgentModalTitle, { color: theme.text }]}>¡Alerta Urgente!</Text>
                   <Text style={[styles.urgentModalSubtitle, { color: theme.textSecondary }]}>
@@ -434,9 +269,9 @@ export default function AdminScreen({ navigation, onLogout }) {
                 return (
                   <TouchableOpacity
                     key={task.id}
-                    style={[styles.urgentTaskCard, { 
-                      backgroundColor: theme.surface,
-                      borderColor: hoursLeft < 2 ? '#FF3B30' : '#FF9500'
+                    style={[styles.urgentTaskCard, {
+                      backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+                      borderColor: hoursLeft < 2 ? theme.error : theme.warning
                     }]}
                     onPress={() => {
                       setShowUrgentModal(false);
@@ -447,7 +282,7 @@ export default function AdminScreen({ navigation, onLogout }) {
                       <Ionicons 
                         name={hoursLeft < 2 ? "alert-circle" : "time"} 
                         size={28} 
-                        color={hoursLeft < 2 ? '#FF3B30' : '#FF9500'} 
+                        color={hoursLeft < 2 ? theme.error : theme.warning} 
                       />
                       <View style={{ flex: 1, marginLeft: 12 }}>
                         <Text style={[styles.urgentTaskTitle, { color: theme.text }]} numberOfLines={2}>
@@ -468,9 +303,9 @@ export default function AdminScreen({ navigation, onLogout }) {
                     <View style={[styles.urgentTaskTimer, { 
                       backgroundColor: hoursLeft < 2 ? 'rgba(255, 59, 48, 0.15)' : 'rgba(255, 149, 0, 0.15)' 
                     }]}>
-                      <Ionicons name="hourglass" size={18} color={hoursLeft < 2 ? '#FF3B30' : '#FF9500'} />
+                      <Ionicons name="hourglass" size={18} color={hoursLeft < 2 ? theme.error : theme.warning} />
                       <Text style={[styles.urgentTaskTime, { 
-                        color: hoursLeft < 2 ? '#FF3B30' : '#FF9500' 
+                        color: hoursLeft < 2 ? theme.error : theme.warning 
                       }]}>
                         {hoursLeft}h {minutesLeft}m restantes
                       </Text>
@@ -481,7 +316,7 @@ export default function AdminScreen({ navigation, onLogout }) {
             </ScrollView>
             <View style={styles.urgentModalFooter}>
               <TouchableOpacity 
-                style={[styles.urgentModalButton, { backgroundColor: '#FF3B30' }]}
+                style={[styles.urgentModalButton, { backgroundColor: theme.error }]}
                 onPress={() => setShowUrgentModal(false)}
               >
                 <Text style={styles.urgentModalButtonText}>Entendido</Text>
@@ -503,7 +338,7 @@ export default function AdminScreen({ navigation, onLogout }) {
             <View style={styles.flowModalHeader}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <LinearGradient
-                  colors={['#9F2241', '#7D1A33']}
+                  colors={theme.gradientPrimary}
                   style={[styles.iconCircleSection, { marginRight: 12 }]}
                 >
                   <Ionicons name="git-network" size={24} color="#FFFFFF" />
@@ -522,11 +357,11 @@ export default function AdminScreen({ navigation, onLogout }) {
             
             <ScrollView style={styles.flowModalScroll} showsVerticalScrollIndicator={false}>
               {/* Jerarquía de Roles */}
-              <View style={[styles.flowSection, { backgroundColor: isDark ? '#1E1E23' : '#F8F9FA', borderRadius: 12, padding: 16, marginBottom: 16 }]}>
+              <View style={[styles.flowSection, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderRadius: 12, padding: 16, marginBottom: 16 }]}>
                 <Text style={[styles.flowTitle, { color: theme.text }]}>👥 Jerarquía de Roles</Text>
                 
                 <View style={styles.hierarchyContainer}>
-                  <View style={[styles.roleBox, { backgroundColor: '#DC2626' }]}>
+                  <View style={[styles.roleBox, { backgroundColor: theme.error }]}>
                     <Ionicons name="shield-checkmark" size={20} color="#FFFFFF" />
                     <Text style={styles.roleBoxText}>ADMIN</Text>
                     <Text style={styles.roleBoxDesc}>Ve TODO</Text>
@@ -548,23 +383,23 @@ export default function AdminScreen({ navigation, onLogout }) {
                   <Ionicons name="arrow-down" size={24} color={theme.textSecondary} style={{ alignSelf: 'center', marginVertical: 8 }} />
                   
                   <View style={styles.roleRow}>
-                    <View style={[styles.roleBoxSmall, { backgroundColor: '#3B82F6' }]}>
+                    <View style={[styles.roleBoxSmall, { backgroundColor: theme.info }]}>
                       <Text style={styles.roleBoxTextSmall}>DIRECTOR</Text>
                       <Text style={styles.roleBoxDescSmall}>Ve su área</Text>
                     </View>
-                    <View style={[styles.roleBoxSmall, { backgroundColor: '#3B82F6' }]}>
+                    <View style={[styles.roleBoxSmall, { backgroundColor: theme.info }]}>
                       <Text style={styles.roleBoxTextSmall}>DIRECTOR</Text>
                       <Text style={styles.roleBoxDescSmall}>Ve su área</Text>
                     </View>
-                    <View style={[styles.roleBoxSmall, { backgroundColor: '#3B82F6' }]}>
+                    <View style={[styles.roleBoxSmall, { backgroundColor: theme.info }]}>
                       <Text style={styles.roleBoxTextSmall}>DIRECTOR</Text>
                       <Text style={styles.roleBoxDescSmall}>Ve su área</Text>
                     </View>
                   </View>
                 </View>
                 
-                <View style={[styles.flowInfo, { backgroundColor: isDark ? '#2A2A30' : '#E8F4FD', marginTop: 12 }]}>
-                  <Ionicons name="information-circle" size={18} color="#3B82F6" />
+                <View style={[styles.flowInfo, { backgroundColor: isDark ? theme.glass : theme.infoAlpha, marginTop: 12 }]}>
+                  <Ionicons name="information-circle" size={18} color={theme.info} />
                   <Text style={[styles.flowInfoText, { color: theme.textSecondary }]}>
                     7 Secretarías • 35 Directores registrados
                   </Text>
@@ -572,7 +407,7 @@ export default function AdminScreen({ navigation, onLogout }) {
               </View>
 
               {/* Flujo de Tareas */}
-              <View style={[styles.flowSection, { backgroundColor: isDark ? '#1E1E23' : '#F8F9FA', borderRadius: 12, padding: 16, marginBottom: 16 }]}>
+              <View style={[styles.flowSection, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderRadius: 12, padding: 16, marginBottom: 16 }]}>
                 <Text style={[styles.flowTitle, { color: theme.text }]}>📋 Flujo de Tareas</Text>
                 
                 <View style={styles.flowSteps}>
@@ -589,7 +424,7 @@ export default function AdminScreen({ navigation, onLogout }) {
                   <View style={[styles.flowConnector, { backgroundColor: theme.border }]} />
                   
                   <View style={styles.flowStep}>
-                    <View style={[styles.flowStepNumber, { backgroundColor: '#F59E0B' }]}>
+                    <View style={[styles.flowStepNumber, { backgroundColor: theme.warning }]}>
                       <Text style={styles.flowStepNumberText}>2</Text>
                     </View>
                     <View style={styles.flowStepContent}>
@@ -601,7 +436,7 @@ export default function AdminScreen({ navigation, onLogout }) {
                   <View style={[styles.flowConnector, { backgroundColor: theme.border }]} />
                   
                   <View style={styles.flowStep}>
-                    <View style={[styles.flowStepNumber, { backgroundColor: '#3B82F6' }]}>
+                    <View style={[styles.flowStepNumber, { backgroundColor: theme.info }]}>
                       <Text style={styles.flowStepNumberText}>3</Text>
                     </View>
                     <View style={styles.flowStepContent}>
@@ -613,7 +448,7 @@ export default function AdminScreen({ navigation, onLogout }) {
                   <View style={[styles.flowConnector, { backgroundColor: theme.border }]} />
                   
                   <View style={styles.flowStep}>
-                    <View style={[styles.flowStepNumber, { backgroundColor: '#8B5CF6' }]}>
+                    <View style={[styles.flowStepNumber, { backgroundColor: theme.secondary }]}>
                       <Text style={styles.flowStepNumberText}>4</Text>
                     </View>
                     <View style={styles.flowStepContent}>
@@ -625,7 +460,7 @@ export default function AdminScreen({ navigation, onLogout }) {
                   <View style={[styles.flowConnector, { backgroundColor: theme.border }]} />
                   
                   <View style={styles.flowStep}>
-                    <View style={[styles.flowStepNumber, { backgroundColor: '#10B981' }]}>
+                    <View style={[styles.flowStepNumber, { backgroundColor: theme.success }]}>
                       <Text style={styles.flowStepNumberText}>5</Text>
                     </View>
                     <View style={styles.flowStepContent}>
@@ -637,42 +472,42 @@ export default function AdminScreen({ navigation, onLogout }) {
               </View>
 
               {/* Pantallas Principales */}
-              <View style={[styles.flowSection, { backgroundColor: isDark ? '#1E1E23' : '#F8F9FA', borderRadius: 12, padding: 16, marginBottom: 16 }]}>
+              <View style={[styles.flowSection, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderRadius: 12, padding: 16, marginBottom: 16 }]}>
                 <Text style={[styles.flowTitle, { color: theme.text }]}>📱 Pantallas Principales</Text>
                 
                 <View style={styles.screensGrid}>
-                  <View style={[styles.screenItem, { backgroundColor: isDark ? '#2A2A30' : '#FFFFFF' }]}>
+                  <View style={[styles.screenItem, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
                     <Ionicons name="home" size={24} color={theme.primary} />
                     <Text style={[styles.screenName, { color: theme.text }]}>Inicio</Text>
                     <Text style={[styles.screenDesc, { color: theme.textSecondary }]}>Lista + crear</Text>
                   </View>
                   
-                  <View style={[styles.screenItem, { backgroundColor: isDark ? '#2A2A30' : '#FFFFFF' }]}>
-                    <Ionicons name="apps" size={24} color="#3B82F6" />
+                  <View style={[styles.screenItem, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+                    <Ionicons name="apps" size={24} color={theme.info} />
                     <Text style={[styles.screenName, { color: theme.text }]}>Tablero</Text>
                     <Text style={[styles.screenDesc, { color: theme.textSecondary }]}>Vista Kanban</Text>
                   </View>
                   
-                  <View style={[styles.screenItem, { backgroundColor: isDark ? '#2A2A30' : '#FFFFFF' }]}>
-                    <Ionicons name="calendar" size={24} color="#F59E0B" />
+                  <View style={[styles.screenItem, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+                    <Ionicons name="calendar" size={24} color={theme.warning} />
                     <Text style={[styles.screenName, { color: theme.text }]}>Calendario</Text>
                     <Text style={[styles.screenDesc, { color: theme.textSecondary }]}>Por fecha</Text>
                   </View>
                   
-                  <View style={[styles.screenItem, { backgroundColor: isDark ? '#2A2A30' : '#FFFFFF' }]}>
-                    <Ionicons name="file-tray-full" size={24} color="#8B5CF6" />
+                  <View style={[styles.screenItem, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+                    <Ionicons name="file-tray-full" size={24} color={theme.secondary} />
                     <Text style={[styles.screenName, { color: theme.text }]}>Bandeja</Text>
                     <Text style={[styles.screenDesc, { color: theme.textSecondary }]}>Mis tareas</Text>
                   </View>
                   
-                  <View style={[styles.screenItem, { backgroundColor: isDark ? '#2A2A30' : '#FFFFFF' }]}>
-                    <Ionicons name="bar-chart" size={24} color="#10B981" />
+                  <View style={[styles.screenItem, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+                    <Ionicons name="bar-chart" size={24} color={theme.success} />
                     <Text style={[styles.screenName, { color: theme.text }]}>Reportes</Text>
                     <Text style={[styles.screenDesc, { color: theme.textSecondary }]}>Métricas</Text>
                   </View>
                   
-                  <View style={[styles.screenItem, { backgroundColor: isDark ? '#2A2A30' : '#FFFFFF' }]}>
-                    <Ionicons name="settings" size={24} color="#DC2626" />
+                  <View style={[styles.screenItem, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+                    <Ionicons name="settings" size={24} color={theme.error} />
                     <Text style={[styles.screenName, { color: theme.text }]}>Admin</Text>
                     <Text style={[styles.screenDesc, { color: theme.textSecondary }]}>Usuarios</Text>
                   </View>
@@ -680,11 +515,11 @@ export default function AdminScreen({ navigation, onLogout }) {
               </View>
 
               {/* Métricas por Rol */}
-              <View style={[styles.flowSection, { backgroundColor: isDark ? '#1E1E23' : '#F8F9FA', borderRadius: 12, padding: 16, marginBottom: 16 }]}>
+              <View style={[styles.flowSection, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderRadius: 12, padding: 16, marginBottom: 16 }]}>
                 <Text style={[styles.flowTitle, { color: theme.text }]}>📊 ¿Quién ve qué métricas?</Text>
                 
                 <View style={styles.metricsInfo}>
-                  <View style={[styles.metricRole, { borderLeftColor: '#DC2626' }]}>
+                  <View style={[styles.metricRole, { borderLeftColor: theme.error }]}>
                     <Text style={[styles.metricRoleTitle, { color: theme.text }]}>Admin</Text>
                     <Text style={[styles.metricRoleDesc, { color: theme.textSecondary }]}>
                       Cumplimiento de TODOS • Gráficos de área • Alertas globales
@@ -698,7 +533,7 @@ export default function AdminScreen({ navigation, onLogout }) {
                     </Text>
                   </View>
                   
-                  <View style={[styles.metricRole, { borderLeftColor: '#3B82F6' }]}>
+                  <View style={[styles.metricRole, { borderLeftColor: theme.info }]}>
                     <Text style={[styles.metricRoleTitle, { color: theme.text }]}>Director</Text>
                     <Text style={[styles.metricRoleDesc, { color: theme.textSecondary }]}>
                       Sus propias métricas • Tareas de su área
@@ -714,12 +549,12 @@ export default function AdminScreen({ navigation, onLogout }) {
                   <Text style={[styles.sectionTitle, { color: theme.text }]}>🔐 Credenciales de Acceso</Text>
                 </View>
                 
-                <View style={[styles.credentialsBox, { backgroundColor: isDark ? '#2A2A2A' : '#F5F5F5' }]}>
+                <View style={[styles.credentialsBox, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}>
                   <Text style={[styles.credentialHeader, { color: theme.primary }]}>👤 ADMINISTRADOR</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>admin@todo.com → admin123</Text>
                 </View>
                 
-                <View style={[styles.credentialsBox, { backgroundColor: isDark ? '#2A2A2A' : '#F5F5F5' }]}>
+                <View style={[styles.credentialsBox, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}>
                   <Text style={[styles.credentialHeader, { color: theme.primary }]}>📋 SECRETARIOS</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>secretaria.general@municipio.com → SecGen2024</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>tesoreria@municipio.com → Teso2024</Text>
@@ -731,10 +566,10 @@ export default function AdminScreen({ navigation, onLogout }) {
                   <Text style={[styles.credentialItem, { color: theme.text }]}>pueblos.indigenas@municipio.com → Pueblos2024</Text>
                 </View>
                 
-                <View style={[styles.credentialsBox, { backgroundColor: isDark ? '#2A2A2A' : '#F5F5F5' }]}>
+                <View style={[styles.credentialsBox, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}>
                   <Text style={[styles.credentialHeader, { color: theme.primary }]}>🏢 DIRECTORES - Contraseña: Dir2024</Text>
                   
-                  <Text style={[styles.areaHeader, { color: '#235B4E' }]}>📁 Secretaría General Municipal (11)</Text>
+                  <Text style={[styles.areaHeader, { color: theme.successDark }]}>📁 Secretaría General Municipal (11)</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>amalia.escalante@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>jose.angeles@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>brenda.martinez@municipio.com</Text>
@@ -747,7 +582,7 @@ export default function AdminScreen({ navigation, onLogout }) {
                   <Text style={[styles.credentialItem, { color: theme.text }]}>taurino.gonzalez@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>roberto.ruiz@municipio.com</Text>
                   
-                  <Text style={[styles.areaHeader, { color: '#235B4E' }]}>📁 Secretaría de Tesorería Municipal (6)</Text>
+                  <Text style={[styles.areaHeader, { color: theme.successDark }]}>📁 Secretaría de Tesorería Municipal (6)</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>alejandro.diaz@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>miguel.tolentino@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>juan.sanchez@municipio.com</Text>
@@ -755,23 +590,23 @@ export default function AdminScreen({ navigation, onLogout }) {
                   <Text style={[styles.credentialItem, { color: theme.text }]}>juana.moctezuma@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>isabel.munoz@municipio.com</Text>
                   
-                  <Text style={[styles.areaHeader, { color: '#235B4E' }]}>📁 Secretaría de Obras Públicas (5)</Text>
+                  <Text style={[styles.areaHeader, { color: theme.successDark }]}>📁 Secretaría de Obras Públicas (5)</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>vanessa.martinez@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>gladys.zapote@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>alfonso.alavez@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>rosalio.romero@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>julio.palma@municipio.com</Text>
                   
-                  <Text style={[styles.areaHeader, { color: '#235B4E' }]}>📁 Secretaría de Planeación y Evaluación (2)</Text>
+                  <Text style={[styles.areaHeader, { color: theme.successDark }]}>📁 Secretaría de Planeación y Evaluación (2)</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>efrain.volteada@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>luis.chavero@municipio.com</Text>
                   
-                  <Text style={[styles.areaHeader, { color: '#235B4E' }]}>📁 Secretaría de Desarrollo Económico y Turismo (3)</Text>
+                  <Text style={[styles.areaHeader, { color: theme.successDark }]}>📁 Secretaría de Desarrollo Económico y Turismo (3)</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>berenice.moreno@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>claudia.ramirez@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>pablo.vaquero@municipio.com</Text>
                   
-                  <Text style={[styles.areaHeader, { color: '#235B4E' }]}>📁 Secretaría de Bienestar Social (6)</Text>
+                  <Text style={[styles.areaHeader, { color: theme.successDark }]}>📁 Secretaría de Bienestar Social (6)</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>hipolito.bartolo@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>christian.trejo@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>rosa.labra@municipio.com</Text>
@@ -779,12 +614,12 @@ export default function AdminScreen({ navigation, onLogout }) {
                   <Text style={[styles.credentialItem, { color: theme.text }]}>alicia.feregrino@municipio.com</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>michelle.chiapa@municipio.com</Text>
                   
-                  <Text style={[styles.areaHeader, { color: '#235B4E' }]}>📁 Secretaría de Seguridad Pública (1)</Text>
+                  <Text style={[styles.areaHeader, { color: theme.successDark }]}>📁 Secretaría de Seguridad Pública (1)</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>marcelino.capula@municipio.com</Text>
                 </View>
                 
-                <View style={[styles.credentialsBox, { backgroundColor: isDark ? '#2A2A2A' : '#F5F5F5' }]}>
-                  <Text style={[styles.credentialHeader, { color: '#6B7280' }]}>👥 OTROS FUNCIONARIOS</Text>
+                <View style={[styles.credentialsBox, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}>
+                  <Text style={[styles.credentialHeader, { color: theme.textSecondary }]}>👥 OTROS FUNCIONARIOS</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>contraloria@municipio.com → Cont2024</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>transparencia@municipio.com → Trans2024</Text>
                   <Text style={[styles.credentialItem, { color: theme.text }]}>juridico@municipio.com → Juri2024</Text>
@@ -810,20 +645,21 @@ export default function AdminScreen({ navigation, onLogout }) {
 
       <View style={styles.headerSection}>
         <LinearGradient
-          colors={isDark ? ['#2A1520', '#1A1A1A'] : ['#9F2241', '#7F1D35']}
+          colors={theme.gradientHeader}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
         >
+          {/* Highlight superior */}
+          <View style={styles.headerHighlight} />
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
-              <View style={styles.greetingContainer}>
-                <Ionicons name="hand-right" size={20} color="#FFFFFF" style={{ marginRight: 8, opacity: 0.9 }} />
-                <Text style={styles.greeting}>Hola!</Text>
-              </View>
+              <Text style={styles.greetingSmall}>
+                {currentUser?.displayName ? `Hola, ${currentUser.displayName.split(' ')[0]}` : 'Hola!'}
+              </Text>
               <Text style={styles.heading}>Administración</Text>
             </View>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.logoutButton}
               onPress={async () => {
                 hapticMedium();
@@ -867,100 +703,52 @@ export default function AdminScreen({ navigation, onLogout }) {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Stats Overview - Estadísticas por Rol */}
+        {/* Stats Overview — colores sólidos y vibrantes */}
         <View style={styles.statsContainer}>
-          <View style={[styles.statCard, styles.statCardGlass]}>
-            <LinearGradient
-              colors={['rgba(159, 34, 65, 0.95)', 'rgba(127, 29, 53, 0.9)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.statCardGradient}
-            >
-              <View style={styles.statIconBadge}>
-                <Ionicons name="briefcase" size={28} color="#FFFFFF" />
-              </View>
-              <Text style={styles.statNumber}>{userCounts.secretarios}</Text>
-              <Text style={styles.statLabel}>SECRETARIOS</Text>
-            </LinearGradient>
-          </View>
-
-          <View style={[styles.statCard, styles.statCardGlass]}>
-            <LinearGradient
-              colors={['rgba(35, 91, 78, 0.95)', 'rgba(28, 73, 62, 0.9)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.statCardGradient}
-            >
-              <View style={styles.statIconBadge}>
-                <Ionicons name="people" size={28} color="#FFFFFF" />
-              </View>
-              <Text style={styles.statNumber}>{userCounts.directores}</Text>
-              <Text style={styles.statLabel}>DIRECTORES</Text>
-            </LinearGradient>
-          </View>
-
-          <View style={[styles.statCard, styles.statCardGlass]}>
-            <LinearGradient
-              colors={['rgba(107, 114, 128, 0.95)', 'rgba(75, 85, 99, 0.9)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.statCardGradient}
-            >
-              <View style={styles.statIconBadge}>
-                <Ionicons name="people" size={28} color="#FFFFFF" />
-              </View>
-              <Text style={styles.statNumber}>{userCounts.operativos}</Text>
-              <Text style={styles.statLabel}>OTROS</Text>
-            </LinearGradient>
-          </View>
+          {[
+            { colors: [theme.primary, theme.primary],     icon: 'briefcase',     count: userCounts.secretarios, label: 'SECRETARIOS' },
+            { colors: [theme.success, theme.success],     icon: 'people',        count: userCounts.directores,  label: 'DIRECTORES'  },
+            { colors: [theme.textMuted, theme.textMuted], icon: 'person-circle', count: userCounts.operativos,  label: 'OTROS'       },
+          ].map(({ colors, icon, count, label }) => (
+            <View key={label} style={styles.statCard}>
+              <LinearGradient
+                colors={colors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.statCardGradient}
+              >
+                <View style={styles.statIconBadge}>
+                  <Ionicons name={icon} size={26} color="#FFFFFF" />
+                </View>
+                <Text style={styles.statNumber}>{count}</Text>
+                <Text style={styles.statLabel}>{label}</Text>
+              </LinearGradient>
+            </View>
+          ))}
         </View>
-        
-        {/* Segunda fila de stats */}
-        <View style={[styles.statsContainer, { marginTop: 12 }]}>
-          <View style={[styles.statCard, styles.statCardGlass]}>
-            <LinearGradient
-              colors={['rgba(139, 92, 246, 0.95)', 'rgba(124, 58, 237, 0.9)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.statCardGradient}
-            >
-              <View style={styles.statIconBadge}>
-                <Ionicons name="shield-checkmark" size={28} color="#FFFFFF" />
-              </View>
-              <Text style={styles.statNumber}>{userCounts.admins}</Text>
-              <Text style={styles.statLabel}>ADMINS</Text>
-            </LinearGradient>
-          </View>
 
-          <View style={[styles.statCard, styles.statCardGlass]}>
-            <LinearGradient
-              colors={['rgba(245, 158, 11, 0.95)', 'rgba(217, 119, 6, 0.9)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.statCardGradient}
-            >
-              <View style={styles.statIconBadge}>
-                <Ionicons name="notifications" size={28} color="#FFFFFF" />
-              </View>
-              <Text style={styles.statNumber}>{notificationCount}</Text>
-              <Text style={styles.statLabel}>ALERTAS</Text>
-            </LinearGradient>
-          </View>
-
-          <View style={[styles.statCard, styles.statCardGlass]}>
-            <LinearGradient
-              colors={['rgba(16, 185, 129, 0.95)', 'rgba(5, 150, 105, 0.9)']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.statCardGradient}
-            >
-              <View style={styles.statIconBadge}>
-                <Ionicons name="checkmark-circle" size={28} color="#FFFFFF" />
-              </View>
-              <Text style={styles.statNumber}>{allUsers.length}</Text>
-              <Text style={styles.statLabel}>TOTAL</Text>
-            </LinearGradient>
-          </View>
+        {/* Segunda fila */}
+        <View style={[styles.statsContainer, { marginTop: 10 }]}>
+          {[
+            { colors: [theme.secondary, theme.secondary], icon: 'shield-checkmark', count: userCounts.admins,   label: 'ADMINS'   },
+            { colors: [theme.warning,   theme.warning],   icon: 'notifications',     count: notificationCount,   label: 'ALERTAS'  },
+            { colors: [theme.info,      theme.info],      icon: 'checkmark-circle',  count: allUsers.length,     label: 'TOTAL'    },
+          ].map(({ colors, icon, count, label }) => (
+            <View key={label} style={styles.statCard}>
+              <LinearGradient
+                colors={colors}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={styles.statCardGradient}
+              >
+                <View style={styles.statIconBadge}>
+                  <Ionicons name={icon} size={26} color="#FFFFFF" />
+                </View>
+                <Text style={styles.statNumber}>{count}</Text>
+                <Text style={styles.statLabel}>{label}</Text>
+              </LinearGradient>
+            </View>
+          ))}
         </View>
 
         {/* 📋 BOTÓN PARA VER FLUJO DEL SISTEMA */}
@@ -972,7 +760,7 @@ export default function AdminScreen({ navigation, onLogout }) {
           }}
         >
           <LinearGradient
-            colors={['#9F2241', '#7D1A33']}
+            colors={theme.gradientPrimary}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.buttonGradient}
@@ -984,112 +772,10 @@ export default function AdminScreen({ navigation, onLogout }) {
         </TouchableOpacity>
 
         {/* Crear Usuario */}
-        <View>
-          <View style={[
-            styles.sectionCard, 
-            { 
-              backgroundColor: isDark ? 'rgba(30, 30, 35, 0.95)' : 'rgba(255, 255, 255, 0.98)',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-            }
-          ]}>
-            <View style={styles.sectionHeader}>
-              <LinearGradient
-                colors={['#8B5CF6', '#7C3AED']}
-                style={styles.iconCircleSection}
-              >
-                <Ionicons name="person-add" size={24} color="#FFFFFF" />
-              </LinearGradient>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Crear Usuario</Text>
-            </View>
-          
-          <View style={[styles.inputContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
-            <Ionicons name="person-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              placeholder="Nombre del usuario"
-              placeholderTextColor={theme.textSecondary}
-              value={userName}
-              onChangeText={setUserName}
-              style={[styles.input, { color: theme.text }]}
-              autoCapitalize="words"
-            />
-          </View>
-          
-          <View style={[styles.inputContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
-            <Ionicons name="mail-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              placeholder="Email"
-              placeholderTextColor={theme.textSecondary}
-              value={userEmail}
-              onChangeText={setUserEmail}
-              style={[styles.input, { color: theme.text }]}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={[styles.inputContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
-            <Ionicons name="lock-closed-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              placeholder="Contraseña"
-              placeholderTextColor={theme.textSecondary}
-              value={userPassword}
-              onChangeText={setUserPassword}
-              style={[styles.input, { color: theme.text }]}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-          </View>
-
-          <Text style={[styles.roleSelectorLabel, { color: theme.textSecondary }]}>Seleccionar Rol:</Text>
-          <View style={styles.roleSelector}>
-            <TouchableOpacity 
-              style={[
-                styles.roleButton, 
-                { backgroundColor: theme.background, borderColor: theme.border },
-                userRole === 'director' && { backgroundColor: '#235B4E', borderColor: '#235B4E' }
-              ]}
-              onPress={() => { hapticLight(); setUserRole('director'); }}
-            >
-              <Text style={[styles.roleButtonText, { color: theme.text }, userRole === 'director' && { color: '#FFFFFF' }]}>Director</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[
-                styles.roleButton, 
-                { backgroundColor: theme.background, borderColor: theme.border },
-                userRole === 'secretario' && { backgroundColor: theme.primary, borderColor: theme.primary }
-              ]}
-              onPress={() => { hapticLight(); setUserRole('secretario'); }}
-            >
-              <Text style={[styles.roleButtonText, { color: theme.text }, userRole === 'secretario' && { color: '#FFFFFF' }]}>Secretario</Text>
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[
-                styles.roleButton, 
-                { backgroundColor: theme.background, borderColor: theme.border },
-                userRole === 'admin' && { backgroundColor: '#DC2626', borderColor: '#DC2626' }
-              ]}
-              onPress={() => { hapticLight(); setUserRole('admin'); }}
-            >
-              <Text style={[styles.roleButtonText, { color: theme.text }, userRole === 'admin' && { color: '#FFFFFF' }]}>Admin</Text>
-            </TouchableOpacity>
-          </View>
-
-          <TouchableOpacity 
-            style={styles.actionButton} 
-            onPress={() => { hapticMedium(); createUser(); }}
-          >
-            <LinearGradient
-              colors={['#34C759', '#30B351']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.buttonGradient}
-            >
-              <Ionicons name="add-circle" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-              <Text style={styles.buttonText}>Crear Usuario</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
-      </View>
+        <CreateUserForm
+          onUserCreated={loadAllUsers}
+          isUserAdmin={isUserAdmin}
+        />
 
         {/* Gestión de Áreas */}
         <TouchableOpacity
@@ -1100,7 +786,7 @@ export default function AdminScreen({ navigation, onLogout }) {
           }}
         >
           <LinearGradient
-            colors={['#9F2241', '#7D1A33']}
+            colors={theme.gradientPrimary}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.buttonGradient}
@@ -1119,7 +805,7 @@ export default function AdminScreen({ navigation, onLogout }) {
           }}
         >
           <LinearGradient
-            colors={['#06B6D4', '#0891B2']}
+            colors={[theme.info, theme.info]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.buttonGradient}
@@ -1138,7 +824,7 @@ export default function AdminScreen({ navigation, onLogout }) {
           }}
         >
           <LinearGradient
-            colors={['#F59E0B', '#D97706']}
+            colors={[theme.warning, theme.warning]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.buttonGradient}
@@ -1149,297 +835,14 @@ export default function AdminScreen({ navigation, onLogout }) {
         </TouchableOpacity>
 
         {/* Lista de Usuarios */}
-        <View>
-          <View style={[
-            styles.sectionCard, 
-            { 
-              backgroundColor: isDark ? 'rgba(30, 30, 35, 0.95)' : 'rgba(255, 255, 255, 0.98)',
-              borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-            }
-          ]}>
-            <View style={styles.sectionHeader}>
-              <LinearGradient
-                colors={['#3B82F6', '#2563EB']}
-                style={styles.iconCircleSection}
-              >
-                <Ionicons name="people" size={24} color="#FFFFFF" />
-              </LinearGradient>
-              <Text style={[styles.sectionTitle, { color: theme.text }]}>Usuarios ({allUsers.length})</Text>
-            </View>
-
-            <TouchableOpacity 
-              style={[styles.expandButton, { backgroundColor: theme.background, borderColor: theme.border }]} 
-              onPress={() => {
-                hapticLight();
-                setShowUserList(!showUserList);
-              }}
-            >
-            <Ionicons 
-              name={showUserList ? "chevron-up" : "chevron-down"} 
-              size={20} 
-              color={theme.primary} 
-              style={{ marginRight: 8 }} 
-            />
-            <Text style={[styles.expandButtonText, { color: theme.primary }]}>
-              {showUserList ? 'Ocultar Lista' : 'Ver Todos los Usuarios'}
-            </Text>
-          </TouchableOpacity>
-
-          {showUserList && (
-            <View style={styles.userListContainer}>
-              {/* Buscador */}
-              <View style={[styles.searchRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', borderColor: theme.border }]}>
-                <Ionicons name="search-outline" size={16} color={theme.textSecondary} />
-                <TextInput
-                  style={[styles.searchInput, { color: theme.text }]}
-                  placeholder="Buscar por nombre, correo o área..."
-                  placeholderTextColor={theme.textSecondary}
-                  value={userSearch}
-                  onChangeText={setUserSearch}
-                />
-                {userSearch.length > 0 && (
-                  <TouchableOpacity onPress={() => setUserSearch('')}>
-                    <Ionicons name="close-circle" size={16} color={theme.textSecondary} />
-                  </TouchableOpacity>
-                )}
-              </View>
-
-              {/* Agrupar usuarios por categoría */}
-              {[
-                { role: 'secretario', label: '💼 Secretarios', color: '#8B5CF6', lightBg: 'rgba(139, 92, 246, 0.08)', icon: 'briefcase' },
-                { role: 'director', label: '🏢 Directores', color: '#0EA5E9', lightBg: 'rgba(14, 165, 233, 0.08)', icon: 'business' },
-                { role: 'otros', label: '👥 Otros Funcionarios', color: '#F59E0B', lightBg: 'rgba(245, 158, 11, 0.08)', icon: 'people' },
-                { role: 'admin', label: '🛡️ Administradores', color: '#EF4444', lightBg: 'rgba(239, 68, 68, 0.08)', icon: 'shield-checkmark' },
-              ].map(section => {
-                // Filtrar usuarios según la sección
-                let sectionUsers;
-                if (section.role === 'otros') {
-                  sectionUsers = allUsers.filter(u => !['secretario', 'director', 'admin'].includes(u.role));
-                } else {
-                  sectionUsers = allUsers.filter(u => u.role === section.role);
-                }
-                if (userSearch.trim()) {
-                  const q = userSearch.toLowerCase();
-                  sectionUsers = sectionUsers.filter(u =>
-                    (u.displayName || '').toLowerCase().includes(q) ||
-                    (u.email || '').toLowerCase().includes(q) ||
-                    (u.area || '').toLowerCase().includes(q) ||
-                    (u.position || '').toLowerCase().includes(q)
-                  );
-                }
-                if (sectionUsers.length === 0) return null;
-                
-                return (
-                  <View key={section.role} style={{ marginBottom: 16 }}>
-                    {/* Header de sección */}
-                    <View style={[styles.roleSectionHeader, { backgroundColor: section.lightBg, borderLeftColor: section.color }]}>
-                      <View style={[styles.sectionIconWrapper, { backgroundColor: section.color }]}>
-                        <Ionicons name={section.icon} size={16} color="#FFFFFF" />
-                      </View>
-                      <Text style={[styles.roleSectionTitle, { color: theme.text }]}>
-                        {section.label}
-                      </Text>
-                      <View style={[styles.roleSectionBadge, { backgroundColor: section.color }]}>
-                        <Text style={styles.roleSectionCount}>{sectionUsers.length}</Text>
-                      </View>
-                    </View>
-                    
-                    {/* Lista de usuarios de esta sección */}
-                    {sectionUsers.map((user) => (
-                      <View 
-                        key={user.id} 
-                        style={[styles.userCard, { 
-                          backgroundColor: isDark ? 'rgba(30, 30, 35, 0.95)' : '#FFFFFF', 
-                          borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                        }]}
-                      >
-                        <View style={styles.userInfo}>
-                          <View style={styles.userHeader}>
-                            <View style={[styles.userAvatar, { backgroundColor: `${section.color}15`, borderColor: section.color }]}>
-                              <Text style={[styles.avatarInitial, { color: section.color }]}>
-                                {user.displayName?.charAt(0)?.toUpperCase() || '?'}
-                              </Text>
-                            </View>
-                            <View style={styles.userTextContainer}>
-                              <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1} ellipsizeMode="tail">{user.displayName}</Text>
-                              
-                              {/* Cargo/Puesto - Destacado */}
-                              {(user.position || user.area) && (
-                                <View style={[styles.positionBadge, { backgroundColor: `${section.color}12`, borderColor: `${section.color}30` }]}>
-                                  <Ionicons name="briefcase" size={11} color={section.color} />
-                                  <Text style={[styles.positionText, { color: section.color }]} numberOfLines={1}>
-                                    {user.position || user.area}
-                                  </Text>
-                                </View>
-                              )}
-                              
-                              {/* Área/Dirección (si hay position, mostrar área aparte) */}
-                              {user.position && user.area && user.position !== user.area && (
-                                <View style={styles.areaTextRow}>
-                                  <Ionicons name="business-outline" size={10} color={theme.textSecondary} />
-                                  <Text style={[styles.areaText, { color: theme.textSecondary }]} numberOfLines={1}>
-                                    {user.area}
-                                  </Text>
-                                </View>
-                              )}
-                              
-                              {/* Email */}
-                              <View style={styles.emailRow}>
-                                <Ionicons name="mail-outline" size={10} color={theme.textSecondary} />
-                                <Text style={[styles.userEmail, { color: theme.textSecondary }]} numberOfLines={1} ellipsizeMode="tail">{user.email}</Text>
-                              </View>
-                              
-                              {/* Teléfono si existe */}
-                              {user.phone && (
-                                <View style={styles.phoneRow}>
-                                  <Ionicons name="call-outline" size={10} color={theme.textSecondary} />
-                                  <Text style={[styles.phoneText, { color: theme.textSecondary }]}>{user.phone}</Text>
-                                </View>
-                              )}
-                            </View>
-                          </View>
-                        </View>
-                        <View style={styles.userActions}>
-                          {/* Rol: chip o selector inline */}
-                          {editingRoleUserId === user.id ? (
-                            <View style={styles.roleEditContainer}>
-                              {['director', 'secretario', 'admin'].map(role => (
-                                <TouchableOpacity
-                                  key={role}
-                                  style={[
-                                    styles.roleOptionChip,
-                                    { borderColor: ROLE_COLORS[role] },
-                                    user.role === role && { backgroundColor: ROLE_COLORS[role] }
-                                  ]}
-                                  onPress={() => changeUserRole(user.id, role, user.displayName)}
-                                >
-                                  <Text style={[
-                                    styles.roleOptionText,
-                                    { color: user.role === role ? '#fff' : ROLE_COLORS[role] }
-                                  ]}>
-                                    {ROLE_LABELS[role]}
-                                  </Text>
-                                </TouchableOpacity>
-                              ))}
-                              <TouchableOpacity
-                                style={styles.roleEditClose}
-                                onPress={() => setEditingRoleUserId(null)}
-                              >
-                                <Ionicons name="close" size={16} color={theme.textSecondary} />
-                              </TouchableOpacity>
-                            </View>
-                          ) : (
-                            <TouchableOpacity
-                              style={[
-                                styles.roleChip,
-                                { backgroundColor: `${ROLE_COLORS[user.role] || '#6B7280'}18`, borderColor: ROLE_COLORS[user.role] || '#6B7280' }
-                              ]}
-                              onPress={() => { hapticLight(); setEditingRoleUserId(user.id); }}
-                              disabled={user.id === currentUser?.userId}
-                            >
-                              <Ionicons name="swap-horizontal-outline" size={11} color={ROLE_COLORS[user.role] || '#6B7280'} />
-                              <Text style={[styles.roleChipText, { color: ROLE_COLORS[user.role] || '#6B7280' }]}>
-                                {ROLE_LABELS[user.role] || user.role}
-                              </Text>
-                            </TouchableOpacity>
-                          )}
-
-                          {/* Ver / cambiar contraseña */}
-                          <TouchableOpacity
-                            style={[styles.deleteUserBtn, { borderColor: '#F59E0B22', backgroundColor: '#F59E0B10' }]}
-                            onPress={() => { setPasswordUser(user); setNewTempPassword(''); setShowTempPass(false); }}
-                          >
-                            <Ionicons name="key-outline" size={13} color="#F59E0B" />
-                            <Text style={[styles.deleteUserBtnText, { color: '#F59E0B' }]}>Contraseña</Text>
-                          </TouchableOpacity>
-
-                          {/* Eliminar */}
-                          {user.id !== currentUser?.userId && (
-                            <TouchableOpacity
-                              style={styles.deleteUserBtn}
-                              onPress={() => deleteUserAccount(user.id, user.displayName)}
-                            >
-                              <Ionicons name="trash-outline" size={13} color="#EF4444" />
-                              <Text style={styles.deleteUserBtnText}>Eliminar</Text>
-                            </TouchableOpacity>
-                          )}
-                        </View>
-                      </View>
-                    ))}
-                  </View>
-                );
-              })}
-            </View>
-          )}
-          </View>
-        </View>
+        <UserListPanel
+          allUsers={allUsers}
+          currentUser={currentUser}
+          onUsersChanged={loadAllUsers}
+        />
 
         {/* Recuperación de Contraseña */}
-        <View style={[
-          styles.sectionCard, 
-          { 
-            backgroundColor: isDark ? 'rgba(30, 30, 35, 0.95)' : 'rgba(255, 255, 255, 0.98)',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
-          }
-        ]}>
-          <View style={styles.sectionHeader}>
-            <LinearGradient
-              colors={['#F59E0B', '#D97706']}
-              style={styles.iconCircleSection}
-            >
-              <Ionicons name="key" size={24} color="#FFFFFF" />
-            </LinearGradient>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>Resetear Contraseña</Text>
-          </View>
-
-          <View style={[styles.inputContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
-            <Ionicons name="mail-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              placeholder="Email del usuario"
-              placeholderTextColor={theme.textSecondary}
-              value={resetEmail}
-              onChangeText={setResetEmail}
-              style={[styles.input, { color: theme.text }]}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={[styles.inputContainer, { backgroundColor: theme.background, borderColor: theme.border }]}>
-            <Ionicons name="lock-closed-outline" size={20} color={theme.textSecondary} style={styles.inputIcon} />
-            <TextInput
-              placeholder="Nueva contraseña"
-              placeholderTextColor={theme.textSecondary}
-              value={newPassword}
-              onChangeText={setNewPassword}
-              style={[styles.input, { color: theme.text }]}
-              secureTextEntry
-              autoCapitalize="none"
-            />
-          </View>
-
-          <TouchableOpacity 
-            style={styles.actionButton} 
-            onPress={() => {
-              hapticMedium();
-              resetUserPassword();
-            }}
-          >
-            <LinearGradient
-              colors={['#F59E0B', '#D97706']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.buttonGradient}
-            >
-              <Ionicons name="refresh" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-              <Text style={styles.buttonText}>Resetear Contraseña</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          <Text style={[styles.helpText, { color: theme.textSecondary }]}>
-            Solo administradores pueden resetear contraseñas de otros usuarios.
-          </Text>
-        </View>
+        <PasswordResetForm isUserAdmin={isUserAdmin} />
 
         {/* Notificaciones */}
         <View style={[
@@ -1451,7 +854,7 @@ export default function AdminScreen({ navigation, onLogout }) {
         ]}>
           <View style={styles.sectionHeader}>
             <LinearGradient
-              colors={['#06B6D4', '#0891B2']}
+              colors={[theme.info, theme.info]}
               style={styles.iconCircleSection}
             >
               <Ionicons name="notifications" size={24} color="#FFFFFF" />
@@ -1467,7 +870,7 @@ export default function AdminScreen({ navigation, onLogout }) {
             }}
           >
             <LinearGradient
-              colors={['#34C759', '#30B351']}
+              colors={[theme.success, theme.success]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.buttonGradient}
@@ -1478,7 +881,7 @@ export default function AdminScreen({ navigation, onLogout }) {
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.expandButton, { backgroundColor: theme.background, borderColor: theme.border }]} 
+            style={[styles.expandButton, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]} 
             onPress={() => {
               hapticLight();
               viewScheduledNotifications();
@@ -1489,14 +892,14 @@ export default function AdminScreen({ navigation, onLogout }) {
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.expandButton, { backgroundColor: '#FEE2E2', borderColor: '#DC2626' }]} 
+            style={[styles.expandButton, { backgroundColor: theme.errorAlpha, borderColor: theme.error }]}
             onPress={() => {
               hapticMedium();
               clearAllNotifications();
             }}
           >
-            <Ionicons name="trash-outline" size={20} color="#DC2626" style={{ marginRight: 8 }} />
-            <Text style={[styles.expandButtonText, { color: '#DC2626' }]}>Cancelar Todas</Text>
+            <Ionicons name="trash-outline" size={20} color={theme.error} style={{ marginRight: 8 }} />
+            <Text style={[styles.expandButtonText, { color: theme.error }]}>Cancelar Todas</Text>
           </TouchableOpacity>
         </View>
 
@@ -1511,7 +914,7 @@ export default function AdminScreen({ navigation, onLogout }) {
         ]}>
           <View style={styles.sectionHeader}>
             <LinearGradient
-              colors={['#6B7280', '#4B5563']}
+              colors={[theme.textSecondary, theme.textMuted]}
               style={styles.iconCircleSection}
             >
               <Ionicons name="information-circle" size={24} color="#FFFFFF" />
@@ -1565,10 +968,10 @@ export default function AdminScreen({ navigation, onLogout }) {
 
       {/* ── MODAL: Organigrama Municipal ─────────────────────────── */}
       <Modal visible={showOrgModal} animationType="slide" transparent={false} onRequestClose={() => setShowOrgModal(false)}>
-        <View style={{ flex: 1, backgroundColor: isDark ? '#0F0F14' : '#F3F4F6' }}>
+        <View style={{ flex: 1, backgroundColor: 'transparent' }}>
           {/* Header del modal */}
           <LinearGradient
-            colors={isDark ? ['#2A1520', '#1A1A1A'] : ['#9F2241', '#7F1D35']}
+            colors={theme.gradientHeader}
             style={{ paddingTop: Platform.OS === 'ios' ? 52 : 24, paddingBottom: 16, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' }}
           >
             <TouchableOpacity onPress={() => setShowOrgModal(false)} style={{ marginRight: 12, padding: 4 }}>
@@ -1576,110 +979,15 @@ export default function AdminScreen({ navigation, onLogout }) {
             </TouchableOpacity>
             <View style={{ flex: 1 }}>
               <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Organigrama Municipal</Text>
-              <Text style={{ color: '#FECACA', fontSize: 11, marginTop: 1 }}>
+              <Text style={{ color: 'rgba(254,202,202,0.9)', fontSize: 11, marginTop: 1 }}>
                 Cambios guardados en tiempo real
               </Text>
             </View>
-            <Ionicons name="git-network" size={22} color="#FECACA" />
+            <Ionicons name="git-network" size={22} color="rgba(254,202,202,0.9)" />
           </LinearGradient>
 
           {/* Editor */}
           <OrgChartEditor />
-        </View>
-      </Modal>
-
-      {/* ── MODAL: Confirmar eliminación ─────────────────────────── */}
-      <Modal visible={!!deleteConfirmUser} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.confirmModal, { backgroundColor: isDark ? '#1E1E23' : '#fff' }]}>
-            <View style={styles.confirmIconWrap}>
-              <Ionicons name="trash" size={28} color="#EF4444" />
-            </View>
-            <Text style={[styles.confirmTitle, { color: theme.text }]}>Eliminar cuenta</Text>
-            <Text style={[styles.confirmMsg, { color: theme.textSecondary }]}>
-              ¿Eliminar la cuenta de{'\n'}
-              <Text style={{ fontWeight: '700', color: theme.text }}>{deleteConfirmUser?.displayName}</Text>?
-              {'\n'}Esta acción no se puede deshacer.
-            </Text>
-            <View style={styles.confirmBtns}>
-              <TouchableOpacity
-                style={[styles.confirmBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6' }]}
-                onPress={() => setDeleteConfirmUser(null)}
-              >
-                <Text style={[styles.confirmBtnText, { color: theme.text }]}>Cancelar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.confirmBtn, { backgroundColor: '#EF4444' }]}
-                onPress={confirmDeleteUser}
-              >
-                <Text style={[styles.confirmBtnText, { color: '#fff' }]}>Eliminar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      {/* ── MODAL: Ver / cambiar contraseña ──────────────────────── */}
-      <Modal visible={!!passwordUser} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.confirmModal, { backgroundColor: isDark ? '#1E1E23' : '#fff' }]}>
-            <View style={[styles.confirmIconWrap, { backgroundColor: '#F59E0B18' }]}>
-              <Ionicons name="key" size={28} color="#F59E0B" />
-            </View>
-            <Text style={[styles.confirmTitle, { color: theme.text }]} numberOfLines={1}>
-              {passwordUser?.displayName}
-            </Text>
-            <Text style={[styles.confirmMsg, { color: theme.textSecondary }]}>{passwordUser?.email}</Text>
-
-            {/* Contraseña actual si existe */}
-            {passwordUser?.tempPassword ? (
-              <View style={[styles.passBox, { backgroundColor: isDark ? 'rgba(245,158,11,0.1)' : '#FFFBEB', borderColor: '#F59E0B40' }]}>
-                <Text style={[{ fontSize: 11, color: theme.textSecondary, marginBottom: 4 }]}>Contraseña actual:</Text>
-                <Text style={[{ fontSize: 18, fontWeight: '700', color: '#F59E0B', fontFamily: 'monospace', letterSpacing: 2 }]}>
-                  {passwordUser.tempPassword}
-                </Text>
-              </View>
-            ) : (
-              <View style={[styles.passBox, { backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#F9FAFB', borderColor: theme.border }]}>
-                <Text style={[{ fontSize: 12, color: theme.textSecondary }]}>Sin contraseña registrada</Text>
-              </View>
-            )}
-
-            {/* Establecer nueva contraseña */}
-            <Text style={[{ fontSize: 12, color: theme.textSecondary, alignSelf: 'flex-start', marginTop: 14, marginBottom: 6 }]}>
-              Nueva contraseña:
-            </Text>
-            <View style={[styles.passInputRow, { borderColor: theme.border, backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F9FAFB' }]}>
-              <TextInput
-                style={[{ flex: 1, color: theme.text, fontSize: 14 }]}
-                value={newTempPassword}
-                onChangeText={setNewTempPassword}
-                placeholder="Escribe la nueva contraseña"
-                placeholderTextColor={theme.textSecondary}
-                secureTextEntry={!showTempPass}
-                autoCapitalize="none"
-              />
-              <TouchableOpacity onPress={() => setShowTempPass(v => !v)}>
-                <Ionicons name={showTempPass ? 'eye-off-outline' : 'eye-outline'} size={18} color={theme.textSecondary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.confirmBtns}>
-              <TouchableOpacity
-                style={[styles.confirmBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F3F4F6' }]}
-                onPress={() => { setPasswordUser(null); setNewTempPassword(''); }}
-              >
-                <Text style={[styles.confirmBtnText, { color: theme.text }]}>Cerrar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.confirmBtn, { backgroundColor: newTempPassword.trim() ? '#F59E0B' : '#ccc' }]}
-                onPress={saveUserPassword}
-                disabled={!newTempPassword.trim()}
-              >
-                <Text style={[styles.confirmBtnText, { color: '#fff' }]}>Guardar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
         </View>
       </Modal>
 
@@ -1688,7 +996,7 @@ export default function AdminScreen({ navigation, onLogout }) {
   );
 }
 
-const styles = StyleSheet.create({
+const createAdminStyles = (theme, isDark) => StyleSheet.create({
   container: {
     flex: 1,
     alignItems: 'center',
@@ -1713,51 +1021,60 @@ const styles = StyleSheet.create({
   headerGradient: {
     paddingHorizontal: 20,
     paddingTop: 48,
-    paddingBottom: 16,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
-    shadowColor: '#9F2241',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10
+    paddingBottom: 22,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    shadowColor: theme.primary,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.40,
+    shadowRadius: 20,
+    elevation: 12,
+    overflow: 'hidden',
+  },
+  headerHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 30,
+    right: 30,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderRadius: 1,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start'
+    alignItems: 'flex-end',
   },
-  greetingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4
+  greetingSmall: {
+    fontSize: 13,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.65)',
+    letterSpacing: 0.3,
+    marginBottom: 2,
   },
-  greeting: {
-    fontSize: 16,
-    fontWeight: '700',
+  heading: {
+    fontSize: 34,
+    fontWeight: '800',
     color: '#FFFFFF',
-    opacity: 0.95,
-    letterSpacing: 0.4
-  },
-  heading: { 
-    fontSize: 36, 
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: -1,
-    marginTop: 4
+    letterSpacing: -1.2,
+    textShadowColor: 'rgba(0,0,0,0.20)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12
+    gap: 8,
   },
   logoutButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.22)',
     justifyContent: 'center',
-    alignItems: 'center'
+    alignItems: 'center',
   },
   content: {
     padding: 16,
@@ -1775,7 +1092,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minHeight: 135,
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.18,
     shadowRadius: 16,
@@ -1834,7 +1151,7 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     borderWidth: 1.5,
     borderColor: 'rgba(0,0,0,0.08)',
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 12,
@@ -1852,7 +1169,7 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.2,
     shadowRadius: 10,
@@ -1876,7 +1193,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 16,
     borderWidth: 2,
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 10,
@@ -1913,7 +1230,7 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 2.5,
     minHeight: 52,
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 10,
@@ -1929,7 +1246,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     borderRadius: 16,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 12,
@@ -1959,7 +1276,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     marginBottom: 14,
     minHeight: 48,
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -2014,7 +1331,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
     marginHorizontal: 2,
     borderWidth: 1,
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06,
     shadowRadius: 8,
@@ -2101,7 +1418,7 @@ const styles = StyleSheet.create({
   deleteUserBtnText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#EF4444',
+    color: theme.error,
   },
   searchRow: {
     flexDirection: 'row',
@@ -2118,20 +1435,13 @@ const styles = StyleSheet.create({
     fontSize: 13,
     paddingVertical: 0,
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
   confirmModal: {
     width: '100%',
     maxWidth: 360,
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOpacity: 0.25,
     shadowRadius: 16,
     elevation: 10,
@@ -2201,11 +1511,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 1,
     gap: 6,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
   },
   statusChipText: {
     fontSize: 12,
@@ -2302,7 +1607,7 @@ const styles = StyleSheet.create({
     fontSize: 12
   },
   statusButton: {
-    backgroundColor: '#22C55E',
+    backgroundColor: theme.success,
     paddingHorizontal: Platform.OS === 'web' ? 16 : 12,
     paddingVertical: Platform.OS === 'web' ? 10 : 8,
     borderRadius: 12,
@@ -2312,7 +1617,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.3)',
     minHeight: Platform.OS === 'web' ? 44 : 40,
     flexShrink: 0,
-    shadowColor: '#22C55E',
+    shadowColor: theme.success,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
     shadowRadius: 4,
@@ -2349,7 +1654,7 @@ const styles = StyleSheet.create({
   statusBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#D1FAE5',
+    backgroundColor: theme.successAlpha,
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12
@@ -2358,9 +1663,9 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#22C55E',
+    backgroundColor: theme.success,
     marginRight: 8,
-    shadowColor: '#22C55E',
+    shadowColor: theme.success,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.5,
     shadowRadius: 3,
@@ -2369,27 +1674,27 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#047857'
+    color: theme.successDark
   },
   themeToggle: {
     width: 56,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: theme.border,
     padding: 3,
     justifyContent: 'center'
   },
   themeToggleActive: {
-    backgroundColor: '#9F2241'
+    backgroundColor: theme.primary
   },
   themeToggleCircle: {
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 3,
@@ -2410,7 +1715,7 @@ const styles = StyleSheet.create({
     maxHeight: '80%',
     borderRadius: 28,
     padding: 0,
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.35,
     shadowRadius: 24,
@@ -2449,7 +1754,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: 14,
     borderWidth: 2.5,
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 6,
@@ -2487,17 +1792,12 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     letterSpacing: -0.2
   },
-  urgentModalFooter: {
-    padding: 18,
-    borderTopWidth: 1.5,
-    borderTopColor: 'rgba(239, 68, 68, 0.2)'
-  },
   urgentModalButton: {
     padding: 18,
     borderRadius: 14,
     alignItems: 'center',
     minHeight: 48,
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
@@ -2623,7 +1923,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 12,
     minWidth: 85,
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
@@ -2661,7 +1961,7 @@ const styles = StyleSheet.create({
     maxHeight: '90%',
     borderRadius: 24,
     padding: 0,
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.35,
     shadowRadius: 24,
@@ -2698,7 +1998,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 14,
     alignItems: 'center',
-    shadowColor: '#9F2241',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

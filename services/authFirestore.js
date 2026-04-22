@@ -3,17 +3,7 @@
 import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-// Hash simple (en producción usar bcrypt o similar)
-const simpleHash = (text) => {
-  let hash = 0;
-  for (let i = 0; i < text.length; i++) {
-    const char = text.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32bit integer
-  }
-  return Math.abs(hash).toString(16);
-};
+import { hashPassword, sha256Hash, legacyHash, getHashFormat } from '../utils/hashUtils';
 
 // Normalizar email de forma consistente (misma función usada en login)
 const normalizeEmailForAuth = (email) =>
@@ -33,7 +23,7 @@ export const registerUser = async (email, password, displayName, role = 'directo
     }
 
     // Crear nuevo usuario
-    const hashedPassword = simpleHash(password + normalizedEmail);
+    const hashedPassword = await hashPassword(password, normalizedEmail);
     const docRef = await addDoc(usersRef, {
       email: normalizedEmail,
       password: hashedPassword,
@@ -69,10 +59,38 @@ export const loginUser = async (email, password) => {
     const userDoc = querySnapshot.docs[0];
     const userData = userDoc.data();
     
-    // Verificar contraseña - El hash debe usar el email normalizado
-    const hashedPassword = simpleHash(password + normalizedEmail);
-    
-    if (userData.password !== hashedPassword) {
+    // Verificar contraseña con migración automática entre 3 generaciones de hash:
+    //   legacy (32-bit) → sha256 (intermedio) → pbkdf2 (actual)
+    // En cada login exitoso con formato viejo se migra silenciosamente al más nuevo.
+    const storedHash = userData.password;
+    const format = getHashFormat(storedHash);
+    let passwordValid = false;
+
+    if (format === 'pbkdf2') {
+      const hash = await hashPassword(password, normalizedEmail);
+      passwordValid = storedHash === hash;
+    } else if (format === 'sha256') {
+      const hash = await sha256Hash(password, normalizedEmail);
+      if (storedHash === hash) {
+        passwordValid = true;
+        // Migrar de sha256 → pbkdf2 en background
+        hashPassword(password, normalizedEmail)
+          .then(pbkdf2 => updateDoc(doc(db, 'users', userDoc.id), { password: pbkdf2 }))
+          .catch(() => {});
+      }
+    } else {
+      // formato legacy
+      const hash = legacyHash(password + normalizedEmail);
+      if (storedHash === hash) {
+        passwordValid = true;
+        // Migrar de legacy → pbkdf2 en background
+        hashPassword(password, normalizedEmail)
+          .then(pbkdf2 => updateDoc(doc(db, 'users', userDoc.id), { password: pbkdf2 }))
+          .catch(() => {});
+      }
+    }
+
+    if (!passwordValid) {
       return { success: false, error: 'Contraseña incorrecta' };
     }
     
@@ -130,7 +148,7 @@ export const logoutUser = async () => {
     try {
       const { deleteManager } = await import('../utils/deleteManager');
       deleteManager.reset();
-    } catch (e) { /* silent */ }
+    } catch (_e) { /* silent */ }
 
     // Remover la sesión
     await AsyncStorage.removeItem('userSession');
@@ -191,7 +209,7 @@ export const getCurrentSession = async () => {
     // Si hay un error al parsear o leer, limpiamos la sesión corrupta
     try {
       await AsyncStorage.removeItem('userSession');
-    } catch (cleanupError) {
+    } catch (_cleanupError) {
       // Error silencioso
     }
     return { success: false, error: error.message };
@@ -269,7 +287,6 @@ export const refreshSession = async () => {
       return { success: false, error: 'No hay sesión activa' };
     }
 
-    const userId = sessionResult.session.userId;
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where('email', '==', sessionResult.session.email));
     const querySnapshot = await getDocs(q);

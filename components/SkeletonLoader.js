@@ -2,26 +2,34 @@
 // Skeleton loader animado con shimmer effect profesional
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function SkeletonLoader({ type = 'card', count = 3 }) {
+  const { theme, isDark } = useTheme();
   const shimmerAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     const shimmer = Animated.loop(
       Animated.timing(shimmerAnim, {
         toValue: 1,
-        duration: 1500,
+        duration: 1400,
         useNativeDriver: true,
       })
     );
     shimmer.start();
     return () => shimmer.stop();
-  }, []);
+  }, [shimmerAnim]);
 
   const translateX = shimmerAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [-350, 350],
   });
+
+  // Theme-aware base and shimmer colors
+  const baseBg = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.07)';
+  const shimmerColor = isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.55)';
+  const cardBg = isDark ? theme.glass : theme.glassStrong;
+  const cardBorder = isDark ? theme.glassBorder : theme.glassBorderSubtle;
 
   const ShimmerOverlay = () => (
     <Animated.View
@@ -30,41 +38,30 @@ export default function SkeletonLoader({ type = 'card', count = 3 }) {
         { transform: [{ translateX }] },
       ]}
     >
-      <View style={[styles.shimmerGradient, { backgroundColor: 'rgba(255, 255, 255, 0.3)' }]} />
+      <View style={[styles.shimmerGradient, { backgroundColor: shimmerColor }]} />
     </Animated.View>
+  );
+
+  const SkeletonBlock = ({ style: blockStyle }) => (
+    <View style={[styles.shimmerContainer, { backgroundColor: baseBg }, blockStyle]}>
+      <ShimmerOverlay />
+    </View>
   );
 
   if (type === 'bento') {
     return (
       <View style={styles.bentoContainer}>
-        {/* Fila 1: Grande + Mediano */}
         <View style={styles.bentoRow}>
-          <View style={[styles.bentoLarge, styles.shimmerContainer]}>
-            <ShimmerOverlay />
-          </View>
-          <View style={[styles.bentoMedium, styles.shimmerContainer]}>
-            <ShimmerOverlay />
-          </View>
+          <SkeletonBlock style={styles.bentoLarge} />
+          <SkeletonBlock style={styles.bentoMedium} />
         </View>
-        
-        {/* Fila 2: 3 pequeños */}
         <View style={styles.bentoRow}>
-          <View style={[styles.bentoSmall, styles.shimmerContainer]}>
-            <ShimmerOverlay />
-          </View>
-          <View style={[styles.bentoSmall, styles.shimmerContainer]}>
-            <ShimmerOverlay />
-          </View>
-          <View style={[styles.bentoSmall, styles.shimmerContainer]}>
-            <ShimmerOverlay />
-          </View>
+          <SkeletonBlock style={styles.bentoSmall} />
+          <SkeletonBlock style={styles.bentoSmall} />
+          <SkeletonBlock style={styles.bentoSmall} />
         </View>
-        
-        {/* Fila 3: Ancho */}
         <View style={styles.bentoRow}>
-          <View style={[styles.bentoWide, styles.shimmerContainer]}>
-            <ShimmerOverlay />
-          </View>
+          <SkeletonBlock style={styles.bentoWide} />
         </View>
       </View>
     );
@@ -74,21 +71,42 @@ export default function SkeletonLoader({ type = 'card', count = 3 }) {
     return (
       <View style={styles.cardContainer}>
         {[...Array(count)].map((_, index) => (
-          <View key={index} style={styles.card}>
+          <View
+            key={index}
+            style={[
+              styles.card,
+              {
+                backgroundColor: cardBg,
+                borderColor: cardBorder,
+              },
+            ]}
+          >
             <View style={styles.cardHeader}>
-              <View style={[styles.titleSkeleton, styles.shimmerContainer]}>
-                <ShimmerOverlay />
-              </View>
-              <View style={[styles.badgeSkeleton, styles.shimmerContainer]}>
-                <ShimmerOverlay />
-              </View>
+              <SkeletonBlock style={styles.titleSkeleton} />
+              <SkeletonBlock style={styles.badgeSkeleton} />
             </View>
-            <View style={[styles.metaSkeleton, styles.shimmerContainer]}>
-              <ShimmerOverlay />
+            <SkeletonBlock style={styles.metaSkeleton} />
+            <SkeletonBlock style={styles.metaSmallSkeleton} />
+          </View>
+        ))}
+      </View>
+    );
+  }
+
+  if (type === 'list') {
+    return (
+      <View style={styles.cardContainer}>
+        {[...Array(count)].map((_, index) => (
+          <View
+            key={index}
+            style={[styles.listRow, { backgroundColor: cardBg, borderColor: cardBorder }]}
+          >
+            <SkeletonBlock style={styles.listAvatar} />
+            <View style={styles.listContent}>
+              <SkeletonBlock style={styles.listTitle} />
+              <SkeletonBlock style={styles.listSubtitle} />
             </View>
-            <View style={[styles.metaSmallSkeleton, styles.shimmerContainer]}>
-              <ShimmerOverlay />
-            </View>
+            <SkeletonBlock style={styles.listBadge} />
           </View>
         ))}
       </View>
@@ -128,36 +146,30 @@ const styles = StyleSheet.create({
   bentoLarge: {
     flex: 2,
     minHeight: 180,
-    backgroundColor: '#E5E5EA',
     borderRadius: 28,
   },
   bentoMedium: {
     flex: 1,
     minHeight: 180,
-    backgroundColor: '#E5E5EA',
     borderRadius: 28,
   },
   bentoSmall: {
     flex: 1,
     minHeight: 140,
-    backgroundColor: '#E5E5EA',
     borderRadius: 28,
   },
   bentoWide: {
     flex: 1,
     minHeight: 110,
-    backgroundColor: '#E5E5EA',
     borderRadius: 28,
   },
   cardContainer: {
     gap: 12,
   },
   card: {
-    backgroundColor: '#FFFAF0',
     borderRadius: 16,
     padding: 18,
-    borderWidth: 1.5,
-    borderColor: '#F5DEB3',
+    borderWidth: 1,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -167,26 +179,57 @@ const styles = StyleSheet.create({
   titleSkeleton: {
     width: '60%',
     height: 20,
-    backgroundColor: '#E5E5EA',
     borderRadius: 8,
   },
   badgeSkeleton: {
     width: 70,
-    height: 30,
-    backgroundColor: '#E5E5EA',
+    height: 26,
     borderRadius: 10,
   },
   metaSkeleton: {
     width: '80%',
-    height: 16,
-    backgroundColor: '#E5E5EA',
+    height: 14,
     borderRadius: 6,
     marginBottom: 8,
   },
   metaSmallSkeleton: {
     width: '40%',
-    height: 14,
-    backgroundColor: '#E5E5EA',
+    height: 12,
     borderRadius: 6,
+  },
+  // List type
+  listRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    gap: 12,
+  },
+  listAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    flexShrink: 0,
+  },
+  listContent: {
+    flex: 1,
+    gap: 8,
+  },
+  listTitle: {
+    height: 14,
+    borderRadius: 6,
+    width: '75%',
+  },
+  listSubtitle: {
+    height: 12,
+    borderRadius: 6,
+    width: '50%',
+  },
+  listBadge: {
+    width: 52,
+    height: 24,
+    borderRadius: 8,
+    flexShrink: 0,
   },
 });

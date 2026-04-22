@@ -17,7 +17,7 @@ import { exportReportToPDF, sharePDF, getReportExportStats } from '../services/e
 import { useNotification } from '../contexts/NotificationContext';
 import WebSafeBlur from './WebSafeBlur';
 
-const { width } = Dimensions.get('window');
+Dimensions.get('window');
 
 const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) => {
   const { theme, isDark } = useTheme();
@@ -37,11 +37,15 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
     },
     sheet: {
       maxHeight: '80%',
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
-      backgroundColor: isDark ? '#1a1a1a' : '#fff',
+      borderTopLeftRadius: 28,
+      borderTopRightRadius: 28,
+      backgroundColor: isDark ? '#1C1118' : '#FFFFFF',
+      borderTopWidth: 1,
+      borderLeftWidth: 1,
+      borderRightWidth: 1,
+      borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)',
       paddingHorizontal: 16,
-      paddingTop: 24,
+      paddingTop: 8,
       paddingBottom: 24,
     },
     header: {
@@ -68,7 +72,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
       marginBottom: 12,
     },
     optionCard: {
-      backgroundColor: isDark ? '#272727' : '#f9f9f9',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)',
       borderRadius: 10,
       padding: 12,
       marginBottom: 10,
@@ -104,7 +108,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
       alignItems: 'center',
     },
     toggleSection: {
-      backgroundColor: isDark ? '#272727' : '#f9f9f9',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)',
       borderRadius: 10,
       padding: 12,
       flexDirection: 'row',
@@ -117,7 +121,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
       color: isDark ? '#fff' : '#000',
     },
     statsCard: {
-      backgroundColor: isDark ? '#272727' : '#f0f9ff',
+      backgroundColor: isDark ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.06)',
       borderRadius: 10,
       padding: 12,
       borderLeftWidth: 4,
@@ -146,7 +150,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
       flex: 1,
       paddingVertical: 12,
       borderRadius: 8,
-      backgroundColor: isDark ? '#272727' : '#f0f0f0',
+      backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -374,7 +378,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
             {/* Info */}
             <View
               style={{
-                backgroundColor: isDark ? '#272727' : '#f0f0f0',
+                backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
                 borderRadius: 8,
                 padding: 12,
                 marginBottom: 12,

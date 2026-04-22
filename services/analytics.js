@@ -1,8 +1,8 @@
 // services/analytics.js
 // Servicio de análisis y estadísticas de tareas
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import { toMs, diffMs, isBefore } from '../utils/dateUtils';
+import { toMs, diffMs } from '../utils/dateUtils';
 import { isTaskAssignedToUser, getTaskArea } from '../utils/taskHelpers';
 
 // ✅ OPTIMIZACIÓN: Cache simple con TTL
@@ -107,7 +107,8 @@ export const getGeneralMetrics = async (userId, userRole) => {
       ? (completedThisWeek / createdThisWeek * 100).toFixed(1) 
       : 0;
 
-    return {
+    // ✅ OPTIMIZACIÓN: Guardar en cache antes de retornar
+    const result = {
       success: true,
       metrics: {
         total,
@@ -127,9 +128,6 @@ export const getGeneralMetrics = async (userId, userRole) => {
         weeklyProductivity: parseFloat(weeklyProductivity),
       }
     };
-
-    // ✅ OPTIMIZACIÓN: Guardar en cache
-    const result = { success: true, metrics };
     setCachedData(cacheKey, result);
     return result;
   } catch (error) {

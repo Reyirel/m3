@@ -7,9 +7,7 @@ import {
   doc,
   getDoc,
   onSnapshot,
-  query,
-  getDocs,
-  where
+  getDocs
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toMs } from '../utils/dateUtils';
@@ -58,7 +56,7 @@ export function subscribeToTaskProgress(taskId, callback) {
  */
 function calculateProgress(taskData, subtasks) {
   const assignees = taskData.assignedTo || [];
-  const assignments = taskData.assignments || [];
+  const _assignments = taskData.assignments || [];
 
   // 1. Progreso general (basado en subtareas completadas)
   let overallProgress = 0;
@@ -177,17 +175,17 @@ export function subscribeToMultipleTasksProgress(taskIds, callback) {
 
   const unsubscribers = [];
   const progressMap = {};
-  let activeSubscriptions = 0;
+  let _activeSubscriptions = 0;
 
   // Suscribir a cada tarea
   taskIds.forEach(taskId => {
     const unsub = subscribeToTaskProgress(taskId, (progressData) => {
       if (progressData) {
         progressMap[taskId] = progressData;
-        activeSubscriptions = Object.keys(progressMap).length;
+        _activeSubscriptions = Object.keys(progressMap).length;
       } else {
         delete progressMap[taskId];
-        activeSubscriptions = Object.keys(progressMap).length;
+        _activeSubscriptions = Object.keys(progressMap).length;
       }
       
       // Enviar mapa actualizado (más eficiente que array)

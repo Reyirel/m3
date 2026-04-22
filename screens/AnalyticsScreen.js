@@ -16,6 +16,8 @@ import ShimmerEffect from '../components/ShimmerEffect';
 import { getReportStatistics } from '../services/reportsService';
 import { getOverallTaskMetrics } from '../services/tasks';
 import { useTasks } from '../contexts/TasksContext';
+import AmbientOrbs from '../components/AmbientOrbs';
+import { PremiumGlassCard, GlassmorphicHeader, GlassmorphicSummaryCard, GlassmorphicTabs, GlassmorphicEmptyState } from '../components'; // ✨ UPGRADED: Glassmorphism
 
 const { width } = Dimensions.get('window');
 
@@ -60,7 +62,7 @@ const AnalyticsScreen = ({ navigation }) => {
   const styles = useMemo(() => StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDark ? '#0A0A0F' : '#F8FAFC',
+      backgroundColor: 'transparent',
     },
     // ✨ Header Premium
     headerGradient: {
@@ -126,12 +128,12 @@ const AnalyticsScreen = ({ navigation }) => {
     sectionTitle: {
       fontSize: 18,
       fontWeight: '700',
-      color: isDark ? '#FFFFFF' : '#1E293B',
+      color: theme.text,
       letterSpacing: -0.3,
     },
     sectionSubtitle: {
       fontSize: 12,
-      color: isDark ? '#64748B' : '#94A3B8',
+      color: theme.textSecondary,
       marginTop: 2,
     },
     // ✨ Métricas Grid Premium
@@ -331,16 +333,16 @@ const AnalyticsScreen = ({ navigation }) => {
     },
     // ✨ Top Tasks Premium
     topTasksContainer: {
-      backgroundColor: isDark ? '#1E1E28' : '#FFFFFF',
+      backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
       borderRadius: 20,
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+      borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
     },
     topTasksHeader: {
       padding: 18,
       borderBottomWidth: 1,
-      borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+      borderBottomColor: theme.border,
     },
     topTasksHeaderContent: {
       flexDirection: 'row',
@@ -357,11 +359,11 @@ const AnalyticsScreen = ({ navigation }) => {
     topTasksTitle: {
       fontSize: 15,
       fontWeight: '700',
-      color: isDark ? '#FFFFFF' : '#1E293B',
+      color: theme.text,
     },
     topTasksSubtitle: {
       fontSize: 12,
-      color: isDark ? '#64748B' : '#94A3B8',
+      color: theme.textSecondary,
       marginTop: 2,
     },
     topTaskItem: {
@@ -390,12 +392,12 @@ const AnalyticsScreen = ({ navigation }) => {
     topTaskTitle: {
       fontSize: 14,
       fontWeight: '600',
-      color: isDark ? '#FFFFFF' : '#1E293B',
+      color: theme.text,
       marginBottom: 4,
     },
     topTaskMeta: {
       fontSize: 12,
-      color: isDark ? '#64748B' : '#94A3B8',
+      color: theme.textSecondary,
     },
     topTaskRating: {
       flexDirection: 'row',
@@ -409,7 +411,7 @@ const AnalyticsScreen = ({ navigation }) => {
     topTaskRatingText: {
       fontSize: 14,
       fontWeight: '700',
-      color: '#FBBF24',
+      color: theme.accentLight,
     },
     // Loading
     loadingContainer: {
@@ -424,7 +426,7 @@ const AnalyticsScreen = ({ navigation }) => {
       right: 0,
       height: 300,
     },
-  }), [isDark, theme]);
+  }), [isDark]);
 
   // ✨ Función para ejecutar animaciones de entrada
   const runEntranceAnimations = () => {
@@ -525,6 +527,7 @@ const AnalyticsScreen = ({ navigation }) => {
     return () => {
       mounted = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [retryCount]);
 
   const getRatingDistribution = () => {
@@ -543,10 +546,10 @@ const AnalyticsScreen = ({ navigation }) => {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: isDark ? '#0A0A0F' : '#F8FAFC' }]}>
+      <View style={styles.container}>
         {/* Header shimmer */}
         <LinearGradient
-          colors={isDark ? ['#9F2241', '#691830'] : ['#9F2241', '#BE3356']}
+          colors={theme.gradientHeader}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={{ paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20 }}
@@ -574,11 +577,11 @@ const AnalyticsScreen = ({ navigation }) => {
   if (loadError) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center', padding: 40, gap: 16 }]}>
-        <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: isDark ? '#1E1E22' : '#FFF0EE', justifyContent: 'center', alignItems: 'center' }}>
-          <Ionicons name="bar-chart-outline" size={48} color="#FF3B30" />
+        <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: theme.errorAlpha, justifyContent: 'center', alignItems: 'center' }}>
+          <Ionicons name="bar-chart-outline" size={48} color={theme.error} />
         </View>
-        <Text style={{ fontSize: 18, fontWeight: '700', color: isDark ? '#fff' : '#18181B', textAlign: 'center' }}>Error al cargar analytics</Text>
-        <Text style={{ fontSize: 14, color: isDark ? '#C7C7CC' : '#6B7280', textAlign: 'center' }}>No se pudieron cargar las métricas. Verifica tu conexión.</Text>
+        <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text, textAlign: 'center' }}>Error al cargar analytics</Text>
+        <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center' }}>No se pudieron cargar las métricas. Verifica tu conexión.</Text>
         <TouchableOpacity
           onPress={() => { setLoadError(false); setLoading(true); setRetryCount(c => c + 1); }}
           style={{ backgroundColor: theme.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 8 }}
@@ -593,29 +596,29 @@ const AnalyticsScreen = ({ navigation }) => {
   
   // Configuración de gradientes para las cards
   const metricConfigs = [
-    { 
-      gradient: ['#10B981', '#059669'],
+    {
+      gradient: [theme.success, theme.success],
       icon: 'document-text',
       label: 'Total Reportes',
       value: reportStats?.totalReports || 0,
       subvalue: `${reportStats?.withImages || 0} con imágenes`
     },
-    { 
-      gradient: ['#F43F5E', '#E11D48'],
+    {
+      gradient: [theme.error, theme.error],
       icon: 'star',
       label: 'Calificación Prom.',
       value: reportStats?.avgRating?.toFixed(1) || 'N/A',
       subvalue: `de ${reportStats?.ratedReports || 0} reportes`
     },
-    { 
-      gradient: ['#3B82F6', '#2563EB'],
+    {
+      gradient: [theme.info, theme.info],
       icon: 'checkmark-circle',
       label: 'Total Tareas',
       value: taskMetrics?.total || 0,
       subvalue: `${taskMetrics?.completed || 0} completadas`
     },
-    { 
-      gradient: ['#F59E0B', '#D97706'],
+    {
+      gradient: [theme.warning, theme.warning],
       icon: 'trending-up',
       label: 'Completado',
       value: `${taskMetrics?.completionPercentage?.toFixed(0) || 0}%`,
@@ -625,38 +628,21 @@ const AnalyticsScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {/* ✨ Header Premium con Gradiente */}
+      <AmbientOrbs intensity="medium" />
+      
+      {/* ✨ Glassmorphic Header */}
       <Animated.View style={{
         opacity: headerAnim,
         transform: [{ translateY: headerSlide }]
       }}>
-        <LinearGradient
-          colors={isDark ? ['#9F2241', '#691830'] : ['#9F2241', '#BE3356']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.headerGradient}
-        >
-          <View style={styles.headerContent}>
-            <TouchableOpacity
-              onPress={() => navigation.goBack()}
-              style={styles.backButton}
-              accessibilityLabel="Volver"
-              accessibilityRole="button"
-            >
-              <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <View style={styles.headerTitleContainer}>
-              <Text style={styles.headerTitle}>Analytics</Text>
-              <Text style={styles.headerSubtitle}>
-                Insights y métricas de rendimiento
-              </Text>
-            </View>
-          </View>
-          {/* Decoración */}
-          <View style={styles.headerDecoration}>
-            <Ionicons name="analytics" size={100} color="#FFFFFF" />
-          </View>
-        </LinearGradient>
+        <GlassmorphicHeader
+          title="Analytics"
+          subtitle="Insights y métricas de rendimiento"
+          icon="analytics"
+          onBackPress={() => navigation.goBack()}
+          showGradient={true}
+          actions={[]}
+        />
       </Animated.View>
 
       <ScrollView 
@@ -666,11 +652,28 @@ const AnalyticsScreen = ({ navigation }) => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#9F2241"
-            colors={['#9F2241']}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
           />
         }
       >
+        {/* ✨ Time Range Filter Tabs */}
+        <Animated.View style={[styles.section, {
+          opacity: overviewAnim,
+          transform: [{ translateY: overviewSlide }]
+        }]}>
+          <GlassmorphicTabs
+            tabs={[
+              { id: 'week', label: 'Esta semana', icon: 'calendar-outline' },
+              { id: 'month', label: 'Este mes', icon: 'calendar' },
+              { id: 'quarter', label: 'Trimestre', icon: 'analytics' },
+              { id: 'year', label: 'Año', icon: 'stats-chart' },
+            ]}
+            activeTab="month"
+            onChange={() => {}}
+          />
+        </Animated.View>
+
         {/* ✨ Overview Metrics Premium */}
         <Animated.View style={[styles.section, {
           opacity: overviewAnim,
@@ -678,7 +681,7 @@ const AnalyticsScreen = ({ navigation }) => {
         }]}>
           <View style={styles.sectionHeader}>
             <LinearGradient
-              colors={['#9F2241', '#BE3356']}
+              colors={theme.gradientPrimary}
               style={styles.sectionIconContainer}
             >
               <Ionicons name="grid" size={18} color="#FFFFFF" />
@@ -695,27 +698,26 @@ const AnalyticsScreen = ({ navigation }) => {
                 key={index} 
                 style={[styles.metricCardWrapper, { transform: [{ scale: cardScales[index] }] }]}
               >
-                <TouchableOpacity
-                  activeOpacity={0.9}
+                <PremiumGlassCard
+                  intensity="strong"
+                  glowEffect={true}
+                  glowColor={config.gradient[0]}
+                  showGradient={true}
+                  showRimGlow={true}
+                  pressable={true}
                   onPressIn={() => animateCardPress(index, true)}
                   onPressOut={() => animateCardPress(index, false)}
+                  padding={16}
+                  borderRadius={16}
+                  style={styles.metricCardGradient}
                 >
-                  <LinearGradient
-                    colors={config.gradient}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={styles.metricCardGradient}
-                  >
-                    <View style={styles.metricGlassOverlay} />
-                    <View style={styles.metricShine} />
-                    <View style={styles.metricIconWrapper}>
-                      <Ionicons name={config.icon} size={24} color="#FFFFFF" />
-                    </View>
-                    <Text style={styles.metricLabel}>{config.label}</Text>
-                    <Text style={styles.metricValue}>{config.value}</Text>
-                    <Text style={styles.metricSubvalue}>{config.subvalue}</Text>
-                  </LinearGradient>
-                </TouchableOpacity>
+                  <View style={styles.metricIconWrapper}>
+                    <Ionicons name={config.icon} size={24} color="#FFFFFF" />
+                  </View>
+                  <Text style={styles.metricLabel}>{config.label}</Text>
+                  <Text style={styles.metricValue}>{config.value}</Text>
+                  <Text style={styles.metricSubvalue}>{config.subvalue}</Text>
+                </PremiumGlassCard>
               </Animated.View>
             ))}
           </View>
@@ -735,7 +737,7 @@ const AnalyticsScreen = ({ navigation }) => {
             >
               <View style={styles.ratingHeader}>
                 <View style={styles.ratingIconBg}>
-                  <Ionicons name="star" size={24} color="#FBBF24" />
+                  <Ionicons name="star" size={24} color={theme.warning} />
                 </View>
                 <View>
                   <Text style={styles.ratingTitleText}>Distribución de Calificaciones</Text>
@@ -747,7 +749,7 @@ const AnalyticsScreen = ({ navigation }) => {
                 <View key={rating} style={styles.ratingBar}>
                   <View style={styles.ratingStarContainer}>
                     <Text style={styles.ratingStarNum}>{rating}</Text>
-                    <Ionicons name="star" size={14} color="#FBBF24" />
+                    <Ionicons name="star" size={14} color={theme.warning} />
                   </View>
                   <View style={styles.ratingBarBackground}>
                     <Animated.View
@@ -790,13 +792,13 @@ const AnalyticsScreen = ({ navigation }) => {
               <View style={styles.statusItem}>
                 <View style={styles.statusItemHeader}>
                   <View style={styles.statusItemLabel}>
-                    <View style={[styles.statusDot, { backgroundColor: '#10B981' }]} />
+                    <View style={[styles.statusDot, { backgroundColor: theme.success }]} />
                     <Text style={styles.statusText}>Completadas</Text>
                   </View>
                   <Text style={styles.statusValue}>{taskMetrics.completed || 0}</Text>
                 </View>
                 <View style={styles.statusBarBg}>
-                  <View style={[styles.statusBarFill, { backgroundColor: '#10B981', width: `${Math.round(((taskMetrics.completed || 0) / (taskMetrics.total || 1)) * 100)}%` }]} />
+                  <View style={[styles.statusBarFill, { backgroundColor: theme.success, width: `${Math.round(((taskMetrics.completed || 0) / (taskMetrics.total || 1)) * 100)}%` }]} />
                 </View>
               </View>
 
@@ -804,13 +806,13 @@ const AnalyticsScreen = ({ navigation }) => {
               <View style={styles.statusItem}>
                 <View style={styles.statusItemHeader}>
                   <View style={styles.statusItemLabel}>
-                    <View style={[styles.statusDot, { backgroundColor: '#F59E0B' }]} />
+                    <View style={[styles.statusDot, { backgroundColor: theme.warning }]} />
                     <Text style={styles.statusText}>En Progreso</Text>
                   </View>
                   <Text style={styles.statusValue}>{taskMetrics.inProgress || 0}</Text>
                 </View>
                 <View style={styles.statusBarBg}>
-                  <View style={[styles.statusBarFill, { backgroundColor: '#F59E0B', width: `${Math.round(((taskMetrics.inProgress || 0) / (taskMetrics.total || 1)) * 100)}%` }]} />
+                  <View style={[styles.statusBarFill, { backgroundColor: theme.warning, width: `${Math.round(((taskMetrics.inProgress || 0) / (taskMetrics.total || 1)) * 100)}%` }]} />
                 </View>
               </View>
 
@@ -818,13 +820,13 @@ const AnalyticsScreen = ({ navigation }) => {
               <View style={[styles.statusItem, { marginBottom: 0 }]}>
                 <View style={styles.statusItemHeader}>
                   <View style={styles.statusItemLabel}>
-                    <View style={[styles.statusDot, { backgroundColor: '#A855F7' }]} />
+                    <View style={[styles.statusDot, { backgroundColor: theme.secondary }]} />
                     <Text style={styles.statusText}>Pendientes</Text>
                   </View>
                   <Text style={styles.statusValue}>{taskMetrics.pending || 0}</Text>
                 </View>
                 <View style={styles.statusBarBg}>
-                  <View style={[styles.statusBarFill, { backgroundColor: '#A855F7', width: `${Math.round(((taskMetrics.pending || 0) / (taskMetrics.total || 1)) * 100)}%` }]} />
+                  <View style={[styles.statusBarFill, { backgroundColor: theme.secondary, width: `${Math.round(((taskMetrics.pending || 0) / (taskMetrics.total || 1)) * 100)}%` }]} />
                 </View>
               </View>
             </LinearGradient>
@@ -841,7 +843,7 @@ const AnalyticsScreen = ({ navigation }) => {
               <View style={styles.topTasksHeader}>
                 <View style={styles.topTasksHeaderContent}>
                   <LinearGradient
-                    colors={['#FBBF24', '#F59E0B']}
+                    colors={[theme.warning, theme.warning]}
                     style={styles.topTasksIconBg}
                   >
                     <Ionicons name="trophy" size={20} color="#FFFFFF" />
@@ -855,11 +857,11 @@ const AnalyticsScreen = ({ navigation }) => {
               
               {tasks.map((task, idx) => {
                 const rankColors = [
-                  ['#FBBF24', '#F59E0B'], // Gold
-                  ['#94A3B8', '#64748B'], // Silver
-                  ['#CD7F32', '#A0522D'], // Bronze
-                  ['#9F2241', '#BE3356'], // Primary
-                  ['#9F2241', '#BE3356'], // Primary
+                  [theme.warning, theme.warning],   // Gold
+                  [theme.textSecondary, theme.textMuted], // Silver
+                  [theme.error, theme.error],        // Bronze-ish
+                  [theme.primary, theme.primary],    // Primary
+                  [theme.primary, theme.primary],    // Primary
                 ];
                 
                 return (
@@ -888,7 +890,7 @@ const AnalyticsScreen = ({ navigation }) => {
                     </View>
                     
                     <View style={styles.topTaskRating}>
-                      <Ionicons name="star" size={14} color="#FBBF24" />
+                      <Ionicons name="star" size={14} color={theme.warning} />
                       <Text style={styles.topTaskRatingText}>
                         {task.qualityRating}
                       </Text>

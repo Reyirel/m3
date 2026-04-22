@@ -1,6 +1,7 @@
 // screens/KanbanScreen.js
-// Tablero Kanban con columnas por estado. Implementa Drag & Drop para cambiar estado de tareas.
-// Estados: pendiente, en_proceso, en_revision, cerrada - Compatible con web
+// Tablero Kanban con columnas por estado.
+// Lógica de filtros → hooks/useKanbanFilters.js
+// Estilos → screens/kanban/KanbanScreenStyles.js
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, RefreshControl, Animated, Dimensions, Platform, Modal, InteractionManager, TextInput } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,51 +14,58 @@ import { getGestureHandlerRootView } from '../utils/platformComponents';
 //   withSpring,
 //   runOnJS,
 // } from 'react-native-reanimated';
-import EmptyState from '../components/EmptyState';
 import ShimmerEffect from '../components/ShimmerEffect';
 import SpringCard from '../components/SpringCard';
 import BottomSheet from '../components/BottomSheet';
-import OverdueAlert from '../components/OverdueAlert';
 import FadeInView from '../components/FadeInView';
+import { PremiumGlassCard, GlassmorphicHeader, GlassmorphicFilterChips, GlassmorphicStatsCard, GlassmorphicEmptyState, GlassmorphicProgress } from '../components'; // ✨ UPGRADED: Premium Glassmorphism
+import { useGlassPreset } from '../hooks/useGlassmorphism'; // ✨ NEW: Glassmorphism config
 
 const GestureHandlerRootView = getGestureHandlerRootView();
 import CircularProgress from '../components/CircularProgress';
 import PulsingDot from '../components/PulsingDot';
-import RippleButton from '../components/RippleButton';
 import { updateTask } from '../services/tasks';
 import { useTasks } from '../contexts/TasksContext';
-import { hapticMedium, hapticHeavy, hapticLight, hapticSuccess, hapticWarning } from '../utils/haptics';
+import { hapticMedium, hapticLight, hapticSuccess, hapticWarning } from '../utils/haptics';
 import { useNotification } from '../contexts/NotificationContext';
 import TaskStatusButtons from '../components/TaskStatusButtons';
 import { useTheme } from '../contexts/ThemeContext';
 import { canChangeTaskStatus } from '../services/permissions';
-import { toMs, isOverdue } from '../utils/dateUtils';
+import { toMs } from '../utils/dateUtils';
 import QuickTip, { TIPS } from '../components/QuickTip';
 import SyncIndicator from '../components/SyncIndicator';
+import AmbientOrbs from '../components/AmbientOrbs';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
-
-const STATUSES = [
-  { key: 'pendiente', label: 'Pendiente', color: '#FF9800', icon: 'hourglass-outline' },
-  { key: 'en_proceso', label: 'En proceso', color: '#2196F3', icon: 'play-circle-outline' },
-  { key: 'en_revision', label: 'En revisión', color: '#9C27B0', icon: 'eye-outline' },
-  { key: 'cerrada', label: 'Cerrada', color: '#4CAF50', icon: 'checkmark-circle-outline' }
-];
+import { useKanbanFilters } from '../hooks/useKanbanFilters';
+import { createKanbanStyles } from './kanban/KanbanScreenStyles';
 
 export default function KanbanScreen({ navigation }) {
   const { theme, isDark } = useTheme();
+
+  const STATUSES = useMemo(() => [
+    { key: 'pendiente',   label: 'Pendiente',   color: theme.warning,   icon: 'hourglass-outline' },
+    { key: 'en_proceso',  label: 'En proceso',  color: theme.info,      icon: 'play-circle-outline' },
+    { key: 'en_revision', label: 'En revisión', color: theme.secondary, icon: 'eye-outline' },
+    { key: 'cerrada',     label: 'Cerrada',     color: theme.success,   icon: 'checkmark-circle-outline' },
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [theme.warning, theme.info, theme.secondary, theme.success]);
   const { isDesktop } = useResponsive();
   // 🌍 USAR EL CONTEXT GLOBAL DE TAREAS
-  const { tasks, setTasks, isLoading, currentUser } = useTasks();
-  const currentUserRole = currentUser?.role ?? null;
-  const [filters, setFilters] = useState({ searchText: '', area: '', responsible: '', priority: '', overdue: false, dueToday: false, dueThisWeek: false });
+  const { tasks, isLoading, currentUser } = useTasks();
+  const {
+    filters, setFilters,
+    sortBy, setSortBy,
+    isTaskOverdue, applyFilters, sortTasks,
+    taskStats, getFilteredByStatus,
+    hasActiveFilters, resetFilters,
+  } = useKanbanFilters(tasks, currentUser);
   const [refreshing, setRefreshing] = useState(false);
-  const [draggingTask, setDraggingTask] = useState(null);
+  const [draggingTask, _setDraggingTask] = useState(null);
   const [showStats, setShowStats] = useState(false);
   const { showSuccess, showError, showWarning } = useNotification();
   const [dimensions, setDimensions] = useState(Dimensions.get('window'));
   const [compactView, setCompactView] = useState(false);
-  const [sortBy, setSortBy] = useState('date'); // 'date' o 'priority'
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [contextMenu, setContextMenu] = useState({ visible: false, task: null, position: { x: 0, y: 0 } });
@@ -72,10 +80,6 @@ export default function KanbanScreen({ navigation }) {
     en_revision: new Animated.Value(0),
     cerrada: new Animated.Value(0)
   }).current;
-  
-  // Animación para drag feedback
-  const dragScaleAnim = useRef(new Animated.Value(1)).current;
-  const dragOpacityAnim = useRef(new Animated.Value(1)).current;
   
   // Animación del FAB
   const fabScale = useRef(new Animated.Value(0)).current;
@@ -125,6 +129,7 @@ export default function KanbanScreen({ navigation }) {
     }
   };
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const columnWidth = useMemo(() => getColumnWidth(), [dimensions.width]);
 
 
@@ -171,7 +176,7 @@ export default function KanbanScreen({ navigation }) {
     } else {
       startAnimations();
     }
-  }, []);
+  }, [columnAnimations, columnsSlide, fabScale, headerSlide]);
 
   // Suscribirse a cambios en tiempo real con debounce
   useEffect(() => {
@@ -209,7 +214,7 @@ export default function KanbanScreen({ navigation }) {
       showError('Error al actualizar estado');
       hapticWarning();
     }
-  }, [currentUser, tasks]);
+  }, [currentUser, tasks, showError, showSuccess, showWarning]);
 
   const handleStatusChange = useCallback(async (taskId, newStatus) => {
     await changeStatus(taskId, newStatus);
@@ -221,95 +226,24 @@ export default function KanbanScreen({ navigation }) {
     navigation.navigate('TaskDetail', { task });
   }, [navigation]);
 
-  // Función para detectar en qué columna se soltó la tarjeta
-  const getColumnAtPosition = (x) => {
-    // Usar columnWidth dinámico en lugar de valores hardcodeados
-    const gap = 16;
-    const actualColumnWidth = columnWidth + gap;
-    const columnIndex = Math.floor((x + gap) / actualColumnWidth);
-    if (columnIndex >= 0 && columnIndex < STATUSES.length) {
-      return STATUSES[columnIndex].key;
-    }
-    return null;
-  };
-
-  const handleDragEnd = (task, event) => {
-    const { absoluteX } = event.nativeEvent;
-    const targetStatus = getColumnAtPosition(absoluteX);
-    
-    if (targetStatus && targetStatus !== task.status) {
-      // 🎨 ANIMACIÓN: Scale down y fade out
-      Animated.parallel([
-        Animated.timing(dragScaleAnim, {
-          toValue: 0.8,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-        Animated.timing(dragOpacityAnim, {
-          toValue: 0.5,
-          duration: 100,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        // Cambiar estado
-        changeStatus(task.id, targetStatus);
-        
-        // 🎨 ANIMACIÓN: Spring bounce de vuelta
-        Animated.parallel([
-          Animated.spring(dragScaleAnim, {
-            toValue: 1,
-            tension: 400,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-          Animated.spring(dragOpacityAnim, {
-            toValue: 1,
-            tension: 400,
-            friction: 8,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      });
-      
-      // Haptic feedback mejorado
-      hapticHeavy(); // Feedback más fuerte al arrastrar
-    }
-    
-    // Reset dragging state
-    setDraggingTask(null);
-    
-    // Reset animaciones si no hubo cambio de estado
-    if (!targetStatus || targetStatus === task.status) {
-      Animated.parallel([
-        Animated.spring(dragScaleAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-        }),
-        Animated.spring(dragOpacityAnim, {
-          toValue: 1,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    }
-  };
 
   // Componente de tarjeta arrastrable con mejoras visuales
   const DraggableCard = ({ item, status }) => {
     const isOverdue = isTaskOverdue(item);
-    const priorityColors = { alta: '#EF4444', media: '#F59E0B', baja: '#10B981' };
-    const priorityColor = priorityColors[item.priority] || '#94A3B8';
+    const priorityColors = { alta: theme.error, media: theme.warning, baja: theme.success };
+    const priorityColor = priorityColors[item.priority] || theme.border;
     
     // Calcular días en el estado actual
     const daysInStatus = item.statusChangedAt ? 
       Math.floor((Date.now() - item.statusChangedAt) / (1000 * 60 * 60 * 24)) : 0;
-    const statusAgeColor = daysInStatus > 10 ? '#DC2626' : daysInStatus > 5 ? '#F59E0B' : theme.textSecondary;
-    
+    const statusAgeColor = daysInStatus > 10 ? theme.error : daysInStatus > 5 ? theme.warning : theme.textSecondary;
+
     // Borde según prioridad
-    const borderColor = item.priority === 'alta' ? '#EF4444' : 
-                        item.priority === 'media' ? '#F59E0B' : theme.border;
+    const borderColor = item.priority === 'alta' ? theme.error :
+                        item.priority === 'media' ? theme.warning : theme.border;
     
     return (
-      <SpringCard
+      <PremiumGlassCard
         onPress={() => {
           hapticLight();
           openDetail(item);
@@ -318,15 +252,17 @@ export default function KanbanScreen({ navigation }) {
           hapticMedium();
           setContextMenu({ visible: true, task: item, position: { x: 0, y: 0 } });
         }}
+        pressable={true}
+        intensity={item.priority === 'alta' ? 'strong' : 'medium'}
+        glowEffect={item.priority === 'alta'}
+        glowColor={priorityColor}
+        highlighted={item.priority === 'alta'}
+        showRimGlow={true}
+        showGradient={true}
+        padding={compactView ? 8 : 12}
+        borderRadius={14}
         style={[
           styles.card,
-          { 
-            backgroundColor: theme.cardBackground, 
-            borderColor: borderColor,
-            borderWidth: item.priority === 'alta' ? 2 : 1,
-            borderLeftWidth: 4,
-            borderLeftColor: priorityColor
-          },
           draggingTask?.id === item.id && styles.cardDragging,
           compactView && { paddingVertical: 8, paddingHorizontal: 12 }
         ]}
@@ -336,9 +272,9 @@ export default function KanbanScreen({ navigation }) {
           <View style={styles.cardTopRow}>
             <View style={[
               styles.priorityChip,
-              item.priority === 'alta' && { backgroundColor: '#DC2626' },
-              item.priority === 'media' && { backgroundColor: '#F59E0B' },
-              item.priority === 'baja' && { backgroundColor: '#10B981' }
+              item.priority === 'alta' && { backgroundColor: theme.error },
+              item.priority === 'media' && { backgroundColor: theme.warning },
+              item.priority === 'baja' && { backgroundColor: theme.success }
             ]}>
               <Ionicons 
                 name={item.priority === 'alta' ? 'flash' : item.priority === 'media' ? 'warning' : 'checkmark-circle'} 
@@ -376,7 +312,7 @@ export default function KanbanScreen({ navigation }) {
             {item.title}
           </Text>
           {compactView && isOverdue && (
-            <Ionicons name="alert-circle" size={12} color="#EF4444" />
+            <Ionicons name="alert-circle" size={12} color={theme.error} />
           )}
         </View>
         
@@ -384,14 +320,14 @@ export default function KanbanScreen({ navigation }) {
         {!compactView && (
           <>
             <View style={styles.cardInfoGrid}>
-              <View style={[styles.cardInfoItem, { backgroundColor: theme.surface }]}>
+              <View style={styles.cardInfoItem}>
                 <Ionicons name="person" size={11} color={status.color} />
                 <Text style={[styles.cardInfoText, { color: theme.textSecondary }]} numberOfLines={1}>
                   {item.assignedTo || 'Sin asignar'}
                 </Text>
               </View>
-              
-              <View style={[styles.cardInfoItem, { backgroundColor: theme.surface }]}>
+
+              <View style={styles.cardInfoItem}>
                 <Ionicons name="calendar-outline" size={11} color={status.color} />
                 <Text style={[styles.cardInfoText, { color: theme.textSecondary }]}>
                   {new Date(toMs(item.dueAt)).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
@@ -403,7 +339,7 @@ export default function KanbanScreen({ navigation }) {
             {item.tags && item.tags.length > 0 && (
               <View style={styles.cardTagsContainer}>
                 {item.tags.slice(0, 3).map((tag, idx) => (
-                  <View key={idx} style={[styles.cardTag, { backgroundColor: isDark ? 'rgba(159,34,65,0.2)' : 'rgba(159,34,65,0.1)' }]}>
+                  <View key={idx} style={[styles.cardTag, { backgroundColor: theme.primaryAlpha }]}>
                     <Text style={[styles.cardTagText, { color: theme.primary }]}>#{tag}</Text>
                   </View>
                 ))}
@@ -415,7 +351,7 @@ export default function KanbanScreen({ navigation }) {
             
             {/* Indicador de días en estado actual */}
             {daysInStatus > 0 && (
-              <View style={[styles.statusAgeIndicator, { backgroundColor: theme.surface }]}>
+              <View style={styles.statusAgeIndicator}>
                 <Ionicons name="time-outline" size={10} color={statusAgeColor} />
                 <Text style={[styles.statusAgeText, { color: statusAgeColor }]}>
                   {daysInStatus === 1 ? 'Hace 1 día' : `Hace ${daysInStatus} días`}
@@ -434,64 +370,11 @@ export default function KanbanScreen({ navigation }) {
             onStatusChange={handleStatusChange}
           />
         )}
-      </SpringCard>
+      </PremiumGlassCard>
     );
   };
 
-  // Aplicar filtros con memoización
-  const applyFilters = useCallback((taskList) => {
-    return taskList.filter(task => {
-      if (filters.searchText && !task.title.toLowerCase().includes(filters.searchText.toLowerCase())) return false;
-      if (filters.area && task.area !== filters.area) return false;
-      if (filters.responsible && task.assignedTo !== filters.responsible) return false;
-      if (filters.priority && task.priority !== filters.priority) return false;
-      if (filters.overdue && toMs(task.dueAt) >= Date.now()) return false;
-      
-      // Filtro: Para hoy
-      if (filters.dueToday) {
-        const dueMs = toMs(task.dueAt);
-        const dueDate = dueMs ? new Date(dueMs) : null;
-        const today = new Date();
-        if (!dueDate || dueDate.toDateString() !== today.toDateString() || task.status === 'cerrada') return false;
-      }
-      
-      // Filtro: Esta semana
-      if (filters.dueThisWeek) {
-        const dueMs = toMs(task.dueAt);
-        const dueDate = dueMs ? new Date(dueMs) : null;
-        const today = new Date();
-        const weekEnd = new Date(today);
-        weekEnd.setDate(weekEnd.getDate() + 7);
-        if (!dueDate || dueDate < today || dueDate > weekEnd || task.status === 'cerrada') return false;
-      }
-      
-      return true;
-    });
-  }, [filters]);
-
-  // Ordenar tareas
-  const sortTasks = useCallback((taskList) => {
-    const sorted = [...taskList];
-    if (sortBy === 'priority') {
-      const priorityOrder = { alta: 0, media: 1, baja: 2 };
-      sorted.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
-    } else {
-      // Ordenar por fecha (más reciente primero)
-      sorted.sort((a, b) => {
-        const dateA = new Date(toMs(a.createdAt));
-        const dateB = new Date(toMs(b.createdAt));
-        return dateB - dateA;
-      });
-    }
-    return sorted;
-  }, [sortBy]);
-
-  // Verificar si una tarea está vencida
-  const isTaskOverdue = (task) => {
-    if (!task.dueAt || task.status === 'cerrada') return false;
-    const dueMs = toMs(task.dueAt);
-    return dueMs ? dueMs < Date.now() : false;
-  };
+  // Filtros, ordenamiento y stats viven en useKanbanFilters (ver hooks/useKanbanFilters.js)
 
   // Cambiar prioridad rápidamente
   const changePriority = async (taskId, priority) => {
@@ -505,48 +388,13 @@ export default function KanbanScreen({ navigation }) {
     }
   };
 
-  // Memoizar tareas por estado para evitar recalcular en cada render
-  // Pre-compute task stats to avoid repeated filter calls in render
-  const taskStats = useMemo(() => {
-    const now = Date.now();
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const weekEnd = new Date(today);
-    weekEnd.setDate(weekEnd.getDate() + 7);
-    const userEmail = currentUser?.email || '';
-
-    let overdueCount = 0;
-    let todayCount = 0;
-    let thisWeekCount = 0;
-    let myTasksCount = 0;
-    const priorityCounts = { alta: 0, media: 0, baja: 0 };
-
-    tasks.forEach(t => {
-      const dueMs = toMs(t.dueAt);
-      const dueDate = new Date(dueMs);
-      if (dueMs < now && t.status !== 'cerrada') overdueCount++;
-      if (dueDate.toDateString() === today.toDateString() && t.status !== 'cerrada') todayCount++;
-      if (dueDate >= today && dueDate <= weekEnd && t.status !== 'cerrada') thisWeekCount++;
-      if (userEmail && (t.responsables?.some(r => r.email === userEmail) || t.responsable === userEmail)) myTasksCount++;
-      if (t.priority in priorityCounts) priorityCounts[t.priority]++;
-    });
-
-    return { overdueCount, overdueTasksCount: overdueCount, todayCount, thisWeekCount, myTasksCount, priorityCounts };
-  }, [tasks, currentUser]);
-
   const tasksByStatus = useMemo(() => {
     const grouped = {};
     STATUSES.forEach(status => {
-      const byStatus = tasks.filter(t => {
-        const taskStatus = t.status || 'pendiente';
-        return taskStatus === status.key;
-      });
-      const filtered = applyFilters(byStatus);
-      const sorted = sortTasks(filtered);
-      grouped[status.key] = { byStatus, filtered, sorted };
+      grouped[status.key] = getFilteredByStatus(status.key, tasks);
     });
     return grouped;
-  }, [tasks, applyFilters, sortTasks]);
+  }, [tasks, getFilteredByStatus, STATUSES]);
 
   const renderColumn = useCallback((status) => {
     const { byStatus, filtered, sorted } = tasksByStatus[status.key] || { byStatus: [], filtered: [], sorted: [] };
@@ -572,54 +420,34 @@ export default function KanbanScreen({ navigation }) {
     };
 
     return (
-      <Animated.View key={status.key} style={[styles.column, { backgroundColor: theme.surface }, animatedStyle]}>
+      <Animated.View key={status.key} style={[styles.column, { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.06)', borderWidth: 0.5 }, animatedStyle]}>
+        {/* Barra de acento superior de color por estado */}
+        <View style={{ height: 3, backgroundColor: status.color, borderTopLeftRadius: 20, borderTopRightRadius: 20 }} />
+
         <View
-          style={[styles.columnHeader, { backgroundColor: status.color + '20' }]}
+          style={styles.columnHeader}
           accessible={true}
           accessibilityLabel={`Columna ${status.label}, ${sorted.length} tareas`}
           accessibilityRole="header"
         >
           <View style={styles.columnTitleContainer}>
-            <View style={[styles.columnIconCircle, { backgroundColor: status.color }]}>
-              <Ionicons name={status.icon} size={14} color="#FFFFFF" />
-            </View>
+            <View style={[styles.columnIconCircle, { backgroundColor: status.color }]} />
             <Text style={[styles.columnTitle, { color: theme.text }]}>{status.label}</Text>
           </View>
-          
-          {/* Badges y estadísticas mejoradas */}
+
           <View style={styles.columnBadges}>
-            {/* Contador principal con pulso si hay urgentes */}
-            <View style={styles.columnCountContainer}>
-              <View style={[styles.columnCount, { backgroundColor: status.color }]}>
-                <Text style={styles.columnCountText}>{sorted.length}</Text>
-              </View>
-              {highPriorityTasks > 0 && <PulsingDot size={5} color={status.color} />}
+            <View style={[styles.columnCount, { backgroundColor: status.color + '22' }]}>
+              <Text style={[styles.columnCountText, { color: status.color }]}>{sorted.length}</Text>
             </View>
-            
-            {/* Badge de vencidas si hay - CON PULSO */}
             {overdueTasks > 0 && (
-              <View style={styles.badgeContainer}>
-                <View style={[styles.overdueColumnBadge, { backgroundColor: '#DC2626' }]}>
-                  <Ionicons name="alert-circle" size={10} color="#FFFFFF" />
-                  <Text style={styles.columnCountText}>{overdueTasks}</Text>
-                </View>
-                <PulsingDot size={4} color="#DC2626" />
-              </View>
-            )}
-            
-            {/* Badge de alta prioridad - CON PULSO */}
-            {highPriorityTasks > 0 && (
-              <View style={styles.badgeContainer}>
-                <View style={[styles.priorityColumnBadge, { backgroundColor: '#F59E0B' }]}>
-                  <Ionicons name="flag" size={10} color="#FFFFFF" />
-                  <Text style={styles.columnCountText}>{highPriorityTasks}</Text>
-                </View>
-                <PulsingDot size={4} color="#F59E0B" />
+              <View style={[styles.overdueColumnBadge, { backgroundColor: theme.errorAlpha }]}>
+                <Ionicons name="alert-circle" size={10} color={theme.error} />
+                <Text style={[styles.columnCountText, { color: theme.error }]}>{overdueTasks}</Text>
               </View>
             )}
           </View>
         </View>
-        
+
         {/* Barra de progreso */}
         {byStatus.length > 0 && (
           <View style={styles.progressBarContainer}>
@@ -642,7 +470,7 @@ export default function KanbanScreen({ navigation }) {
 
         <FlatList
           data={sorted}
-          keyExtractor={(item) => item.id}
+          keyExtractor={keyExtractor}
           renderItem={({ item }) => <DraggableCard item={item} status={status} />}
           contentContainerStyle={{ paddingBottom: 8 }}
           // ⚡ Optimizaciones de rendimiento
@@ -680,9 +508,12 @@ export default function KanbanScreen({ navigation }) {
         />
       </Animated.View>
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tasksByStatus, columnAnimations, theme, isDark]);
 
-  const styles = React.useMemo(() => createStyles(theme, isDark, columnWidth, dimensions), [theme, isDark, columnWidth, dimensions]);
+  const styles = React.useMemo(() => createKanbanStyles(theme, isDark, columnWidth, dimensions), [theme, isDark, columnWidth, dimensions]);
+
+  const keyExtractor = useCallback((item) => item.id, []);
 
   // Estilo animado para FAB
   const fabAnimatedStyle = {
@@ -694,18 +525,23 @@ export default function KanbanScreen({ navigation }) {
   if (isLoading) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <View style={[styles.container, { backgroundColor: 'transparent' }]}>
           <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
-            <View style={[styles.headerGradient, { backgroundColor: theme.primary }]}>
+            <LinearGradient
+              colors={theme.gradientHeader}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.headerGradient}
+            >
               <View style={styles.header}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.heading}>Tablero Kanban</Text>
                 </View>
               </View>
-            </View>
+            </LinearGradient>
             <View style={{ flex: 1, flexDirection: 'row', padding: 10, gap: 10 }}>
               {STATUSES.map(status => (
-                <View key={status.key} style={{ flex: 1, borderRadius: 12, backgroundColor: theme.card, padding: 12, minWidth: 200 }}>
+                <View key={status.key} style={{ flex: 1, borderRadius: 14, backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)', padding: 12, minWidth: 200 }}>
                   <ShimmerEffect width="60%" height={20} style={{ marginBottom: 12 }} />
                   <ShimmerEffect width="100%" height={80} style={{ marginBottom: 8, borderRadius: 8 }} />
                   <ShimmerEffect width="100%" height={80} style={{ marginBottom: 8, borderRadius: 8 }} />
@@ -721,9 +557,18 @@ export default function KanbanScreen({ navigation }) {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+        {/* Premium Ambient Orbs - Glasmorfismo */}
+        <AmbientOrbs intensity="medium" />
+        
         <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
-        <View style={[styles.headerGradient, { backgroundColor: theme.primary }]}>
+        <LinearGradient
+          colors={theme.gradientHeader}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.headerGradient}
+        >
+          <View style={[styles.headerHighlight, { backgroundColor: 'rgba(255,255,255,0.07)' }]} />
           <View style={styles.header}>
             <View style={{ flex: 1 }}>
               <Text style={styles.heading}>Tablero Kanban</Text>
@@ -810,10 +655,10 @@ export default function KanbanScreen({ navigation }) {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
-        
+        </LinearGradient>
+
         {/* Barra compacta de filtros */}
-        <View style={[styles.filterCompactBar, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        <View style={[styles.filterCompactBar, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.75)', borderBottomColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
           {/* Chips de filtros activos */}
           <ScrollView 
             horizontal 
@@ -855,7 +700,7 @@ export default function KanbanScreen({ navigation }) {
 
             {/* Chip de prioridad activa */}
             {filters.priority && (
-              <View style={[styles.filterChipCompact, { backgroundColor: '#EF4444', borderColor: '#EF4444' }]}>
+              <View style={[styles.filterChipCompact, { backgroundColor: theme.error, borderColor: theme.error }]}>
                 <Ionicons name="flash" size={14} color="#FFFFFF" />
                 <Text style={[styles.filterChipCompactText, { color: '#FFFFFF' }]}>
                   {filters.priority === 'alta' ? 'Urgente' : filters.priority === 'media' ? 'Media' : 'Baja'}
@@ -891,7 +736,7 @@ export default function KanbanScreen({ navigation }) {
             <Ionicons name="options" size={20} color={theme.textSecondary} />
           </TouchableOpacity>
         </View>
-        
+
         {/* Modal de Filtros Premium */}
         <Modal
           visible={showFiltersModal}
@@ -903,7 +748,7 @@ export default function KanbanScreen({ navigation }) {
             <View style={[styles.filterModalContainer, { backgroundColor: theme.background }]}>
               {/* Header del Modal */}
               <LinearGradient
-                colors={['#9F2241', '#BE3356']}
+                colors={theme.gradientPrimary.slice(0, 2)}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.filterModalHeader}
@@ -960,9 +805,9 @@ export default function KanbanScreen({ navigation }) {
                   </View>
                   <View style={styles.priorityButtonsRow}>
                     {[
-                      { key: 'alta', label: 'Urgente', color: '#EF4444', icon: 'flash' },
-                      { key: 'media', label: 'Media', color: '#F59E0B', icon: 'remove' },
-                      { key: 'baja', label: 'Normal', color: '#10B981', icon: 'arrow-down' }
+                      { key: 'alta', label: 'Urgente', color: theme.error, icon: 'flash' },
+                      { key: 'media', label: 'Media', color: theme.warning, icon: 'remove' },
+                      { key: 'baja', label: 'Normal', color: theme.success, icon: 'arrow-down' }
                     ].map((p) => (
                       <TouchableOpacity
                         key={p.key}
@@ -991,7 +836,7 @@ export default function KanbanScreen({ navigation }) {
                         </Text>
                         {taskStats.priorityCounts[p.key] > 0 && (
                           <View style={[styles.priorityBadge, { backgroundColor: filters.priority === p.key ? 'rgba(255,255,255,0.3)' : p.color }]}>
-                            <Text style={[styles.priorityBadgeText, { color: filters.priority === p.key ? '#FFFFFF' : '#FFFFFF' }]}>
+                            <Text style={[styles.priorityBadgeText, { color: '#FFFFFF' }]}>
                               {taskStats.priorityCounts[p.key]}
                             </Text>
                           </View>
@@ -1020,22 +865,22 @@ export default function KanbanScreen({ navigation }) {
                         style={[
                           styles.quickFilterCard,
                           { 
-                            backgroundColor: filters.overdue ? '#FEE2E2' : theme.cardBackground,
-                            borderColor: filters.overdue ? '#DC2626' : theme.border
+                            backgroundColor: filters.overdue ? theme.errorAlpha : theme.cardBackground,
+                            borderColor: filters.overdue ? theme.error : theme.border
                           }
                         ]}
                       >
-                        <View style={[styles.quickFilterIconBg, { backgroundColor: '#DC2626' }]}>
+                        <View style={[styles.quickFilterIconBg, { backgroundColor: theme.error }]}>
                           <Ionicons name="alert-circle" size={20} color="#FFFFFF" />
                         </View>
                         <View style={styles.quickFilterCardContent}>
                           <Text style={[styles.quickFilterCardTitle, { color: theme.text }]}>Vencidas</Text>
-                          <Text style={[styles.quickFilterCardCount, { color: '#DC2626' }]}>
+                          <Text style={[styles.quickFilterCardCount, { color: theme.error }]}>
                             {taskStats.overdueTasksCount} tareas
                           </Text>
                         </View>
                         {filters.overdue && (
-                          <Ionicons name="checkmark-circle" size={24} color="#DC2626" />
+                          <Ionicons name="checkmark-circle" size={24} color={theme.error} />
                         )}
                       </TouchableOpacity>
                     )}
@@ -1053,7 +898,7 @@ export default function KanbanScreen({ navigation }) {
                         style={[
                           styles.quickFilterCard,
                           { 
-                            backgroundColor: filters.responsible === currentUser.email ? '#EDE9FE' : theme.cardBackground,
+                            backgroundColor: filters.responsible === currentUser.email ? theme.primaryAlpha : theme.cardBackground,
                             borderColor: filters.responsible === currentUser.email ? theme.primary : theme.border
                           }
                         ]}
@@ -1091,22 +936,22 @@ export default function KanbanScreen({ navigation }) {
                       style={[
                         styles.quickFilterCard,
                         { 
-                          backgroundColor: filters.dueToday ? '#FEF3C7' : theme.cardBackground,
-                          borderColor: filters.dueToday ? '#F59E0B' : theme.border
+                          backgroundColor: filters.dueToday ? theme.warningAlpha : theme.cardBackground,
+                          borderColor: filters.dueToday ? theme.warning : theme.border
                         }
                       ]}
                     >
-                      <View style={[styles.quickFilterIconBg, { backgroundColor: '#F59E0B' }]}>
+                      <View style={[styles.quickFilterIconBg, { backgroundColor: theme.warning }]}>
                         <Ionicons name="today" size={20} color="#FFFFFF" />
                       </View>
                       <View style={styles.quickFilterCardContent}>
                         <Text style={[styles.quickFilterCardTitle, { color: theme.text }]}>Para hoy</Text>
-                        <Text style={[styles.quickFilterCardCount, { color: '#F59E0B' }]}>
+                        <Text style={[styles.quickFilterCardCount, { color: theme.warning }]}>
                           {taskStats.todayCount} tareas
                         </Text>
                       </View>
                       {filters.dueToday && (
-                        <Ionicons name="checkmark-circle" size={24} color="#F59E0B" />
+                        <Ionicons name="checkmark-circle" size={24} color={theme.warning} />
                       )}
                     </TouchableOpacity>
 
@@ -1123,22 +968,22 @@ export default function KanbanScreen({ navigation }) {
                       style={[
                         styles.quickFilterCard,
                         { 
-                          backgroundColor: filters.dueThisWeek ? '#DBEAFE' : theme.cardBackground,
-                          borderColor: filters.dueThisWeek ? '#3B82F6' : theme.border
+                          backgroundColor: filters.dueThisWeek ? theme.infoAlpha : theme.cardBackground,
+                          borderColor: filters.dueThisWeek ? theme.info : theme.border
                         }
                       ]}
                     >
-                      <View style={[styles.quickFilterIconBg, { backgroundColor: '#3B82F6' }]}>
+                      <View style={[styles.quickFilterIconBg, { backgroundColor: theme.info }]}>
                         <Ionicons name="calendar" size={20} color="#FFFFFF" />
                       </View>
                       <View style={styles.quickFilterCardContent}>
                         <Text style={[styles.quickFilterCardTitle, { color: theme.text }]}>Esta semana</Text>
-                        <Text style={[styles.quickFilterCardCount, { color: '#3B82F6' }]}>
+                        <Text style={[styles.quickFilterCardCount, { color: theme.info }]}>
                           {taskStats.thisWeekCount} tareas
                         </Text>
                       </View>
                       {filters.dueThisWeek && (
-                        <Ionicons name="checkmark-circle" size={24} color="#3B82F6" />
+                        <Ionicons name="checkmark-circle" size={24} color={theme.info} />
                       )}
                     </TouchableOpacity>
                   </View>
@@ -1146,7 +991,7 @@ export default function KanbanScreen({ navigation }) {
               </ScrollView>
 
               {/* Footer con botones */}
-              <View style={[styles.filterModalFooter, { backgroundColor: theme.surface, borderTopColor: theme.border }]}>
+              <View style={[styles.filterModalFooter, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.9)', borderTopColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
                 <TouchableOpacity
                   onPress={() => {
                     setFilters({ searchText: '', area: '', responsible: '', priority: '', overdue: false, dueToday: false, dueThisWeek: false });
@@ -1165,7 +1010,7 @@ export default function KanbanScreen({ navigation }) {
                   style={styles.filterModalApplyBtn}
                 >
                   <LinearGradient
-                    colors={['#9F2241', '#BE3356']}
+                    colors={theme.gradientPrimary.slice(0, 2)}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.filterModalApplyGradient}
@@ -1183,7 +1028,7 @@ export default function KanbanScreen({ navigation }) {
         <Modal visible={showHelpModal} transparent animationType="fade" onRequestClose={() => setShowHelpModal(false)}>
           <View style={[styles.filterModalOverlay]}>
             <View style={[styles.filterModalContainer, { backgroundColor: theme.background, maxHeight: '80%' }]}>
-              <LinearGradient colors={['#9F2241', '#BE3356']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.filterModalHeader}>
+              <LinearGradient colors={theme.gradientPrimary.slice(0, 2)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.filterModalHeader}>
                 <View style={styles.filterModalHeaderContent}>
                   <View>
                     <Text style={styles.filterModalTitle}>Guía del Tablero Kanban</Text>
@@ -1216,7 +1061,7 @@ export default function KanbanScreen({ navigation }) {
               </ScrollView>
               <View style={styles.filterModalFooter}>
                 <TouchableOpacity style={[styles.filterModalApply, { flex: 1 }]} onPress={() => setShowHelpModal(false)}>
-                  <LinearGradient colors={['#9F2241', '#BE3356']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.filterModalApplyGradient, { borderRadius: 14 }]}>
+                  <LinearGradient colors={theme.gradientPrimary.slice(0, 2)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.filterModalApplyGradient, { borderRadius: 14 }]}>
                     <Ionicons name="checkmark" size={18} color="#FFFFFF" />
                     <Text style={styles.filterModalApplyText}>¡Entendido!</Text>
                   </LinearGradient>
@@ -1247,8 +1092,8 @@ export default function KanbanScreen({ navigation }) {
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor="#9F2241"
-                colors={['#9F2241']}
+                tintColor={theme.primary}
+                colors={[theme.primary]}
               />
             }
           >
@@ -1304,8 +1149,8 @@ export default function KanbanScreen({ navigation }) {
                     key={priority}
                     style={[
                       styles.priorityOption,
-                      { backgroundColor: theme.surface },
-                      contextMenu.task.priority === priority && { backgroundColor: theme.primary + '20' }
+                      { backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)' },
+                      contextMenu.task.priority === priority && { backgroundColor: theme.primaryAlpha }
                     ]}
                     onPress={() => changePriority(contextMenu.task.id, priority)}
                   >
@@ -1392,921 +1237,3 @@ export default function KanbanScreen({ navigation }) {
     </GestureHandlerRootView>
   );
 }
-
-const createStyles = (theme, isDark, columnWidth = 300, dimensions = { width: 1200, height: 800 }) => {
-  const screenWidth = dimensions.width;
-  
-  return StyleSheet.create({
-  container: { 
-    flex: 1,
-    backgroundColor: theme.background,
-    alignItems: 'center',
-    ...(Platform.OS === 'web' ? {
-      display: 'flex',
-      flexDirection: 'column',
-      width: '100%',
-      height: '100vh',
-      overflow: 'hidden'
-    } : {})
-  },
-  contentWrapper: {
-    flex: 1,
-    width: '100%',
-    alignSelf: 'center',
-    ...(Platform.OS === 'web' ? {
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden'
-    } : {})
-  },
-  headerGradient: {
-    paddingHorizontal: screenWidth > 768 ? 20 : 14,
-    paddingTop: Platform.OS === 'web' ? 16 : 42,
-    paddingBottom: 14,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 6
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start'
-  },
-  greetingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4
-  },
-  greeting: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    opacity: 0.9,
-    letterSpacing: 0.2
-  },
-  heading: { 
-    fontSize: screenWidth > 768 ? 28 : 24, 
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -1,
-    textShadowColor: 'rgba(0,0,0,0.15)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
-  },
-  headerActions: {
-    flexDirection: 'row',
-    gap: 8
-  },
-  iconButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)'
-  },
-  iconButtonActive: {
-    backgroundColor: 'rgba(255,255,255,0.3)'
-  },
-  // Badge de vencidas en header
-  overdueHeaderBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#DC2626',
-    paddingLeft: 5,
-    paddingRight: 8,
-    paddingVertical: 4,
-    borderRadius: 14,
-    marginRight: 8,
-    shadowColor: '#DC2626',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  overdueHeaderBadgeActive: {
-    backgroundColor: '#B91C1C',
-    borderColor: '#FFFFFF',
-  },
-  overdueHeaderPulse: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 5,
-  },
-  overdueHeaderContent: {
-    alignItems: 'center',
-  },
-  overdueHeaderCount: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    lineHeight: 14,
-  },
-  overdueHeaderLabel: {
-    fontSize: 7,
-    fontWeight: '700',
-    color: 'rgba(255,255,255,0.85)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
-  overdueHeaderCheck: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 5,
-  },
-  fab: {
-    position: 'absolute',
-    right: 20,
-    bottom: 20,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)'
-  },
-  priorityBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8
-  },
-  cardMeta: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-    flexWrap: 'wrap'
-  },
-  areaBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    maxWidth: 120
-  },
-  areaText: {
-    fontSize: 11,
-    fontWeight: '600'
-  },
-  contextMenuContent: {
-    padding: 12
-  },
-  contextTaskTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 16
-  },
-  contextLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 8,
-    textTransform: 'uppercase'
-  },
-  priorityOptions: {
-    flexDirection: 'row',
-    gap: 8
-  },
-  priorityOption: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 12,
-    alignItems: 'center'
-  },
-  priorityOptionText: {
-    fontSize: 14,
-    fontWeight: '600'
-  },
-  statusOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8
-  },
-  statusOption: {
-    width: '48%',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderRadius: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  statusOptionText: {
-    fontSize: 13,
-    fontWeight: '600'
-  },
-  columnsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 16
-  },
-  board: { 
-    paddingHorizontal: Platform.OS === 'web' ? 10 : (dimensions.width > 480 ? 10 : 6), 
-    paddingVertical: Platform.OS === 'web' ? 6 : (dimensions.width > 768 ? 8 : 6),
-    ...(Platform.OS === 'web' ? (
-      // En web: si pantalla > 600px, usar flexbox; sino scroll horizontal
-      dimensions.width > 600 ? {
-        display: 'flex',
-        flexDirection: 'row',
-        gap: dimensions.width > 1200 ? 10 : 8,
-        alignItems: 'stretch',
-        width: '100%',
-        flex: 1
-      } : {
-        display: 'flex',
-        flexDirection: 'row',
-        gap: 10,
-        alignItems: 'stretch',
-        overflowX: 'auto',
-        paddingBottom: 6
-      }
-    ) : {
-      flexDirection: 'row',
-      gap: dimensions.width > 768 ? 10 : 8
-    })
-  },
-  column: { 
-    ...(Platform.OS === 'web' ? (
-      dimensions.width > 600 ? {
-        flex: 1,
-        minWidth: 180,
-        minHeight: 'auto',
-        maxHeight: '100%'
-      } : {
-        width: columnWidth,
-        minWidth: columnWidth,
-        flexShrink: 0
-      }
-    ) : {
-      width: columnWidth,
-      minWidth: columnWidth,
-      marginRight: 0
-    }),
-    borderRadius: dimensions.width > 768 ? 14 : 12,
-    backgroundColor: theme.card,
-    shadowColor: isDark ? theme.primary : '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDark ? 0.2 : 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-    overflow: 'hidden'
-  },
-  columnHeader: { 
-    paddingHorizontal: dimensions.width > 1000 ? 12 : 8,
-    paddingVertical: dimensions.width > 768 ? 10 : 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    borderBottomWidth: 1,
-    borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
-  },
-  columnTitleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  columnIconCircle: {
-    width: dimensions.width > 768 ? 34 : 28,
-    height: dimensions.width > 768 ? 34 : 28,
-    borderRadius: dimensions.width > 768 ? 17 : 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)'
-  },
-  columnTitle: { 
-    fontSize: dimensions.width > 1000 ? 14 : (dimensions.width > 768 ? 13 : 12),
-    fontWeight: '700',
-    letterSpacing: -0.2
-  },
-  columnCount: { 
-    minWidth: dimensions.width > 768 ? 28 : 24,
-    height: dimensions.width > 768 ? 28 : 24,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)'
-  },
-  columnBadges: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6
-  },
-  columnCountContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4
-  },
-  badgeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    position: 'relative'
-  },
-  overdueColumnBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 10,
-    shadowColor: '#DC2626',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2
-  },
-  priorityColumnBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 10,
-    shadowColor: '#F59E0B',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2
-  },
-  progressBarContainer: {
-    paddingHorizontal: dimensions.width > 1000 ? 12 : 8,
-    paddingBottom: dimensions.width > 768 ? 6 : 4,
-    gap: 3
-  },
-  progressBarBg: {
-    height: dimensions.width > 768 ? 5 : 4,
-    borderRadius: 3,
-    overflow: 'hidden'
-  },
-  progressBarFill: {
-    height: '100%',
-    borderRadius: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2
-  },
-  progressText: {
-    fontSize: dimensions.width > 768 ? 9 : 8,
-    fontWeight: '600',
-    textAlign: 'center'
-  },
-  emptyColumnState: {
-    paddingVertical: dimensions.width > 768 ? 20 : 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10
-  },
-  emptyStateContent: {
-    alignItems: 'center',
-    gap: 8
-  },
-  emptyStateIconContainer: {
-    width: dimensions.width > 768 ? 52 : 40,
-    height: dimensions.width > 768 ? 52 : 40,
-    borderRadius: dimensions.width > 768 ? 26 : 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 2
-  },
-  emptyStateTitle: {
-    fontSize: dimensions.width > 768 ? 13 : 11,
-    fontWeight: '600',
-    letterSpacing: -0.2
-  },
-  emptyStateDescription: {
-    fontSize: dimensions.width > 768 ? 11 : 10,
-    fontWeight: '500',
-    textAlign: 'center',
-    lineHeight: 14,
-    opacity: 0.65
-  },
-  emptyColumnText: {
-    fontSize: dimensions.width > 768 ? 14 : 12,
-    fontWeight: '500',
-    opacity: 0.6
-  },
-  statusAgeIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 6,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 6
-  },
-  statusAgeText: {
-    fontSize: 9,
-    fontWeight: '600'
-  },
-  filterToggleBar: {
-    paddingHorizontal: dimensions.width > 768 ? 16 : 12,
-    paddingVertical: dimensions.width > 768 ? 4 : 2,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  filterToggleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: dimensions.width > 768 ? 4 : 2,
-    paddingHorizontal: 12
-  },
-  filterToggleText: {
-    fontSize: dimensions.width > 768 ? 13 : 12,
-    fontWeight: '600',
-    letterSpacing: 0.2
-  },
-  quickFiltersRow: {
-    flexDirection: 'row',
-    gap: dimensions.width > 768 ? 8 : 6,
-    paddingVertical: dimensions.width > 768 ? 4 : 2,
-  },
-  quickFilterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: dimensions.width > 768 ? 12 : 10,
-    paddingVertical: dimensions.width > 768 ? 8 : 6,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  quickFilterText: {
-    fontSize: dimensions.width > 768 ? 12 : 11,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  clearFilterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: dimensions.width > 768 ? 10 : 8,
-    paddingVertical: dimensions.width > 768 ? 8 : 6,
-    borderRadius: 16,
-  },
-  clearFilterText: {
-    fontSize: dimensions.width > 768 ? 11 : 10,
-    fontWeight: '600',
-  },
-  columnCountText: {
-    fontSize: dimensions.width > 768 ? 12 : 11,
-    fontWeight: '800',
-    color: '#FFFFFF'
-  },
-  card: { 
-    margin: dimensions.width > 600 ? 6 : 5,
-    padding: dimensions.width > 600 ? 10 : 8,
-    borderRadius: dimensions.width > 600 ? 12 : 10,
-    backgroundColor: theme.surface,
-    borderWidth: 1,
-    borderColor: theme.border,
-    shadowColor: isDark ? theme.primary : '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDark ? 0.12 : 0.08,
-    shadowRadius: 6,
-    elevation: 2
-  },
-  cardDragging: {
-    opacity: 0.95,
-    transform: [{ scale: 1.05 }],
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-    borderWidth: 2,
-    borderColor: theme.primary
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    gap: 6,
-    flexWrap: 'wrap'
-  },
-  priorityChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-    gap: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)'
-  },
-  priorityChipText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase'
-  },
-  compactPriorityDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3
-  },
-  overdueChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EF4444',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-    gap: 4,
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)'
-  },
-  overdueChipText: {
-    fontSize: 9,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase'
-  },
-  cardTitle: { 
-    fontSize: dimensions.width > 600 ? 13 : 12,
-    fontWeight: '600',
-    color: theme.text,
-    marginBottom: dimensions.width > 600 ? 8 : 6,
-    lineHeight: dimensions.width > 600 ? 18 : 16,
-    letterSpacing: -0.1
-  },
-  cardInfoGrid: {
-    gap: 5,
-    marginBottom: 8
-  },
-  cardInfoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    padding: 8,
-    borderRadius: 8,
-    backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'
-  },
-  cardInfoText: {
-    color: theme.textSecondary,
-    fontSize: 11,
-    fontWeight: '600',
-    flex: 1,
-    letterSpacing: -0.1
-  },
-  cardTagsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
-    marginBottom: 6
-  },
-  cardTag: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6
-  },
-  cardTagText: {
-    fontSize: 9,
-    fontWeight: '600'
-  },
-  cardTagMore: {
-    fontSize: 9,
-    fontWeight: '600',
-    paddingVertical: 2
-  },
-  dragIndicator: {
-    position: 'absolute',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginHorizontal: 14,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
-    borderWidth: 2.5,
-    borderColor: theme.primary
-  },
-  dragIndicatorText: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: theme.primary,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase'
-  },
-  statsContainer: {
-    padding: 12,
-  },
-  statItem: {
-    backgroundColor: theme.surface,
-    borderRadius: 14,
-    padding: 12,
-  },
-  statHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  statLabel: {
-    fontSize: 18,
-    fontWeight: '800',
-    marginLeft: 10,
-    color: theme.text,
-    letterSpacing: -0.3,
-    textShadowColor: 'rgba(0,0,0,0.08)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1
-  },
-  statProgress: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  statNumbers: {
-    alignItems: 'flex-end',
-  },
-  statCount: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: theme.text,
-    letterSpacing: -0.5,
-    textShadowColor: 'rgba(0,0,0,0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
-  },
-  statPercentage: {
-    fontSize: 14,
-    color: theme.textSecondary,
-    fontWeight: '600',
-  },
-  // Estilos para barra compacta de filtros
-  filterCompactBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: screenWidth > 768 ? 16 : 10,
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    gap: 6,
-    minHeight: 44,
-  },
-  activeFiltersRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingRight: 8,
-  },
-  filterChipCompact: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1.5,
-  },
-  filterChipCompactText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  filterModalButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  // Estilos del Modal de Filtros
-  filterModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  filterModalContainer: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '85%',
-    overflow: 'hidden',
-  },
-  filterModalHeader: {
-    paddingTop: 20,
-    paddingBottom: 16,
-    paddingHorizontal: 20,
-  },
-  filterModalHeaderContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  filterModalTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.3,
-  },
-  filterModalSubtitle: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.8)',
-    marginTop: 2,
-  },
-  filterModalCloseBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  filterModalBody: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-  },
-  filterSection: {
-    marginBottom: 24,
-  },
-  filterSectionTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 12,
-    letterSpacing: 0.3,
-  },
-  searchInputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 10,
-  },
-  searchInputWrapper: {
-    flex: 1,
-  },
-  searchInputPlaceholder: {
-    fontSize: 15,
-  },
-  priorityButtonsRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  priorityButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    borderWidth: 2,
-    gap: 6,
-  },
-  priorityButtonText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  priorityBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 10,
-    marginLeft: 4,
-  },
-  priorityBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  quickFilterGrid: {
-    gap: 12,
-  },
-  quickFilterCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 14,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    gap: 12,
-  },
-  quickFilterIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  quickFilterCardContent: {
-    flex: 1,
-  },
-  quickFilterCardTitle: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  quickFilterCardCount: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  filterModalFooter: {
-    flexDirection: 'row',
-    padding: 16,
-    gap: 12,
-    borderTopWidth: 1,
-  },
-  filterModalClearBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    gap: 8,
-  },
-  filterModalClearText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  filterModalApplyBtn: {
-    flex: 2,
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-  filterModalApplyGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    gap: 8,
-  },
-  filterModalApplyText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#FFFFFF',
-  },
-  });
-};

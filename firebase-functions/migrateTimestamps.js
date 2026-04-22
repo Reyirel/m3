@@ -2,8 +2,8 @@
 // Script para validar y migrar timestamps en Firestore
 // Ejecuta: node migrateTimestamps.js (local) o deploy como Cloud Function
 
-import { initializeApp, cert } from 'firebase-admin/app';
-import { getFirestore, Timestamp, writeBatch } from 'firebase-admin/firestore';
+import { initializeApp } from 'firebase-admin/app';
+import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import * as fs from 'fs';
 
 // Para local testing, usar: GOOGLE_APPLICATION_CREDENTIALS=path/to/key.json
@@ -292,17 +292,19 @@ if (import.meta.url === `file://${process.argv[1]}`) {
         case 'analyze':
           await analyzeTimestamps();
           break;
-        case 'validate':
+        case 'validate': {
           const valid = await validateMigration();
           process.exit(valid ? 0 : 1);
           break;
+        }
         case 'migrate':
           await migrateAndFixTimestamps();
           break;
-        case 'rollback':
+        case 'rollback': {
           const backupFile = process.argv[3] || './firestore-backup.json';
           await rollbackFromBackup(backupFile);
           break;
+        }
         default:
           console.log(`
 Uso: node migrateTimestamps.js <command>

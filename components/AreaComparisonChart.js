@@ -9,19 +9,18 @@ import {
   Dimensions,
   ScrollView,
   TouchableOpacity,
-  Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
-const { width: screenWidth } = Dimensions.get('window');
+Dimensions.get('window');
 
 export default function AreaComparisonChart({
   areaMetrics = {},
   onAreaSelect,
-  padding = 16,
-  isDesktop = false,
+  _padding = 16,
+  _isDesktop = false,
 }) {
   const { theme, isDark } = useTheme();
 
@@ -39,7 +38,7 @@ export default function AreaComparisonChart({
 
   if (areas.length === 0) {
     return (
-      <View style={[styles.emptyContainer, { backgroundColor: theme.card }]}>
+      <View style={[styles.emptyContainer, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         <Ionicons name="bar-chart-outline" size={48} color={theme.textSecondary} />
         <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
           No hay datos de áreas disponibles
@@ -50,10 +49,10 @@ export default function AreaComparisonChart({
 
   const maxRate = Math.max(...areas.map(a => a.completionRate), 100);
   const getBarColor = (rate) => {
-    if (rate >= 85) return { start: '#6366F1', end: '#8B5CF6' };
-    if (rate >= 60) return { start: '#3B82F6', end: '#06B6D4' };
-    if (rate >= 30) return { start: '#F59E0B', end: '#F97316' };
-    return { start: '#DC2626', end: '#991B1B' };
+    if (rate >= 85) return { start: theme.secondary, end: theme.secondary };
+    if (rate >= 60) return { start: theme.info, end: theme.info };
+    if (rate >= 30) return { start: theme.warning, end: theme.warning };
+    return { start: theme.error, end: theme.error };
   };
 
   return (
@@ -128,7 +127,7 @@ export default function AreaComparisonChart({
                     <Ionicons
                       name="alert-circle"
                       size={12}
-                      color="#DC2626"
+                      color={theme.error}
                     />
                   </View>
                 )}
@@ -151,25 +150,25 @@ export default function AreaComparisonChart({
       {/* Footer con leyenda */}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendColor, { backgroundColor: '#6366F1' }]} />
+          <View style={[styles.legendColor, { backgroundColor: theme.secondary }]} />
           <Text style={[styles.legendText, { color: theme.textSecondary }]}>
             Excelente (85%+)
           </Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendColor, { backgroundColor: '#3B82F6' }]} />
+          <View style={[styles.legendColor, { backgroundColor: theme.info }]} />
           <Text style={[styles.legendText, { color: theme.textSecondary }]}>
             Bueno (60%+)
           </Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendColor, { backgroundColor: '#F59E0B' }]} />
+          <View style={[styles.legendColor, { backgroundColor: theme.warning }]} />
           <Text style={[styles.legendText, { color: theme.textSecondary }]}>
             Atrasado (30%+)
           </Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendColor, { backgroundColor: '#DC2626' }]} />
+          <View style={[styles.legendColor, { backgroundColor: theme.error }]} />
           <Text style={[styles.legendText, { color: theme.textSecondary }]}>
             Crítico (&lt;30%)
           </Text>

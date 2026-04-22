@@ -9,16 +9,14 @@ import {
   deleteDoc, 
   doc, 
   onSnapshot, 
-  query, 
+  query,
   orderBy,
-  where,
   serverTimestamp,
   Timestamp,
   getDoc,
   getDocs,
   arrayUnion,
-  arrayRemove,
-  writeBatch
+  arrayRemove
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getCurrentSession } from './authFirestore';
@@ -27,7 +25,7 @@ import { toMs } from '../utils/dateUtils';
 
 const TASKS_COLLECTION = 'tasks';
 const SUBTASKS_SUBCOLLECTION = 'subtasks';
-const MESSAGES_SUBCOLLECTION = 'messages';
+const _MESSAGES_SUBCOLLECTION = 'messages';
 
 /**
  * ============================================
@@ -122,7 +120,7 @@ export async function createTaskMultiple(task) {
         dueAt: task.dueAt,
         status: 'pendiente'
       });
-    } catch (notifError) {
+    } catch (_notifError) {
       // Notificaciones no son críticas, continuar
     }
     
@@ -297,7 +295,7 @@ export async function addSubtask(taskId, subtask) {
     }
 
     // Obtener sesión
-    const sessionResult = await getCurrentSession();
+    await getCurrentSession();
 
     // Verificar que la tarea padre existe antes de crear subtarea
     const taskRef = doc(db, TASKS_COLLECTION, taskId);
@@ -383,11 +381,6 @@ export async function updateSubtaskStatus(taskId, subtaskId, status) {
     }
     
     await updateDoc(subtaskRef, updateData);
-    
-    // Obtener datos de la tarea para la notificación
-    const taskRef = doc(db, TASKS_COLLECTION, taskId);
-    const taskSnap = await getDoc(taskRef);
-    const taskData = taskSnap.data();
     
     // Obtener sesión actual para saber quién completó
     const session = await getCurrentSession();
@@ -578,7 +571,7 @@ export async function subscribeToTasksMultiple(callback) {
       return () => {};
     }
     
-    const { role, email, department, area, areasPermitidas = [], direcciones = [] } = sessionResult.session;
+    const { role, email, area, areasPermitidas = [], direcciones = [] } = sessionResult.session;
     const userEmail = email?.toLowerCase().trim() || '';
     
     // Helper para verificar si está asignado

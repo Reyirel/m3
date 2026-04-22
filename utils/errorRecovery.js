@@ -27,7 +27,7 @@ const RETRYABLE_ERRORS = [
 ];
 
 // Errores que NO se deben reintentar (fallos permanentes)
-const NON_RETRYABLE_ERRORS = [
+const _NON_RETRYABLE_ERRORS = [
   'INVALID_ARGUMENT',
   'NOT_FOUND',
   'ALREADY_EXISTS',

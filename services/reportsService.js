@@ -11,8 +11,7 @@ import {
   getDocs,
   onSnapshot,
   serverTimestamp,
-  arrayUnion,
-  writeBatch
+  arrayUnion
 } from '../firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toMs } from '../utils/dateUtils';

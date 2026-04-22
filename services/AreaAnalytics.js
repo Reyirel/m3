@@ -119,7 +119,7 @@ export function predictCompletionTrend(areaMetrics, allTasks, area) {
 export function identifyBottlenecks(areaMetrics, allTasks) {
   const bottlenecks = [];
 
-  Object.entries(areaMetrics).forEach(([area, metrics]) => {
+  Object.entries(areaMetrics).forEach(([area, _metrics]) => {
     const areaTasks = allTasks.filter(t => t.area === area);
     const completedTasks = areaTasks.filter(t => t.status === 'cerrada' && t.completedAt && t.createdAt);
 

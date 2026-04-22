@@ -3,7 +3,7 @@
 // Útil para FABs con múltiples opciones
 
 import React, { useState, useRef } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Animated, Platform } from 'react-native';
+import { View, TouchableOpacity, Text, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';

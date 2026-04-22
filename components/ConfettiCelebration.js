@@ -9,7 +9,7 @@ const ConfettiCannon = getConfettiCannon();
 export default function ConfettiCelebration({ 
   trigger, 
   count = 50, 
-  duration = 2000,
+  _duration = 2000,
   fadeOut = true 
 }) {
   const confettiRef = useRef(null);

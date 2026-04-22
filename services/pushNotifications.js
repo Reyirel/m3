@@ -6,8 +6,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { db } from '../firebase';
-import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, query, where, serverTimestamp } from 'firebase/firestore';
-import { getCurrentSession } from './authFirestore';
+import { collection, addDoc, doc, getDocs, deleteDoc, query, where, serverTimestamp } from 'firebase/firestore';
 
 const log = __DEV__ ? console.log : () => {};
 
@@ -17,8 +16,6 @@ const log = __DEV__ ? console.log : () => {};
  */
 export const getPushNotificationToken = async () => {
   try {
-    let token;
-
     if (Platform.OS === 'web') {
       // Web no soporta push notifications igual
       console.warn('Push notifications not available on web');

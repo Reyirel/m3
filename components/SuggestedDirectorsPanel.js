@@ -39,6 +39,7 @@ export default function SuggestedDirectorsPanel({
     let mounted = true;
     loadSuggestedDirectors(mounted);
     return () => { mounted = false; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [secretariosKey]);
 
   const loadSuggestedDirectors = async (mounted = true) => {

@@ -1,6 +1,6 @@
 // components/SuggestedOperativesPanel.js
 // Panel que muestra directores sugeridos basado en secretarios seleccionados
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,11 @@ import { useTheme } from '../contexts/ThemeContext';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 
+const roleLabel = {
+  'director': '👤 Director',
+  'secretario': '🔑 Secretario'
+};
+
 export default function SuggestedOperativesPanel({
   selectedUsers = [],
   onAddUser = () => {},
@@ -23,17 +28,8 @@ export default function SuggestedOperativesPanel({
   const [loading, setLoading] = useState(false);
   const { isDark } = useTheme();
 
-  const roleLabel = {
-    'director': '👤 Director',
-    'secretario': '🔑 Secretario'
-  };
-
   // Cargar directores sugeridos cuando cambien los usuarios seleccionados
-  useEffect(() => {
-    loadSuggestedDirectors();
-  }, [selectedUsers]);
-
-  const loadSuggestedDirectors = async () => {
+  const loadSuggestedDirectors = useCallback(async () => {
     try {
       setLoading(true);
 
@@ -89,7 +85,11 @@ export default function SuggestedOperativesPanel({
     } finally {
       setLoading(false);
     }
-  };
+  }, [selectedUsers]);
+
+  useEffect(() => {
+    loadSuggestedDirectors();
+  }, [loadSuggestedDirectors]);
 
   // No mostrar si no hay secretarios seleccionados
   if (!selectedUsers.some(u => ['secretario', 'admin'].includes(u.role))) {

@@ -5,8 +5,7 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { toDate, toMs } from '../utils/dateUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { notifyTaskAssigned, notifyNewComment, notifyDeadlineApproaching } from './fcm';
-import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
+import { collection, getDocs, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 
 // Configurar handler de notificaciones (solo en móvil — no aplica en web)
@@ -522,7 +521,7 @@ export async function getAllScheduledNotifications() {
   
   try {
     const notifications = await Notifications.getAllScheduledNotificationsAsync();
-    notifications.forEach(notif => {
+    notifications.forEach(_notif => {
     });
     return notifications;
   } catch (e) {
@@ -861,7 +860,7 @@ export function setupNotificationResponseListener() {
   
   const subscription = Notifications.addNotificationResponseReceivedListener(async (response) => {
     const { notification, actionIdentifier } = response;
-    const { taskId, type } = notification.request.content.data;
+    const { taskId } = notification.request.content.data;
     
     
     // Confirmar visualización

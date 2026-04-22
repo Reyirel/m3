@@ -16,7 +16,7 @@ export default function ShimmerEffect({ width = '100%', height = 60, borderRadiu
     );
     shimmer.start();
     return () => shimmer.stop();
-  }, []);
+  }, [translateX]);
 
   const translateXInterpolate = translateX.interpolate({
     inputRange: [0, 1],

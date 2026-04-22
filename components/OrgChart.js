@@ -3,7 +3,7 @@
 // Todos los niveles son colapsables
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Platform, TextInput, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet, TextInput, ActivityIndicator } from 'react-native';
 import Svg, { Line, Circle } from 'react-native-svg';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -42,7 +42,7 @@ function NodeCard({ user, x, y, isVirtual, selected, onPress, theme, isDark }) {
       style={[styles.node, {
         position: 'absolute', left: x, top: y, width: NW, height: NH,
         backgroundColor: isDark ? '#1C1C23' : '#FFFFFF',
-        borderColor: selected ? '#F59E0B' : cfg.border,
+        borderColor: selected ? theme.warning : cfg.border,
         borderWidth: selected ? 2.5 : 1.5,
         shadowColor: cfg.border,
       }]}
@@ -109,7 +109,7 @@ export default function OrgChart({ users, areas = [], fullScreen = false }) {
   // Colapsar todos los secretarios al inicio
   useEffect(() => {
     setCollapsed(new Set(secretarios.map(s => s.id).concat(['__unassigned__'])));
-  }, [secretarios.length]);
+  }, [secretarios]);
 
   // ── Árbol: secretario → directores ────────────────────────────────────────
   const tree = useMemo(() => {
@@ -330,7 +330,7 @@ export default function OrgChart({ users, areas = [], fullScreen = false }) {
             </Svg>
 
             {/* Nodos Admin */}
-            {layout.adminLayouts.map((a, i) => (
+            {layout.adminLayouts.map((a, _i) => (
               <NodeCard key={a.user.id} user={a.user} x={a.x} y={a.y}
                 selected={selectedId === a.user.id} onPress={setSelectedId}
                 theme={theme} isDark={isDark} />
@@ -348,7 +348,7 @@ export default function OrgChart({ users, areas = [], fullScreen = false }) {
             />
 
             {/* Nodos Secretarios + Directores */}
-            {layout.secLayouts.map((s, i) => (
+            {layout.secLayouts.map((s, _i) => (
               <React.Fragment key={s.sec.id}>
                 <NodeCard user={s.sec} x={s.x} y={s.y} isVirtual={s.sec._virtual}
                   selected={selectedId === s.sec.id} onPress={setSelectedId}
@@ -508,9 +508,9 @@ export default function OrgChart({ users, areas = [], fullScreen = false }) {
               <Ionicons
                 name={selectedUser.active !== false ? 'checkmark-circle-outline' : 'close-circle-outline'}
                 size={14}
-                color={selectedUser.active !== false ? '#10B981' : '#EF4444'}
+                color={selectedUser.active !== false ? theme.success : theme.error}
               />
-              <Text style={[styles.detailVal, { color: selectedUser.active !== false ? '#10B981' : '#EF4444' }]}>
+              <Text style={[styles.detailVal, { color: selectedUser.active !== false ? theme.success : theme.error }]}>
                 {selectedUser.active !== false ? 'Activo' : 'Inactivo'}
               </Text>
             </View>

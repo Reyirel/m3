@@ -57,6 +57,7 @@ const PomodoroTimer = memo(function PomodoroTimer({
         clearInterval(intervalRef.current);
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive, isPaused, minutes, seconds]);
   
   const handleSessionEnd = () => {
@@ -146,11 +147,11 @@ const PomodoroTimer = memo(function PomodoroTimer({
   const getSessionColor = () => {
     switch (sessionType) {
       case 'focus':
-        return '#EF4444';
+        return theme.error;
       case 'shortBreak':
-        return '#10B981';
+        return theme.success;
       case 'longBreak':
-        return '#3B82F6';
+        return theme.info;
       default:
         return theme.primary;
     }
@@ -171,7 +172,7 @@ const PomodoroTimer = memo(function PomodoroTimer({
   
   return (
     <Animated.View style={[styles.container, style, { transform: [{ scale: scaleAnim }] }]}>
-      <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <View style={[styles.card, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         {/* Tipo de sesión */}
         <View style={styles.header}>
           <Text style={[styles.sessionType, { color: getSessionColor() }]}>

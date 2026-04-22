@@ -59,6 +59,10 @@ const Avatar = memo(function Avatar({
         },
         style
       ]}
+      accessible={true}
+      accessibilityLabel={`Avatar de ${name || 'usuario'}`}
+      accessibilityRole="image"
+      testID={`avatar-${name?.replace(/\s+/g, '-')}`}
     >
       <Text 
         style={[
