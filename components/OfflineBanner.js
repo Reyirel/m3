@@ -1,14 +1,12 @@
 // components/OfflineBanner.js
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Platform } from 'react-native';
+import { Text, StyleSheet, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTasks } from '../contexts/TasksContext';
 
 export default function OfflineBanner() {
   const { isOnline } = useTasks();
   const translateY = useRef(new Animated.Value(-60)).current;
-  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     Animated.spring(translateY, {
@@ -23,7 +21,7 @@ export default function OfflineBanner() {
     <Animated.View
       style={[
         styles.banner,
-        { top: insets.top, transform: [{ translateY }] },
+        { transform: [{ translateY }] },
       ]}
       pointerEvents="none"
     >

@@ -2,27 +2,31 @@
 import './polyfills'; // Debe ser lo primero
 import 'react-native-gesture-handler';
 
-// 🔒 SEGURIDAD: Deshabilitar console.log en producción, pero mantener errores
+// Filtrar ruido de librerías en web (aplica siempre, dev y prod)
 const originalError = console.error;
-console.log = () => {};
-console.warn = () => {};
-console.info = () => {};
-console.debug = () => {};
-// Filtrar errores de CORS de Google (inofensivos en desarrollo)
+const originalWarn  = console.warn;
+const NOISE_PATTERNS = [
+  'CORS', 'favicon', 'transform-origin',
+  'Unexpected text node', 'onStartShouldSetResponder', 'onResponder',
+];
 console.error = (...args) => {
-  const message = args[0]?.toString() || '';
-  // Filtrar advertencias de librerías en web que no afectan funcionalidad
-  if (
-    message.includes('CORS') ||
-    message.includes('google') ||
-    message.includes('favicon') ||
-    message.includes('transform-origin') ||       // react-native-reanimated 4.x en web
-    message.includes('Unexpected text node') ||   // RNW: nodos de texto en View (librerías)
-    message.includes('onStartShouldSetResponder') || // RNW: props de responder en DOM
-    message.includes('onResponder')               // RNW: props de responder en DOM
-  ) return;
+  const msg = args[0]?.toString() || '';
+  if (NOISE_PATTERNS.some(p => msg.includes(p))) return;
   originalError(...args);
 };
+console.warn = (...args) => {
+  const msg = args[0]?.toString() || '';
+  if (NOISE_PATTERNS.some(p => msg.includes(p))) return;
+  originalWarn(...args);
+};
+
+// Suprimir logs en producción (no en desarrollo)
+const _isProd = typeof __DEV__ !== 'undefined' ? !__DEV__ : process.env.NODE_ENV === 'production';
+if (_isProd) {
+  console.log  = () => {};
+  console.info = () => {};
+  console.debug = () => {};
+}
 
 import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
