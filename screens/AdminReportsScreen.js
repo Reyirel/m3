@@ -64,7 +64,10 @@ const AdminReportsScreen = ({ navigation }) => {
   }, []);
 
   const onRefresh = useCallback(() => {
+    // Con onSnapshot los datos ya son en tiempo real —
+    // solo reseteamos el indicador visual tras un breve delay
     setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 800);
   }, []);
 
   const getFilteredReports = () => {
@@ -932,8 +935,26 @@ const AdminReportsScreen = ({ navigation }) => {
         <FlatList
           data={groupedReports}
           keyExtractor={([key]) => key}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.primary}
+              colors={[theme.primary]}
+            />
+          }
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', paddingVertical: 60, gap: 12 }}>
+              <Ionicons name="document-text-outline" size={52} color={theme.textMuted} />
+              <Text style={{ fontSize: 17, fontWeight: '700', color: theme.text }}>
+                Sin reportes
+              </Text>
+              <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center', paddingHorizontal: 40 }}>
+                No hay reportes que coincidan con los filtros seleccionados
+              </Text>
+            </View>
           }
           windowSize={5}
           maxToRenderPerBatch={4}

@@ -689,6 +689,8 @@ export default function HomeScreen({ navigation }) {
           data={filteredTasks}
           keyExtractor={keyExtractor}
           showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           getItemLayout={(_, index) => ({
             length: 120,
             offset: 120 * index,

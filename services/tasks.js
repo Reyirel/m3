@@ -175,15 +175,20 @@ export async function subscribeToTasks(callback) {
       (snapshot) => {
         if (!isSubscribed) return;
         
+        const now = Date.now();
         const tasks = snapshot.docs.map(doc => {
           const data = doc.data();
+          const status = normalizeStatus(data.status);
+          const dueAt = toMs(data.dueAt) || now;
+          const closedStatuses = ['cerrada', 'cerrado', 'completado'];
           return {
             id: doc.id,
             ...data,
-            status: normalizeStatus(data.status),
-            createdAt: toMs(data.createdAt) || Date.now(),
-            updatedAt: toMs(data.updatedAt) || Date.now(),
-            dueAt: toMs(data.dueAt) || Date.now()
+            status,
+            createdAt: toMs(data.createdAt) || now,
+            updatedAt: toMs(data.updatedAt) || now,
+            dueAt,
+            isDueOverdue: dueAt < now && !closedStatuses.includes(status),
           };
         });
         

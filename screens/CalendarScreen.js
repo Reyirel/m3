@@ -465,9 +465,11 @@ export default function CalendarScreen({ navigation }) {
         />
       </Animated.View>
 
-      <ScrollView 
+      <ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
       >
         {/* Controles de mes con glassmorphism */}
         <Animated.View style={[styles.monthControlsWrapper, calendarAnimatedStyle]}>

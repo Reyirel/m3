@@ -1373,6 +1373,8 @@ export default function MyInboxScreen({ navigation }) {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         windowSize={5}
         maxToRenderPerBatch={6}
         initialNumToRender={8}

@@ -71,6 +71,7 @@ import { setupNotificationResponseListener } from './services/notifications';
 import { initConnectionListener, clearOfflineData } from './services/offlineSync';
 import OfflineIndicator from './components/OfflineIndicator';
 import OfflineSyncIndicator from './components/OfflineSyncIndicator';
+import OfflineBanner from './components/OfflineBanner';
 import ErrorBoundary from './components/ErrorBoundary';
 import ImprovedErrorBoundary from './components/ImprovedErrorBoundary';
 import { startAutoCacheCleanup, stopAutoCacheCleanup } from './utils/cacheManager';
@@ -517,6 +518,7 @@ export default function App() {
 
         <NotificationProvider>
         <TasksProvider key={forceUpdate}>
+        <OfflineBanner />
         <NavigationContainer ref={navigationRef} key={`navigation-${forceUpdate}`}>
           <Stack.Navigator
             screenOptions={{

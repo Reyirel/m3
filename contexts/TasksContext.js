@@ -7,6 +7,8 @@ import logger from '../services/Logger';
 import { subscribeToTasks } from '../services/tasks';
 import { getCurrentSession } from '../services/authFirestore';
 import { deleteManager } from '../utils/deleteManager';
+import { enableNetwork, disableNetwork } from 'firebase/firestore';
+import { db } from '../firebase';
 
 // Usar globalThis para que React.lazy() bundles compartan la misma instancia de contexto
 if (!globalThis.__TASKS_CONTEXT__) {
@@ -17,9 +19,25 @@ export const TasksContext = globalThis.__TASKS_CONTEXT__;
 export function TasksProvider({ children }) {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
   const [hasSession, setHasSession] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const unsubscribeTasksRef = useRef(null);
+
+  // Detectar cambios de conectividad del navegador/dispositivo
+  useEffect(() => {
+    const handleOnline  = () => { setIsOnline(true);  try { enableNetwork(db); } catch {} };
+    const handleOffline = () => { setIsOnline(false); try { disableNetwork(db); } catch {} };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online',  handleOnline);
+      window.addEventListener('offline', handleOffline);
+      setIsOnline(navigator.onLine ?? true);
+      return () => {
+        window.removeEventListener('online',  handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      };
+    }
+  }, []);
 
   // 🔍 EFECTO 1: Verificar disponibilidad de sesión (con reintentos)
   useEffect(() => {
@@ -119,9 +137,10 @@ export function TasksProvider({ children }) {
     tasks,
     setTasks,
     isLoading,
+    isOnline,
     currentUser,
-    deleteManager, // Expose deleteManager for delete operations
-  }), [tasks, isLoading, currentUser]);
+    deleteManager,
+  }), [tasks, isLoading, isOnline, currentUser]);
 
   return (
     <TasksContext.Provider value={value}>
