@@ -108,7 +108,14 @@ export default function TaskDetailScreen({ route, navigation }) {
   // ────────────────────────────────────────────────────────────
   // ASSIGNEES & AREAS STATE
   // ────────────────────────────────────────────────────────────
-  const [selectedAssignees, setSelectedAssignees] = useState([]);
+  const [availableUsers, setAvailableUsers] = useState([]);
+  const [selectedAssignees, setSelectedAssignees] = useState(
+    editingTask?.assignedTo && Array.isArray(editingTask.assignedTo)
+      ? editingTask.assignedTo
+      : editingTask?.assignedTo
+      ? [editingTask.assignedTo]
+      : []
+  );
   const [selectedAreas, setSelectedAreas] = useState(
     editingTask?.areas && Array.isArray(editingTask.areas)
       ? editingTask.areas
@@ -172,6 +179,31 @@ export default function TaskDetailScreen({ route, navigation }) {
       useNativeDriver: true,
     }).start();
   }, [fadeAnim]);
+
+  // Cargar todos los usuarios activos para el selector de asignados
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { getDocs, collection, query, where } = await import('firebase/firestore');
+        const { db } = await import('../firebase');
+        const snap = await getDocs(
+          query(collection(db, 'users'), where('active', '==', true))
+        );
+        if (cancelled) return;
+        const users = snap.docs.map(d => ({
+          id: d.id,
+          name: d.data().displayName || d.data().email || d.id,
+          email: d.data().email || '',
+          avatar: d.data().photoURL || null,
+        }));
+        setAvailableUsers(users);
+      } catch (e) {
+        if (__DEV__) console.warn('[TaskDetail] Error cargando usuarios:', e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // ────────────────────────────────────────────────────────────
   // AI ANALYSIS (Debounced)
@@ -390,16 +422,18 @@ export default function TaskDetailScreen({ route, navigation }) {
             {/* ENHANCED SELECTORS - AREAS */}
             {permissions.canEdit && (
               <AreaSelector
-                selected={selectedAreas}
+                value={selectedAreas}
                 onChange={setSelectedAreas}
+                multiple={true}
               />
             )}
 
             {/* ENHANCED SELECTORS - ASSIGNEES */}
             {permissions.canEdit && (
               <AssigneeSelector
-                selected={selectedAssignees}
+                value={selectedAssignees}
                 onChange={setSelectedAssignees}
+                availableUsers={availableUsers}
               />
             )}
 
