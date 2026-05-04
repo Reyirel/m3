@@ -386,32 +386,15 @@ export default function App() {
   
   // Función de logout que maneja todo el proceso
   const handleLogout = async () => {
+    // Siempre cerrar sesión aunque algo falle
+    try { await logoutUser(); } catch {}
+    try { await clearOfflineData(); } catch {}
+    setIsAuthenticated(false);
+    setIsLoading(false);
+    setForceUpdate(prev => prev + 1);
     try {
-      // Limpiar sesión de AsyncStorage
-      await logoutUser();
-      
-      // Limpiar cache offline
-      await clearOfflineData();
-      
-      // Forzar actualización completa
-      setIsAuthenticated(false);
-      setIsLoading(false);
-      setForceUpdate(prev => prev + 1);
-      
-      // Toast de confirmación
-      Toast.show({
-        type: 'success',
-        text1: 'Sesión cerrada',
-        text2: 'Has cerrado sesión exitosamente',
-        position: 'top'
-      });
-      
-    } catch (error) {
-      // Forzar logout incluso con error
-      setIsAuthenticated(false);
-      setIsLoading(false);
-      setForceUpdate(prev => prev + 1);
-    }
+      Toast.show({ type: 'success', text1: 'Sesión cerrada', position: 'top' });
+    } catch {}
   };
   
   useEffect(() => {

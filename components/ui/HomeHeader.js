@@ -30,6 +30,12 @@ export default function HomeHeader({
   const { theme } = useTheme();
 
   const handleLogout = () => {
+    if (Platform.OS === 'web') {
+      if (window.confirm('¿Cerrar sesión?\n¿Estás seguro de que deseas salir?')) {
+        onLogout?.();
+      }
+      return;
+    }
     Alert.alert('¿Cerrar sesión?', '¿Estás seguro de que deseas salir?', [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Salir', style: 'destructive', onPress: onLogout },
