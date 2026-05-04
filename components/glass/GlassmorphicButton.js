@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
-import { PremiumGlassCard } from './index';
+import { PremiumGlassCard } from '../index';
 
 const GlassmorphicButton = ({
   title,

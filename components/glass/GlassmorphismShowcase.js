@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
-import PremiumGlassCard from './PremiumGlassCard';
+import PremiumGlassCard from '../PremiumGlassCard';
 import { useTheme } from '../../contexts/ThemeContext';
 import { GLASS_PRESETS } from '../../hooks/useGlassmorphism';
 
