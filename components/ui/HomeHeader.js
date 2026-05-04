@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert, Platform,
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  Alert, Platform, Modal, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import GlassChip from './GlassChip';
 import SearchBar from '../SearchBar';
+import { logoutUser } from '../../services/authFirestore';
 
 const FILTERS = [
   { id: 'todas',       label: 'Todas',       icon: 'list'                          },
@@ -27,24 +29,28 @@ export default function HomeHeader({
   statusCounts = {},
   onLogout,
 }) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+  const [showModal, setShowModal] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const handleLogout = () => {
+  const confirmLogout = async () => {
+    setLoggingOut(true);
+    try {
+      await logoutUser();
+    } catch {}
+
     if (Platform.OS === 'web') {
-      if (window.confirm('¿Cerrar sesión?\n¿Estás seguro de que deseas salir?')) {
-        onLogout?.();
-      }
+      // Reload is the most reliable way to reset nav state on web
+      window.location.reload();
       return;
     }
-    Alert.alert('¿Cerrar sesión?', '¿Estás seguro de que deseas salir?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Salir', style: 'destructive', onPress: onLogout },
-    ]);
+    setShowModal(false);
+    onLogout?.();
   };
 
   return (
     <View>
-      {/* Gradient header */}
+      {/* ─── Gradient header ─── */}
       <LinearGradient
         colors={theme.gradientHeader}
         start={{ x: 0, y: 0 }}
@@ -60,7 +66,7 @@ export default function HomeHeader({
             </View>
           </View>
           <TouchableOpacity
-            onPress={handleLogout}
+            onPress={() => setShowModal(true)}
             style={styles.logoutBtn}
             accessibilityLabel="Cerrar sesión"
             accessibilityRole="button"
@@ -70,25 +76,17 @@ export default function HomeHeader({
         </View>
       </LinearGradient>
 
-      {/* Search bar — flota sobre el borde inferior del gradient */}
+      {/* ─── Search bar ─── */}
       <View style={styles.searchWrapper}>
         <View style={[
           styles.searchCard,
-          {
-            backgroundColor: theme.glass,
-            borderColor: theme.glassBorder,
-            shadowColor: theme.shadowColor,
-          },
+          { backgroundColor: theme.glass, borderColor: theme.glassBorder, shadowColor: theme.shadowColor },
         ]}>
-          <SearchBar
-            onSearch={onSearch}
-            placeholder="Buscar tareas..."
-            initialValue={searchText}
-          />
+          <SearchBar onSearch={onSearch} placeholder="Buscar tareas..." initialValue={searchText} />
         </View>
       </View>
 
-      {/* Filter chips */}
+      {/* ─── Filter chips ─── */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -106,6 +104,55 @@ export default function HomeHeader({
           />
         ))}
       </ScrollView>
+
+      {/* ─── Logout confirmation modal ─── */}
+      <Modal visible={showModal} transparent animationType="fade" onRequestClose={() => setShowModal(false)}>
+        <View style={styles.overlay}>
+          <View style={[
+            styles.card,
+            {
+              backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+              shadowColor: theme.shadowColor,
+              borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+            },
+          ]}>
+            {/* Icon */}
+            <View style={[styles.iconCircle, { backgroundColor: 'rgba(159,34,65,0.12)' }]}>
+              <Ionicons name="log-out-outline" size={28} color={theme.primary} />
+            </View>
+
+            <Text style={[styles.modalTitle, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>
+              Cerrar sesión
+            </Text>
+            <Text style={[styles.modalSub, { color: isDark ? 'rgba(255,255,255,0.55)' : '#6B6B6B' }]}>
+              ¿Estás seguro de que deseas salir de tu cuenta?
+            </Text>
+
+            <View style={styles.btnRow}>
+              <TouchableOpacity
+                onPress={() => setShowModal(false)}
+                style={[styles.btn, styles.btnCancel, { borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.12)' }]}
+                disabled={loggingOut}
+              >
+                <Text style={[styles.btnText, { color: isDark ? 'rgba(255,255,255,0.70)' : '#555' }]}>
+                  Cancelar
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={confirmLogout}
+                style={[styles.btn, styles.btnConfirm, { backgroundColor: theme.primary }]}
+                disabled={loggingOut}
+              >
+                {loggingOut
+                  ? <ActivityIndicator size="small" color="#FFF" />
+                  : <Text style={[styles.btnText, { color: '#FFF', fontWeight: '700' }]}>Salir</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -128,9 +175,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     justifyContent: 'space-between',
   },
-  userBlock: {
-    flex: 1,
-  },
+  userBlock: { flex: 1 },
   greeting: {
     fontSize: 14,
     fontWeight: '500',
@@ -173,11 +218,7 @@ const styles = StyleSheet.create({
     marginLeft: 12,
     marginTop: 2,
   },
-  searchWrapper: {
-    marginTop: -18,
-    paddingHorizontal: 16,
-    zIndex: 10,
-  },
+  searchWrapper: { marginTop: -18, paddingHorizontal: 16, zIndex: 10 },
   searchCard: {
     borderRadius: 14,
     borderWidth: 1,
@@ -187,13 +228,58 @@ const styles = StyleSheet.create({
     elevation: 4,
     overflow: 'hidden',
   },
-  chipsScroll: {
-    marginTop: 12,
+  chipsScroll: { marginTop: 12 },
+  chipsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 4 },
+
+  // Modal
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
   },
-  chipsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingHorizontal: 16,
-    paddingBottom: 4,
+  card: {
+    width: '100%',
+    maxWidth: 340,
+    borderRadius: 24,
+    borderWidth: 1,
+    padding: 28,
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.18,
+    shadowRadius: 32,
+    elevation: 16,
   },
+  iconCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: '800',
+    letterSpacing: -0.3,
+    marginBottom: 8,
+  },
+  modalSub: {
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 28,
+  },
+  btnRow: { flexDirection: 'row', gap: 12, width: '100%' },
+  btn: {
+    flex: 1,
+    height: 48,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  btnCancel: { borderWidth: 1.5 },
+  btnConfirm: {},
+  btnText: { fontSize: 15 },
 });
