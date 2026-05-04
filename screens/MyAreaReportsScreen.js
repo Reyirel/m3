@@ -23,7 +23,6 @@ import { hapticSuccess, hapticWarning } from '../utils/haptics';
 import { getDireccionesBySecretaria } from '../config/areas';
 import { useNotification } from '../contexts/NotificationContext';
 import { useTasks } from '../contexts/TasksContext';
-import AmbientOrbs from '../components/AmbientOrbs';
 
 const MyAreaReportsScreen = ({ navigation }) => {
   const { theme, isDark } = useTheme();
@@ -410,7 +409,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
   const styles = useMemo(() => StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: 'transparent',
+      backgroundColor: theme.background,
     },
     header: {
       flexDirection: 'row',
@@ -780,7 +779,6 @@ const MyAreaReportsScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <AmbientOrbs intensity="medium" />
       <LinearGradient colors={theme.gradientHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { shadowColor: theme.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} accessibilityLabel="Volver" accessibilityRole="button">
           <Ionicons name="arrow-back" size={24} color="#FFFFFF" />

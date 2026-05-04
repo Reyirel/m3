@@ -154,7 +154,7 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
               <View style={styles.tabContent}>
                 {/* Badge */}
                 {badge != null && (
-                  <View style={[styles.badge, options.tabBarBadgeStyle]}>
+                  <View style={[styles.badge, { backgroundColor: theme.error }, options.tabBarBadgeStyle]}>
                     {typeof badge === 'number' && badge > 0 && (
                       <Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Text>
                     )}

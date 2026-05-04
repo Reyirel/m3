@@ -21,7 +21,6 @@ import ShimmerEffect from '../components/ShimmerEffect';
 import ProgressBar from '../components/ProgressBar';
 import Avatar from '../components/Avatar';
 import WebSafeBlur from '../components/WebSafeBlur';
-import AmbientOrbs from '../components/AmbientOrbs';
 
 Dimensions.get('window');
 
@@ -202,7 +201,7 @@ export default function AreaChiefDashboard({ navigation }) {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: 'transparent', paddingHorizontal: 16, paddingTop: 60 }]}>
+      <View style={[styles.container, { backgroundColor: theme.background, paddingHorizontal: 16, paddingTop: 60 }]}>
         <ShimmerEffect width="60%" height={28} borderRadius={8} />
         <View style={{ marginTop: 20, gap: 12 }}>
           {[...Array(3)].map((_, i) => (
@@ -220,7 +219,7 @@ export default function AreaChiefDashboard({ navigation }) {
 
   if (loadError) {
     return (
-      <View style={[styles.container, { backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', padding: 40, gap: 16 }]}>
+      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: 40, gap: 16 }]}>
         <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: theme.errorAlpha, justifyContent: 'center', alignItems: 'center' }}>
           <Ionicons name="cloud-offline-outline" size={48} color={theme.error} />
         </View>
@@ -242,11 +241,8 @@ export default function AreaChiefDashboard({ navigation }) {
 
   return (
     <Animated.View
-      style={[styles.container, { backgroundColor: 'transparent' }, { opacity: fadeAnim }]}
+      style={[styles.container, { backgroundColor: theme.background }, { opacity: fadeAnim }]}
     >
-      {/* Premium Ambient Orbs - Glasmorfismo */}
-      <AmbientOrbs intensity="medium" />
-      
       {/* Header */}
       <LinearGradient
         colors={theme.gradientHeader}

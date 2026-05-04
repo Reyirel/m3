@@ -26,7 +26,6 @@ const Swipeable = getSwipeable();
 import { useNotification } from '../contexts/NotificationContext';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
-import AmbientOrbs from '../components/AmbientOrbs';
 
 const NotificationCard = React.memo(({ item, onPress, onDelete, theme, isDark, getColor, getIcon }) => (
   <View
@@ -300,7 +299,7 @@ export default function NotificationsScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: 'transparent', paddingHorizontal: 16, paddingTop: 60 }]}>
+      <View style={[styles.container, { backgroundColor: theme.background, paddingHorizontal: 16, paddingTop: 60 }]}>
         {[...Array(6)].map((_, i) => (
           <View key={i} style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
             <ShimmerEffect width={44} height={44} borderRadius={22} />
@@ -315,9 +314,7 @@ export default function NotificationsScreen({ navigation }) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      {/* Premium Ambient Orbs - Glasmorfismo */}
-      <AmbientOrbs intensity="medium" />
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       {/* Header */}

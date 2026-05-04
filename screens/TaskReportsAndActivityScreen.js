@@ -24,7 +24,6 @@ import { useTasks } from '../contexts/TasksContext';
 import ExportReportModal from '../components/ExportReportModal';
 import { useNotification } from '../contexts/NotificationContext';
 import ShimmerEffect from '../components/ShimmerEffect';
-import AmbientOrbs from '../components/AmbientOrbs';
 
 const { width } = Dimensions.get('window');
 
@@ -47,7 +46,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
   const styles = useMemo(() => StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: 'transparent',
+      backgroundColor: theme.background,
     },
     header: {
       paddingHorizontal: 16,
@@ -538,7 +537,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Header shimmer */}
         <LinearGradient colors={theme.gradientHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { paddingTop: 12, paddingBottom: 12 }]}>
           <ShimmerEffect width={32} height={32} borderRadius={8} />
@@ -576,7 +575,6 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
-      <AmbientOrbs intensity="medium" />
       <LinearGradient colors={theme.gradientHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
         {/* Botón de regresar */}
         <TouchableOpacity

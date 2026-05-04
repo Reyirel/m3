@@ -680,8 +680,50 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     letterSpacing: 0.4,
     textTransform: 'uppercase'
   },
-  statsContainer: {
+  statsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     padding: 12,
+    gap: 10,
+  },
+  statCard: {
+    width: '47%',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    overflow: 'hidden',
+  },
+  statColorBar: {
+    height: 4,
+    width: '100%',
+  },
+  statCardInner: {
+    padding: 14,
+  },
+  statCardCount: {
+    fontSize: 34,
+    fontWeight: '800',
+    letterSpacing: -1,
+    lineHeight: 38,
+  },
+  statCardLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginTop: 2,
+    marginBottom: 10,
+  },
+  statBarBg: {
+    height: 5,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 6,
+  },
+  statBarFill: {
+    height: '100%',
+    borderRadius: 3,
+  },
+  statCardPct: {
+    fontSize: 11,
+    fontWeight: '600',
   },
   statItem: {
     backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.80)',

@@ -23,7 +23,6 @@ import ShimmerEffect from '../components/ShimmerEffect';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
 import { toMs } from '../utils/dateUtils';
-import AmbientOrbs from '../components/AmbientOrbs';
 
 Dimensions.get('window');
 
@@ -81,7 +80,7 @@ export default function TaskProgressScreen({ route, navigation }) {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]}>
+      <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Header bar shimmer */}
         <ShimmerEffect width="100%" height={56} borderRadius={0} />
         <View style={{ flex: 1, padding: 16 }}>
@@ -102,7 +101,7 @@ export default function TaskProgressScreen({ route, navigation }) {
 
   if (!progressData) {
     return (
-      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={styles.emptyContainer}>
           <Ionicons name="alert-circle" size={64} color={theme.textSecondary} />
           <Text style={[styles.emptyText, { color: theme.text }]}>
@@ -116,8 +115,7 @@ export default function TaskProgressScreen({ route, navigation }) {
   const { overallProgress, progressByAssignee, subtaskStats, isComplete } = progressData;
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <AmbientOrbs intensity="medium" />
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       {/* Header */}
       <LinearGradient colors={theme.gradientHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.headerBar, { shadowColor: theme.primary }]}>

@@ -50,7 +50,6 @@ import { subscribeToAreas } from '../services/area/areaManagement';
 import { getAreaType } from '../config/areas';
 import { MAX_WIDTHS } from '../theme/tokens';
 import { toMs } from '../utils/dateUtils';
-import AmbientOrbs from '../components/AmbientOrbs';
 
 
 export default function ReportsScreen({ navigation }) {
@@ -657,7 +656,7 @@ export default function ReportsScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
         <LinearGradient
           colors={theme.gradientHeader}
           start={{ x: 0, y: 0 }}
@@ -685,9 +684,6 @@ export default function ReportsScreen({ navigation }) {
 
   return (
     <View style={[styles.container, Platform.OS === 'web' && { minHeight: '100vh' }]}>
-      {/* Premium Ambient Orbs - Glasmorfismo */}
-      <AmbientOrbs intensity="medium" />
-      
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }, Platform.OS === 'web' && { width: '100%', paddingHorizontal: padding }]}>
         {/* Header Premium Compacto */}
         <Animated.View style={{ opacity: Platform.OS === 'web' ? 1 : headerOpacity, transform: Platform.OS === 'web' ? [] : [{ translateY: headerSlide }] }}>
@@ -886,35 +882,28 @@ export default function ReportsScreen({ navigation }) {
               </View>
             </View>
 
-            {/* Grid de Métricas Compactas */}
+            {/* Grid de Métricas */}
             <View style={styles.metricsRow}>
-              {/* Completadas */}
-              <View style={[styles.metricItem, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
-                <View style={[styles.metricDot, { backgroundColor: theme.success }]} />
-                <Text style={[styles.metricNumber, { color: theme.text }]}>{currentStats.completed}</Text>
-                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Listas</Text>
-              </View>
-
-              {/* En Progreso */}
-              <View style={[styles.metricItem, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
-                <View style={[styles.metricDot, { backgroundColor: theme.info }]} />
-                <Text style={[styles.metricNumber, { color: theme.text }]}>{currentStats.inProgress}</Text>
-                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Activas</Text>
-              </View>
-
-              {/* Pendientes */}
-              <View style={[styles.metricItem, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
-                <View style={[styles.metricDot, { backgroundColor: theme.warning }]} />
-                <Text style={[styles.metricNumber, { color: theme.text }]}>{currentStats.pending}</Text>
-                <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Espera</Text>
-              </View>
-
-              {/* Vencidas */}
-              <View style={[styles.metricItem, styles.metricItemAlert, { backgroundColor: currentStats.overdue > 0 ? theme.errorAlpha : (isDark ? theme.glass : 'rgba(255,255,255,0.85)'), borderColor: currentStats.overdue > 0 ? theme.errorDark + '50' : (isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)') }]}>
-                <View style={[styles.metricDot, { backgroundColor: theme.error }]} />
-                <Text style={[styles.metricNumber, { color: currentStats.overdue > 0 ? theme.error : theme.text }]}>{currentStats.overdue}</Text>
-                <Text style={[styles.metricLabel, { color: currentStats.overdue > 0 ? theme.error : theme.textSecondary }]}>Vencidas</Text>
-              </View>
+              {[
+                { label: 'Completadas', value: currentStats.completed,  accent: theme.success, bg: theme.successAlpha },
+                { label: 'En progreso', value: currentStats.inProgress, accent: theme.info,    bg: theme.infoAlpha    },
+                { label: 'Pendientes',  value: currentStats.pending,    accent: theme.warning, bg: theme.warningAlpha },
+                { label: 'Vencidas',    value: currentStats.overdue,    accent: theme.error,   bg: currentStats.overdue > 0 ? theme.errorAlpha : (isDark ? theme.glass : 'rgba(255,255,255,0.85)') },
+              ].map(({ label, value, accent, bg }) => (
+                <View
+                  key={label}
+                  style={[
+                    styles.metricItem,
+                    { backgroundColor: bg, borderColor: accent + '40' },
+                  ]}
+                >
+                  <View style={[styles.metricAccentBar, { backgroundColor: accent }]} />
+                  <View style={{ alignItems: 'center', paddingHorizontal: 8 }}>
+                    <Text style={[styles.metricNumber, { color: accent }]}>{value}</Text>
+                    <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>{label}</Text>
+                  </View>
+                </View>
+              ))}
             </View>
           </Animated.View>
 
@@ -1833,31 +1822,28 @@ const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge, width,
     },
     metricItem: {
       flex: 1,
-      alignItems: 'center',
-      paddingVertical: 16,
-      paddingHorizontal: 8,
-      borderRadius: 14,
-      borderWidth: 1,
+      borderRadius: 16,
+      borderWidth: 1.5,
+      overflow: 'hidden',
     },
-    metricItemAlert: {
-      // For overdue special styling
-    },
-    metricDot: {
-      width: 8,
-      height: 8,
-      borderRadius: 4,
-      marginBottom: 8,
+    metricAccentBar: {
+      height: 4,
+      width: '100%',
+      marginBottom: 10,
     },
     metricNumber: {
-      fontSize: 22,
+      fontSize: 28,
       fontWeight: '800',
-      letterSpacing: -0.5,
+      letterSpacing: -1,
+      textAlign: 'center',
     },
     metricLabel: {
       fontSize: 11,
       fontWeight: '600',
       marginTop: 4,
-      letterSpacing: 0.2,
+      marginBottom: 12,
+      textAlign: 'center',
+      letterSpacing: 0.1,
     },
     // Legacy stat styles (for compatibility)
     stat: {

@@ -16,15 +16,14 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  GlassmorphicHeader,
   GlassmorphicCard,
   GlassmorphicToggle,
   GlassmorphicButton,
   GlassmorphicDivider,
   GlassmorphicEmptyState,
 } from '../components';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
-import AmbientOrbs from '../components/AmbientOrbs';
 import { hapticMedium } from '../utils/haptics';
 import { useResponsive } from '../utils/responsive';
 
@@ -314,16 +313,14 @@ const SettingsScreenEnhanced = ({ navigation }) => {
   );
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <AmbientOrbs intensity="low" />
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
 
       {/* Header */}
-      <GlassmorphicHeader
+      <ScreenHeader
         title="Configuración"
         subtitle="Personaliza tu experiencia"
         icon="settings"
-        showGradient={true}
-        onBackPress={() => navigation.goBack()}
+        onBack={() => navigation.goBack()}
       />
 
       <ScrollView

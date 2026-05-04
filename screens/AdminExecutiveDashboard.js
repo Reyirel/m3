@@ -30,7 +30,6 @@ import { toMs } from '../utils/dateUtils';
 import { resolveAreaName } from '../config/areas';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
-import AmbientOrbs from '../components/AmbientOrbs';
 
 const { width } = Dimensions.get('window');
 const chartWidth = Math.min(width - 48, 500);
@@ -648,7 +647,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
   
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Header shimmer */}
         <LinearGradient
           colors={theme.gradientHeader}
@@ -679,8 +678,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <AmbientOrbs intensity="medium" />
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       {/* Header */}
       <LinearGradient

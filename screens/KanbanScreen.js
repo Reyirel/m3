@@ -18,8 +18,6 @@ import ShimmerEffect from '../components/ShimmerEffect';
 import SpringCard from '../components/SpringCard';
 import BottomSheet from '../components/BottomSheet';
 import FadeInView from '../components/FadeInView';
-import { PremiumGlassCard, GlassmorphicHeader, GlassmorphicFilterChips, GlassmorphicStatsCard, GlassmorphicEmptyState, GlassmorphicProgress } from '../components'; // ✨ UPGRADED: Premium Glassmorphism
-import { useGlassPreset } from '../hooks/useGlassmorphism'; // ✨ NEW: Glassmorphism config
 
 const GestureHandlerRootView = getGestureHandlerRootView();
 import CircularProgress from '../components/CircularProgress';
@@ -34,7 +32,6 @@ import { canChangeTaskStatus } from '../services/permissions';
 import { toMs } from '../utils/dateUtils';
 import QuickTip, { TIPS } from '../components/QuickTip';
 import SyncIndicator from '../components/SyncIndicator';
-import AmbientOrbs from '../components/AmbientOrbs';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
 import { useKanbanFilters } from '../hooks/useKanbanFilters';
@@ -243,26 +240,25 @@ export default function KanbanScreen({ navigation }) {
                         item.priority === 'media' ? theme.warning : theme.border;
     
     return (
-      <PremiumGlassCard
-        onPress={() => {
-          hapticLight();
-          openDetail(item);
-        }}
-        onLongPress={() => {
-          hapticMedium();
-          setContextMenu({ visible: true, task: item, position: { x: 0, y: 0 } });
-        }}
-        pressable={true}
-        intensity={item.priority === 'alta' ? 'strong' : 'medium'}
-        glowEffect={item.priority === 'alta'}
-        glowColor={priorityColor}
-        highlighted={item.priority === 'alta'}
-        showRimGlow={true}
-        showGradient={true}
-        padding={compactView ? 8 : 12}
-        borderRadius={14}
+      <TouchableOpacity
+        onPress={() => { hapticLight(); openDetail(item); }}
+        onLongPress={() => { hapticMedium(); setContextMenu({ visible: true, task: item, position: { x: 0, y: 0 } }); }}
+        activeOpacity={0.85}
+      >
+      <View
         style={[
           styles.card,
+          {
+            backgroundColor: isDark ? theme.card : theme.glassStrong,
+            borderWidth: 1,
+            borderColor: borderColor + '55',
+            padding: 12,
+            shadowColor: theme.shadowColor,
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.07,
+            shadowRadius: 8,
+            elevation: 2,
+          },
           draggingTask?.id === item.id && styles.cardDragging,
           compactView && { paddingVertical: 8, paddingHorizontal: 12 }
         ]}
@@ -370,7 +366,8 @@ export default function KanbanScreen({ navigation }) {
             onStatusChange={handleStatusChange}
           />
         )}
-      </PremiumGlassCard>
+      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -525,7 +522,7 @@ export default function KanbanScreen({ navigation }) {
   if (isLoading) {
     return (
       <GestureHandlerRootView style={{ flex: 1 }}>
-        <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+        <View style={[styles.container, { backgroundColor: theme.background }]}>
           <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
             <LinearGradient
               colors={theme.gradientHeader}
@@ -557,10 +554,7 @@ export default function KanbanScreen({ navigation }) {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-        {/* Premium Ambient Orbs - Glasmorfismo */}
-        <AmbientOrbs intensity="medium" />
-        
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
         <LinearGradient
           colors={theme.gradientHeader}
@@ -1191,32 +1185,31 @@ export default function KanbanScreen({ navigation }) {
         <BottomSheet
           visible={showStats}
           onClose={() => setShowStats(false)}
-          height={400}
+          height={340}
           title="Estadísticas del Tablero"
         >
-          <View style={styles.statsContainer}>
+          <View style={styles.statsGrid}>
             {STATUSES.map(status => {
               const statusTasks = tasksByStatus[status.key]?.byStatus || [];
               const total = tasks.length;
-              const percentage = total > 0 ? (statusTasks.length / total) * 100 : 0;
-              
+              const pct = total > 0 ? (statusTasks.length / total) * 100 : 0;
+
               return (
-                <View key={status.key} style={styles.statItem}>
-                  <View style={styles.statHeader}>
-                    <Ionicons name={status.icon} size={20} color={status.color} />
-                    <Text style={styles.statLabel}>{status.label}</Text>
-                  </View>
-                  <View style={styles.statProgress}>
-                    <CircularProgress
-                      size={60}
-                      strokeWidth={6}
-                      progress={percentage}
-                      color={status.color}
-                    />
-                    <View style={styles.statNumbers}>
-                      <Text style={styles.statCount}>{statusTasks.length}</Text>
-                      <Text style={styles.statPercentage}>{percentage.toFixed(0)}%</Text>
+                <View
+                  key={status.key}
+                  style={[
+                    styles.statCard,
+                    { backgroundColor: isDark ? theme.surfaceL2 : theme.glassStrong, borderColor: status.color + '40' },
+                  ]}
+                >
+                  <View style={[styles.statColorBar, { backgroundColor: status.color }]} />
+                  <View style={styles.statCardInner}>
+                    <Text style={[styles.statCardCount, { color: status.color }]}>{statusTasks.length}</Text>
+                    <Text style={[styles.statCardLabel, { color: theme.text }]}>{status.label}</Text>
+                    <View style={[styles.statBarBg, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.07)' }]}>
+                      <View style={[styles.statBarFill, { width: `${pct}%`, backgroundColor: status.color }]} />
                     </View>
+                    <Text style={[styles.statCardPct, { color: theme.textSecondary }]}>{pct.toFixed(0)}%</Text>
                   </View>
                 </View>
               );

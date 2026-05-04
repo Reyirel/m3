@@ -21,7 +21,6 @@ import { MAX_WIDTHS } from '../theme/tokens';
 import CreateUserForm from '../components/admin/CreateUserForm';
 import PasswordResetForm from '../components/admin/PasswordResetForm';
 import UserListPanel from '../components/admin/UserListPanel';
-import AmbientOrbs from '../components/AmbientOrbs';
 
 
 export default function AdminScreen({ navigation, onLogout }) {
@@ -196,7 +195,7 @@ export default function AdminScreen({ navigation, onLogout }) {
   // Show shimmer while fetching data
   if (isLoading) {
     return (
-      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Header shimmer */}
         <ShimmerEffect width="100%" height={110} borderRadius={0} style={{ marginBottom: 16 }} />
         {/* Stat cards row 1 */}
@@ -218,7 +217,7 @@ export default function AdminScreen({ navigation, onLogout }) {
   // Show error if no user session
   if (!currentUser) {
     return (
-      <View style={[styles.container, styles.loadingContainer, { backgroundColor: 'transparent' }]}>
+      <View style={[styles.container, styles.loadingContainer, { backgroundColor: theme.background }]}>
         <Ionicons name="alert-circle" size={60} color={theme.text} style={{ marginBottom: 16, opacity: 0.5 }} />
         <Text style={[styles.loadingText, { color: theme.text, marginBottom: 24 }]}>No hay sesión activa</Text>
         <TouchableOpacity 
@@ -232,10 +231,7 @@ export default function AdminScreen({ navigation, onLogout }) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      {/* Premium Ambient Orbs - Glasmorfismo */}
-      <AmbientOrbs intensity="medium" />
-      
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       {/* Modal de Tareas Urgentes */}
       <Modal
@@ -968,7 +964,7 @@ export default function AdminScreen({ navigation, onLogout }) {
 
       {/* ── MODAL: Organigrama Municipal ─────────────────────────── */}
       <Modal visible={showOrgModal} animationType="slide" transparent={false} onRequestClose={() => setShowOrgModal(false)}>
-        <View style={{ flex: 1, backgroundColor: 'transparent' }}>
+        <View style={{ flex: 1, backgroundColor: theme.background }}>
           {/* Header del modal */}
           <LinearGradient
             colors={theme.gradientHeader}

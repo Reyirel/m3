@@ -26,7 +26,6 @@ import { SPACING, RADIUS, SHADOWS, MAX_WIDTHS } from '../theme/tokens';
 import { isOverdue, toMs } from '../utils/dateUtils';
 import SyncIndicator from '../components/SyncIndicator';
 import { getDireccionesBySecretaria } from '../config/areas';
-import AmbientOrbs from '../components/AmbientOrbs';
 
 
 export default function MyInboxScreen({ navigation }) {
@@ -714,9 +713,6 @@ export default function MyInboxScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      {/* Premium Ambient Orbs - Glasmorfismo */}
-      <AmbientOrbs intensity="medium" />
-      
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       
       {/* Header Premium Compacto */}
@@ -1407,7 +1403,7 @@ export default function MyInboxScreen({ navigation }) {
 const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: theme.background,
   },
   contentWrapper: {
     flex: 1,

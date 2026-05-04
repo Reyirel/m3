@@ -26,7 +26,6 @@ import ProgressBar from '../components/ProgressBar';
 import Avatar from '../components/Avatar';
 import ShimmerEffect from '../components/ShimmerEffect';
 import { toMs } from '../utils/dateUtils';
-import AmbientOrbs from '../components/AmbientOrbs';
 
 const { width } = Dimensions.get('window');
 
@@ -244,7 +243,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
         <LinearGradient
           colors={theme.gradientHeader}
           style={[styles.header, { justifyContent: 'flex-end', paddingBottom: 20 }]}
@@ -270,7 +269,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
 
   if (loadError) {
     return (
-      <View style={[styles.container, { backgroundColor: 'transparent', justifyContent: 'center', alignItems: 'center', padding: 32 }]}>
+      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: 32 }]}>
         <Ionicons name="cloud-offline-outline" size={56} color={theme.textSecondary} />
         <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text, marginTop: 16, textAlign: 'center' }}>
           Error al cargar
@@ -292,10 +291,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      {/* Premium Ambient Orbs - Glasmorfismo */}
-      <AmbientOrbs intensity="medium" />
-      
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Header */}
       <LinearGradient
         colors={theme.gradientHeader}

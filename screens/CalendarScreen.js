@@ -17,8 +17,7 @@ import { useResponsive } from '../utils/responsive';
 import { SPACING, RADIUS, SHADOWS, MAX_WIDTHS } from '../theme/tokens';
 import WebSafeBlur from '../components/WebSafeBlur';
 import { toMs } from '../utils/dateUtils';
-import AmbientOrbs from '../components/AmbientOrbs';
-import { PremiumGlassCard, GlassmorphicHeader, GlassmorphicDivider, GlassmorphicEmptyState } from '../components'; // ✨ UPGRADED: Premium Glassmorphism
+import ScreenHeader from '../components/ui/ScreenHeader';
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -436,18 +435,13 @@ export default function CalendarScreen({ navigation }) {
   
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      {/* Premium Ambient Orbs - Glasmorfismo */}
-      <AmbientOrbs intensity="medium" />
-      
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
-      {/* ✨ Glassmorphic Header */}
       <Animated.View style={[{ opacity: headerOpacity, transform: [{ translateY: headerSlide }] }]}>
-        <GlassmorphicHeader
+        <ScreenHeader
           title="Calendario"
           subtitle="Vista mensual de tareas y eventos"
           icon="calendar"
-          showGradient={true}
           actions={[
             {
               icon: 'today-outline',
@@ -458,8 +452,7 @@ export default function CalendarScreen({ navigation }) {
                 showSuccess('¡Vista actualizada a hoy!');
                 hapticSuccess();
               },
-              disabled: false,
-              color: '#FFFFFF'
+              color: '#FFFFFF',
             }
           ]}
         />

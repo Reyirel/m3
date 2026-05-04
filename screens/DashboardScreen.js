@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  GlassmorphicHeader,
   GlassmorphicCard,
   GlassmorphicStatsCard,
   GlassmorphicDivider,
@@ -23,9 +22,9 @@ import {
   GlassmorphicTabs,
   TaskCard,
 } from '../components';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
-import AmbientOrbs from '../components/AmbientOrbs';
 import { useResponsive } from '../utils/responsive';
 
 const DashboardScreen = ({ navigation }) => {
@@ -83,16 +82,14 @@ const DashboardScreen = ({ navigation }) => {
   ), [navigation]);
 
   return (
-    <View style={styles.container}>
-      <AmbientOrbs intensity="medium" />
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
 
       {/* Header */}
-      <GlassmorphicHeader
+      <ScreenHeader
         title="Dashboard"
         subtitle="Resumen de tu productividad"
         icon="bars-chart-outline"
-        showGradient={true}
-        onBackPress={() => navigation.goBack()}
+        onBack={() => navigation.goBack()}
       />
 
       <ScrollView

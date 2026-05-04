@@ -17,7 +17,6 @@ import { notifyNewChatMessage } from '../services/emailNotifications';
 import ChatImageUpload from '../components/ChatImageUpload';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
-import AmbientOrbs from '../components/AmbientOrbs';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const BUBBLE_MAX = SCREEN_W * 0.72;
@@ -272,7 +271,6 @@ export default function TaskChatScreen({ route, navigation }) {
       behavior={Platform.select({ ios: 'padding', android: 'padding' })}
       keyboardVerticalOffset={Platform.select({ ios: 0, android: 20 })}
     >
-      <AmbientOrbs intensity="medium" />
 
       {/* Header */}
       <LinearGradient
@@ -408,7 +406,7 @@ export default function TaskChatScreen({ route, navigation }) {
 const createStyles = (theme, isDark) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: theme.background,
   },
 
   // Header

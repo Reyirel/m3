@@ -14,14 +14,13 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  GlassmorphicHeader,
   GlassmorphicKanbanCard,
   GlassmorphicButton,
   GlassmorphicEmptyState,
 } from '../components';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
-import AmbientOrbs from '../components/AmbientOrbs';
 import { hapticMedium } from '../utils/haptics';
 import { useResponsive } from '../utils/responsive';
 
@@ -136,16 +135,14 @@ const KanbanBoardScreen = ({ navigation }) => {
   ), [isTablet, renderColumnHeader, renderKanbanCard, filterPriority]);
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <AmbientOrbs intensity="medium" />
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
 
       {/* Header */}
-      <GlassmorphicHeader
+      <ScreenHeader
         title="Tablero Kanban"
         subtitle={`${totalTasks} tareas en total`}
         icon="apps-outline"
-        showGradient={true}
-        onBackPress={() => navigation.goBack()}
+        onBack={() => navigation.goBack()}
       />
 
       <ScrollView

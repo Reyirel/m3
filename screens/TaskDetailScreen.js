@@ -22,9 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useTasks } from '../contexts/TasksContext';
-import AmbientOrbs from '../components/AmbientOrbs';
-import { PremiumGlassCard, GlassmorphicButton } from '../components'; // ✨ UPGRADED: Premium Glassmorphism
-import { useGlassmorphism } from '../hooks/useGlassmorphism'; // ✨ NEW: Glassmorphism config
+import PrimaryButton from '../components/ui/PrimaryButton';
 
 // Importar componentes refactorizados
 import {
@@ -371,8 +369,7 @@ export default function TaskDetailScreen({ route, navigation }) {
   // RENDER
   // ────────────────────────────────────────────────────────────
   return (
-    <View style={styles.container}>
-      <AmbientOrbs intensity="medium" />
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
 
       <KeyboardAvoidingView
         style={styles.container}
@@ -484,20 +481,20 @@ export default function TaskDetailScreen({ route, navigation }) {
 
             {/* SAVE BUTTON */}
             {permissions.canEdit && (
-              <GlassmorphicButton
-                title={
-                  taskOps.isSaving
-                    ? `Guardando... ${taskOps.saveProgress || 0}%`
-                    : isEditing
-                    ? 'Actualizar'
-                    : 'Crear Tarea'
-                }
-                onPress={handleSave}
-                variant="primary"
-                size="large"
-                loading={taskOps.isSaving}
-                icon={taskOps.isSaving ? 'hourglass' : 'checkmark-circle'}
-              />
+              <View style={styles.saveWrapper}>
+                <PrimaryButton
+                  title={
+                    taskOps.isSaving
+                      ? `Guardando... ${taskOps.saveProgress || 0}%`
+                      : isEditing
+                      ? 'Actualizar'
+                      : 'Crear Tarea'
+                  }
+                  onPress={handleSave}
+                  loading={taskOps.isSaving}
+                  icon={taskOps.isSaving ? 'hourglass' : 'checkmark-circle'}
+                />
+              </View>
             )}
           </ScrollView>
         </Animated.View>
@@ -552,10 +549,13 @@ export default function TaskDetailScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
   },
   scrollContent: {
     padding: 16,
     gap: 16,
+    paddingBottom: 40,
+  },
+  saveWrapper: {
+    marginTop: 8,
   },
 });

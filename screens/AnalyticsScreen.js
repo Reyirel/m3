@@ -16,8 +16,8 @@ import ShimmerEffect from '../components/ShimmerEffect';
 import { getReportStatistics } from '../services/reportsService';
 import { getOverallTaskMetrics } from '../services/tasks';
 import { useTasks } from '../contexts/TasksContext';
-import AmbientOrbs from '../components/AmbientOrbs';
-import { PremiumGlassCard, GlassmorphicHeader, GlassmorphicSummaryCard, GlassmorphicTabs, GlassmorphicEmptyState } from '../components'; // ✨ UPGRADED: Glassmorphism
+import { GlassmorphicSummaryCard, GlassmorphicTabs, GlassmorphicEmptyState } from '../components';
+import ScreenHeader from '../components/ui/ScreenHeader';
 
 const { width } = Dimensions.get('window');
 
@@ -62,7 +62,7 @@ const AnalyticsScreen = ({ navigation }) => {
   const styles = useMemo(() => StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: 'transparent',
+      backgroundColor: theme.background,
     },
     // ✨ Header Premium
     headerGradient: {
@@ -628,20 +628,17 @@ const AnalyticsScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <AmbientOrbs intensity="medium" />
-      
+
       {/* ✨ Glassmorphic Header */}
       <Animated.View style={{
         opacity: headerAnim,
         transform: [{ translateY: headerSlide }]
       }}>
-        <GlassmorphicHeader
+        <ScreenHeader
           title="Analytics"
           subtitle="Insights y métricas de rendimiento"
           icon="analytics"
-          onBackPress={() => navigation.goBack()}
-          showGradient={true}
-          actions={[]}
+          onBack={() => navigation.goBack()}
         />
       </Animated.View>
 
@@ -698,26 +695,20 @@ const AnalyticsScreen = ({ navigation }) => {
                 key={index} 
                 style={[styles.metricCardWrapper, { transform: [{ scale: cardScales[index] }] }]}
               >
-                <PremiumGlassCard
-                  intensity="strong"
-                  glowEffect={true}
-                  glowColor={config.gradient[0]}
-                  showGradient={true}
-                  showRimGlow={true}
-                  pressable={true}
+                <TouchableOpacity
                   onPressIn={() => animateCardPress(index, true)}
                   onPressOut={() => animateCardPress(index, false)}
-                  padding={16}
-                  borderRadius={16}
-                  style={styles.metricCardGradient}
+                  activeOpacity={0.85}
                 >
+                <View style={[styles.metricCardGradient, { padding: 16, borderRadius: 16, backgroundColor: isDark ? theme.card : theme.glassStrong, borderWidth: 1, borderColor: theme.glassBorder }]}>
                   <View style={styles.metricIconWrapper}>
                     <Ionicons name={config.icon} size={24} color="#FFFFFF" />
                   </View>
                   <Text style={styles.metricLabel}>{config.label}</Text>
                   <Text style={styles.metricValue}>{config.value}</Text>
                   <Text style={styles.metricSubvalue}>{config.subvalue}</Text>
-                </PremiumGlassCard>
+                </View>
+                </TouchableOpacity>
               </Animated.View>
             ))}
           </View>

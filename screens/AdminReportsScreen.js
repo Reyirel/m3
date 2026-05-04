@@ -25,7 +25,6 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useTasks } from '../contexts/TasksContext';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
-import AmbientOrbs from '../components/AmbientOrbs';
 
 const AdminReportsScreen = ({ navigation }) => {
   const { theme, isDark } = useTheme();
@@ -840,8 +839,7 @@ const AdminReportsScreen = ({ navigation }) => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <AmbientOrbs intensity="medium" />
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       <View style={styles.innerContainer}>
       <LinearGradient colors={theme.gradientHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { shadowColor: theme.primary }]}>

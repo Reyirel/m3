@@ -19,7 +19,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useTasks } from '../contexts/TasksContext';
-import AmbientOrbs from '../components/AmbientOrbs';
 import {
   GlassmorphicSection,
   GlassmorphicButton,
@@ -93,13 +92,8 @@ export default function SettingsScreen({ navigation }) {
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
+      style={[styles.container, { backgroundColor: theme.background }]}
     >
-      <AmbientOrbs
-        intensity={0.3}
-        speed={2}
-        blur={15}
-      />
 
       <LinearGradient
         colors={theme.gradientHeader}

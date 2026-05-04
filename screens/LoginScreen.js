@@ -12,6 +12,7 @@ import Toast from 'react-native-toast-message';
 
 const BRAND = '#9F2241';
 const BRAND_DARK = '#7A1A32';
+const BRAND_GLOW = 'rgba(159, 34, 65, 0.35)';
 
 export default function LoginScreen({ onLogin }) {
   const [email, setEmail]               = useState('');
@@ -68,11 +69,14 @@ export default function LoginScreen({ onLogin }) {
   return (
     <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       {/* Fondo: negro puro con acento borgoña arriba */}
+      {/* Fondo oscuro con presencia de marca */}
       <LinearGradient
-        colors={['#1A0810', '#000000', '#000000']}
-        locations={[0, 0.35, 1]}
+        colors={['#2D0F1E', '#160008', '#000000']}
+        locations={[0, 0.4, 1]}
         style={StyleSheet.absoluteFillObject}
       />
+      {/* Halo guinda en la parte superior */}
+      <View style={loginBgStyles.halo} />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -240,54 +244,56 @@ const styles = StyleSheet.create({
   },
   iconWrap: {
     marginBottom: 20,
-    borderRadius: 26,
+    borderRadius: 28,
     shadowColor: BRAND,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.50,
-    shadowRadius: 20,
-    elevation: 14,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.65,
+    shadowRadius: 28,
+    elevation: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(159,34,65,0.35)',
   },
   iconGradient: {
-    width: 88,
-    height: 88,
-    borderRadius: 26,
+    width: 92,
+    height: 92,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
   },
   appName: {
     fontSize: 38,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFFFFF',
-    letterSpacing: -0.8,
+    letterSpacing: -1,
     marginBottom: 6,
   },
   tagline: {
     fontSize: 14,
-    color: 'rgba(255,255,255,0.45)',
+    color: 'rgba(255,255,255,0.42)',
     fontWeight: '400',
-    letterSpacing: 0.1,
+    letterSpacing: 0.2,
   },
 
-  // Card de formulario — elevado, bordes sutiles
+  // Card de formulario
   card: {
     backgroundColor: '#1C1C1E',
-    borderRadius: 20,
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.10)',
     padding: 24,
     marginBottom: 20,
     shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.55,
-    shadowRadius: 32,
-    elevation: 16,
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.65,
+    shadowRadius: 40,
+    elevation: 18,
   },
   cardTitle: {
     fontSize: 20,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#FFFFFF',
     marginBottom: 24,
-    letterSpacing: -0.3,
+    letterSpacing: -0.4,
   },
 
   // Campos
@@ -388,5 +394,20 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(255,255,255,0.45)',
     fontWeight: '500',
+  },
+});
+
+// Estilos del fondo — separados para no contaminar el StyleSheet principal
+const loginBgStyles = StyleSheet.create({
+  halo: {
+    position: 'absolute',
+    top: -120,
+    left: '50%',
+    marginLeft: -180,
+    width: 360,
+    height: 360,
+    borderRadius: 180,
+    backgroundColor: BRAND_GLOW,
+    // En web el blur no existe en RN, pero el color translúcido ya da el efecto
   },
 });
