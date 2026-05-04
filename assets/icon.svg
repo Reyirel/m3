@@ -1,59 +1,58 @@
-﻿<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
+<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <!-- Gradiente principal guinda -->
-    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" style="stop-color:#BC3A5A;stop-opacity:1" />
-      <stop offset="50%" style="stop-color:#9F2241;stop-opacity:1" />
-      <stop offset="100%" style="stop-color:#7A1A33;stop-opacity:1" />
+    <!-- Rich burgundy gradient -->
+    <linearGradient id="bg" x1="25%" y1="0%" x2="75%" y2="100%">
+      <stop offset="0%" stop-color="#C94060"/>
+      <stop offset="50%" stop-color="#9F2241"/>
+      <stop offset="100%" stop-color="#6B1530"/>
     </linearGradient>
-    <!-- Sombra suave -->
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-      <feDropShadow dx="0" dy="8" stdDeviation="20" flood-color="#000" flood-opacity="0.3"/>
+    <!-- Subtle top radial highlight -->
+    <radialGradient id="topGlow" cx="50%" cy="0%" r="75%" fx="50%" fy="0%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.20)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+    <!-- Circle fill: semi-transparent white -->
+    <radialGradient id="circFill" cx="40%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.22)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.06)"/>
+    </radialGradient>
+    <!-- Check shadow -->
+    <filter id="checkShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="10" stdDeviation="24" flood-color="#3D0010" flood-opacity="0.45"/>
     </filter>
-    <!-- Brillo superior -->
-    <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" style="stop-color:rgba(255,255,255,0.25);stop-opacity:1" />
-      <stop offset="50%" style="stop-color:rgba(255,255,255,0);stop-opacity:1" />
-    </linearGradient>
+    <!-- Circle glow -->
+    <filter id="circleGlow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="0" stdDeviation="28" flood-color="#9F2241" flood-opacity="0.55"/>
+    </filter>
   </defs>
-  
-  <!-- Fondo con esquinas redondeadas -->
-  <rect width="1024" height="1024" rx="220" ry="220" fill="url(#bgGradient)"/>
-  
-  <!-- Brillo superior sutil -->
-  <rect width="1024" height="512" rx="220" ry="220" fill="url(#shine)" opacity="0.6"/>
-  
-  <!-- Ícono de clipboard/tareas estilizado -->
-  <g transform="translate(512, 512)" filter="url(#shadow)">
-    <!-- Clipboard base -->
-    <rect x="-200" y="-280" width="400" height="520" rx="40" ry="40" fill="white" opacity="0.95"/>
-    
-    <!-- Clip superior del clipboard -->
-    <rect x="-100" y="-320" width="200" height="80" rx="20" ry="20" fill="white"/>
-    <rect x="-70" y="-340" width="140" height="50" rx="25" ry="25" fill="#9F2241"/>
-    
-    <!-- Líneas de tareas -->
-    <!-- Tarea 1 - completada -->
-    <rect x="-150" y="-180" width="300" height="8" rx="4" fill="#E5E7EB"/>
-    <circle cx="-150" cy="-176" r="24" fill="#10B981"/>
-    <path d="M-160,-176 L-152,-168 L-138,-184" stroke="white" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-    
-    <!-- Tarea 2 - completada -->
-    <rect x="-150" y="-80" width="280" height="8" rx="4" fill="#E5E7EB"/>
-    <circle cx="-150" cy="-76" r="24" fill="#10B981"/>
-    <path d="M-160,-76 L-152,-68 L-138,-84" stroke="white" stroke-width="6" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-    
-    <!-- Tarea 3 - en progreso -->
-    <rect x="-150" y="20" width="240" height="8" rx="4" fill="#E5E7EB"/>
-    <circle cx="-150" cy="24" r="24" fill="#3B82F6"/>
-    <rect x="-160" y="16" width="20" height="16" rx="3" fill="white"/>
-    
-    <!-- Tarea 4 - pendiente -->
-    <rect x="-150" y="120" width="200" height="8" rx="4" fill="#E5E7EB"/>
-    <circle cx="-150" cy="124" r="24" fill="none" stroke="#D1D5DB" stroke-width="4"/>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="224" ry="224" fill="url(#bg)"/>
+  <!-- Top glow overlay -->
+  <rect width="1024" height="1024" rx="224" ry="224" fill="url(#topGlow)"/>
+
+  <!-- Glass circle -->
+  <circle cx="512" cy="512" r="320" fill="url(#circFill)" filter="url(#circleGlow)"/>
+  <circle cx="512" cy="512" r="320" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="2.5"/>
+
+  <!-- Bold checkmark — centered, clean -->
+  <g filter="url(#checkShadow)">
+    <polyline
+      points="310,515 455,660 720,360"
+      fill="none"
+      stroke="white"
+      stroke-width="96"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
   </g>
-  
-  <!-- Badge de notificación -->
-  <circle cx="780" cy="244" r="80" fill="#EF4444"/>
-  <text x="780" y="268" font-size="90" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-weight="bold">3</text>
+
+  <!-- Subtle gloss arc on top half of circle -->
+  <path
+    d="M 220,480 A 310,310 0 0 1 804,480"
+    fill="none"
+    stroke="rgba(255,255,255,0.14)"
+    stroke-width="60"
+    stroke-linecap="round"
+  />
 </svg>
