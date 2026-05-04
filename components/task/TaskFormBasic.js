@@ -17,8 +17,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import ShakeInput from '../ShakeInput';
-import GlassmorphicInput from '../GlassmorphicInput';
-import GlassmorphicSection from '../GlassmorphicSection';
+import GlassmorphicInput from '../glass/GlassmorphicInput';
+import GlassmorphicSection from '../glass/GlassmorphicSection';
 
 export default function TaskFormBasic({
   title = '',

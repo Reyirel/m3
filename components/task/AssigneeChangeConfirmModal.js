@@ -3,7 +3,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import GlassmorphicButton from '../GlassmorphicButton';
+import GlassmorphicButton from '../glass/GlassmorphicButton';
 
 /**
  * Props:

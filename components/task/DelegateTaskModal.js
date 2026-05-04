@@ -5,7 +5,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { canAssignAreaSubtask } from '../../services/permissions';
 import { useNotification } from '../../contexts/NotificationContext';
-import GlassmorphicButton from '../GlassmorphicButton';
+import GlassmorphicButton from '../glass/GlassmorphicButton';
 
 /**
  * Props:

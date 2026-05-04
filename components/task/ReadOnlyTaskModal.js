@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import TaskStatusButtons from '../TaskStatusButtons';
 import SubtasksList from '../SubtasksList';
 import AreaCoordinationProgress from '../AreaCoordinationProgress';
-import GlassmorphicButton from '../GlassmorphicButton';
+import GlassmorphicButton from '../glass/GlassmorphicButton';
 
 /**
  * Props:
