@@ -4,7 +4,6 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { getAuth, signOut } from 'firebase/auth';
 import { useTheme } from '../../contexts/ThemeContext';
 import GlassChip from './GlassChip';
 import SearchBar from '../SearchBar';
@@ -26,25 +25,14 @@ export default function HomeHeader({
   quickStatusFilter = 'todas',
   onFilterChange,
   statusCounts = {},
-  navigation,
+  onLogout,
 }) {
   const { theme } = useTheme();
 
   const handleLogout = () => {
     Alert.alert('¿Cerrar sesión?', '¿Estás seguro de que deseas salir?', [
       { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Salir',
-        style: 'destructive',
-        onPress: async () => {
-          try {
-            await signOut(getAuth());
-            navigation?.replace('Login');
-          } catch (e) {
-            Alert.alert('Error', e.message);
-          }
-        },
-      },
+      { text: 'Salir', style: 'destructive', onPress: onLogout },
     ]);
   };
 

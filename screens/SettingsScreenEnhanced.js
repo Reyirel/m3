@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   Switch,
   Platform,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -25,6 +26,7 @@ import {
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { hapticMedium } from '../utils/haptics';
+import { logoutUser } from '../services/authFirestore';
 import { useResponsive } from '../utils/responsive';
 
 const SettingsScreenEnhanced = ({ navigation }) => {
@@ -147,7 +149,12 @@ const SettingsScreenEnhanced = ({ navigation }) => {
           icon: 'log-out-outline',
           onPress: () => {
             hapticMedium();
-            // navigation.navigate('Login');
+            Alert.alert('¿Cerrar sesión?', '¿Estás seguro de que deseas salir?', [
+              { text: 'Cancelar', style: 'cancel' },
+              { text: 'Salir', style: 'destructive', onPress: async () => {
+                try { await logoutUser(); } catch {}
+              }},
+            ]);
           },
           destructive: true,
         },

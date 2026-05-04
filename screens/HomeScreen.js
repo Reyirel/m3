@@ -36,7 +36,7 @@ import { MAX_WIDTHS } from '../theme/tokens';
 
 const Swipeable = getSwipeable();
 
-export default function HomeScreen({ navigation }) {
+export default function HomeScreen({ navigation, onLogout }) {
   const { theme, isDark } = useTheme();
   const { width, isDesktop, isTablet, padding } = useResponsive();
   const { showSuccess, showError, showWarning, showInfo, showNotification } = useNotification();
@@ -362,7 +362,7 @@ export default function HomeScreen({ navigation }) {
           quickStatusFilter={quickStatusFilter}
           onFilterChange={setQuickStatusFilter}
           statusCounts={statusCounts}
-          navigation={navigation}
+          onLogout={onLogout}
         />
 
         <OverdueAlert
