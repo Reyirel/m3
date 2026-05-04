@@ -16,8 +16,8 @@ import {
   Platform,
 } from 'react-native';
 import PremiumGlassCard from './PremiumGlassCard';
-import { useTheme } from '../contexts/ThemeContext';
-import { GLASS_PRESETS } from '../hooks/useGlassmorphism';
+import { useTheme } from '../../contexts/ThemeContext';
+import { GLASS_PRESETS } from '../../hooks/useGlassmorphism';
 
 const INTENSITIES = ['soft', 'medium', 'strong', 'ultra'];
 const VARIANTS = ['base', 'strong', 'light'];
