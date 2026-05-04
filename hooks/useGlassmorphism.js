@@ -7,6 +7,7 @@
  */
 
 import { useMemo } from 'react';
+import { Platform } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 
 export const BLUR_INTENSITIES = {
@@ -303,7 +304,7 @@ export function useGlassStyles(options = {}) {
         backgroundColor: glass.glassColor,
       },
       gradient: {
-        background: glass.gradient,
+        ...(Platform.OS === 'web' ? { background: glass.gradient } : {}),
         borderRadius: options.borderRadius || 16,
       },
       rimGlow: {

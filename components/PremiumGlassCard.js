@@ -141,13 +141,13 @@ export default function PremiumGlassCard({
     if (!showGradient) return null;
 
     if (isDark) {
-      return {
+      return Platform.OS === 'web' ? {
         background: 'linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.01) 50%, rgba(0,0,0,0.02) 100%)',
-      };
+      } : {};
     } else {
-      return {
+      return Platform.OS === 'web' ? {
         background: 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 50%, rgba(0,0,0,0.01) 100%)',
-      };
+      } : {};
     }
   }, [showGradient, isDark]);
 
@@ -359,8 +359,10 @@ const styles = StyleSheet.create({
   },
   
   shimmer: {
-    background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)',
-    animation: 'shimmer 3s infinite',
+    ...(Platform.OS === 'web' ? {
+      background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)',
+      animation: 'shimmer 3s infinite',
+    } : {}),
   },
 });
 

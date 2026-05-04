@@ -257,9 +257,8 @@ export default function CalendarScreen({ navigation }) {
   };
 
   const renderTaskItem = (task, index) => (
-    <FadeInView duration={350} delay={index * 80} style={{ marginBottom: compactTaskView ? 6 : 12 }}>
+    <FadeInView key={task.id} duration={350} delay={index * 80} style={{ marginBottom: compactTaskView ? 6 : 12 }}>
       <RippleButton
-        key={task.id}
         style={[
           compactTaskView ? styles.modalTaskCardCompact : styles.modalTaskCard,
           {
