@@ -10,22 +10,22 @@ export { default as PremiumTabBar } from './PremiumTabBar';
 export { default as PremiumGlassCard } from './PremiumGlassCard';
 export { default as GlassmorphicCard } from './GlassCard';
 
-// Glassmorphic components — used by screens not yet migrated to the new design system
-export { default as GlassmorphicHeader } from './GlassmorphicHeader';
-export { default as GlassmorphicEmptyState } from './GlassmorphicEmptyState';
-export { default as GlassmorphicButton } from './GlassmorphicButton';
-export { default as GlassmorphicInput } from './GlassmorphicInput';
-export { default as GlassmorphicSection } from './GlassmorphicSection';
-export { default as GlassmorphicChip } from './GlassmorphicChip';
-export { default as GlassmorphicToggle } from './GlassmorphicToggle';
-export { default as GlassmorphicDivider } from './GlassmorphicDivider';
-export { default as GlassmorphicStatsCard } from './GlassmorphicStatsCard';
-export { default as GlassmorphicProgress } from './GlassmorphicProgress';
-export { default as GlassmorphicTabs } from './GlassmorphicTabs';
-export { default as GlassmorphicSummaryCard } from './GlassmorphicSummaryCard';
-export { default as GlassmorphicFilterChips } from './GlassmorphicFilterChips';
-export { default as GlassmorphicKanbanCard } from './GlassmorphicKanbanCard';
-export { default as GlassmorphicAvatar } from './GlassmorphicAvatar';
+// Glassmorphic components — legacy, used by screens not yet migrated to the new design system
+export { default as GlassmorphicHeader } from './glass/GlassmorphicHeader';
+export { default as GlassmorphicEmptyState } from './glass/GlassmorphicEmptyState';
+export { default as GlassmorphicButton } from './glass/GlassmorphicButton';
+export { default as GlassmorphicInput } from './glass/GlassmorphicInput';
+export { default as GlassmorphicSection } from './glass/GlassmorphicSection';
+export { default as GlassmorphicChip } from './glass/GlassmorphicChip';
+export { default as GlassmorphicToggle } from './glass/GlassmorphicToggle';
+export { default as GlassmorphicDivider } from './glass/GlassmorphicDivider';
+export { default as GlassmorphicStatsCard } from './glass/GlassmorphicStatsCard';
+export { default as GlassmorphicProgress } from './glass/GlassmorphicProgress';
+export { default as GlassmorphicTabs } from './glass/GlassmorphicTabs';
+export { default as GlassmorphicSummaryCard } from './glass/GlassmorphicSummaryCard';
+export { default as GlassmorphicFilterChips } from './glass/GlassmorphicFilterChips';
+export { default as GlassmorphicKanbanCard } from './glass/GlassmorphicKanbanCard';
+export { default as GlassmorphicAvatar } from './glass/GlassmorphicAvatar';
 
 // Task card (used by Dashboard, Search)
 export { default as TaskCard } from './TaskCard';

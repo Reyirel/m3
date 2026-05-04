@@ -40,10 +40,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { TasksProvider, useTasks } from './contexts/TasksContext';
 import { NotificationProvider } from './contexts/NotificationContext';
-import { PremiumNotificationProvider } from './components/PremiumNotificationCenter';
 import { getGestureHandlerRootView } from './utils/platformComponents';
-import PremiumGlassHeader from './components/PremiumGlassHeader';
-import AmbientOrbs from './components/AmbientOrbs';
 import PremiumTabBar from './components/PremiumTabBar';
 import { ScreenTransition } from './components';
 import MeshBackground from './components/MeshBackground';
@@ -512,7 +509,6 @@ export default function App() {
     <ImprovedErrorBoundary navigation={navigationRef}>
       <ErrorBoundary>
         <ThemeProvider>
-          <PremiumNotificationProvider>
           <GestureHandlerRootView style={{ flex: 1 }}>
             <MeshBackground>
         {/* Indicador de estado offline */}
@@ -707,7 +703,6 @@ export default function App() {
         {Platform.OS === 'web' && SpeedInsights && <SpeedInsights />}
             </MeshBackground>
           </GestureHandlerRootView>
-          </PremiumNotificationProvider>
         </ThemeProvider>
       </ErrorBoundary>
     </ImprovedErrorBoundary>
