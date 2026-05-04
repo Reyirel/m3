@@ -7,10 +7,14 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loginUser } from '../services/authFirestore';
 import Toast from 'react-native-toast-message';
 
 const BRAND = '#9F2241';
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutos
+const ATTEMPTS_KEY = 'login_attempts';
 const BRAND_DARK = '#7A1A32';
 const BRAND_GLOW = 'rgba(159, 34, 65, 0.35)';
 
@@ -20,6 +24,10 @@ export default function LoginScreen({ onLogin }) {
   const [loading, setLoading]           = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [focusedInput, setFocusedInput] = useState(null);
+  const [attempts, setAttempts]         = useState(0);
+  const [lockedUntil, setLockedUntil]   = useState(null);
+  const [lockTimer, setLockTimer]       = useState('');
+  const timerRef = useRef(null);
 
   const fadeAnim   = useRef(new Animated.Value(0)).current;
   const slideAnim  = useRef(new Animated.Value(32)).current;
@@ -30,7 +38,46 @@ export default function LoginScreen({ onLogin }) {
       Animated.timing(fadeAnim,  { toValue: 1, duration: 480, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
       Animated.spring(slideAnim, { toValue: 0, tension: 60, friction: 10, useNativeDriver: true }),
     ]).start();
+
+    // Restaurar intentos guardados
+    AsyncStorage.getItem(ATTEMPTS_KEY).then(raw => {
+      if (!raw) return;
+      try {
+        const data = JSON.parse(raw);
+        if (data.lockedUntil && Date.now() < data.lockedUntil) {
+          setAttempts(data.count);
+          setLockedUntil(data.lockedUntil);
+        } else if (data.lockedUntil && Date.now() >= data.lockedUntil) {
+          AsyncStorage.removeItem(ATTEMPTS_KEY);
+        } else {
+          setAttempts(data.count || 0);
+        }
+      } catch {}
+    });
+    return () => clearInterval(timerRef.current);
   }, []);
+
+  // Cuenta regresiva del bloqueo
+  useEffect(() => {
+    if (!lockedUntil) { setLockTimer(''); return; }
+    const update = () => {
+      const remaining = lockedUntil - Date.now();
+      if (remaining <= 0) {
+        setLockedUntil(null);
+        setAttempts(0);
+        setLockTimer('');
+        AsyncStorage.removeItem(ATTEMPTS_KEY);
+        clearInterval(timerRef.current);
+      } else {
+        const m = Math.floor(remaining / 60000);
+        const s = Math.floor((remaining % 60000) / 1000);
+        setLockTimer(`${m}:${s.toString().padStart(2, '0')}`);
+      }
+    };
+    update();
+    timerRef.current = setInterval(update, 1000);
+    return () => clearInterval(timerRef.current);
+  }, [lockedUntil]);
 
   const triggerShake = () => {
     Animated.sequence([
@@ -43,6 +90,11 @@ export default function LoginScreen({ onLogin }) {
   };
 
   const handleSubmit = async () => {
+    if (lockedUntil && Date.now() < lockedUntil) {
+      triggerShake();
+      Toast.show({ type: 'error', text1: `Cuenta bloqueada. Espera ${lockTimer}`, position: 'top', visibilityTime: 3000 });
+      return;
+    }
     if (!email.trim() || !password.trim()) {
       triggerShake();
       Toast.show({ type: 'error', text1: 'Completa todos los campos', position: 'top', visibilityTime: 2500 });
@@ -52,11 +104,30 @@ export default function LoginScreen({ onLogin }) {
     try {
       const result = await loginUser(email.trim().toLowerCase(), password);
       if (result.success) {
+        await AsyncStorage.removeItem(ATTEMPTS_KEY);
+        setAttempts(0);
         Toast.show({ type: 'success', text1: 'Bienvenido', position: 'bottom', visibilityTime: 1500 });
         setTimeout(() => { if (onLogin) onLogin(); }, 600);
       } else {
         triggerShake();
-        Toast.show({ type: 'error', text1: result.error || 'Credenciales incorrectas', position: 'top', visibilityTime: 3000 });
+        const newCount = attempts + 1;
+        setAttempts(newCount);
+        const remaining = MAX_ATTEMPTS - newCount;
+        if (newCount >= MAX_ATTEMPTS) {
+          const until = Date.now() + LOCKOUT_MS;
+          setLockedUntil(until);
+          await AsyncStorage.setItem(ATTEMPTS_KEY, JSON.stringify({ count: newCount, lockedUntil: until }));
+          Toast.show({ type: 'error', text1: 'Demasiados intentos', text2: 'Cuenta bloqueada por 15 minutos', position: 'top', visibilityTime: 4000 });
+        } else {
+          await AsyncStorage.setItem(ATTEMPTS_KEY, JSON.stringify({ count: newCount }));
+          Toast.show({
+            type: 'error',
+            text1: result.error || 'Credenciales incorrectas',
+            text2: remaining === 1 ? '⚠️ Último intento antes del bloqueo' : `${remaining} intentos restantes`,
+            position: 'top',
+            visibilityTime: 3000,
+          });
+        }
       }
     } catch {
       triggerShake();
@@ -111,6 +182,26 @@ export default function LoginScreen({ onLogin }) {
           {/* ---- Card de formulario ---- */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Iniciar sesión</Text>
+
+            {/* Banner de bloqueo */}
+            {lockedUntil && (
+              <View style={styles.lockBanner}>
+                <Ionicons name="lock-closed" size={16} color="#EF4444" />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.lockTitle}>Cuenta bloqueada temporalmente</Text>
+                  <Text style={styles.lockSub}>Disponible en {lockTimer}</Text>
+                </View>
+              </View>
+            )}
+            {/* Advertencia de intentos */}
+            {!lockedUntil && attempts > 0 && (
+              <View style={[styles.lockBanner, { borderColor: 'rgba(245,158,11,0.5)', backgroundColor: 'rgba(245,158,11,0.08)' }]}>
+                <Ionicons name="warning-outline" size={16} color="#F59E0B" />
+                <Text style={[styles.lockTitle, { color: '#F59E0B' }]}>
+                  {MAX_ATTEMPTS - attempts} intento{MAX_ATTEMPTS - attempts !== 1 ? 's' : ''} restante{MAX_ATTEMPTS - attempts !== 1 ? 's' : ''}
+                </Text>
+              </View>
+            )}
 
             {/* Campo email */}
             <View style={styles.field}>
@@ -176,8 +267,9 @@ export default function LoginScreen({ onLogin }) {
             <TouchableOpacity
               style={[styles.btn, loading && styles.btnLoading]}
               onPress={handleSubmit}
-              disabled={loading}
+              disabled={loading || !!lockedUntil}
               activeOpacity={0.85}
+              style={[lockedUntil && { opacity: 0.5 }]}
             >
               {loading ? (
                 <>
@@ -394,6 +486,27 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: 'rgba(255,255,255,0.45)',
     fontWeight: '500',
+  },
+  lockBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: 'rgba(239,68,68,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(239,68,68,0.4)',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+  },
+  lockTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#EF4444',
+  },
+  lockSub: {
+    fontSize: 12,
+    color: 'rgba(239,68,68,0.75)',
+    marginTop: 2,
   },
 });
 
