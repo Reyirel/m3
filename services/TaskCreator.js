@@ -175,7 +175,7 @@ async function getUsersMap() {
 
     return map;
   } catch (error) {
-    console.warn('Error obteniendo usuarios:', error);
+    if (__DEV__) console.warn('Error obteniendo usuarios:', error);
     return {};
   }
 }
@@ -255,7 +255,7 @@ async function notifyAssignees(task, taskId) {
       priority: task.priority,
     });
   } catch (error) {
-    console.warn('Error enviando notificaciones:', error);
+    if (__DEV__) console.warn('Error enviando notificaciones:', error);
     // Las notificaciones no son críticas
   }
 }
@@ -322,7 +322,7 @@ export const TaskCreator = {
         taskId: taskRef.id,
       };
     } catch (error) {
-      console.error('TaskCreator.create error:', error);
+      if (__DEV__) console.error('TaskCreator.create error:', error);
       return {
         success: false,
         error: error.message || 'Error creando tarea',
@@ -383,7 +383,7 @@ export const TaskCreator = {
         success: true,
       };
     } catch (error) {
-      console.error('TaskCreator.update error:', error);
+      if (__DEV__) console.error('TaskCreator.update error:', error);
       return {
         success: false,
         error: error.message || 'Error actualizando tarea',
@@ -421,7 +421,7 @@ export const TaskCreator = {
         success: true,
       };
     } catch (error) {
-      console.error('TaskCreator.delete error:', error);
+      if (__DEV__) console.error('TaskCreator.delete error:', error);
       return {
         success: false,
         error: error.message || 'Error eliminando tarea',

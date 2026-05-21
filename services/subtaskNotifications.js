@@ -22,7 +22,7 @@ export async function notifySubtaskCompletion(taskId, subtaskId, completedBy, su
     const taskSnap = await getDoc(taskRef);
     
     if (!taskSnap.exists()) {
-      console.warn('Task not found:', taskId);
+      if (__DEV__) console.warn('Task not found:', taskId);
       return;
     }
 
@@ -82,14 +82,14 @@ export async function notifySubtaskCompletion(taskId, subtaskId, completedBy, su
           trigger: { seconds: 1 }
         });
       } catch (error) {
-        console.warn('Error scheduling local notification:', error);
+        if (__DEV__) console.warn('Error scheduling local notification:', error);
       }
     }
 
     // Email notifications via server-side service (not yet configured)
 
   } catch (error) {
-    console.error('Error notifying subtask completion:', error);
+    if (__DEV__) console.error('Error notifying subtask completion:', error);
   }
 }
 
@@ -115,7 +115,7 @@ async function getUserDisplayName(email) {
     
     return { displayName: email, email };
   } catch (error) {
-    console.warn('Error getting user display name:', error);
+    if (__DEV__) console.warn('Error getting user display name:', error);
     return { displayName: email, email };
   }
 }
@@ -168,10 +168,10 @@ export async function notifyTaskStatusChange(taskId, oldStatus, newStatus, chang
           trigger: { seconds: 1 }
         });
       } catch (error) {
-        console.warn('Error scheduling task status notification:', error);
+        if (__DEV__) console.warn('Error scheduling task status notification:', error);
       }
     }
   } catch (error) {
-    console.error('Error notifying task status change:', error);
+    if (__DEV__) console.error('Error notifying task status change:', error);
   }
 }

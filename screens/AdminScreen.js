@@ -20,6 +20,7 @@ import { hapticMedium, hapticLight } from '../utils/haptics';
 import { useTasks } from '../contexts/TasksContext';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
+import { confirmAlert } from '../utils/alert';
 import CreateUserForm from '../components/admin/CreateUserForm';
 import PasswordResetForm from '../components/admin/PasswordResetForm';
 import UserListPanel from '../components/admin/UserListPanel';
@@ -141,17 +142,16 @@ export default function AdminScreen({ navigation, onLogout }) {
   };
 
   const clearAllNotifications = () => {
-    Alert.alert('Confirmar', '¿Cancelar TODAS las notificaciones programadas?', [
-      { text: 'No', style: 'cancel' },
-      {
-        text: 'Sí, cancelar todo', style: 'destructive',
-        onPress: async () => {
-          await cancelAllNotifications();
-          setNotificationCount(0);
-          Alert.alert('Completado', 'Todas las notificaciones han sido canceladas');
-        },
+    confirmAlert(
+      'Confirmar',
+      '¿Cancelar TODAS las notificaciones programadas?',
+      async () => {
+        await cancelAllNotifications();
+        setNotificationCount(0);
+        Alert.alert('Completado', 'Todas las notificaciones han sido canceladas');
       },
-    ]);
+      'Sí, cancelar todo'
+    );
   };
 
   // --- Loading ---
@@ -181,7 +181,7 @@ export default function AdminScreen({ navigation, onLogout }) {
         <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600', marginBottom: 24 }}>No hay sesión activa</Text>
         <TouchableOpacity
           style={{ backgroundColor: theme.primary, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14 }}
-          onPress={() => navigation.replace('Login')}
+          onPress={() => { if (onLogout) onLogout(); }}
         >
           <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 16 }}>Ir a Login</Text>
         </TouchableOpacity>
@@ -638,10 +638,12 @@ export default function AdminScreen({ navigation, onLogout }) {
               style={s.logoutBtn}
               onPress={() => {
                 hapticMedium();
-                Alert.alert('Cerrar Sesión', '¿Estás seguro que deseas cerrar sesión?', [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Cerrar Sesión', style: 'destructive', onPress: async () => { if (onLogout) await onLogout(); } },
-                ]);
+                confirmAlert(
+                  'Cerrar Sesión',
+                  '¿Estás seguro que deseas cerrar sesión?',
+                  async () => { if (onLogout) await onLogout(); },
+                  'Cerrar Sesión'
+                );
               }}
               accessibilityLabel="Cerrar sesión"
             >

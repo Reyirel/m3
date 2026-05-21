@@ -85,7 +85,7 @@ export async function processRecurringTasks() {
     log(`✅ Procesamiento completado: ${created} tareas creadas`);
     return { success: true, created };
   } catch (error) {
-    console.error('❌ Error procesando tareas recurrentes:', error);
+    if (__DEV__) console.error('❌ Error procesando tareas recurrentes:', error);
     return { success: false, error: error.message };
   }
 }

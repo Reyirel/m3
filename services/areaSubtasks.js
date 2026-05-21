@@ -79,7 +79,7 @@ export const createAreaSubtasks = async (parentTask, parentTaskId) => {
       message: `Se crearon ${subtasks.length} subtareas para coordinación entre áreas`
     };
   } catch (error) {
-    console.error('Error creando subtareas por área:', error);
+    if (__DEV__) console.error('Error creando subtareas por área:', error);
     throw error;
   }
 };
@@ -100,7 +100,7 @@ export const getAreaSubtasks = async (parentTaskId) => {
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
-    console.error('Error obteniendo subtareas:', error);
+    if (__DEV__) console.error('Error obteniendo subtareas:', error);
     return [];
   }
 };
@@ -162,7 +162,7 @@ export const updateParentTaskProgress = async (parentTaskId) => {
       allCompleted
     };
   } catch (error) {
-    console.error('Error actualizando progreso:', error);
+    if (__DEV__) console.error('Error actualizando progreso:', error);
     throw error;
   }
 };
@@ -186,7 +186,7 @@ export const getAreaProgressSummary = async (parentTaskId) => {
       updatedAt: st.updatedAt
     }));
   } catch (error) {
-    console.error('Error obteniendo resumen de progreso:', error);
+    if (__DEV__) console.error('Error obteniendo resumen de progreso:', error);
     return [];
   }
 };
@@ -235,7 +235,7 @@ export const completeAreaSubtask = async (subtaskId, user) => {
     
     return { success: true };
   } catch (error) {
-    console.error('Error completando subtarea:', error);
+    if (__DEV__) console.error('Error completando subtarea:', error);
     throw error;
   }
 };

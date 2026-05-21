@@ -16,6 +16,7 @@ import {
   Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { confirmAlert } from '../utils/alert';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { useTasks } from '../contexts/TasksContext';
@@ -63,29 +64,23 @@ export default function SettingsScreen({ navigation }) {
   }, [showSuccess]);
 
   const handleResetSettings = useCallback(() => {
-    Alert.alert(
+    confirmAlert(
       'Restaurar configuración',
       '¿Deseas restaurar la configuración a valores predeterminados?',
-      [
-        { text: 'Cancelar', onPress: () => {} },
-        {
-          text: 'Restaurar',
-          onPress: () => {
-            setSettings({
-              notifications: true,
-              emailNotifications: true,
-              darkMode: isDark,
-              soundEnabled: true,
-              vibrationsEnabled: true,
-              largeText: false,
-              dataSync: true,
-              autoSync: true,
-            });
-            showSuccess('Configuración restaurada');
-          },
-          style: 'destructive',
-        },
-      ]
+      () => {
+        setSettings({
+          notifications: true,
+          emailNotifications: true,
+          darkMode: isDark,
+          soundEnabled: true,
+          vibrationsEnabled: true,
+          largeText: false,
+          dataSync: true,
+          autoSync: true,
+        });
+        showSuccess('Configuración restaurada');
+      },
+      'Restaurar'
     );
   }, [isDark, showSuccess]);
 

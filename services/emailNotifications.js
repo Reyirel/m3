@@ -12,7 +12,7 @@ const FROM_EMAIL = 'noreply@todoapp.com'; // Cambiar por tu email verificado
  */
 async function sendEmail({ to, subject, html }) {
   if (!SENDGRID_API_KEY) {
-    console.warn('sendEmail: SENDGRID_API_KEY no configurada, email no enviado');
+    if (__DEV__) console.warn('sendEmail: SENDGRID_API_KEY no configurada, email no enviado');
     return { success: false, error: 'SENDGRID_API_KEY no configurada' };
   }
   try {

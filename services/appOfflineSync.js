@@ -19,11 +19,11 @@ import { cleanupOldSyncedReports } from './offlineReportsService';
 export const useSetupOfflineSync = () => {
   useEffect(() => {
     const initializeSync = async () => {
-      console.log('🚀 Inicializando sincronización offline...');
+      if (__DEV__) console.log('🚀 Inicializando sincronización offline...');
 
       // Limpiar reportes sincronizados antiguos al iniciar
       await cleanupOldSyncedReports();
-      console.log('✅ Limpieza de antiguos reportes completada');
+      if (__DEV__) console.log('✅ Limpieza de antiguos reportes completada');
     };
 
     initializeSync();
@@ -49,7 +49,7 @@ export function OfflineReportsSyncProvider({ children }) {
   useEffect(() => {
     const init = async () => {
       await cleanupOldSyncedReports();
-      console.log('🧹 Inicialización completada');
+      if (__DEV__) console.log('🧹 Inicialización completada');
     };
     init();
   }, []);
@@ -60,12 +60,12 @@ export function OfflineReportsSyncProvider({ children }) {
       return;
     }
 
-    console.log('⏰ Iniciando sincronización periódica...');
+    if (__DEV__) console.log('⏰ Iniciando sincronización periódica...');
     const interval = setInterval(async () => {
       try {
         await manualSync();
       } catch (error) {
-        console.error('Error en sincronización periódica:', error);
+        if (__DEV__) console.error('Error en sincronización periódica:', error);
       }
     }, 30000); // 30 segundos
 
@@ -199,7 +199,7 @@ export const debugOfflineReports = async () => {
   const stats = await getSyncStats();
   const storage = await estimateStorageUsage();
 
-  console.table({
+  if (__DEV__) console.table({
     'Reportes Pendientes': stats.totalPending,
     'Reportes Sincronizados': stats.totalSynced,
     'Reportes con Error': stats.totalFailed,
@@ -208,7 +208,7 @@ export const debugOfflineReports = async () => {
     'Almacenamiento (%)': `${((parseFloat(storage.megabytes) / 10) * 100).toFixed(1)}%`,
   });
 
-  console.log('📋 Detalles:', {
+  if (__DEV__) console.log('📋 Detalles:', {
     pending,
     stats,
     storage,

@@ -471,7 +471,7 @@ export const getSecretarioMetrics = async () => {
       totals
     };
   } catch (error) {
-    console.error('Error obteniendo métricas de secretarios:', error);
+    if (__DEV__) console.error('Error obteniendo métricas de secretarios:', error);
     return { success: false, error: error.message };
   }
 };

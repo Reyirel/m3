@@ -27,6 +27,7 @@ import ScreenHeader from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
 import { hapticMedium } from '../utils/haptics';
+import { confirmAlert } from '../utils/alert';
 import { useResponsive } from '../utils/responsive';
 
 const ProfileScreenEnhanced = ({ navigation, route }) => {
@@ -58,19 +59,11 @@ const ProfileScreenEnhanced = ({ navigation, route }) => {
 
   const handleLogout = useCallback(() => {
     hapticMedium();
-    Alert.alert(
+    confirmAlert(
       'Cerrar sesión',
       '¿Estás seguro de que deseas cerrar sesión?',
-      [
-        { text: 'Cancelar', onPress: () => {} },
-        {
-          text: 'Cerrar sesión',
-          onPress: () => {
-            // navigation.navigate('Login');
-          },
-          style: 'destructive',
-        },
-      ]
+      () => {},
+      'Cerrar sesión'
     );
   }, []);
 

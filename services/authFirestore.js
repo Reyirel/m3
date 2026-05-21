@@ -105,7 +105,7 @@ export const loginUser = async (email, password) => {
       const { clearOfflineData } = await import('./offlineSync');
       await clearOfflineData();
     } catch (cleanupError) {
-      console.error('Error limpiando caché en login:', cleanupError);
+      if (__DEV__) console.error('Error limpiando caché en login:', cleanupError);
     }
     
     // Guardar sesión en AsyncStorage
@@ -140,7 +140,7 @@ export const logoutUser = async () => {
         const { clearUserTaskCache } = await import('./offlineSync');
         await clearUserTaskCache(session.email);
       } catch (cleanupError) {
-        console.error('Error limpiando caché en logout:', cleanupError);
+        if (__DEV__) console.error('Error limpiando caché en logout:', cleanupError);
       }
     }
 
@@ -199,7 +199,7 @@ export const getCurrentSession = async () => {
         }
       } catch (refreshError) {
         // Si falla el refresh, usar sesión local
-        console.error('Error refrescando sesión:', refreshError.message);
+        if (__DEV__) console.error('Error refrescando sesión:', refreshError.message);
       }
       
       return { success: true, session };

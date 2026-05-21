@@ -29,7 +29,7 @@ export async function savePomodoroSession(session) {
     log('✅ Sesión Pomodoro guardada:', session);
     return { success: true, id: docRef.id };
   } catch (error) {
-    console.error('❌ Error guardando sesión Pomodoro:', error);
+    if (__DEV__) console.error('❌ Error guardando sesión Pomodoro:', error);
     return { success: false, error: error.message };
   }
 }
@@ -42,7 +42,7 @@ async function getLocalSessions() {
     const data = await AsyncStorage.getItem(POMODORO_KEY);
     return data ? JSON.parse(data) : [];
   } catch (error) {
-    console.error('Error leyendo sesiones locales:', error);
+    if (__DEV__) console.error('Error leyendo sesiones locales:', error);
     return [];
   }
 }
@@ -70,7 +70,7 @@ export async function getUserPomodoroSessions(userEmail, days = 30) {
     
     return sessions;
   } catch (error) {
-    console.error('Error obteniendo sesiones:', error);
+    if (__DEV__) console.error('Error obteniendo sesiones:', error);
     // Fallback a local
     return await getLocalSessions();
   }
@@ -94,7 +94,7 @@ export async function getTaskPomodoroSessions(taskId) {
       ...doc.data()
     }));
   } catch (error) {
-    console.error('Error obteniendo sesiones de tarea:', error);
+    if (__DEV__) console.error('Error obteniendo sesiones de tarea:', error);
     return [];
   }
 }
@@ -133,7 +133,7 @@ export async function getFocusTimeStats(userEmail, days = 30) {
       completionRate: Math.round((completed.length / sessions.length) * 100)
     };
   } catch (error) {
-    console.error('Error obteniendo estadísticas de focus time:', error);
+    if (__DEV__) console.error('Error obteniendo estadísticas de focus time:', error);
     return {
       totalSessions: 0,
       totalMinutes: 0,
@@ -171,7 +171,7 @@ export async function getSessionsByDayOfWeek(userEmail) {
     
     return Object.values(dayMap);
   } catch (error) {
-    console.error('Error obteniendo sesiones por día:', error);
+    if (__DEV__) console.error('Error obteniendo sesiones por día:', error);
     return [];
   }
 }
@@ -190,7 +190,7 @@ export async function getTaskTotalWorkTime(taskId) {
       totalHours: Math.round(totalMinutes / 60 * 10) / 10
     };
   } catch (error) {
-    console.error('Error calculando tiempo total:', error);
+    if (__DEV__) console.error('Error calculando tiempo total:', error);
     return { totalSessions: 0, totalMinutes: 0, totalHours: 0 };
   }
 }

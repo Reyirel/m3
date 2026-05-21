@@ -48,6 +48,7 @@ import {
 // Importar hooks
 import useTaskPermissions from '../hooks/useTaskPermissions';
 import useTaskOperations from '../hooks/useTaskOperations';
+import { confirmAlert } from '../utils/alert';
 
 // Importar servicios y utilidades
 import { toMs } from '../utils/dateUtils';
@@ -263,22 +264,14 @@ export default function TaskDetailScreen({ route, navigation }) {
   const handleDelete = () => {
     if (!permissions.canDelete) return;
 
-    Alert.alert(
+    confirmAlert(
       'Eliminar tarea',
       '¿Estás seguro? Esta acción es irreversible.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar',
-          style: 'destructive',
-          onPress: async () => {
-            const result = await taskOps.deleteTask(editingTask.id);
-            if (result) {
-              navigation.goBack();
-            }
-          },
-        },
-      ]
+      async () => {
+        const result = await taskOps.deleteTask(editingTask.id);
+        if (result) navigation.goBack();
+      },
+      'Eliminar'
     );
   };
 

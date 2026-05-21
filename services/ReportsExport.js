@@ -15,7 +15,7 @@ if (Platform.OS !== 'web') {
     FileSystem = require('expo-file-system');
     Sharing = require('expo-sharing');
   } catch (e) {
-    console.warn('Expo modules not available');
+    if (__DEV__) console.warn('Expo modules not available');
   }
 }
 
@@ -36,7 +36,7 @@ function downloadCSVWeb(csvContent, filename) {
     URL.revokeObjectURL(url);
     return true;
   } catch (error) {
-    console.error('Error downloading CSV:', error);
+    if (__DEV__) console.error('Error downloading CSV:', error);
     return false;
   }
 }
@@ -151,7 +151,7 @@ export async function exportAreaReport(areaMetrics, allTasks, _period = 'month')
 
     return { success: true, filename };
   } catch (error) {
-    console.error('Error exportando reporte:', error);
+    if (__DEV__) console.error('Error exportando reporte:', error);
     return { success: false, error: error.message };
   }
 }
@@ -196,7 +196,7 @@ export async function exportProductivityReport(heatmapData, user = 'usuario') {
 
     return { success: true, filename };
   } catch (error) {
-    console.error('Error exportando productividad:', error);
+    if (__DEV__) console.error('Error exportando productividad:', error);
     return { success: false, error: error.message };
   }
 }
@@ -246,7 +246,7 @@ export async function exportToJSON(data, reportName = 'reporte') {
 
     return { success: true, filename };
   } catch (error) {
-    console.error('Error exportando JSON:', error);
+    if (__DEV__) console.error('Error exportando JSON:', error);
     return { success: false, error: error.message };
   }
 }

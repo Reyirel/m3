@@ -43,7 +43,7 @@ export function subscribeToTaskProgress(taskId, callback) {
 
     return unsubscribe;
   } catch (error) {
-    console.error('Error en subscribeToTaskProgress:', error);
+    if (__DEV__) console.error('Error en subscribeToTaskProgress:', error);
     return () => {};
   }
 }
@@ -150,7 +150,7 @@ export async function getTaskProgress(taskId) {
 
     return calculateProgress(taskData, subtasks);
   } catch (error) {
-    console.error('Error obteniendo progreso:', error);
+    if (__DEV__) console.error('Error obteniendo progreso:', error);
     return null;
   }
 }
@@ -204,7 +204,7 @@ export function subscribeToMultipleTasksProgress(taskIds, callback) {
         try {
           unsub();
         } catch (e) {
-          console.warn('Error al desuscribir:', e);
+          if (__DEV__) console.warn('Error al desuscribir:', e);
         }
       }
     });

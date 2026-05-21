@@ -73,7 +73,7 @@ export const generateTaskReport = async (filters = {}) => {
 
     return filePath;
   } catch (error) {
-    console.error('Error generando reporte:', error);
+    if (__DEV__) console.error('Error generando reporte:', error);
     throw error;
   }
 };
@@ -129,7 +129,7 @@ async function generateWebReport(filters = {}) {
     
     return fileName;
   } catch (error) {
-    console.error('Error generando reporte web:', error);
+    if (__DEV__) console.error('Error generando reporte web:', error);
     throw error;
   }
 }
@@ -225,7 +225,7 @@ export const generateMonthlyReport = async (year, month) => {
 
     return filePath;
   } catch (error) {
-    console.error('Error generando reporte mensual:', error);
+    if (__DEV__) console.error('Error generando reporte mensual:', error);
     throw error;
   }
 };
@@ -535,7 +535,7 @@ export const generateSecretarioReport = async () => {
 
     return filePath;
   } catch (error) {
-    console.error('Error generando reporte de secretarios:', error);
+    if (__DEV__) console.error('Error generando reporte de secretarios:', error);
     throw error;
   }
 };

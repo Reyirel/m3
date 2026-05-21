@@ -79,7 +79,7 @@ export const confirmTaskCompletion = async (taskId, user) => {
       totalAssigned: assignedTo.length
     };
   } catch (error) {
-    console.error('Error confirmando tarea:', error);
+    if (__DEV__) console.error('Error confirmando tarea:', error);
     throw error;
   }
 };
@@ -116,7 +116,7 @@ export const removeTaskConfirmation = async (taskId, userEmail) => {
     
     return { success: true };
   } catch (error) {
-    console.error('Error removiendo confirmación:', error);
+    if (__DEV__) console.error('Error removiendo confirmación:', error);
     throw error;
   }
 };
@@ -163,7 +163,7 @@ export const getTaskConfirmationStatus = async (taskId) => {
       allCompleted: pending.length === 0 && confirmed.length > 0
     };
   } catch (error) {
-    console.error('Error obteniendo estado de confirmaciones:', error);
+    if (__DEV__) console.error('Error obteniendo estado de confirmaciones:', error);
     throw error;
   }
 };

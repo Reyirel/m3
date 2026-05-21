@@ -722,7 +722,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
           {activeTab === 'trafficlight' && (
             <TrafficLightDashboard
               tasks={tasks}
-              onAreaPress={(area) => navigation.navigate('Tasks', { filterArea: area })}
+              onAreaPress={(area) => navigation.navigate('Home', { filterArea: area })}
             />
           )}
           <View style={{ height: 100 }} />

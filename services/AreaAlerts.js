@@ -127,7 +127,7 @@ export function subscribeToAreaAlerts(callback) {
 
     callback(alerts);
   }, (error) => {
-    console.error('Error suscribiéndose a alertas:', error);
+    if (__DEV__) console.error('Error suscribiéndose a alertas:', error);
   });
 
   return unsubscribe;

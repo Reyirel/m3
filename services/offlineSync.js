@@ -61,7 +61,7 @@ export const cacheTasksLocally = async (tasks, userEmail) => {
     await AsyncStorage.setItem(key, JSON.stringify(tasks));
     await AsyncStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
   } catch (error) {
-    console.error('Error guardando cache:', error);
+    if (__DEV__) console.error('Error guardando cache:', error);
   }
 };
 
@@ -83,7 +83,7 @@ export const getCachedTasks = async (userEmail) => {
     }
     return [];
   } catch (error) {
-    console.error('Error leyendo cache:', error);
+    if (__DEV__) console.error('Error leyendo cache:', error);
     return [];
   }
 };
@@ -107,7 +107,7 @@ export const clearUserTaskCache = async (userEmail) => {
     await AsyncStorage.removeItem(key);
     log('🗑️ Caché limpiado para usuario:', userEmail);
   } catch (error) {
-    console.error('Error limpiando caché de usuario:', error);
+    if (__DEV__) console.error('Error limpiando caché de usuario:', error);
   }
 };
 
@@ -157,7 +157,7 @@ export const queueOperation = async (type, data, taskId = null, userEmail = null
     log('📥 Operación encolada:', type, taskId || 'nueva tarea');
     return operation.id;
   } catch (error) {
-    console.error('Error encolando operación:', error);
+    if (__DEV__) console.error('Error encolando operación:', error);
     throw error;
   }
 };
@@ -168,7 +168,7 @@ export const getPendingOperations = async () => {
     const pending = await AsyncStorage.getItem(PENDING_OPERATIONS_KEY);
     return pending ? JSON.parse(pending) : [];
   } catch (error) {
-    console.error('Error leyendo operaciones pendientes:', error);
+    if (__DEV__) console.error('Error leyendo operaciones pendientes:', error);
     return [];
   }
 };
@@ -186,7 +186,7 @@ const removeOperation = async (operationId) => {
     const filtered = pendingOps.filter(op => op.id !== operationId);
     await AsyncStorage.setItem(PENDING_OPERATIONS_KEY, JSON.stringify(filtered));
   } catch (error) {
-    console.error('Error eliminando operación:', error);
+    if (__DEV__) console.error('Error eliminando operación:', error);
   }
 };
 
@@ -197,7 +197,7 @@ export const clearPendingOperations = async () => {
     log('🗑️ Cola de operaciones limpiada');
     return true;
   } catch (error) {
-    console.error('Error limpiando operaciones:', error);
+    if (__DEV__) console.error('Error limpiando operaciones:', error);
     return false;
   }
 };
@@ -245,7 +245,7 @@ export const syncPendingOperations = async () => {
       synced++;
       log('✅ Sincronizado:', op.type, op.taskId || 'nueva');
     } catch (error) {
-      console.error('❌ Error sincronizando:', op.type, error.message);
+      if (__DEV__) console.error('❌ Error sincronizando:', op.type, error.message);
       
       // Si el documento no existe, descartar inmediatamente
       if (error.message.includes('No document to update') || 
@@ -311,7 +311,7 @@ const syncCreateOperation = async (op) => {
     await cacheTasksLocally(filtered, op.userEmail);
     log('✅ Caché actualizado: tarea temporal reemplazada por tarea sincronizada');
   } catch (cacheError) {
-    console.error('Error actualizando caché después de sincronizar:', cacheError);
+    if (__DEV__) console.error('Error actualizando caché después de sincronizar:', cacheError);
   }
 };
 
@@ -367,7 +367,7 @@ const syncUpdateOperation = async (op) => {
       log('✅ Caché actualizado: isOffline removido para tarea', op.taskId);
     }
   } catch (cacheError) {
-    console.error('Error actualizando caché después de sincronizar update:', cacheError);
+    if (__DEV__) console.error('Error actualizando caché después de sincronizar update:', cacheError);
   }
 };
 
@@ -486,7 +486,7 @@ export const clearOfflineData = async () => {
       log(`🗑️ Limpiadas ${keysToRemove.length} claves de cache (incluyendo @offline_tasks_*)`);
     }
   } catch (error) {
-    console.error('Error limpiando cache:', error);
+    if (__DEV__) console.error('Error limpiando cache:', error);
   }
 };
 

@@ -33,7 +33,7 @@ export const savePendingReport = async (reportData) => {
     log('💾 Reporte guardado offline:', reportId);
     return reportId;
   } catch (error) {
-    console.error('❌ Error guardando reporte offline:', error);
+    if (__DEV__) console.error('❌ Error guardando reporte offline:', error);
     throw error;
   }
 };
@@ -46,7 +46,7 @@ export const getPendingReports = async () => {
     const data = await AsyncStorage.getItem(PENDING_REPORTS_KEY);
     return data ? JSON.parse(data) : [];
   } catch (error) {
-    console.error('Error obteniendo reportes pendientes:', error);
+    if (__DEV__) console.error('Error obteniendo reportes pendientes:', error);
     return [];
   }
 };
@@ -59,7 +59,7 @@ export const getFailedReports = async () => {
     const data = await AsyncStorage.getItem(FAILED_REPORTS_KEY);
     return data ? JSON.parse(data) : [];
   } catch (error) {
-    console.error('Error obteniendo reportes fallidos:', error);
+    if (__DEV__) console.error('Error obteniendo reportes fallidos:', error);
     return [];
   }
 };
@@ -87,7 +87,7 @@ export const markReportAsSynced = async (reportId) => {
       log('✅ Reporte marcado como sincronizado:', reportId);
     }
   } catch (error) {
-    console.error('Error marcando reporte como sincronizado:', error);
+    if (__DEV__) console.error('Error marcando reporte como sincronizado:', error);
   }
 };
 
@@ -113,7 +113,7 @@ export const markReportAsFailed = async (reportId) => {
       log('⚠️ Reporte marcado como fallido:', reportId);
     }
   } catch (error) {
-    console.error('Error marcando reporte como fallido:', error);
+    if (__DEV__) console.error('Error marcando reporte como fallido:', error);
   }
 };
 
@@ -125,7 +125,7 @@ export const getSyncedReports = async () => {
     const data = await AsyncStorage.getItem(SYNCED_REPORTS_KEY);
     return data ? JSON.parse(data) : [];
   } catch (error) {
-    console.error('Error obteniendo reportes sincronizados:', error);
+    if (__DEV__) console.error('Error obteniendo reportes sincronizados:', error);
     return [];
   }
 };
@@ -145,7 +145,7 @@ export const updatePendingReportImages = async (reportId, imageUris) => {
       log('🖼️ Imágenes actualizadas para reporte:', reportId);
     }
   } catch (error) {
-    console.error('Error actualizando imágenes:', error);
+    if (__DEV__) console.error('Error actualizando imágenes:', error);
   }
 };
 
@@ -159,7 +159,7 @@ export const deletePendingReport = async (reportId) => {
     await AsyncStorage.setItem(PENDING_REPORTS_KEY, JSON.stringify(updated));
     log('🗑️ Reporte eliminado:', reportId);
   } catch (error) {
-    console.error('Error eliminando reporte:', error);
+    if (__DEV__) console.error('Error eliminando reporte:', error);
   }
 };
 
@@ -182,7 +182,7 @@ export const cleanupOldSyncedReports = async () => {
       log(`🧹 Limpiados ${removed} reportes antiguos`);
     }
   } catch (error) {
-    console.error('Error limpiando reportes antiguos:', error);
+    if (__DEV__) console.error('Error limpiando reportes antiguos:', error);
   }
 };
 
@@ -203,7 +203,7 @@ export const getSyncStats = async () => {
       lists: { pending, synced, failed },
     };
   } catch (error) {
-    console.error('Error obteniendo estadísticas:', error);
+    if (__DEV__) console.error('Error obteniendo estadísticas:', error);
     return { totalPending: 0, totalSynced: 0, totalFailed: 0 };
   }
 };
@@ -236,7 +236,7 @@ export const retryFailedReports = async () => {
       }
     }
   } catch (error) {
-    console.error('Error reintentando reportes fallidos:', error);
+    if (__DEV__) console.error('Error reintentando reportes fallidos:', error);
   }
 };
 
@@ -264,7 +264,7 @@ export const estimateStorageUsage = async () => {
       syncedCount: synced.length,
     };
   } catch (error) {
-    console.error('Error estimando almacenamiento:', error);
+    if (__DEV__) console.error('Error estimando almacenamiento:', error);
     return { bytes: 0 };
   }
 };

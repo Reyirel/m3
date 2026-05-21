@@ -508,7 +508,7 @@ export async function cancelNotifications(notificationIds = []) {
     }
     await Promise.all(notificationIds.map(id => Notifications.cancelScheduledNotificationAsync(id)));
   } catch (e) {
-    console.error('Error cancelando notificaciones:', e);
+    if (__DEV__) console.error('Error cancelando notificaciones:', e);
   }
 }
 
@@ -525,7 +525,7 @@ export async function getAllScheduledNotifications() {
     });
     return notifications;
   } catch (e) {
-    console.error('Error obteniendo notificaciones:', e);
+    if (__DEV__) console.error('Error obteniendo notificaciones:', e);
     return [];
   }
 }
@@ -540,7 +540,7 @@ export async function cancelAllNotifications() {
   try {
     await Notifications.cancelAllScheduledNotificationsAsync();
   } catch (e) {
-    console.error('Error cancelando todas las notificaciones:', e);
+    if (__DEV__) console.error('Error cancelando todas las notificaciones:', e);
   }
 }
 
@@ -605,7 +605,7 @@ export async function scheduleHourlyReminders(task) {
 
     return ids;
   } catch (e) {
-    console.error('Error programando notificaciones horarias:', e);
+    if (__DEV__) console.error('Error programando notificaciones horarias:', e);
     return [];
   }
 }
@@ -676,7 +676,7 @@ export async function schedulePersistentNotification(task) {
 
     return id;
   } catch (e) {
-    console.error('Error creando notificación persistente:', e);
+    if (__DEV__) console.error('Error creando notificación persistente:', e);
     return null;
   }
 }
@@ -701,7 +701,7 @@ async function trackNotificationSent(taskId, notificationId) {
     
     await AsyncStorage.setItem(NOTIFICATION_TRACKING_KEY, JSON.stringify(data));
   } catch (e) {
-    console.error('Error guardando tracking:', e);
+    if (__DEV__) console.error('Error guardando tracking:', e);
   }
 }
 
@@ -719,7 +719,7 @@ export async function confirmNotificationViewed(taskId) {
       await AsyncStorage.setItem(NOTIFICATION_TRACKING_KEY, JSON.stringify(data));
     }
   } catch (e) {
-    console.error('Error confirmando notificación:', e);
+    if (__DEV__) console.error('Error confirmando notificación:', e);
   }
 }
 
@@ -753,7 +753,7 @@ export async function checkUnconfirmedNotifications(tasks) {
       }
     }
   } catch (e) {
-    console.error('Error verificando notificaciones no confirmadas:', e);
+    if (__DEV__) console.error('Error verificando notificaciones no confirmadas:', e);
   }
 }
 
@@ -780,7 +780,7 @@ async function incrementEscalationLevel(taskId) {
     await AsyncStorage.setItem(`${ESCALATION_LEVEL_KEY}_${taskId}`, newLevel.toString());
     return newLevel;
   } catch (e) {
-    console.error('Error incrementando escalado:', e);
+    if (__DEV__) console.error('Error incrementando escalado:', e);
     return 0;
   }
 }
@@ -790,7 +790,7 @@ export async function resetEscalationLevel(taskId) {
   try {
     await AsyncStorage.removeItem(`${ESCALATION_LEVEL_KEY}_${taskId}`);
   } catch (e) {
-    console.error('Error reseteando escalado:', e);
+    if (__DEV__) console.error('Error reseteando escalado:', e);
   }
 }
 
@@ -849,7 +849,7 @@ export async function scheduleEscalatedNotifications(task) {
     
     return ids;
   } catch (e) {
-    console.error('Error programando notificaciones escaladas:', e);
+    if (__DEV__) console.error('Error programando notificaciones escaladas:', e);
     return [];
   }
 }

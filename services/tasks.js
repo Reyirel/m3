@@ -94,7 +94,7 @@ async function waitForSession(maxRetries = 30, initialDelay = 100) {
     }
   }
   
-  console.warn(`⚠️  No se encontró sesión después de ${maxRetries} intentos. Último error:`, lastError?.message);
+  if (__DEV__) console.warn(`⚠️  No se encontró sesión después de ${maxRetries} intentos. Último error:`, lastError?.message);
   return null;
 }
 
@@ -626,7 +626,7 @@ export async function getOverallTaskMetrics() {
       weeklyProductivity: 0,
     };
   } catch (error) {
-    console.error('Error getting overall task metrics:', error);
+    if (__DEV__) console.error('Error getting overall task metrics:', error);
     return {
       total: 0,
       completed: 0,

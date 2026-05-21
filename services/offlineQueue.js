@@ -149,7 +149,7 @@ export const syncQueue = async (force = false) => {
         syncedCount++;
 
       } catch (error) {
-        console.error(`❌ Error sincronizando operación ${operation.type}:`, error.message);
+        if (__DEV__) console.error(`❌ Error sincronizando operación ${operation.type}:`, error.message);
         operation.status = 'failed';
         operation.error = error.message;
         await updateQueueItem(operation);
@@ -180,7 +180,7 @@ export const syncQueue = async (force = false) => {
     };
 
   } catch (error) {
-    console.error('❌ Error en sincronización:', error);
+    if (__DEV__) console.error('❌ Error en sincronización:', error);
     isSyncing = false;
     notifySyncListeners({ syncing: false });
     return { success: false, error: error.message };
@@ -199,7 +199,7 @@ const updateQueueItem = async (operation) => {
       await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(queue));
     }
   } catch (error) {
-    console.error('❌ Error actualizando item en cola:', error);
+    if (__DEV__) console.error('❌ Error actualizando item en cola:', error);
   }
 };
 
@@ -212,7 +212,7 @@ const cleanCompletedOperations = async () => {
     const activeOps = queue.filter(op => op.status !== 'completed');
     await AsyncStorage.setItem(QUEUE_KEY, JSON.stringify(activeOps));
   } catch (error) {
-    console.error('❌ Error limpiando operaciones:', error);
+    if (__DEV__) console.error('❌ Error limpiando operaciones:', error);
   }
 };
 
@@ -236,7 +236,7 @@ const notifySyncListeners = (status) => {
     try {
       callback(status);
     } catch (error) {
-      console.error('Error en listener de sync:', error);
+      if (__DEV__) console.error('Error en listener de sync:', error);
     }
   });
 };

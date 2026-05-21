@@ -227,7 +227,7 @@ const SearchScreenEnhanced = ({ navigation }) => {
             message="Escribe una palabra clave para encontrar tareas"
             action={{
               label: 'Ver todas las tareas',
-              onPress: () => navigation.navigate('HomeScreen'),
+              onPress: () => navigation.navigate('Home'),
             }}
             fullScreen={false}
           />

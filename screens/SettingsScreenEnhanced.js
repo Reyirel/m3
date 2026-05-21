@@ -26,6 +26,7 @@ import {
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { hapticMedium } from '../utils/haptics';
+import { confirmAlert } from '../utils/alert';
 import { logoutUser } from '../services/authFirestore';
 import { useResponsive } from '../utils/responsive';
 
@@ -149,12 +150,12 @@ const SettingsScreenEnhanced = ({ navigation }) => {
           icon: 'log-out-outline',
           onPress: () => {
             hapticMedium();
-            Alert.alert('¿Cerrar sesión?', '¿Estás seguro de que deseas salir?', [
-              { text: 'Cancelar', style: 'cancel' },
-              { text: 'Salir', style: 'destructive', onPress: async () => {
-                try { await logoutUser(); } catch {}
-              }},
-            ]);
+            confirmAlert(
+              '¿Cerrar sesión?',
+              '¿Estás seguro de que deseas salir?',
+              async () => { try { await logoutUser(); } catch {} },
+              'Salir'
+            );
           },
           destructive: true,
         },

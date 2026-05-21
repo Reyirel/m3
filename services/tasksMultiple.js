@@ -323,12 +323,12 @@ export async function addSubtask(taskId, subtask) {
     // Recalcular progreso SIN ESPERAR pero SI con mejor manejo de errores
     recalculateTaskProgress(taskId).catch(err => {
       // Este error es no crítico, la subtarea ya se creó
-      console.warn('⚠️ Aviso al recalcular progreso (no crítico):', err.message);
+      if (__DEV__) console.warn('⚠️ Aviso al recalcular progreso (no crítico):', err.message);
     });
     
     return docRef.id;
   } catch (error) {
-    console.error('❌ Error completo en addSubtask:', {
+    if (__DEV__) console.error('❌ Error completo en addSubtask:', {
       message: error.message,
       code: error.code,
       name: error.name,
@@ -440,7 +440,7 @@ export function subscribeToSubtasks(taskId, callback) {
   try {
     // Validar que taskId sea válido
     if (!taskId || typeof taskId !== 'string' || taskId.trim() === '') {
-      console.warn('⚠️ subscribeToSubtasks: taskId inválido', { taskId });
+      if (__DEV__) console.warn('⚠️ subscribeToSubtasks: taskId inválido', { taskId });
       callback([]);
       return () => {};
     }
@@ -453,7 +453,7 @@ export function subscribeToSubtasks(taskId, callback) {
         const taskSnap = await getDoc(taskRef);
         
         if (!taskSnap.exists()) {
-          console.warn(`⚠️ La tarea ${taskId} no existe en Firestore`);
+          if (__DEV__) console.warn(`⚠️ La tarea ${taskId} no existe en Firestore`);
           callback([]);
           return;
         }
@@ -477,7 +477,7 @@ export function subscribeToSubtasks(taskId, callback) {
           }, 
           (error) => {
             // Log pero no reintentar automáticamente - evita memory leaks
-            console.error(`❌ Error en listener de subtareas para tarea ${taskId}:`, {
+            if (__DEV__) console.error(`❌ Error en listener de subtareas para tarea ${taskId}:`, {
               code: error.code,
               message: error.message
             });
@@ -487,7 +487,7 @@ export function subscribeToSubtasks(taskId, callback) {
           }
         );
       } catch (error) {
-        console.error(`❌ Error configurando listener de subtareas para ${taskId}:`, error);
+        if (__DEV__) console.error(`❌ Error configurando listener de subtareas para ${taskId}:`, error);
         callback([]);
       }
     };
@@ -503,7 +503,7 @@ export function subscribeToSubtasks(taskId, callback) {
     };
 
   } catch (error) {
-    console.error('❌ Error en subscribeToSubtasks:', error);
+    if (__DEV__) console.error('❌ Error en subscribeToSubtasks:', error);
     callback([]);
     return () => {};
   }
@@ -523,7 +523,7 @@ export async function recalculateTaskProgress(taskId) {
   try {
     // Validar taskId
     if (!taskId || typeof taskId !== 'string' || taskId.trim() === '') {
-      console.warn('⚠️ recalculateTaskProgress: taskId inválido', { taskId });
+      if (__DEV__) console.warn('⚠️ recalculateTaskProgress: taskId inválido', { taskId });
       return;
     }
 
@@ -547,7 +547,7 @@ export async function recalculateTaskProgress(taskId) {
     
     
   } catch (error) {
-    console.warn(`⚠️ Aviso al recalcular progreso para ${taskId}: ${error.message}`);
+    if (__DEV__) console.warn(`⚠️ Aviso al recalcular progreso para ${taskId}: ${error.message}`);
     // No lanzar error, es una operación secundaria
   }
 }
@@ -630,13 +630,13 @@ export async function subscribeToTasksMultiple(callback) {
       
       callback(tasks);
     }, (error) => {
-      console.error('Error en subscribeToTasksMultiple:', error);
+      if (__DEV__) console.error('Error en subscribeToTasksMultiple:', error);
       callback([]);
     });
     
     return unsubscribe;
   } catch (error) {
-    console.error('Error:', error);
+    if (__DEV__) console.error('Error:', error);
     callback([]);
     return () => {};
   }
@@ -673,7 +673,7 @@ export async function assignSubtaskToUser(taskId, subtaskId, assignee) {
     });
 
   } catch (error) {
-    console.error('Error asignando subtarea:', error);
+    if (__DEV__) console.error('Error asignando subtarea:', error);
     throw new Error(`Error al asignar subtarea: ${error.message}`);
   }
 }

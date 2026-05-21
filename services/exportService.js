@@ -328,7 +328,7 @@ export const exportReportToPDF = async (report, images = [], task = {}) => {
       return result.uri;
     }
   } catch (error) {
-    console.error('Error exporting report to PDF:', error);
+    if (__DEV__) console.error('Error exporting report to PDF:', error);
     throw error;
   }
 };
@@ -357,7 +357,7 @@ export const sharePDF = async (pdfUri, _fileName = 'Reporte.pdf') => {
       log('Compartir no disponible en web. El archivo está listo para descargar.');
     }
   } catch (error) {
-    console.error('Error sharing PDF:', error);
+    if (__DEV__) console.error('Error sharing PDF:', error);
     throw error;
   }
 };
@@ -385,7 +385,7 @@ export const savePDFToDevice = async (pdfUri) => {
       return pdfUri;
     }
   } catch (error) {
-    console.error('Error saving PDF:', error);
+    if (__DEV__) console.error('Error saving PDF:', error);
     throw error;
   }
 };
@@ -444,7 +444,7 @@ export const exportMultipleReportsToPDF = async (reports = [], task = {}) => {
       return result.uri;
     }
   } catch (error) {
-    console.error('Error exporting multiple reports:', error);
+    if (__DEV__) console.error('Error exporting multiple reports:', error);
     throw error;
   }
 };
