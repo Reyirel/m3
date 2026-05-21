@@ -1,18 +1,15 @@
 /**
  * ProfileScreenEnhanced.js
- * Pantalla de perfil mejorada con glasmorphism
- * Información de usuario, estadísticas y acciones
+ * Pantalla de perfil con datos reales del usuario autenticado
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Image,
-  Alert,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,34 +23,33 @@ import {
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
+import { logoutUser } from '../services/authFirestore';
+import { toMs } from '../utils/dateUtils';
 import { hapticMedium } from '../utils/haptics';
-import { confirmAlert } from '../utils/alert';
+import { confirmAlert, infoAlert } from '../utils/alert';
 import { useResponsive } from '../utils/responsive';
 
-const ProfileScreenEnhanced = ({ navigation, route }) => {
-  const { theme, isDark } = useTheme();
-  const { tasks } = useTasks();
+const ProfileScreenEnhanced = ({ navigation, onLogout }) => {
+  const { theme } = useTheme();
+  const { tasks, currentUser } = useTasks();
   const { padding } = useResponsive();
-  
-  // Mock user data (in real app, would come from context/auth)
-  const [user] = useState({
-    name: 'Hazel Jared',
-    email: 'hazel.jared@example.com',
-    role: 'admin',
-    avatar: 'https://i.prawpic.com/avatar.jpg',
-    joinDate: 'Enero 2024',
-    status: 'online',
-  });
 
-  // Calculate user statistics
+  const displayName = currentUser?.displayName || currentUser?.name || 'Usuario';
+  const userEmail = currentUser?.email || '';
+  const userRole = currentUser?.role || 'usuario';
+  const roleLabel = userRole === 'admin' ? 'Administrador'
+    : userRole === 'supervisor' ? 'Supervisor'
+    : userRole === 'jefe_area' ? 'Jefe de Área'
+    : 'Usuario';
+
   const stats = {
     totalTasks: tasks.length,
     completedTasks: tasks.filter(t => t.status === 'cerrada').length,
     inProgressTasks: tasks.filter(t => t.status === 'en_proceso' || t.status === 'en_progreso').length,
-    overdueTasks: tasks.filter(t => t.isDueOverdue && t.status !== 'cerrada').length,
+    overdueTasks: tasks.filter(t => t.dueAt && toMs(t.dueAt) < Date.now() && t.status !== 'cerrada').length,
   };
 
-  const completionRate = stats.totalTasks > 0 
+  const completionRate = stats.totalTasks > 0
     ? Math.round((stats.completedTasks / stats.totalTasks) * 100)
     : 0;
 
@@ -62,73 +58,85 @@ const ProfileScreenEnhanced = ({ navigation, route }) => {
     confirmAlert(
       'Cerrar sesión',
       '¿Estás seguro de que deseas cerrar sesión?',
-      () => {},
+      async () => {
+        try {
+          await logoutUser();
+        } catch (_) {}
+        if (onLogout) onLogout();
+      },
       'Cerrar sesión'
     );
-  }, []);
+  }, [onLogout]);
 
   const profileSections = [
     {
       title: 'Información Personal',
       icon: 'person-outline',
       items: [
-        { label: 'Nombre', value: user.name, icon: 'person-outline' },
-        { label: 'Email', value: user.email, icon: 'mail-outline' },
-        { label: 'Rol', value: user.role.charAt(0).toUpperCase() + user.role.slice(1), icon: 'shield-outline' },
-        { label: 'Miembro desde', value: user.joinDate, icon: 'calendar-outline' },
+        { label: 'Nombre', value: displayName, icon: 'person-outline' },
+        { label: 'Email', value: userEmail || 'Sin email', icon: 'mail-outline' },
+        { label: 'Rol', value: roleLabel, icon: 'shield-outline' },
       ],
     },
     {
       title: 'Configuración de Cuenta',
       icon: 'settings-outline',
       items: [
-        { label: 'Cambiar contraseña', action: true, icon: 'lock-closed-outline' },
-        { label: 'Verificación de dos factores', action: true, icon: 'shield-checkmark-outline' },
-        { label: 'Dispositivos conectados', action: true, icon: 'phone-portrait-outline' },
-        { label: 'Actividad reciente', action: true, icon: 'time-outline' },
-      ],
-    },
-    {
-      title: 'Preferencias',
-      icon: 'sliders-outline',
-      items: [
-        { label: 'Notificaciones', action: true, icon: 'notifications-outline' },
-        { label: 'Privacidad', action: true, icon: 'eye-outline' },
-        { label: 'Idioma', value: 'Español', icon: 'globe-outline' },
+        {
+          label: 'Notificaciones',
+          action: true,
+          icon: 'notifications-outline',
+          onPress: () => navigation.navigate('Notifications'),
+        },
+        {
+          label: 'Cambiar contraseña',
+          action: true,
+          icon: 'lock-closed-outline',
+          onPress: () => infoAlert('Próximamente', 'Esta función estará disponible en una próxima versión.'),
+        },
+        {
+          label: 'Privacidad',
+          action: true,
+          icon: 'eye-outline',
+          onPress: () => infoAlert('Próximamente', 'Esta función estará disponible en una próxima versión.'),
+        },
       ],
     },
   ];
 
-  const renderInfoItem = useCallback((item) => (
-    <TouchableOpacity
-      onPress={item.action ? () => hapticMedium() : undefined}
-      disabled={!item.action}
-      activeOpacity={item.action ? 0.6 : 1}
-      style={item.action && Platform.OS === 'web' ? { cursor: 'pointer' } : undefined}
-    >
-      <View style={[styles.infoItem, { borderBottomColor: theme.border }]}>
-        <View style={[styles.infoIcon, { backgroundColor: theme.primaryAlpha }]}>
-          <Ionicons name={item.icon} size={18} color={theme.primary} />
+  const renderInfoItem = useCallback((item, index, total) => (
+    <View key={index}>
+      <TouchableOpacity
+        onPress={item.onPress}
+        disabled={!item.action}
+        activeOpacity={item.action ? 0.6 : 1}
+        style={item.action && Platform.OS === 'web' ? { cursor: 'pointer' } : undefined}
+      >
+        <View style={[styles.infoItem, { borderBottomColor: theme.border }]}>
+          <View style={[styles.infoIcon, { backgroundColor: theme.primaryAlpha }]}>
+            <Ionicons name={item.icon} size={18} color={theme.primary} />
+          </View>
+          <View style={styles.infoContent}>
+            <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
+              {item.label}
+            </Text>
+            {item.value ? (
+              <Text style={[styles.infoValue, { color: theme.text }]}>
+                {item.value}
+              </Text>
+            ) : null}
+          </View>
+          {item.action && (
+            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+          )}
         </View>
-        <View style={styles.infoContent}>
-          <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>
-            {item.label}
-          </Text>
-          <Text style={[styles.infoValue, { color: theme.text }]}>
-            {item.value || 'Configurar'}
-          </Text>
-        </View>
-        {item.action && (
-          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-        )}
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+      {index < total - 1 && <GlassmorphicDivider />}
+    </View>
   ), [theme]);
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-
-      {/* Header */}
       <ScreenHeader
         title="Mi Perfil"
         subtitle="Información y configuración de cuenta"
@@ -144,16 +152,15 @@ const ProfileScreenEnhanced = ({ navigation, route }) => {
         {/* Avatar Section */}
         <View style={styles.avatarSection}>
           <GlassmorphicAvatar
-            name={user.name}
-            image={user.avatar}
+            name={displayName}
             size="xlarge"
-            status={user.status}
+            status="online"
           />
           <Text style={[styles.userName, { color: theme.text }]}>
-            {user.name}
+            {displayName}
           </Text>
           <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
-            {user.email}
+            {userEmail}
           </Text>
         </View>
 
@@ -179,7 +186,7 @@ const ProfileScreenEnhanced = ({ navigation, route }) => {
             icon="alert-circle"
             title="Vencidas"
             value={stats.overdueTasks}
-            change={`${stats.overdueTasks} atender`}
+            change={stats.overdueTasks > 0 ? 'Atender' : 'Al día'}
             color={theme.warning}
             compact={true}
           />
@@ -199,66 +206,20 @@ const ProfileScreenEnhanced = ({ navigation, route }) => {
         {profileSections.map((section, sectionIndex) => (
           <View key={sectionIndex} style={styles.section}>
             <View style={styles.sectionHeader}>
-              <View
-                style={[
-                  styles.sectionIcon,
-                  { backgroundColor: theme.primaryAlpha },
-                ]}
-              >
-                <Ionicons
-                  name={section.icon}
-                  size={18}
-                  color={theme.primary}
-                />
+              <View style={[styles.sectionIcon, { backgroundColor: theme.primaryAlpha }]}>
+                <Ionicons name={section.icon} size={18} color={theme.primary} />
               </View>
               <Text style={[styles.sectionTitle, { color: theme.text }]}>
                 {section.title}
               </Text>
             </View>
-
             <GlassmorphicCard style={styles.sectionCard}>
-              {section.items.map((item, itemIndex) => (
-                <View key={itemIndex}>
-                  {renderInfoItem(item)}
-                  {itemIndex < section.items.length - 1 && (
-                    <GlassmorphicDivider />
-                  )}
-                </View>
-              ))}
+              {section.items.map((item, itemIndex) =>
+                renderInfoItem(item, itemIndex, section.items.length)
+              )}
             </GlassmorphicCard>
           </View>
         ))}
-
-        {/* Danger Zone */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <View
-              style={[
-                styles.sectionIcon,
-                { backgroundColor: theme.errorAlpha },
-              ]}
-            >
-              <Ionicons name="alert-circle-outline" size={18} color={theme.error} />
-            </View>
-            <Text style={[styles.sectionTitle, { color: theme.text }]}>
-              Zona de Riesgo
-            </Text>
-          </View>
-
-          <GlassmorphicCard style={styles.sectionCard}>
-            <View style={styles.dangerItem}>
-              <View style={styles.dangerContent}>
-                <Text style={[styles.dangerLabel, { color: theme.error }]}>
-                  Eliminar Cuenta
-                </Text>
-                <Text style={[styles.dangerDescription, { color: theme.textMuted }]}>
-                  Esta acción es irreversible
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={20} color={theme.error} />
-            </View>
-          </GlassmorphicCard>
-        </View>
 
         {/* Logout Button */}
         <View style={styles.section}>
@@ -272,10 +233,9 @@ const ProfileScreenEnhanced = ({ navigation, route }) => {
           />
         </View>
 
-        {/* Version */}
         <View style={styles.footer}>
           <Text style={[styles.versionText, { color: theme.textMuted }]}>
-            App v1.4.2 · Glasmorphic UI
+            App v1.4.2
           </Text>
         </View>
       </ScrollView>
@@ -286,7 +246,6 @@ const ProfileScreenEnhanced = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: 'transparent',
   },
   content: {
     flex: 1,
@@ -362,24 +321,6 @@ const styles = StyleSheet.create({
   infoValue: {
     fontSize: 15,
     fontWeight: '600',
-  },
-  dangerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  dangerContent: {
-    flex: 1,
-    gap: 2,
-  },
-  dangerLabel: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  dangerDescription: {
-    fontSize: 13,
   },
   footer: {
     alignItems: 'center',

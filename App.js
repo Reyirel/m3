@@ -65,6 +65,7 @@ const AreaChiefDashboard = React.lazy(() => import('./screens/AreaChiefDashboard
 const AreaManagementScreen = React.lazy(() => import('./screens/area/AreaManagementScreen'));
 const AnalyticsScreen = React.lazy(() => import('./screens/AnalyticsScreen'));
 const TaskReportsAndActivityScreen = React.lazy(() => import('./screens/TaskReportsAndActivityScreen'));
+const ProfileScreenEnhanced = React.lazy(() => import('./screens/ProfileScreenEnhanced'));
 import { getCurrentSession, logoutUser } from './services/authFirestore';
 import { startConnectivityMonitoring } from './services/offlineQueue';
 import { toMs } from './utils/dateUtils';
@@ -660,9 +661,9 @@ export default function App() {
                     </Suspense>
                   )}
                 </Stack.Screen>
-                <Stack.Screen 
-                  name="MyAreaReports" 
-                  options={{ 
+                <Stack.Screen
+                  name="MyAreaReports"
+                  options={{
                     headerShown: false,
                     presentation: 'card',
                     animation: 'slide_from_right'
@@ -671,6 +672,19 @@ export default function App() {
                   {(props) => (
                     <Suspense fallback={<ScreenFallback />}>
                       <MyAreaReportsScreen {...props} />
+                    </Suspense>
+                  )}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="Profile"
+                  options={{
+                    presentation: 'card',
+                    animation: 'slide_from_right'
+                  }}
+                >
+                  {(props) => (
+                    <Suspense fallback={<ScreenFallback />}>
+                      <ProfileScreenEnhanced {...props} onLogout={handleLogout} />
                     </Suspense>
                   )}
                 </Stack.Screen>
