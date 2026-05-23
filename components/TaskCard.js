@@ -59,7 +59,8 @@ export default function TaskCard({
   const priority = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.media;
   const status = STATUS_CONFIG[task.status] || { label: task.status || 'Sin estado' };
 
-  const isOverdue = task.dueAt && toMs(task.dueAt) < Date.now() && task.status !== 'cerrada' && task.status !== 'completado' && task.status !== 'cerrado';
+  const isClosed = task.status === 'cerrada' || task.status === 'completado' || task.status === 'cerrado';
+  const isOverdue = task.dueAt && toMs(task.dueAt) < Date.now() && !isClosed;
 
   // Accent color from theme
   const accentColor = isOverdue
@@ -69,7 +70,7 @@ export default function TaskCard({
     : task.priority === 'baja'    ? theme.success
     : theme.statusPending; // media → orange
 
-  const statusColor = task.status === 'cerrada' || task.status === 'completado' ? theme.success
+  const statusColor = isClosed ? theme.success
     : task.status === 'en_proceso' || task.status === 'en_progreso' ? theme.statusInProgress
     : task.status === 'en_revision' || task.status === 'revision' ? theme.statusReview
     : task.status === 'bloqueado' ? theme.error
@@ -98,8 +99,11 @@ export default function TaskCard({
             backgroundColor: isDark ? theme.card : theme.glassStrong,
             borderColor: isOverdue
               ? theme.error + '40'
+              : isClosed
+              ? theme.success + '30'
               : isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
             shadowColor: isOverdue ? theme.error : theme.shadowColor,
+            opacity: isClosed ? 0.72 : 1,
             transform: [{ scale: scaleAnim }],
           },
         ]}
@@ -110,7 +114,10 @@ export default function TaskCard({
         <View style={styles.inner}>
           {/* Title + status badge */}
           <View style={styles.titleRow}>
-            <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>
+            {isClosed && (
+              <Ionicons name="checkmark-circle" size={18} color={theme.success} style={{ marginTop: 1 }} />
+            )}
+            <Text style={[styles.title, { color: isClosed ? theme.textSecondary : theme.text, textDecorationLine: isClosed ? 'line-through' : 'none' }]} numberOfLines={2}>
               {task.title}
             </Text>
             <View style={[
@@ -135,13 +142,23 @@ export default function TaskCard({
 
           {/* Meta row */}
           <View style={[styles.footer, { borderTopColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.06)' }]}>
-            {/* Priority pill */}
+            {/* Priority / overdue pill */}
             <View style={[styles.pill, { backgroundColor: accentColor + '18', borderColor: accentColor + '55' }]}>
               <View style={[styles.dot, { backgroundColor: accentColor }]} />
               <Text style={[styles.pillText, { color: accentColor }]}>
-                {isOverdue ? 'VENCIDA' : priority.label.toUpperCase()}
+                {isOverdue ? 'VENCIDA' : isClosed ? 'CERRADA' : priority.label.toUpperCase()}
               </Text>
             </View>
+
+            {/* Area tag */}
+            {!!task.area && (
+              <View style={[styles.pill, { backgroundColor: theme.primaryAlpha || 'rgba(159,34,65,0.10)', borderColor: theme.primary + '30' }]}>
+                <Ionicons name="layers-outline" size={9} color={theme.primary} />
+                <Text style={[styles.pillText, { color: theme.primary }]} numberOfLines={1}>
+                  {task.area.length > 14 ? task.area.slice(0, 13) + '…' : task.area}
+                </Text>
+              </View>
+            )}
 
             {/* Assignees */}
             {task.assignedTo && task.assignedTo.length > 0 && (

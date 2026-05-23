@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   Platform, Modal, ActivityIndicator,
@@ -9,6 +9,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import GlassChip from './GlassChip';
 import SearchBar from '../SearchBar';
 import { logoutUser } from '../../services/authFirestore';
+import { getUnreadNotificationsCount } from '../../services/notificationsAdvanced';
 
 const FILTERS = [
   { id: 'todas',       label: 'Todas',       icon: 'list'                          },
@@ -17,6 +18,12 @@ const FILTERS = [
   { id: 'revision',    label: 'Revisión',    icon: 'eye-outline'                   },
   { id: 'cerrada',     label: 'Completadas', icon: 'checkmark-done-circle-outline' },
 ];
+
+function getInitials(name = '') {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export default function HomeHeader({
   userName = 'Usuario',
@@ -29,10 +36,20 @@ export default function HomeHeader({
   statusCounts = {},
   onLogout,
   onProfilePress,
+  onNotificationsPress,
 }) {
   const { theme, isDark } = useTheme();
   const [showModal, setShowModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    getUnreadNotificationsCount()
+      .then(count => { if (!cancelled) setUnreadCount(count || 0); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const confirmLogout = async () => {
     setLoggingOut(true);
@@ -41,13 +58,14 @@ export default function HomeHeader({
     } catch {}
 
     if (Platform.OS === 'web') {
-      // Reload is the most reliable way to reset nav state on web
       window.location.reload();
       return;
     }
     setShowModal(false);
     onLogout?.();
   };
+
+  const initials = getInitials(userName);
 
   return (
     <View>
@@ -59,27 +77,57 @@ export default function HomeHeader({
         style={styles.gradient}
       >
         <View style={styles.headerRow}>
+          {/* Avatar + info — navega a perfil */}
           <TouchableOpacity
             style={styles.userBlock}
             onPress={onProfilePress}
-            activeOpacity={onProfilePress ? 0.7 : 1}
+            activeOpacity={onProfilePress ? 0.75 : 1}
             accessibilityLabel="Ver perfil"
             accessibilityRole="button"
           >
-            <Text style={styles.greeting}>Hola,</Text>
-            <Text style={styles.name} numberOfLines={1}>{userName}</Text>
+            <View style={styles.avatarRow}>
+              <View style={styles.avatarCircle}>
+                <Text style={styles.avatarText}>{initials}</Text>
+              </View>
+              <View style={styles.userInfo}>
+                <Text style={styles.greeting}>Hola,</Text>
+                <Text style={styles.name} numberOfLines={1}>{userName}</Text>
+              </View>
+            </View>
             <View style={styles.roleTag}>
               <Text style={styles.roleText}>{role}</Text>
             </View>
           </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setShowModal(true)}
-            style={styles.logoutBtn}
-            accessibilityLabel="Cerrar sesión"
-            accessibilityRole="button"
-          >
-            <Ionicons name="log-out-outline" size={20} color="rgba(255,255,255,0.82)" />
-          </TouchableOpacity>
+
+          {/* Botones del lado derecho */}
+          <View style={styles.actions}>
+            {/* Campana de notificaciones */}
+            {onNotificationsPress && (
+              <TouchableOpacity
+                onPress={onNotificationsPress}
+                style={styles.iconBtn}
+                accessibilityLabel={`Notificaciones${unreadCount > 0 ? `, ${unreadCount} sin leer` : ''}`}
+                accessibilityRole="button"
+              >
+                <Ionicons name="notifications-outline" size={20} color="rgba(255,255,255,0.88)" />
+                {unreadCount > 0 && (
+                  <View style={styles.badge}>
+                    <Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            )}
+
+            {/* Logout */}
+            <TouchableOpacity
+              onPress={() => setShowModal(true)}
+              style={styles.iconBtn}
+              accessibilityLabel="Cerrar sesión"
+              accessibilityRole="button"
+            >
+              <Ionicons name="log-out-outline" size={20} color="rgba(255,255,255,0.82)" />
+            </TouchableOpacity>
+          </View>
         </View>
       </LinearGradient>
 
@@ -123,18 +171,15 @@ export default function HomeHeader({
               borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
             },
           ]}>
-            {/* Icon */}
             <View style={[styles.iconCircle, { backgroundColor: 'rgba(159,34,65,0.12)' }]}>
               <Ionicons name="log-out-outline" size={28} color={theme.primary} />
             </View>
-
             <Text style={[styles.modalTitle, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>
               Cerrar sesión
             </Text>
             <Text style={[styles.modalSub, { color: isDark ? 'rgba(255,255,255,0.55)' : '#6B6B6B' }]}>
               ¿Estás seguro de que deseas salir de tu cuenta?
             </Text>
-
             <View style={styles.btnRow}>
               <TouchableOpacity
                 onPress={() => setShowModal(false)}
@@ -145,7 +190,6 @@ export default function HomeHeader({
                   Cancelar
                 </Text>
               </TouchableOpacity>
-
               <TouchableOpacity
                 onPress={confirmLogout}
                 style={[styles.btn, styles.btnConfirm, { backgroundColor: theme.primary }]}
@@ -183,22 +227,45 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   userBlock: { flex: 1 },
+  avatarRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  avatarCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.38)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarText: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  userInfo: {
+    flex: 1,
+  },
   greeting: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.68)',
     letterSpacing: 0.3,
-    marginBottom: 2,
   },
   name: {
-    fontSize: 26,
+    fontSize: 22,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.5,
-    lineHeight: 32,
+    lineHeight: 28,
   },
   roleTag: {
-    marginTop: 8,
+    marginTop: 10,
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(255,255,255,0.14)',
     paddingHorizontal: 10,
@@ -213,7 +280,13 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.90)',
     letterSpacing: 1,
   },
-  logoutBtn: {
+  actions: {
+    flexDirection: 'row',
+    gap: 8,
+    marginLeft: 12,
+    marginTop: 2,
+  },
+  iconBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -222,8 +295,25 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 12,
-    marginTop: 2,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#FF3B30',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.9)',
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#FFFFFF',
   },
   searchWrapper: { marginTop: -18, paddingHorizontal: 16, zIndex: 10 },
   searchCard: {
@@ -238,7 +328,6 @@ const styles = StyleSheet.create({
   chipsScroll: { marginTop: 12 },
   chipsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 4 },
 
-  // Modal
   overlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.55)',

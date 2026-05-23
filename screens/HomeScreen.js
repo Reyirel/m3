@@ -364,6 +364,7 @@ export default function HomeScreen({ navigation, onLogout }) {
           statusCounts={statusCounts}
           onLogout={onLogout}
           onProfilePress={() => navigation.navigate('Profile')}
+          onNotificationsPress={() => navigation.navigate('Notifications')}
         />
 
         <OverdueAlert
