@@ -3,6 +3,7 @@
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toMs, diffMs } from '../utils/dateUtils';
+import { isInProgress } from '../utils/taskStatus';
 import { isTaskAssignedToUser, getTaskArea } from '../utils/taskHelpers';
 
 // ✅ OPTIMIZACIÓN: Cache simple con TTL
@@ -62,7 +63,7 @@ export const getGeneralMetrics = async (userId, userRole) => {
     const total = tasks.length;
     const completed = tasks.filter(t => t.status === 'cerrada').length;
     const pending = tasks.filter(t => t.status === 'pendiente').length;
-    const inProgress = tasks.filter(t => t.status === 'en_proceso' || t.status === 'en-progreso' || t.status === 'en_progreso' || t.status === 'en progreso').length;
+    const inProgress = tasks.filter(t => isInProgress(t.status)).length;
     const inReview = tasks.filter(t => t.status === 'en_revision').length;
     const overdue = tasks.filter(t => 
       t.status !== 'cerrada' && t.dueAt && toMs(t.dueAt) < now
@@ -386,7 +387,7 @@ export const getSecretarioMetrics = async () => {
       const tasksOverdue = tasksPending.filter(t => t.dueAt && toMs(t.dueAt) < now);
 
       // Tareas en proceso y en revisión
-      const tasksInProgress = tasksCreated.filter(t => t.status === 'en_proceso' || t.status === 'en-progreso' || t.status === 'en progreso');
+      const tasksInProgress = tasksCreated.filter(t => isInProgress(t.status));
       const tasksInReview = tasksCreated.filter(t => t.status === 'en_revision');
 
       // Tiempo promedio de completitud

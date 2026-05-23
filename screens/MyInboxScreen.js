@@ -24,6 +24,7 @@ import { scheduleOverdueTasksNotification, scheduleMultipleDailyOverdueNotificat
 import { useResponsive } from '../utils/responsive';
 import { SPACING, RADIUS, SHADOWS, MAX_WIDTHS } from '../theme/tokens';
 import { isOverdue, toMs } from '../utils/dateUtils';
+import { statusLabel } from '../utils/taskStatus';
 import SyncIndicator from '../components/SyncIndicator';
 import { getDireccionesBySecretaria } from '../config/areas';
 
@@ -254,8 +255,13 @@ export default function MyInboxScreen({ navigation }) {
         if (!matchTitle && !matchDesc) return false;
       }
       
-      // Filtro de estado
-      if (filters.status.length > 0 && !filters.status.includes(task.status)) return false;
+      // Filtro de estado (normalizar variantes de en_proceso)
+      if (filters.status.length > 0) {
+        const normalized = task.status === 'en_progreso' || task.status === 'en-progreso' || task.status === 'en progreso'
+          ? 'en_proceso'
+          : task.status;
+        if (!filters.status.includes(normalized)) return false;
+      }
       
       // Filtro de prioridad
       if (filters.priority.length > 0 && !filters.priority.includes(task.priority)) return false;
@@ -268,7 +274,7 @@ export default function MyInboxScreen({ navigation }) {
       
       return true;
     })
-    .sort((a, b) => (a.dueAt || 0) - (b.dueAt || 0));
+    .sort((a, b) => (toMs(a.dueAt) || 0) - (toMs(b.dueAt) || 0));
 
   // Contar tareas vencidas
   const overdueTasks = filtered.filter(task => isOverdue(task));
@@ -911,7 +917,7 @@ export default function MyInboxScreen({ navigation }) {
                   </View>
                 </View>
                 <View style={styles.filterOptions}>
-                  {['pendiente', 'en progreso', 'cerrada'].map(status => (
+                  {['pendiente', 'en_proceso', 'cerrada'].map(status => (
                     <TouchableOpacity
                       key={status}
                       style={[
@@ -933,7 +939,7 @@ export default function MyInboxScreen({ navigation }) {
                           styles.filterOptionText,
                           filters.status.includes(status) && { color: '#FFFFFF', fontWeight: '700' }
                         ]}>
-                          {status}
+                          {statusLabel(status)}
                         </Text>
                       </View>
                     </TouchableOpacity>

@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
+import { isInProgress } from '../utils/taskStatus';
 import {
   View,
   Text,
@@ -62,7 +63,7 @@ const SearchScreenEnhanced = ({ navigation }) => {
 
       // Filtros adicionales
       if (selectedFilters.includes('pending') && task.status !== 'pendiente') return false;
-      if (selectedFilters.includes('inProgress') && task.status !== 'en_proceso') return false;
+      if (selectedFilters.includes('inProgress') && !isInProgress(task.status)) return false;
       if (selectedFilters.includes('completed') && task.status !== 'cerrada') return false;
       if (selectedFilters.includes('urgent') && task.priority !== 'alta') return false;
       if (selectedFilters.includes('overdue') && !task.isDueOverdue) return false;

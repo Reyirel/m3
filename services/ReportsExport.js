@@ -5,6 +5,7 @@
 
 import { Platform } from 'react-native';
 import { toMs } from '../utils/dateUtils';
+import { isInProgress } from '../utils/taskStatus';
 
 // Imports condicionales para Expo modules (no disponibles en web)
 let FileSystem = null;
@@ -107,7 +108,7 @@ export async function exportAreaReport(areaMetrics, allTasks, _period = 'month')
     // SECCIÓN 3: Distribución por estado
     const statusDistribution = {
       pendiente: allTasks.filter(t => t.status === 'pendiente').length,
-      en_proceso: allTasks.filter(t => t.status === 'en_proceso' || t.status === 'en-progreso' || t.status === 'en progreso').length,
+      en_proceso: allTasks.filter(t => isInProgress(t.status)).length,
       en_revision: allTasks.filter(t => t.status === 'en_revision').length,
       cerrada: allTasks.filter(t => t.status === 'cerrada').length,
     };

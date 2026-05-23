@@ -25,6 +25,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
 import { logoutUser } from '../services/authFirestore';
 import { toMs } from '../utils/dateUtils';
+import { isInProgress } from '../utils/taskStatus';
 import { hapticMedium } from '../utils/haptics';
 import { confirmAlert, infoAlert } from '../utils/alert';
 import { useResponsive } from '../utils/responsive';
@@ -45,7 +46,7 @@ const ProfileScreenEnhanced = ({ navigation, onLogout }) => {
   const stats = {
     totalTasks: tasks.length,
     completedTasks: tasks.filter(t => t.status === 'cerrada').length,
-    inProgressTasks: tasks.filter(t => t.status === 'en_proceso' || t.status === 'en_progreso').length,
+    inProgressTasks: tasks.filter(t => isInProgress(t.status)).length,
     overdueTasks: tasks.filter(t => t.dueAt && toMs(t.dueAt) < Date.now() && t.status !== 'cerrada').length,
   };
 

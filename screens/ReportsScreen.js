@@ -50,6 +50,7 @@ import { subscribeToAreas } from '../services/area/areaManagement';
 import { getAreaType } from '../config/areas';
 import { MAX_WIDTHS } from '../theme/tokens';
 import { toMs } from '../utils/dateUtils';
+import { isInProgress } from '../utils/taskStatus';
 
 
 export default function ReportsScreen({ navigation }) {
@@ -359,7 +360,7 @@ export default function ReportsScreen({ navigation }) {
     
     setWeeklyStats({
       completed: weeklyCompleted.length,
-      inProgress: weeklyTasks.filter(t => t.status === 'en-progreso' || t.status === 'en_proceso' || t.status === 'en_revision').length,
+      inProgress: weeklyTasks.filter(t => isInProgress(t.status) || t.status === 'en_revision').length,
       pending: weeklyTasks.filter(t => t.status === 'pendiente').length,
       overdue: weeklyTasks.filter(t => toMs(t.dueAt) < now && t.status !== 'cerrada').length,
       completionRate: weeklyTasks.length > 0 ? Math.round((weeklyCompleted.length / weeklyTasks.length) * 100) : 0,
