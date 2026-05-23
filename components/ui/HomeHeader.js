@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Alert, Platform, Modal, ActivityIndicator,
+  Platform, Modal, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +28,7 @@ export default function HomeHeader({
   onFilterChange,
   statusCounts = {},
   onLogout,
+  onProfilePress,
 }) {
   const { theme, isDark } = useTheme();
   const [showModal, setShowModal] = useState(false);
@@ -58,13 +59,19 @@ export default function HomeHeader({
         style={styles.gradient}
       >
         <View style={styles.headerRow}>
-          <View style={styles.userBlock}>
+          <TouchableOpacity
+            style={styles.userBlock}
+            onPress={onProfilePress}
+            activeOpacity={onProfilePress ? 0.7 : 1}
+            accessibilityLabel="Ver perfil"
+            accessibilityRole="button"
+          >
             <Text style={styles.greeting}>Hola,</Text>
             <Text style={styles.name} numberOfLines={1}>{userName}</Text>
             <View style={styles.roleTag}>
               <Text style={styles.roleText}>{role}</Text>
             </View>
-          </View>
+          </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setShowModal(true)}
             style={styles.logoutBtn}

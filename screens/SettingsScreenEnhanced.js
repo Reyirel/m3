@@ -26,7 +26,7 @@ import {
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { hapticMedium } from '../utils/haptics';
-import { confirmAlert } from '../utils/alert';
+import { confirmAlert, infoAlert } from '../utils/alert';
 import { logoutUser } from '../services/authFirestore';
 import { useResponsive } from '../utils/responsive';
 
@@ -132,7 +132,7 @@ const SettingsScreenEnhanced = ({ navigation }) => {
           icon: 'person-circle-outline',
           onPress: () => {
             hapticMedium();
-            // navigation.navigate('ProfileScreen');
+            navigation.navigate('Profile');
           },
         },
         {
@@ -141,7 +141,7 @@ const SettingsScreenEnhanced = ({ navigation }) => {
           icon: 'shield-outline',
           onPress: () => {
             hapticMedium();
-            // navigation.navigate('PrivacyScreen');
+            infoAlert('Próximamente', 'Esta función estará disponible en una próxima versión.');
           },
         },
         {

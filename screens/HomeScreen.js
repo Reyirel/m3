@@ -363,6 +363,7 @@ export default function HomeScreen({ navigation, onLogout }) {
           onFilterChange={setQuickStatusFilter}
           statusCounts={statusCounts}
           onLogout={onLogout}
+          onProfilePress={() => navigation.navigate('Profile')}
         />
 
         <OverdueAlert
@@ -641,6 +642,8 @@ export default function HomeScreen({ navigation, onLogout }) {
             { icon: 'add-circle', label: 'Nueva tarea', color: theme.primary, onPress: () => navigation.navigate('TaskDetail', {}) },
             { icon: 'notifications', label: 'Notificaciones', color: theme.info, onPress: () => navigation.navigate('Notifications') },
             { icon: 'stats-chart', label: 'Estadísticas', color: theme.success, onPress: () => navigation.navigate('ExecutiveDashboard') },
+            { icon: 'search', label: 'Buscar', color: theme.warning, onPress: () => navigation.navigate('Search') },
+            { icon: 'settings', label: 'Ajustes', color: theme.textSecondary, onPress: () => navigation.navigate('Settings') },
           ]}
           position="bottom-right"
         />
@@ -651,6 +654,8 @@ export default function HomeScreen({ navigation, onLogout }) {
         <QuickActionButton
           actions={[
             { icon: 'notifications', label: 'Notificaciones', color: theme.info, onPress: () => navigation.navigate('Notifications') },
+            { icon: 'search', label: 'Buscar', color: theme.warning, onPress: () => navigation.navigate('Search') },
+            { icon: 'settings', label: 'Ajustes', color: theme.textSecondary, onPress: () => navigation.navigate('Settings') },
           ]}
           position="bottom-right"
         />

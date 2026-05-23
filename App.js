@@ -66,6 +66,8 @@ const AreaManagementScreen = React.lazy(() => import('./screens/area/AreaManagem
 const AnalyticsScreen = React.lazy(() => import('./screens/AnalyticsScreen'));
 const TaskReportsAndActivityScreen = React.lazy(() => import('./screens/TaskReportsAndActivityScreen'));
 const ProfileScreenEnhanced = React.lazy(() => import('./screens/ProfileScreenEnhanced'));
+const SearchScreenEnhanced = React.lazy(() => import('./screens/SearchScreenEnhanced'));
+const SettingsScreenEnhanced = React.lazy(() => import('./screens/SettingsScreenEnhanced'));
 import { getCurrentSession, logoutUser } from './services/authFirestore';
 import { startConnectivityMonitoring } from './services/offlineQueue';
 import { toMs } from './utils/dateUtils';
@@ -685,6 +687,32 @@ export default function App() {
                   {(props) => (
                     <Suspense fallback={<ScreenFallback />}>
                       <ProfileScreenEnhanced {...props} onLogout={handleLogout} />
+                    </Suspense>
+                  )}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="Search"
+                  options={{
+                    presentation: 'card',
+                    animation: 'slide_from_right'
+                  }}
+                >
+                  {(props) => (
+                    <Suspense fallback={<ScreenFallback />}>
+                      <SearchScreenEnhanced {...props} />
+                    </Suspense>
+                  )}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="Settings"
+                  options={{
+                    presentation: 'card',
+                    animation: 'slide_from_right'
+                  }}
+                >
+                  {(props) => (
+                    <Suspense fallback={<ScreenFallback />}>
+                      <SettingsScreenEnhanced {...props} />
                     </Suspense>
                   )}
                 </Stack.Screen>
