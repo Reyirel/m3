@@ -76,7 +76,7 @@ export default function TaskCard({
     : theme.statusPending;
 
   const dueDate = task.dueAt
-    ? new Date(task.dueAt).toLocaleDateString('es-MX', { month: 'short', day: 'numeric' })
+    ? new Date(toMs(task.dueAt)).toLocaleDateString('es-MX', { month: 'short', day: 'numeric' })
     : null;
 
   return (
