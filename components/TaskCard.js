@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { toMs } from '../utils/dateUtils';
 
 const PRIORITY_CONFIG = {
   baja:    { label: 'Baja',    icon: 'arrow-down' },
@@ -58,7 +59,7 @@ export default function TaskCard({
   const priority = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.media;
   const status = STATUS_CONFIG[task.status] || { label: task.status || 'Sin estado' };
 
-  const isOverdue = task.isDueOverdue && task.status !== 'cerrada' && task.status !== 'completado' && task.status !== 'cerrado';
+  const isOverdue = task.dueAt && toMs(task.dueAt) < Date.now() && task.status !== 'cerrada' && task.status !== 'completado' && task.status !== 'cerrado';
 
   // Accent color from theme
   const accentColor = isOverdue

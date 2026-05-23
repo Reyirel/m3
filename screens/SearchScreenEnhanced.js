@@ -6,6 +6,7 @@
 
 import React, { useState, useCallback, useMemo } from 'react';
 import { isInProgress } from '../utils/taskStatus';
+import { toMs } from '../utils/dateUtils';
 import {
   View,
   Text,
@@ -66,7 +67,7 @@ const SearchScreenEnhanced = ({ navigation }) => {
       if (selectedFilters.includes('inProgress') && !isInProgress(task.status)) return false;
       if (selectedFilters.includes('completed') && task.status !== 'cerrada') return false;
       if (selectedFilters.includes('urgent') && task.priority !== 'alta') return false;
-      if (selectedFilters.includes('overdue') && !task.isDueOverdue) return false;
+      if (selectedFilters.includes('overdue') && !(task.dueAt && toMs(task.dueAt) < Date.now() && task.status !== 'cerrada')) return false;
 
       return true;
     });
@@ -76,7 +77,7 @@ const SearchScreenEnhanced = ({ navigation }) => {
       const priorityOrder = { alta: 0, media: 1, baja: 2 };
       results.sort((a, b) => (priorityOrder[a.priority] || 3) - (priorityOrder[b.priority] || 3));
     } else if (sortBy === 'date') {
-      results.sort((a, b) => (b.dueDate || 0) - (a.dueDate || 0));
+      results.sort((a, b) => (toMs(b.dueAt) || 0) - (toMs(a.dueAt) || 0));
     }
 
     return results;

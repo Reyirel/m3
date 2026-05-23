@@ -66,8 +66,8 @@ export const calculateDetailedAreaMetrics = (tasks = [], previousTasks = []) => 
     }
 
     // Contar tareas atrasadas
-    if (task.dueDate) {
-      const dueDate = toMs(task.dueDate);
+    if (task.dueAt) {
+      const dueDate = toMs(task.dueAt);
       const now = Date.now();
       if (dueDate < now && (status !== 'cerrada' && status !== 'completada')) {
         byArea[area].overdue++;
@@ -185,8 +185,8 @@ export const getAreaTaskDistribution = (tasks, areaName) => {
       distribution.inProgress++;
     }
 
-    if (task.dueDate) {
-      const dueDate = toMs(task.dueDate);
+    if (task.dueAt) {
+      const dueDate = toMs(task.dueAt);
       if (dueDate < Date.now() && (status !== 'cerrada' && status !== 'completada')) {
         distribution.overdue++;
       }
