@@ -712,7 +712,7 @@ export default function App() {
                 >
                   {(props) => (
                     <Suspense fallback={<ScreenFallback />}>
-                      <SettingsScreenEnhanced {...props} />
+                      <SettingsScreenEnhanced {...props} onLogout={handleLogout} />
                     </Suspense>
                   )}
                 </Stack.Screen>

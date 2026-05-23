@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   RefreshControl, Animated, Platform, Modal, ScrollView,
-  Easing, ActivityIndicator,
+  Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { getSwipeable } from '../utils/platformComponents';
 
 import TaskCard from '../components/TaskCard';
+import { TaskCardSkeleton } from '../components/ShimmerEffect';
 import EmptyState from '../components/EmptyState';
 import ConfettiCelebration from '../components/ConfettiCelebration';
 import HomeHeader from '../components/ui/HomeHeader';
@@ -329,7 +330,7 @@ export default function HomeScreen({ navigation, onLogout }) {
     [theme, isDark, isDesktop, width, padding]
   );
 
-  // Loading state
+  // Loading state — skeletons en vez de spinner
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
@@ -339,11 +340,16 @@ export default function HomeScreen({ navigation, onLogout }) {
           end={{ x: 0.6, y: 1 }}
           style={styles.loadingGradient}
         >
-          <View style={styles.loadingLine1} />
-          <View style={styles.loadingLine2} />
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.18)' }} />
+            <View style={{ gap: 8 }}>
+              <View style={{ width: 80, height: 12, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.22)' }} />
+              <View style={{ width: 130, height: 18, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.30)' }} />
+            </View>
+          </View>
         </LinearGradient>
-        <View style={styles.loadingCenter}>
-          <ActivityIndicator size="large" color={theme.primary} />
+        <View style={{ paddingTop: 16 }}>
+          {[1, 2, 3, 4, 5].map(i => <TaskCardSkeleton key={i} />)}
         </View>
       </View>
     );
@@ -458,6 +464,31 @@ export default function HomeScreen({ navigation, onLogout }) {
             }
             contentContainerStyle={styles.listContent}
             ListHeaderComponent={
+              <View>
+                {/* Quick stats strip — solo en vista "todas" */}
+                {quickStatusFilter === 'todas' && tasks.length > 0 && (() => {
+                  const overdue = tasks.filter(t => t.dueAt && toMs(t.dueAt) < Date.now() && t.status !== 'cerrada').length;
+                  const stats = [
+                    { label: 'Pendientes', count: statusCounts.pendiente, color: theme.warning },
+                    { label: 'En proceso', count: statusCounts['en-progreso'], color: theme.info },
+                    overdue > 0 && { label: 'Vencidas', count: overdue, color: theme.error },
+                    { label: 'Cerradas', count: statusCounts.cerrada, color: theme.success },
+                  ].filter(Boolean);
+                  return (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 10 }}
+                    >
+                      {stats.map((s, i) => (
+                        <View key={i} style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1 }, { backgroundColor: s.color + '14', borderColor: s.color + '40' }]}>
+                          <Text style={{ fontSize: 14, fontWeight: '800', color: s.color }}>{s.count}</Text>
+                          <Text style={{ fontSize: 12, fontWeight: '500', color: s.color + 'CC' }}>{s.label}</Text>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  );
+                })()}
               <View style={styles.listHeader}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.listTitle, { color: theme.text }]}>
@@ -481,6 +512,7 @@ export default function HomeScreen({ navigation, onLogout }) {
                     </Text>
                   </View>
                 )}
+              </View>
               </View>
             }
             renderItem={({ item }) => {

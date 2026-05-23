@@ -30,7 +30,7 @@ import { confirmAlert, infoAlert } from '../utils/alert';
 import { logoutUser } from '../services/authFirestore';
 import { useResponsive } from '../utils/responsive';
 
-const SettingsScreenEnhanced = ({ navigation }) => {
+const SettingsScreenEnhanced = ({ navigation, onLogout }) => {
   const { theme, isDark, toggleTheme } = useTheme();
   const { isTablet, padding } = useResponsive();
 
@@ -153,7 +153,11 @@ const SettingsScreenEnhanced = ({ navigation }) => {
             confirmAlert(
               '¿Cerrar sesión?',
               '¿Estás seguro de que deseas salir?',
-              async () => { try { await logoutUser(); } catch {} },
+              async () => {
+                try { await logoutUser(); } catch {}
+                if (Platform.OS === 'web') { window.location.reload(); return; }
+                onLogout?.();
+              },
               'Salir'
             );
           },
