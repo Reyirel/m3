@@ -183,9 +183,17 @@ export async function subscribeToTasks(callback) {
           const status = normalizeStatus(data.status);
           const dueAt = toMs(data.dueAt) || now;
           const closedStatuses = ['cerrada', 'cerrado', 'completado'];
+          // Normalizar assignedTo — siempre array para que los filtros y queries funcionen consistentemente
+          const rawAssigned = data.assignedTo;
+          const assignedTo = Array.isArray(rawAssigned)
+            ? rawAssigned
+            : rawAssigned
+              ? [rawAssigned]
+              : [];
           return {
             id: doc.id,
             ...data,
+            assignedTo,
             status,
             createdAt: toMs(data.createdAt) || now,
             updatedAt: toMs(data.updatedAt) || now,

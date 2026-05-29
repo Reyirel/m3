@@ -9,6 +9,7 @@ import AreaCoordinationProgress from '../AreaCoordinationProgress';
 import GlassmorphicButton from '../glass/GlassmorphicButton';
 import { useNotification } from '../../contexts/NotificationContext';
 import { confirmTaskCompletion } from '../../services/taskConfirmations';
+import { isTaskAssignedToUser } from '../../utils/taskHelpers';
 
 /**
  * Props:
@@ -40,9 +41,8 @@ export default function ReadOnlyTaskModal({
 
   const userEmail = (currentUser?.email || '').toLowerCase().trim();
   const isDirector = currentUser?.role === 'director';
-  const isAssignedToMe = (task.assignedTo || []).some(
-    e => (e || '').toLowerCase().trim() === userEmail
-  );
+  // isTaskAssignedToUser handles both string and array assignedTo safely
+  const isAssignedToMe = currentUser ? isTaskAssignedToUser(task, userEmail) : false;
   const alreadyConfirmed = (task.completedBy || []).some(
     c => (c.email || '').toLowerCase().trim() === userEmail
   );

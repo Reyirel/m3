@@ -54,6 +54,7 @@ import { confirmAlert } from '../utils/alert';
 import { toMs } from '../utils/dateUtils';
 import { AREAS } from '../config/areas';
 import { getAllUsersNames, getTitularesByAreas } from '../services/roles';
+import { canChangeTaskStatus } from '../services/permissions';
 import {
   findSimilarTasks,
   suggestTaskMetadata,
@@ -229,15 +230,18 @@ export default function TaskDetailScreen({ route, navigation }) {
 
         // Poblar directores para delegación
         const directors = allUsers.filter(u => u.role === 'director');
-        if (userRole === 'secretario' && userDirecciones.length > 0) {
-          const filteredDirs = directors.filter(u => {
-            const uAreas = [u.area, ...(u.areasPermitidas || [])].map(normalizeStr).filter(Boolean);
-            return userDirecciones.some(dir => {
-              const d = normalizeStr(dir);
-              return uAreas.some(a => a.includes(d) || d.includes(a));
-            });
-          });
-          setDelegateUsers(filteredDirs.length > 0 ? filteredDirs : directors);
+        if (userRole === 'secretario') {
+          // Secretario solo puede delegar a directores de sus direcciones adscritas — SIN fallback
+          const filteredDirs = userDirecciones.length > 0
+            ? directors.filter(u => {
+                const uAreas = [u.area, ...(u.areasPermitidas || [])].map(normalizeStr).filter(Boolean);
+                return userDirecciones.some(dir => {
+                  const d = normalizeStr(dir);
+                  return uAreas.some(a => a.includes(d) || d.includes(a));
+                });
+              })
+            : [];
+          setDelegateUsers(filteredDirs);
         } else {
           setDelegateUsers(directors);
         }
@@ -330,6 +334,11 @@ export default function TaskDetailScreen({ route, navigation }) {
   };
 
   const handleStatusChange = useCallback(async (taskId, newStatus) => {
+    const check = canChangeTaskStatus(currentUser, editingTask || { id: taskId }, newStatus);
+    if (!check.canChange) {
+      showError(check.reason);
+      return;
+    }
     try {
       const { doc, updateDoc } = await import('firebase/firestore');
       const { db } = await import('../firebase');
@@ -340,7 +349,7 @@ export default function TaskDetailScreen({ route, navigation }) {
     } catch {
       showError('Error al actualizar el estado');
     }
-  }, [showError]);
+  }, [currentUser, editingTask, showError]);
 
   const handleDelegate = useCallback(async (director) => {
     if (!editingTask || !director) return;
