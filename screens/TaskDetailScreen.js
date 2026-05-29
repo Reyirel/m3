@@ -212,7 +212,7 @@ export default function TaskDetailScreen({ route, navigation }) {
         // Secretario: solo directores adscritos a sus direcciones
         if (userRole === 'secretario' && userDirecciones.length > 0) {
           const filtered = allUsers.filter(u => {
-            if (u.id === currentUser?.id) return false;
+            if (u.id === currentUser?.userId) return false;
             if (u.role === 'admin') return true;
             if (u.role === 'director') {
               const uAreas = [u.area, ...(u.areasPermitidas || [])].map(normalizeStr).filter(Boolean);
@@ -250,7 +250,7 @@ export default function TaskDetailScreen({ route, navigation }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [currentUser?.role, currentUser?.id, currentUser?.direcciones]);
+  }, [currentUser?.role, currentUser?.userId, currentUser?.direcciones]);
 
   // Cargar responsables cuando cambian las áreas
   useEffect(() => {
@@ -354,10 +354,18 @@ export default function TaskDetailScreen({ route, navigation }) {
   const handleDelegate = useCallback(async (director) => {
     if (!editingTask || !director) return;
     try {
-      const { doc, updateDoc, arrayUnion } = await import('firebase/firestore');
+      const { doc, updateDoc } = await import('firebase/firestore');
       const { db } = await import('../firebase');
+      // Normalizar assignedTo a array — arrayUnion falla si el campo es string en Firestore
+      const rawAssigned = editingTask.assignedTo;
+      const currentAssigned = Array.isArray(rawAssigned)
+        ? rawAssigned
+        : rawAssigned ? [rawAssigned] : [];
+      const newAssigned = currentAssigned.includes(director.email)
+        ? currentAssigned
+        : [...currentAssigned, director.email];
       await updateDoc(doc(db, 'tasks', editingTask.id), {
-        assignedTo: arrayUnion(director.email),
+        assignedTo: newAssigned,
         delegatedTo: director.email,
         delegatedBy: currentUser?.email || '',
         delegatedAt: new Date().toISOString(),

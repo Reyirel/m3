@@ -32,12 +32,16 @@ export const confirmTaskCompletion = async (taskId, user) => {
     }
     
     const task = taskSnap.data();
-    const assignedTo = task.assignedTo || [];
+    // Normalizar assignedTo — puede ser string (legacy) o array
+    const rawAssigned = task.assignedTo;
+    const assignedTo = Array.isArray(rawAssigned)
+      ? rawAssigned
+      : rawAssigned ? [rawAssigned] : [];
     const completedBy = task.completedBy || [];
-    
+
     // Verificar que el usuario está asignado
     const userEmail = user.email?.toLowerCase().trim() || '';
-    if (!assignedTo.some(e => e?.toLowerCase().trim() === userEmail)) {
+    if (!assignedTo.some(e => (e || '').toLowerCase().trim() === userEmail)) {
       throw new Error('No estás asignado a esta tarea');
     }
     
