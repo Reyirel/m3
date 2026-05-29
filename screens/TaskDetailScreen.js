@@ -195,6 +195,7 @@ export default function TaskDetailScreen({ route, navigation }) {
         const allUsers = snap.docs.map(d => ({
           id: d.id,
           name: d.data().displayName || d.data().email || d.id,
+          displayName: d.data().displayName || d.data().email || d.id,
           email: d.data().email || '',
           avatar: d.data().photoURL || null,
           role: d.data().role || '',
@@ -203,16 +204,16 @@ export default function TaskDetailScreen({ route, navigation }) {
           areasPermitidas: d.data().areasPermitidas || [],
         }));
 
-        // Secretario: solo directores adscritos a sus direcciones
+        const normalizeStr = (s) => (s || '').trim().toLowerCase();
         const userRole = currentUser?.role;
         const userDirecciones = currentUser?.direcciones || [];
+
+        // Secretario: solo directores adscritos a sus direcciones
         if (userRole === 'secretario' && userDirecciones.length > 0) {
-          const normalizeStr = (s) => (s || '').trim().toLowerCase();
           const filtered = allUsers.filter(u => {
             if (u.id === currentUser?.id) return false;
             if (u.role === 'admin') return true;
             if (u.role === 'director') {
-              const uArea = normalizeStr(u.area);
               const uAreas = [u.area, ...(u.areasPermitidas || [])].map(normalizeStr).filter(Boolean);
               return userDirecciones.some(dir => {
                 const d = normalizeStr(dir);
@@ -224,6 +225,21 @@ export default function TaskDetailScreen({ route, navigation }) {
           setAvailableUsers(filtered.length > 0 ? filtered : allUsers);
         } else {
           setAvailableUsers(allUsers);
+        }
+
+        // Poblar directores para delegación
+        const directors = allUsers.filter(u => u.role === 'director');
+        if (userRole === 'secretario' && userDirecciones.length > 0) {
+          const filteredDirs = directors.filter(u => {
+            const uAreas = [u.area, ...(u.areasPermitidas || [])].map(normalizeStr).filter(Boolean);
+            return userDirecciones.some(dir => {
+              const d = normalizeStr(dir);
+              return uAreas.some(a => a.includes(d) || d.includes(a));
+            });
+          });
+          setDelegateUsers(filteredDirs.length > 0 ? filteredDirs : directors);
+        } else {
+          setDelegateUsers(directors);
         }
       } catch (e) {
         if (__DEV__) console.warn('[TaskDetail] Error cargando usuarios:', e);
@@ -313,6 +329,37 @@ export default function TaskDetailScreen({ route, navigation }) {
     );
   };
 
+  const handleStatusChange = useCallback(async (taskId, newStatus) => {
+    try {
+      const { doc, updateDoc } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      await updateDoc(doc(db, 'tasks', taskId), {
+        status: newStatus,
+        updatedAt: new Date().toISOString(),
+      });
+    } catch {
+      showError('Error al actualizar el estado');
+    }
+  }, [showError]);
+
+  const handleDelegate = useCallback(async (director) => {
+    if (!editingTask || !director) return;
+    try {
+      const { doc, updateDoc, arrayUnion } = await import('firebase/firestore');
+      const { db } = await import('../firebase');
+      await updateDoc(doc(db, 'tasks', editingTask.id), {
+        assignedTo: arrayUnion(director.email),
+        delegatedTo: director.email,
+        delegatedBy: currentUser?.email || '',
+        delegatedAt: new Date().toISOString(),
+      });
+      showSuccess(`Tarea delegada a ${director.displayName || director.name}`);
+      setShowDelegateModal(false);
+    } catch {
+      showError('Error al delegar la tarea');
+    }
+  }, [editingTask, currentUser, showSuccess, showError]);
+
   const handleSave = async () => {
     if (taskOps.isSaving) return;
 
@@ -387,12 +434,28 @@ export default function TaskDetailScreen({ route, navigation }) {
   // Mostrar modal de solo lectura si es read-only
   if (permissions.isReadOnly && editingTask) {
     return (
-      <ReadOnlyTaskModal
-        task={editingTask}
-        navigation={navigation}
-        theme={theme}
-        canAddSubtask={permissions.canAddSubtask}
-      />
+      <>
+        <ReadOnlyTaskModal
+          task={editingTask}
+          navigation={navigation}
+          theme={theme}
+          canAddSubtask={permissions.canAddSubtask}
+          canDelegate={permissions.canDelegate}
+          delegateUsers={delegateUsers}
+          currentUser={currentUser}
+          onStatusChange={handleStatusChange}
+          onOpenDelegate={() => setShowDelegateModal(true)}
+        />
+        <DelegateTaskModal
+          visible={showDelegateModal}
+          onClose={() => setShowDelegateModal(false)}
+          delegateUsers={delegateUsers}
+          task={editingTask}
+          currentUser={currentUser}
+          theme={theme}
+          onDelegate={handleDelegate}
+        />
+      </>
     );
   }
 
@@ -595,7 +658,9 @@ export default function TaskDetailScreen({ route, navigation }) {
         onClose={() => setShowDelegateModal(false)}
         delegateUsers={delegateUsers}
         task={editingTask}
+        currentUser={currentUser}
         theme={theme}
+        onDelegate={handleDelegate}
       />
 
       {/* ASSIGNEE CHANGE CONFIRMATION */}

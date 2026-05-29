@@ -1,12 +1,14 @@
 // components/task/ReadOnlyTaskModal.js
 // Modal de solo lectura para directores y secretarios.
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import TaskStatusButtons from '../TaskStatusButtons';
 import SubtasksList from '../SubtasksList';
 import AreaCoordinationProgress from '../AreaCoordinationProgress';
 import GlassmorphicButton from '../glass/GlassmorphicButton';
+import { useNotification } from '../../contexts/NotificationContext';
+import { confirmTaskCompletion } from '../../services/taskConfirmations';
 
 /**
  * Props:
@@ -31,7 +33,41 @@ export default function ReadOnlyTaskModal({
   onStatusChange,
   onOpenDelegate,
 }) {
+  const { showSuccess, showError } = useNotification();
+  const [confirming, setConfirming] = useState(false);
+
   if (!task) return null;
+
+  const userEmail = (currentUser?.email || '').toLowerCase().trim();
+  const isDirector = currentUser?.role === 'director';
+  const isAssignedToMe = (task.assignedTo || []).some(
+    e => (e || '').toLowerCase().trim() === userEmail
+  );
+  const alreadyConfirmed = (task.completedBy || []).some(
+    c => (c.email || '').toLowerCase().trim() === userEmail
+  );
+  const canConfirm = isDirector && isAssignedToMe && !alreadyConfirmed &&
+    ['en_proceso', 'en_revision'].includes(task.status);
+
+  const handleConfirmProgress = async () => {
+    setConfirming(true);
+    try {
+      const result = await confirmTaskCompletion(task.id, {
+        email: currentUser.email,
+        displayName: currentUser.displayName || currentUser.email,
+        area: currentUser.area || '',
+      });
+      if (result.allCompleted) {
+        showSuccess('¡Avance confirmado! Todos los asignados han completado su parte.');
+      } else {
+        showSuccess(`Avance confirmado (${result.completedCount}/${result.totalAssigned} completados)`);
+      }
+    } catch (e) {
+      showError(e.message || 'Error al confirmar el avance');
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   const styles = createStyles(theme);
 
@@ -146,6 +182,30 @@ export default function ReadOnlyTaskModal({
                   size="large"
                   icon="chatbubble-ellipses"
                 />
+
+                {/* Confirmar avance — solo directores asignados */}
+                {alreadyConfirmed ? (
+                  <View style={[styles.confirmedBadge, { backgroundColor: '#34C75918', borderColor: '#34C75940' }]}>
+                    <Ionicons name="checkmark-circle" size={18} color="#34C759" />
+                    <Text style={[styles.confirmedText, { color: '#34C759' }]}>
+                      Avance confirmado
+                    </Text>
+                  </View>
+                ) : canConfirm ? (
+                  <TouchableOpacity
+                    style={[styles.confirmBtn, { backgroundColor: '#34C759' }]}
+                    onPress={handleConfirmProgress}
+                    disabled={confirming}
+                    activeOpacity={0.8}
+                  >
+                    {confirming
+                      ? <ActivityIndicator size="small" color="#FFF" />
+                      : <Ionicons name="checkmark-done-circle-outline" size={20} color="#FFF" />}
+                    <Text style={styles.confirmBtnText}>
+                      {confirming ? 'Confirmando…' : 'Confirmar mi avance'}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
 
                 {/* Delegar — solo secretarios con permiso */}
                 {canDelegate && currentUser?.role === 'secretario' && (
@@ -275,5 +335,36 @@ const createStyles = (_theme) =>
       fontSize: 16,
       fontWeight: '700',
       letterSpacing: 0.3,
+    },
+    confirmBtn: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: 14,
+      shadowColor: '#34C759',
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.30,
+      shadowRadius: 10,
+      elevation: 6,
+    },
+    confirmBtnText: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '700',
+    },
+    confirmedBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 14,
+      borderRadius: 14,
+      borderWidth: 1,
+    },
+    confirmedText: {
+      fontSize: 15,
+      fontWeight: '700',
     },
   });

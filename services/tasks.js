@@ -140,6 +140,8 @@ export async function subscribeToTasks(callback) {
       if (userRole === 'secretario') {
         return tasks.filter(task => {
           if (isTaskAssignedToUser(task, userEmail)) return true;
+          // Tareas delegadas por este secretario
+          if ((task.delegatedBy || '').toLowerCase().trim() === userEmail) return true;
           if ((task.createdBy || '').toLowerCase().trim() === userEmail) return true;
           const taskArea = (task.area || (Array.isArray(task.areas) ? task.areas[0] : '') || '').toLowerCase().trim();
           return taskArea && allowedAreas.has(taskArea);
