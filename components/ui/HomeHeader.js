@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Platform, Modal, ActivityIndicator,
+  Platform, Modal, ActivityIndicator, useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -25,6 +25,13 @@ function getInitials(name = '') {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+function getGreeting() {
+  const h = new Date().getHours();
+  if (h < 12) return 'Buenos días,';
+  if (h < 19) return 'Buenas tardes,';
+  return 'Buenas noches,';
+}
+
 export default function HomeHeader({
   userName = 'Usuario',
   userEmail = '',
@@ -37,8 +44,11 @@ export default function HomeHeader({
   onLogout,
   onProfilePress,
   onNotificationsPress,
+  searchRef,
 }) {
-  const { theme, isDark } = useTheme();
+  const { theme, isDark, toggleTheme } = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
+  const isWide = screenWidth >= 768;
   const [showModal, setShowModal] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -74,33 +84,53 @@ export default function HomeHeader({
         colors={theme.gradientHeader}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.6, y: 1 }}
-        style={styles.gradient}
+        style={[styles.gradient, isWide && styles.gradientWide]}
       >
-        <View style={styles.headerRow}>
+        <View style={[styles.headerRow, isWide && { alignItems: 'center', flex: 1 }]}>
           {/* Avatar + info — navega a perfil */}
           <TouchableOpacity
-            style={styles.userBlock}
+            style={[styles.userBlock, isWide && { flex: 0 }]}
             onPress={onProfilePress}
             activeOpacity={onProfilePress ? 0.75 : 1}
             accessibilityLabel="Ver perfil"
             accessibilityRole="button"
           >
             <View style={styles.avatarRow}>
-              <View style={styles.avatarCircle}>
-                <Text style={styles.avatarText}>{initials}</Text>
+              <View style={[styles.avatarCircle, isWide && { width: 40, height: 40, borderRadius: 20 }]}>
+                <Text style={[styles.avatarText, isWide && { fontSize: 14 }]}>{initials}</Text>
               </View>
               <View style={styles.userInfo}>
-                <Text style={styles.greeting}>Hola,</Text>
-                <Text style={styles.name} numberOfLines={1}>{userName}</Text>
+                {!isWide && <Text style={styles.greeting}>{getGreeting()}</Text>}
+                <Text style={[styles.name, isWide && { fontSize: 17, lineHeight: 22 }]} numberOfLines={1}>{userName}</Text>
+                {isWide && <Text style={styles.greeting}>{role}</Text>}
               </View>
             </View>
-            <View style={styles.roleTag}>
-              <Text style={styles.roleText}>{role}</Text>
-            </View>
+            {!isWide && (
+              <View style={styles.roleTag}>
+                <Text style={styles.roleText}>{role}</Text>
+              </View>
+            )}
           </TouchableOpacity>
+
+          {/* Search inline en desktop */}
+          {isWide && (
+            <View style={[styles.searchCard, { flex: 1, marginHorizontal: 24, backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.25)' }]}>
+              <SearchBar ref={searchRef} onSearch={onSearch} placeholder="Buscar tareas..." initialValue={searchText} />
+            </View>
+          )}
 
           {/* Botones del lado derecho */}
           <View style={styles.actions}>
+            {/* Modo oscuro/claro */}
+            <TouchableOpacity
+              onPress={toggleTheme}
+              style={styles.iconBtn}
+              accessibilityLabel={isDark ? 'Activar modo claro' : 'Activar modo oscuro'}
+              accessibilityRole="button"
+            >
+              <Ionicons name={isDark ? 'sunny-outline' : 'moon-outline'} size={18} color="rgba(255,255,255,0.82)" />
+            </TouchableOpacity>
+
             {/* Campana de notificaciones */}
             {onNotificationsPress && (
               <TouchableOpacity
@@ -132,20 +162,22 @@ export default function HomeHeader({
       </LinearGradient>
 
       {/* ─── Search bar ─── */}
-      <View style={styles.searchWrapper}>
-        <View style={[
-          styles.searchCard,
-          { backgroundColor: theme.glass, borderColor: theme.glassBorder, shadowColor: theme.shadowColor },
-        ]}>
-          <SearchBar onSearch={onSearch} placeholder="Buscar tareas..." initialValue={searchText} />
+      {!isWide && (
+        <View style={styles.searchWrapper}>
+          <View style={[
+            styles.searchCard,
+            { backgroundColor: theme.glass, borderColor: theme.glassBorder, shadowColor: theme.shadowColor },
+          ]}>
+            <SearchBar ref={searchRef} onSearch={onSearch} placeholder="Buscar tareas..." initialValue={searchText} />
+          </View>
         </View>
-      </View>
+      )}
 
       {/* ─── Filter chips ─── */}
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.chipsRow}
+        contentContainerStyle={[styles.chipsRow, isWide && { paddingTop: 12 }]}
         style={styles.chipsScroll}
       >
         {FILTERS.map(f => (
@@ -220,6 +252,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.28,
     shadowRadius: 20,
     elevation: 10,
+  },
+  gradientWide: {
+    paddingTop: 20,
+    paddingBottom: 20,
+    paddingHorizontal: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomLeftRadius: 20,
+    borderBottomRightRadius: 20,
   },
   headerRow: {
     flexDirection: 'row',
@@ -324,6 +365,8 @@ const styles = StyleSheet.create({
     shadowRadius: 12,
     elevation: 4,
     overflow: 'hidden',
+    minHeight: 44,
+    justifyContent: 'center',
   },
   chipsScroll: { marginTop: 12 },
   chipsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 4 },

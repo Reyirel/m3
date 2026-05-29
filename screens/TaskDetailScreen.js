@@ -108,6 +108,7 @@ export default function TaskDetailScreen({ route, navigation }) {
   // ASSIGNEES & AREAS STATE
   // ────────────────────────────────────────────────────────────
   const [availableUsers, setAvailableUsers] = useState([]);
+  const [titulares, setTitulares] = useState([]);
   const [selectedAssignees, setSelectedAssignees] = useState(
     editingTask?.assignedTo && Array.isArray(editingTask.assignedTo)
       ? editingTask.assignedTo
@@ -179,7 +180,8 @@ export default function TaskDetailScreen({ route, navigation }) {
     }).start();
   }, [fadeAnim]);
 
-  // Cargar todos los usuarios activos para el selector de asignados
+  // Cargar usuarios activos para el selector de asignados
+  // Si el usuario es secretario, solo muestra los directores de sus direcciones adscritas
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -190,19 +192,55 @@ export default function TaskDetailScreen({ route, navigation }) {
           query(collection(db, 'users'), where('active', '==', true))
         );
         if (cancelled) return;
-        const users = snap.docs.map(d => ({
+        const allUsers = snap.docs.map(d => ({
           id: d.id,
           name: d.data().displayName || d.data().email || d.id,
           email: d.data().email || '',
           avatar: d.data().photoURL || null,
+          role: d.data().role || '',
+          area: d.data().area || '',
+          direcciones: d.data().direcciones || [],
+          areasPermitidas: d.data().areasPermitidas || [],
         }));
-        setAvailableUsers(users);
+
+        // Secretario: solo directores adscritos a sus direcciones
+        const userRole = currentUser?.role;
+        const userDirecciones = currentUser?.direcciones || [];
+        if (userRole === 'secretario' && userDirecciones.length > 0) {
+          const normalizeStr = (s) => (s || '').trim().toLowerCase();
+          const filtered = allUsers.filter(u => {
+            if (u.id === currentUser?.id) return false;
+            if (u.role === 'admin') return true;
+            if (u.role === 'director') {
+              const uArea = normalizeStr(u.area);
+              const uAreas = [u.area, ...(u.areasPermitidas || [])].map(normalizeStr).filter(Boolean);
+              return userDirecciones.some(dir => {
+                const d = normalizeStr(dir);
+                return uAreas.some(a => a.includes(d) || d.includes(a));
+              });
+            }
+            return false;
+          });
+          setAvailableUsers(filtered.length > 0 ? filtered : allUsers);
+        } else {
+          setAvailableUsers(allUsers);
+        }
       } catch (e) {
         if (__DEV__) console.warn('[TaskDetail] Error cargando usuarios:', e);
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [currentUser?.role, currentUser?.id, currentUser?.direcciones]);
+
+  // Cargar responsables cuando cambian las áreas
+  useEffect(() => {
+    if (!selectedAreas.length) { setTitulares([]); return; }
+    let cancelled = false;
+    getTitularesByAreas(selectedAreas)
+      .then(result => { if (!cancelled) setTitulares(result); })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [selectedAreas]);
 
   // ────────────────────────────────────────────────────────────
   // AI ANALYSIS (Debounced)
@@ -418,6 +456,45 @@ export default function TaskDetailScreen({ route, navigation }) {
               />
             )}
 
+            {/* RESPONSABLES POR ÁREA */}
+            {permissions.canEdit && titulares.length > 0 && (
+              <View style={[styles.titularesCard, { backgroundColor: theme.primary + '0D', borderColor: theme.primary + '30' }]}>
+                <View style={styles.infoCardHeader}>
+                  <Ionicons name="people-circle-outline" size={16} color={theme.primary} />
+                  <Text style={[styles.infoCardTitle, { color: theme.primary }]}>
+                    Responsables de {selectedAreas.length > 1 ? 'las áreas' : 'esta área'}
+                  </Text>
+                </View>
+                {titulares.map(t => (
+                  <View key={t.id} style={styles.titularRow}>
+                    <View style={[styles.titularDot, { backgroundColor: t.role === 'secretario' ? theme.primary : theme.info || '#007AFF' }]} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={[styles.titularName, { color: theme.text }]}>
+                        {t.displayName || t.email || t.id}
+                      </Text>
+                      <Text style={[styles.titularMeta, { color: theme.textSecondary }]}>
+                        {t.role === 'secretario' ? 'Secretario/a' : 'Director/a'}
+                        {(t.area || (t.areasPermitidas || [])[0]) ? ` · ${(t.area || (t.areasPermitidas || [])[0]).replace(/^(Secretaría|Dirección)\s+(de\s+|del\s+|General\s+)?/i, '')}` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* AVISO DE TAREA COORDINADA */}
+            {permissions.canEdit && !isEditing && selectedAreas.length > 1 && (
+              <View style={[styles.infoCard, { backgroundColor: '#007AFF0D', borderColor: '#007AFF30' }]}>
+                <Ionicons name="git-branch-outline" size={16} color="#007AFF" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.infoCardTitle, { color: '#007AFF' }]}>Tarea coordinada</Text>
+                  <Text style={[styles.infoCardDesc, { color: theme.textSecondary }]}>
+                    Se creará una subtarea por cada área ({selectedAreas.length} en total). Cada responsable podrá gestionarla de forma independiente.
+                  </Text>
+                </View>
+              </View>
+            )}
+
             {/* ENHANCED SELECTORS - ASSIGNEES */}
             {permissions.canEdit && (
               <AssigneeSelector
@@ -550,5 +627,58 @@ const styles = StyleSheet.create({
   },
   saveWrapper: {
     marginTop: 8,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    gap: 10,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: 'flex-start',
+  },
+  titularesCard: {
+    flexDirection: 'column',
+    gap: 4,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  infoCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 6,
+  },
+  infoCardTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    letterSpacing: 0.1,
+  },
+  infoCardDesc: {
+    fontSize: 12,
+    fontWeight: '400',
+    lineHeight: 17,
+    marginTop: 3,
+  },
+  titularRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  titularDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginTop: 4,
+  },
+  titularName: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  titularMeta: {
+    fontSize: 11,
+    fontWeight: '400',
+    marginTop: 1,
   },
 });
