@@ -1,75 +1,91 @@
-# M3 — Versión Experimental v2.0.0
+# M3 — Sistema de Gestión de Tareas Municipales
 
-> Rama: `improvements/refactor` | Repo: https://github.com/Haz117/M2.git
+> Versión mejorada y pulida | Rama: `improvements/refactor`
 
-Esta versión es un rediseño visual y estructural completo sobre la base estable. **No está lista para producción.**
-
----
-
-## Qué cambió en esta versión
-
-### Chat de tareas (`TaskChatScreen`)
-- Burbujas estilo WhatsApp: mensajes propios a la derecha (color vino), ajenos a la izquierda (blanco/cristal)
-- Avatar circular con inicial del remitente en mensajes ajenos
-- Separadores de fecha automáticos: `Hoy`, `Ayer`, `Lun 20 Abr`
-- Timestamps compactos: `10:35 AM` en lugar de cadena completa
-- Estado vacío con ícono cuando no hay mensajes
-- Los mensajes nuevos guardan `authorId` para detección confiable de "es mío / es de otro"
-
-### Subida de imágenes en chat (`ChatImageUpload`)
-- Menú visible con dos opciones: **Cámara** y **Galería** (antes era long press oculto)
-- Eliminado el fallback base64 que podía superar el límite de 1 MB de Firestore
-- Indicador de actividad en el botón mientras sube la imagen
-- Validación de tamaño máximo (4 MB)
-
-### Formulario de tarea (`Nueva Tarea` / `TaskDetailScreen`)
-- **Prioridad y Estado**: píldoras horizontales compactas con color propio, agrupadas en una tarjeta
-- **Áreas**: trigger compacto → modal con búsqueda en tiempo real y agrupación por Secretarías / Direcciones
-- **Asignados**: trigger con avatares apilados → modal de búsqueda de usuarios con checkbox
-- **Fecha y Hora**: dos filas compactas que abren el picker nativo del sistema
-
-### Pantalla principal (`HomeScreen`)
-- `TaskCard` rediseñado: barra izquierda de color por prioridad, badge de estado, chips de meta en footer
-- Corrección de crash al navegar a `TaskDetailScreen` sin parámetros
-
-### Bandeja (`MyInboxScreen`)
-- Eliminados los botones flotantes de acción rápida
-- Acciones integradas directamente en la tarjeta: cambio de estado + chat
-
-### Calendario (`CalendarScreen`)
-- Días tappables con `TouchableOpacity` (antes `PremiumGlassCard` no respondía a clic en web)
-- Colores de celda: vencida (naranja), alta prioridad (rojo), completada (verde)
-
-### Contraste de texto (`ThemeContext`)
-- `textSecondary`, `textTertiary`, `textMuted` aumentados en modo claro para mejor legibilidad
+Sistema de gestión de tareas para administración municipal, con roles diferenciados, delegación, confirmación de avance y diseño glassmorphism.
 
 ---
 
-## Estado actual
+## Características principales
 
-| Módulo | Estado |
-|---|---|
-| Chat de tareas | Funcional |
-| Subida de imágenes | Funcional (requiere Firebase Storage configurado) |
-| Prioridad / Estado | Funcional |
-| Selector de Áreas | Funcional (modal con búsqueda) |
-| Selector de Asignados | Funcional (modal) — pendiente conectar `availableUsers` en `TaskDetailScreen` |
-| Selector de Fecha | Funcional iOS/Android — en web usa picker nativo del browser |
-| Calendario | Funcional |
-| Bandeja | Funcional |
+- **Tablero Kanban** — columnas: Pendiente, En proceso, En revisión, Cerrada
+- **Roles y permisos** — sistema de tres niveles con acceso diferenciado por rol
+- **Delegación de tareas** — secretarios delegan a directores de sus áreas adscritas
+- **Confirmación de avance** — directores confirman su parte; tarea pasa a revisión al completarse
+- **Tareas coordinadas** — asignación a varias áreas genera subtareas por área automáticamente
+- **Reportes y actividad** — historial de cambios y reportes por tarea
+- **Chat por tarea** — comunicación contextual vinculada a cada tarea con subida de imágenes
+- **Modo oscuro / claro** — toggle en el encabezado principal
+- **Notificaciones en tiempo real** — alertas de asignación y vencimiento
+- **Onboarding por rol** — tour guiado para administradores, secretarios y directores
+- **Estadísticas** — métricas de cumplimiento en el dashboard
 
 ---
 
-## Pendiente antes de fusionar a `main`
+## Roles del sistema
 
-- [ ] `TaskDetailScreen.js`: cambiar `selected={}` por `value={}` en `AreaSelector` y `AssigneeSelector`
-- [ ] Cargar y pasar `availableUsers` con `getAllUsersNames()` en `TaskDetailScreen`
-- [ ] Pruebas en dispositivo iOS/Android (DateTimePicker nativo)
-- [ ] Revisar permisos de Firestore para el campo `authorId` en mensajes de chat
+| Rol | Descripción | Permisos clave |
+|---|---|---|
+| **Admin** | Administrador del sistema | Crear, editar, eliminar y cerrar cualquier tarea; gestión de usuarios; reportes globales |
+| **Secretario** | Coordinador de área | Ver tareas de sus áreas adscritas; delegar a directores adscritos; crear subtareas |
+| **Director** | Responsable de ejecución | Ver y actualizar tareas asignadas; confirmar avance propio |
+
+---
+
+## Tecnologías
+
+- **React Native** + **Expo SDK**
+- **Firebase Firestore** — base de datos en tiempo real con `onSnapshot`
+- **Firebase Auth** — autenticación por email
+- **Firebase Storage** — subida de imágenes en chat
+- **React Navigation** — navegación entre pantallas
+- **Expo Notifications** — notificaciones push
+- **Glassmorphism UI** — color primario `#9F2241` (vino tinto)
+
+---
+
+## Estructura del proyecto
+
+```
+m3/
+├── screens/          # Pantallas principales (Home, TaskDetail, Login, Chat…)
+├── components/       # Componentes reutilizables
+│   ├── task/         # Componentes específicos de tareas (ReadOnlyTaskModal, etc.)
+│   ├── glass/        # Componentes con efecto glassmorphism
+│   └── ui/           # Elementos de interfaz generales (HomeHeader, etc.)
+├── services/         # Lógica de negocio y Firebase
+│   ├── tasks.js      # CRUD de tareas con filtros por rol
+│   ├── roles.js      # Consulta de titulares por área
+│   ├── permissions.js        # Validación de cambios de estado por rol
+│   └── taskConfirmations.js  # Confirmación individual de avance
+├── contexts/         # ThemeContext, NotificationContext
+├── hooks/            # useTasks, useTaskPermissions
+├── utils/            # dateUtils, taskHelpers (normalizeStatus, isTaskAssignedToUser)
+└── firebase.js       # Configuración de Firebase
+```
+
+---
+
+## Flujo de delegación
+
+1. El **secretario** abre una tarea de su área
+2. Selecciona un director de sus áreas adscritas (`direcciones`)
+3. La tarea queda asignada al director y visible para ambos
+4. El director actualiza el estado y confirma su avance con **"Confirmar mi avance"**
+5. Cuando todos los asignados confirman, la tarea pasa automáticamente a `en_revision`
+6. El **admin** valida y cierra la tarea
 
 ---
 
 ## Instalación
+
+### Requisitos
+
+- Node.js 18+
+- Expo CLI (`npm install -g expo-cli`)
+- Proyecto Firebase con Firestore y Authentication habilitados
+
+### Pasos
 
 ```bash
 npm install
@@ -77,6 +93,7 @@ npx expo start
 ```
 
 Para web:
+
 ```bash
 npx expo export --platform web
 npx serve dist
@@ -84,13 +101,44 @@ npx serve dist
 
 ---
 
-## Variables de entorno requeridas
+## Variables de entorno
+
+Crea un archivo `.env` en la raíz:
 
 ```
-FIREBASE_API_KEY=
-FIREBASE_AUTH_DOMAIN=
-FIREBASE_PROJECT_ID=
-FIREBASE_STORAGE_BUCKET=
-FIREBASE_MESSAGING_SENDER_ID=
-FIREBASE_APP_ID=
+EXPO_PUBLIC_FIREBASE_API_KEY=
+EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=
+EXPO_PUBLIC_FIREBASE_PROJECT_ID=
+EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=
+EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=
+EXPO_PUBLIC_FIREBASE_APP_ID=
+EXPO_PUBLIC_BASE_URL=https://tu-dominio.com
 ```
+
+---
+
+## Cambios recientes destacados
+
+### UX / Interfaz
+- Diseño glassmorphism completo con soporte de modo oscuro y claro
+- `TaskCard` rediseñado con barra de prioridad, badge de estado y chips de meta
+- Header con avatar del usuario, badge de notificaciones y toggle de tema
+- Skeleton loading en pantallas principales
+- Tira de estadísticas en el dashboard
+
+### Lógica de negocio
+- Delegación de tareas: secretario → director de área adscrita
+- Confirmación de avance individual por asignado
+- Filtros de visibilidad estrictos por rol (secretario solo ve sus áreas)
+- Validación de permisos antes de cualquier cambio de estado
+- Normalización de `assignedTo` para compatibilidad con datos legacy
+
+### Chat
+- Burbujas estilo WhatsApp con separadores de fecha automáticos
+- Subida de imágenes desde cámara o galería (hasta 4 MB)
+
+---
+
+## Licencia
+
+Uso interno municipal. Todos los derechos reservados.
