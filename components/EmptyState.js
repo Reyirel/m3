@@ -86,7 +86,7 @@ const EmptyState = memo(function EmptyState({
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, floatAnim, pulseAnim, scaleAnim, slideAnim]);
 
   const getVariantStyles = () => {
     switch (variant) {

@@ -12,23 +12,26 @@ import { useOfflineReportsSync } from '../hooks/useOfflineReportsSync';
 import { cleanupOldSyncedReports } from './offlineReportsService';
 
 /**
- * OPCIÓN 1: Agregar al componente principal de App
- * 
- * En el useEffect principal de tu App.js:
+ * OPCIÓN 1: Hook para agregar al componente principal de App
+ *
+ * En tu App.js: useSetupOfflineSync()
  */
-export const setupOfflineSync = () => {
+export const useSetupOfflineSync = () => {
   useEffect(() => {
     const initializeSync = async () => {
-      console.log('🚀 Inicializando sincronización offline...');
+      if (__DEV__) console.log('🚀 Inicializando sincronización offline...');
 
       // Limpiar reportes sincronizados antiguos al iniciar
       await cleanupOldSyncedReports();
-      console.log('✅ Limpieza de antiguos reportes completada');
+      if (__DEV__) console.log('✅ Limpieza de antiguos reportes completada');
     };
 
     initializeSync();
   }, []);
 };
+
+/** @deprecated Usar useSetupOfflineSync() en su lugar */
+export const setupOfflineSync = useSetupOfflineSync;
 
 /**
  * OPCIÓN 2: Crear un componente wrapper
@@ -37,8 +40,6 @@ export const setupOfflineSync = () => {
  */
 export function OfflineReportsSyncProvider({ children }) {
   const {
-    syncStats,
-    isSyncing,
     manualSync,
     hasPendingReports,
     isOnline,
@@ -48,7 +49,7 @@ export function OfflineReportsSyncProvider({ children }) {
   useEffect(() => {
     const init = async () => {
       await cleanupOldSyncedReports();
-      console.log('🧹 Inicialización completada');
+      if (__DEV__) console.log('🧹 Inicialización completada');
     };
     init();
   }, []);
@@ -59,12 +60,12 @@ export function OfflineReportsSyncProvider({ children }) {
       return;
     }
 
-    console.log('⏰ Iniciando sincronización periódica...');
+    if (__DEV__) console.log('⏰ Iniciando sincronización periódica...');
     const interval = setInterval(async () => {
       try {
         await manualSync();
       } catch (error) {
-        console.error('Error en sincronización periódica:', error);
+        if (__DEV__) console.error('Error en sincronización periódica:', error);
       }
     }, 30000); // 30 segundos
 
@@ -198,7 +199,7 @@ export const debugOfflineReports = async () => {
   const stats = await getSyncStats();
   const storage = await estimateStorageUsage();
 
-  console.table({
+  if (__DEV__) console.table({
     'Reportes Pendientes': stats.totalPending,
     'Reportes Sincronizados': stats.totalSynced,
     'Reportes con Error': stats.totalFailed,
@@ -207,7 +208,7 @@ export const debugOfflineReports = async () => {
     'Almacenamiento (%)': `${((parseFloat(storage.megabytes) / 10) * 100).toFixed(1)}%`,
   });
 
-  console.log('📋 Detalles:', {
+  if (__DEV__) console.log('📋 Detalles:', {
     pending,
     stats,
     storage,

@@ -2,7 +2,7 @@
 // Sistema de alertas automáticas para áreas con problemas
 // Optimizado: Solo recalcula cuando hay cambios en tareas
 
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { collection, query, onSnapshot, where, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toMs } from '../utils/dateUtils';
 
@@ -17,7 +17,12 @@ export function subscribeToAreaAlerts(callback) {
   const now = Date.now();
   const threeDaysAgo = now - 3 * 24 * 60 * 60 * 1000;
 
-  const tasksQuery = query(collection(db, 'tasks'));
+  // Excluir tareas ya cerradas/completadas (no cambian alertas) y limitar resultados
+  const tasksQuery = query(
+    collection(db, 'tasks'),
+    where('status', 'not-in', ['cerrada', 'cerrado', 'completado']),
+    limit(500)
+  );
 
   const unsubscribe = onSnapshot(tasksQuery, (snapshot) => {
     const tasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -122,7 +127,7 @@ export function subscribeToAreaAlerts(callback) {
 
     callback(alerts);
   }, (error) => {
-    console.error('Error suscribiéndose a alertas:', error);
+    if (__DEV__) console.error('Error suscribiéndose a alertas:', error);
   });
 
   return unsubscribe;
@@ -134,7 +139,6 @@ export function subscribeToAreaAlerts(callback) {
  */
 export function getAreaAlerts(areaMetrics) {
   const alerts = [];
-  const now = Date.now();
 
   Object.entries(areaMetrics).forEach(([area, metrics]) => {
     const total = metrics.total || 0;

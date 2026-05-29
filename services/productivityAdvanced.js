@@ -67,7 +67,7 @@ export async function getActivityHeatmap(userEmail, days = 90) {
     
     return result;
   } catch (error) {
-    console.error('Error obteniendo heatmap:', error);
+    if (__DEV__) console.error('Error obteniendo heatmap:', error);
     return [];
   }
 }
@@ -136,7 +136,7 @@ export async function getWeeklyProductivityChart(userEmail) {
     
     return Object.values(weekMap).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
   } catch (error) {
-    console.error('Error obteniendo productividad semanal:', error);
+    if (__DEV__) console.error('Error obteniendo productividad semanal:', error);
     return [];
   }
 }
@@ -200,7 +200,7 @@ export async function getEstimatedVsRealTime(userEmail) {
       totalTasks: tasks.length
     };
   } catch (error) {
-    console.error('Error obteniendo tiempo estimado vs real:', error);
+    if (__DEV__) console.error('Error obteniendo tiempo estimado vs real:', error);
     return { avgEstimated: 0, avgReal: 0, accuracy: 0, tasks: [], totalTasks: 0 };
   }
 }
@@ -246,7 +246,7 @@ export async function getProductivityByHour(userEmail) {
       count
     }));
   } catch (error) {
-    console.error('Error obteniendo productividad por hora:', error);
+    if (__DEV__) console.error('Error obteniendo productividad por hora:', error);
     return [];
   }
 }

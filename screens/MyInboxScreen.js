@@ -6,13 +6,13 @@ import { View, Text, FlatList, StyleSheet, TouchableOpacity, RefreshControl, Mod
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, query, where, onSnapshot, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import TaskItem from '../components/TaskItem';
 import EmptyState from '../components/EmptyState';
 import ShimmerEffect from '../components/ShimmerEffect';
 import { updateTask, deleteTask as deleteTaskFirebase } from '../services/tasks';
-import { scheduleNotificationForTask, cancelNotification } from '../services/notifications';
+import { cancelNotification } from '../services/notifications';
 import { hapticMedium, hapticLight } from '../utils/haptics';
 import { useNotification } from '../contexts/NotificationContext';
 import { isTaskAssignedToUser } from '../utils/taskHelpers';
@@ -21,17 +21,17 @@ import { confirmTaskCompletion, hasUserConfirmed } from '../services/taskConfirm
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
 import { scheduleOverdueTasksNotification, scheduleMultipleDailyOverdueNotifications } from '../services/notifications';
-import OverdueAlert from '../components/OverdueAlert';
 import { useResponsive } from '../utils/responsive';
-import { SPACING, TYPOGRAPHY, RADIUS, SHADOWS, MAX_WIDTHS } from '../theme/tokens';
+import { SPACING, RADIUS, SHADOWS, MAX_WIDTHS } from '../theme/tokens';
 import { isOverdue, toMs } from '../utils/dateUtils';
+import { statusLabel } from '../utils/taskStatus';
 import SyncIndicator from '../components/SyncIndicator';
 import { getDireccionesBySecretaria } from '../config/areas';
 
 
 export default function MyInboxScreen({ navigation }) {
   const { theme, isDark } = useTheme();
-  const { width, isDesktop, isTablet, columns, padding } = useResponsive();
+  const { width, isDesktop, isTablet, padding } = useResponsive();
   const { showSuccess, showError, showWarning, showInfo } = useNotification();
   // 🌍 USAR EL CONTEXT GLOBAL DE TAREAS
   const { tasks, setTasks, isLoading: tasksLoading, currentUser } = useTasks();
@@ -94,11 +94,12 @@ export default function MyInboxScreen({ navigation }) {
     } else {
       startAnimations();
     }
-  }, []);
+  }, [headerOpacity, headerSlide, listOpacity, listSlide, searchOpacity, searchSlide, userCardOpacity, userCardSlide]);
 
   useEffect(() => {
     // 💾 al montar: restaurar tareas en proceso de borrado
     restoreDeletingTasks();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const onRefresh = useCallback(async () => {
@@ -206,7 +207,8 @@ export default function MyInboxScreen({ navigation }) {
     if (tasks.length > 0) {
       loadRecentMessages();
     }
-  }, [currentUser?.email]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentUser, tasks.length]);
 
   // Filtrar y ordenar tareas con búsqueda y filtros avanzados
   const filtered = tasks
@@ -253,8 +255,13 @@ export default function MyInboxScreen({ navigation }) {
         if (!matchTitle && !matchDesc) return false;
       }
       
-      // Filtro de estado
-      if (filters.status.length > 0 && !filters.status.includes(task.status)) return false;
+      // Filtro de estado (normalizar variantes de en_proceso)
+      if (filters.status.length > 0) {
+        const normalized = task.status === 'en_progreso' || task.status === 'en-progreso' || task.status === 'en progreso'
+          ? 'en_proceso'
+          : task.status;
+        if (!filters.status.includes(normalized)) return false;
+      }
       
       // Filtro de prioridad
       if (filters.priority.length > 0 && !filters.priority.includes(task.priority)) return false;
@@ -267,57 +274,12 @@ export default function MyInboxScreen({ navigation }) {
       
       return true;
     })
-    .sort((a, b) => (a.dueAt || 0) - (b.dueAt || 0));
+    .sort((a, b) => (toMs(a.dueAt) || 0) - (toMs(b.dueAt) || 0));
 
   // Contar tareas vencidas
   const overdueTasks = filtered.filter(task => isOverdue(task));
   const overdueCount = overdueTasks.length;
 
-  // Conteo por estado para chips de filtro rápido (basado en tareas del usuario)
-  const baseFilteredTasks = tasks.filter(task => {
-    if (!currentUser) return false;
-    const userRole = currentUser.role;
-    const userEmail = currentUser.email?.toLowerCase();
-    const userArea = currentUser.area || currentUser.department || '';
-    if (userRole === 'admin') return true;
-    if (userRole === 'secretario') {
-      const taskAreaLower = (task.area || '').toLowerCase().trim();
-      const userAreaLower = (userArea || '').toLowerCase().trim();
-      const misDirecciones = getDireccionesBySecretaria(userAreaLower);
-      return taskAreaLower === userAreaLower || misDirecciones.some(d => d?.toLowerCase().trim() === taskAreaLower) || isTaskAssignedToUser(task, userEmail) || task.createdBy?.toLowerCase().trim() === userEmail;
-    }
-    if (userRole === 'director') {
-      // 🔒 Director ve SOLO:
-      // 1. Tareas asignadas DIRECTAMENTE a él
-      // 2. Tareas de su área que NO están asignadas a otra persona
-      // 3. Tareas que él creó
-      const normalizedUserEmail = userEmail?.toLowerCase().trim();
-      const taskArea = (task.area || '').toLowerCase().trim();
-      const normalizedUserArea = userArea?.toLowerCase().trim();
-      
-      // ✅ Si está asignado directamente al director
-      if (isTaskAssignedToUser(task, userEmail)) return true;
-      
-      // ✅ Si la creó él
-      if (task.createdBy?.toLowerCase().trim() === normalizedUserEmail) return true;
-      
-      // 🔍 Verificar si el área coincide
-      if (taskArea === normalizedUserArea) {
-        // ⚠️ Si hay alguien asignado y NO es el director, NO mostrar
-        const hasAssignment = task.assignedTo && 
-          (Array.isArray(task.assignedTo) ? task.assignedTo.length > 0 : task.assignedTo.trim() !== '');
-        
-        if (hasAssignment && !isTaskAssignedToUser(task, userEmail)) {
-          return false;
-        }
-        return true;
-      }
-      
-      return false;
-    }
-    return isTaskAssignedToUser(task, userEmail);
-  });
-  
   // Ref para evitar programar notificaciones múltiples veces
   const lastScheduledRef = useRef(null);
 
@@ -339,7 +301,7 @@ export default function MyInboxScreen({ navigation }) {
         lastScheduledRef.current = today;
       }
     }
-  }, [overdueCount]); // Solo cuando cambia de 0 a >0 o viceversa
+  }, [overdueCount, overdueTasks]); // Solo cuando cambia de 0 a >0 o viceversa
 
   // Mostrar modal de confirmación para cerrar tarea
   const askToClose = (task) => {
@@ -369,29 +331,6 @@ export default function MyInboxScreen({ navigation }) {
     askToClose(task);
   };
 
-  const postponeOneDay = async (task) => {
-    try {
-      hapticMedium();
-      const newDue = (task.dueAt || Date.now()) + 24 * 3600 * 1000; // +1 día
-      const updatedTask = { ...task, dueAt: newDue };
-      
-      // Cancelar notificación previa
-      if (task.notificationId) await cancelNotification(task.notificationId);
-      
-      // Reprogramar notificación 10 minutos antes
-      const notifId = await scheduleNotificationForTask(updatedTask, { minutesBefore: 10 });
-      
-      await updateTask(task.id, { 
-        dueAt: newDue,
-        notificationId: notifId || task.notificationId
-      });
-      showSuccess('Tarea pospuesta 1 día');
-      // La actualización del estado se hace automáticamente por el listener
-    } catch (e) {
-      showError('Error al posponer: ' + e.message);
-    }
-  };
-  
   // ✅ Confirmar mi parte de una tarea con múltiples asignados
   const confirmMyPart = async (task) => {
     try {
@@ -440,7 +379,7 @@ export default function MyInboxScreen({ navigation }) {
             .then(() => {
               // Éxito
             })
-            .catch(error => {
+            .catch(_error => {
               // Firebase delete failed - task remains marked as deleted locally
             })
             .finally(() => {
@@ -474,9 +413,6 @@ export default function MyInboxScreen({ navigation }) {
       return;
     }
 
-    // Guardar tarea para posible undo
-    const taskToDelete = tasks.find(t => t.id === taskId);
-    
     // ✅ MARCAR COMO EN PROCESO (en state, ref Y context global)
     deletingTasksRef.current.add(taskId);
     setDeletingTaskIds(prev => new Set([...prev, taskId]));
@@ -501,7 +437,7 @@ export default function MyInboxScreen({ navigation }) {
         // ✅ Solo desmarcar después de éxito confirmado
         deleteManager.confirmDelete(taskId);
       })
-      .catch(error => {
+      .catch(_error => {
         showError('Error: No se pudo eliminar la tarea');
         // Mantener marcado para evitar que reaparezca
       })
@@ -556,7 +492,7 @@ export default function MyInboxScreen({ navigation }) {
           deleteManager.confirmDelete(taskId); // Desmarcar solo las que se eliminaron correctamente
           return taskId;
         })
-        .catch(err => {
+        .catch(_err => {
           // Firebase delete failed
           return null; // Mantener marcado para evitar que reaparezca
         })
@@ -568,7 +504,7 @@ export default function MyInboxScreen({ navigation }) {
         showSuccess(`✅ ¡${successCount} TAREA${successCount > 1 ? 'S' : ''} ELIMINADA${successCount > 1 ? 'S' : ''}! Ya no aparecerán`);
         setSelectedTaskIds(new Set());
       })
-      .catch(err => {
+      .catch(_err => {
         showError('❌ Error: No se pudieron eliminar todas las tareas');
       })
       .finally(() => {
@@ -595,8 +531,8 @@ export default function MyInboxScreen({ navigation }) {
   // Obtener áreas únicas disponibles para filtros
   const uniqueAreas = [...new Set(tasks.map(t => t.area).filter(Boolean))].sort();
 
-  // 📊 Calcular estadísticas rápidas para Quick Stats
-  const quickStats = React.useMemo(() => {
+  // quickStats and taskSections removed (computed but not rendered)
+  const _quickStats = React.useMemo(() => {
     const now = Date.now();
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -628,8 +564,7 @@ export default function MyInboxScreen({ navigation }) {
     };
   }, [filtered]);
 
-  // 📋 Organizar tareas en secciones
-  const taskSections = React.useMemo(() => {
+  const _taskSections = React.useMemo(() => {
     const now = Date.now();
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -698,123 +633,47 @@ export default function MyInboxScreen({ navigation }) {
   };
 
   const renderItem = ({ item }) => {
-    // Solo admin puede eliminar tareas
     const isAdmin = currentUser?.role === 'admin';
     const isSelected = selectedTaskIds.has(item.id);
     const isDeleting = deletingTaskIds.has(item.id);
-    
+
     return (
-      <View style={{ marginBottom: 12 }}>
-        <View style={{ 
-          flexDirection: 'row', 
-          alignItems: 'flex-start',
-          backgroundColor: isDeleting ? '#FFE5E5' : (isSelected ? '#E3F2FD' : 'transparent'),
-          borderRadius: 8,
-          padding: 8,
-          gap: 8
-        }}>
-          {/* Checkbox para multi-select */}
-          {isAdmin && (
-            <TouchableOpacity 
-              onPress={() => toggleTaskSelection(item.id)}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 6,
-                borderWidth: 2,
-                borderColor: isSelected ? theme.primary : '#DDD',
-                backgroundColor: isSelected ? theme.primary : 'transparent',
-                justifyContent: 'center',
-                alignItems: 'center',
-                marginTop: 4
-              }}
-            >
-              {isSelected && <Ionicons name="checkmark" size={18} color="#FFF" />}
-            </TouchableOpacity>
-          )}
-
-          {/* Indicador visual prominente de "Borrando..." */}
-          {isDeleting && (
-            <View style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              top: 0,
-              bottom: 0,
-              backgroundColor: 'rgba(255, 69, 69, 0.9)',
-              borderRadius: 8,
-              justifyContent: 'center',
-              alignItems: 'center',
-              zIndex: 100,
-              flexDirection: 'row',
-              gap: 12
-            }}>
-              <View style={{
-                width: 24,
-                height: 24,
-                borderRadius: 12,
-                borderWidth: 3,
-                borderColor: '#FFF',
-                borderTopColor: 'transparent',
-                transform: [{ rotate: '45deg' }]
-              }} />
-              <Text style={{ 
-                color: '#FFF', 
-                fontSize: 16, 
-                fontWeight: '700',
-                letterSpacing: 0.5
-              }}>ELIMINANDO...</Text>
-            </View>
-          )}
-
-          {/* TaskItem */}
-          <View style={{ flex: 1 }}>
-            <TaskItem 
-              task={item} 
-              compact={compactView}
-              onPress={() => !isDeleting && openDetail(item)}
-              onDelete={isAdmin ? () => deleteTask(item.id) : undefined}
-              onToggleComplete={() => !isDeleting && toggleComplete(item)}
-              onReopen={isAdmin ? () => !isDeleting && updateTask(item.id, { status: 'pendiente' }) : undefined}
-              isDeleting={isDeleting}
-            />
-          </View>
-        </View>
-
-        {/* Acciones compactas con iconos - Simplificadas - Ocultas en vista compacta */}
-        {!compactView && item.status !== 'cerrada' && (
-          <View style={styles.quickActionsRow}>
-            {/* Botón confirmar mi parte - Solo si tiene múltiples asignados y no ha confirmado */}
-            {Array.isArray(item.assignedTo) && item.assignedTo.length > 1 && !hasUserConfirmed(item, currentUser?.email) && (
-              <TouchableOpacity 
-                style={[styles.quickActionBtn, { backgroundColor: '#8B5CF6' }]} 
-                onPress={() => confirmMyPart(item)}
-              >
-                <Ionicons name="checkmark-done" size={16} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity 
-              style={[styles.quickActionBtn, { backgroundColor: '#10B981' }]} 
-              onPress={() => markClosed(item)}
-            >
-              <Ionicons name="checkmark" size={16} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={[styles.quickActionBtn, { backgroundColor: '#3B82F6' }]} 
-              onPress={() => openChat(item)}
-            >
-              <Ionicons name="chatbubble" size={16} color="#FFFFFF" />
-            </TouchableOpacity>
-            {isAdmin && (
-              <TouchableOpacity 
-                style={[styles.quickActionBtn, { backgroundColor: '#EF4444' }]} 
-                onPress={() => deleteTask(item.id)}
-              >
-                <Ionicons name="trash" size={16} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
-          </View>
+      <View style={[
+        styles.itemWrapper,
+        isSelected && { backgroundColor: theme.infoAlpha, borderColor: theme.info + '40', borderWidth: 1 },
+      ]}>
+        {/* Checkbox de selección múltiple (admin) — circular, al inicio */}
+        {isAdmin && (
+          <TouchableOpacity
+            onPress={() => toggleTaskSelection(item.id)}
+            style={[
+              styles.selectionCircle,
+              isSelected
+                ? { backgroundColor: theme.primary, borderColor: theme.primary }
+                : { borderColor: isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.20)' }
+            ]}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            {isSelected && <Ionicons name="checkmark" size={14} color="#FFF" />}
+          </TouchableOpacity>
         )}
+
+        <View style={{ flex: 1 }}>
+          <TaskItem
+            task={item}
+            compact={compactView}
+            onPress={() => !isDeleting && openDetail(item)}
+            onDelete={isAdmin ? () => deleteTask(item.id) : undefined}
+            onToggleComplete={() => !isDeleting && toggleComplete(item)}
+            onReopen={isAdmin ? () => !isDeleting && updateTask(item.id, { status: 'pendiente' }) : undefined}
+            onChangeStatus={item.status !== 'cerrada'
+              ? (task, newStatus) => !isDeleting && updateTask(task.id, { status: newStatus })
+              : undefined}
+            onChat={(task) => openChat(task)}
+            currentUserRole={currentUser?.role || 'director'}
+            isDeleting={isDeleting}
+          />
+        </View>
       </View>
     );
   };
@@ -827,7 +686,7 @@ export default function MyInboxScreen({ navigation }) {
       <View style={styles.container}>
         <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
           <LinearGradient
-            colors={isDark ? ['#2A1520', '#1A1A1A'] : ['#9F2241', '#7F1D35']}
+            colors={theme.gradientHeader}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.headerGradient}
@@ -846,7 +705,7 @@ export default function MyInboxScreen({ navigation }) {
           </LinearGradient>
           <View style={{ flex: 1, padding: 16 }}>
             {[1, 2, 3, 4, 5].map((i) => (
-              <View key={i} style={{ backgroundColor: theme.card, padding: 16, borderRadius: 12, marginBottom: 12 }}>
+              <View key={i} style={{ backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)', padding: 16, borderRadius: 14, marginBottom: 12 }}>
                 <ShimmerEffect width="70%" height={18} style={{ marginBottom: 8 }} />
                 <ShimmerEffect width="100%" height={14} style={{ marginBottom: 6 }} />
                 <ShimmerEffect width="40%" height={12} />
@@ -865,7 +724,7 @@ export default function MyInboxScreen({ navigation }) {
       {/* Header Premium Compacto */}
       <Animated.View style={{ opacity: headerOpacity, transform: [{ translateY: headerSlide }] }}>
         <LinearGradient
-          colors={isDark ? ['#2A1520', '#1A1A1A'] : ['#9F2241', '#7F1D35']}
+          colors={theme.gradientHeader}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.headerGradient}
@@ -931,7 +790,7 @@ export default function MyInboxScreen({ navigation }) {
       </Animated.View>
 
       {/* Búsqueda compacta */}
-      <View style={[styles.searchCompact, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+      <View style={[styles.searchCompact, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.75)', borderBottomColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         <View style={[styles.searchRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
           <Ionicons name="search" size={18} color={theme.textSecondary} />
           <TextInput
@@ -974,7 +833,7 @@ export default function MyInboxScreen({ navigation }) {
             )}
             {filters.overdue && (
               <TouchableOpacity 
-                style={[styles.activeFilterChip, { backgroundColor: '#EF4444' }]}
+                style={[styles.activeFilterChip, { backgroundColor: theme.error }]}
                 onPress={() => setFilters(prev => ({ ...prev, overdue: false }))}
               >
                 <Ionicons name="alert-circle" size={14} color="#FFFFFF" />
@@ -985,7 +844,7 @@ export default function MyInboxScreen({ navigation }) {
             {filters.status.map(s => (
               <TouchableOpacity 
                 key={s}
-                style={[styles.activeFilterChip, { backgroundColor: '#3B82F6' }]}
+                style={[styles.activeFilterChip, { backgroundColor: theme.info }]}
                 onPress={() => setFilters(prev => ({ ...prev, status: prev.status.filter(x => x !== s) }))}
               >
                 <Text style={styles.activeFilterChipText}>{s}</Text>
@@ -995,7 +854,7 @@ export default function MyInboxScreen({ navigation }) {
             {filters.priority.map(p => (
               <TouchableOpacity 
                 key={p}
-                style={[styles.activeFilterChip, { backgroundColor: p === 'alta' ? '#EF4444' : p === 'media' ? '#F59E0B' : '#10B981' }]}
+                style={[styles.activeFilterChip, { backgroundColor: p === 'alta' ? theme.error : p === 'media' ? theme.warning : theme.success }]}
                 onPress={() => setFilters(prev => ({ ...prev, priority: prev.priority.filter(x => x !== p) }))}
               >
                 <Text style={styles.activeFilterChipText}>{p}</Text>
@@ -1005,7 +864,7 @@ export default function MyInboxScreen({ navigation }) {
             {filters.area.map(a => (
               <TouchableOpacity 
                 key={a}
-                style={[styles.activeFilterChip, { backgroundColor: '#8B5CF6' }]}
+                style={[styles.activeFilterChip, { backgroundColor: theme.secondary }]}
                 onPress={() => setFilters(prev => ({ ...prev, area: prev.area.filter(x => x !== a) }))}
               >
                 <Text style={styles.activeFilterChipText} numberOfLines={1}>{a.substring(0, 15)}</Text>
@@ -1036,7 +895,7 @@ export default function MyInboxScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: theme.card }]}>
             {/* HeaderModal */}
-            <View style={[styles.modalHeader, { borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#F0F0F0' }]}>
+            <View style={[styles.modalHeader, { borderBottomColor: theme.border }]}>
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                 <Ionicons name="funnel" size={24} color={theme.primary} style={{ marginRight: 10 }} />
                 <Text style={[styles.modalTitle, { color: theme.text }]}>Filtros Avanzados</Text>
@@ -1058,7 +917,7 @@ export default function MyInboxScreen({ navigation }) {
                   </View>
                 </View>
                 <View style={styles.filterOptions}>
-                  {['pendiente', 'en progreso', 'cerrada'].map(status => (
+                  {['pendiente', 'en_proceso', 'cerrada'].map(status => (
                     <TouchableOpacity
                       key={status}
                       style={[
@@ -1080,7 +939,7 @@ export default function MyInboxScreen({ navigation }) {
                           styles.filterOptionText,
                           filters.status.includes(status) && { color: '#FFFFFF', fontWeight: '700' }
                         ]}>
-                          {status}
+                          {statusLabel(status)}
                         </Text>
                       </View>
                     </TouchableOpacity>
@@ -1089,20 +948,20 @@ export default function MyInboxScreen({ navigation }) {
               </View>
 
               {/* Separador visual */}
-              <View style={[styles.filterSeparator, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F0F0F0' }]} />
+              <View style={[styles.filterSeparator, { backgroundColor: theme.border }]} />
 
               {/* Prioridad */}
               <View style={styles.filterGroup}>
                 <View style={styles.filterGroupHeader}>
                   <Ionicons name="flash-outline" size={16} color={theme.primary} />
                   <Text style={[styles.filterTitle, { color: theme.text }]}>NIVEL DE PRIORIDAD</Text>
-                  <View style={[styles.filterBadge, { backgroundColor: '#FF9500' }]}>
+                  <View style={[styles.filterBadge, { backgroundColor: theme.warning }]}>
                     <Text style={styles.filterBadgeText}>{filters.priority.length}</Text>
                   </View>
                 </View>
                 <View style={styles.filterOptions}>
                   {['baja', 'media', 'alta'].map(priority => {
-                    const colors = { baja: '#4CAF50', media: '#FF9500', alta: '#FF3B30' };
+                    const colors = { baja: theme.success, media: theme.warning, alta: theme.error };
                     return (
                       <TouchableOpacity
                         key={priority}
@@ -1138,7 +997,7 @@ export default function MyInboxScreen({ navigation }) {
               </View>
 
               {/* Separador visual */}
-              <View style={[styles.filterSeparator, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F0F0F0' }]} />
+              <View style={[styles.filterSeparator, { backgroundColor: theme.border }]} />
 
               {/* Dirección / Área */}
               {uniqueAreas.length > 0 && (
@@ -1147,7 +1006,7 @@ export default function MyInboxScreen({ navigation }) {
                     <View style={styles.filterGroupHeader}>
                       <Ionicons name="business-outline" size={16} color={theme.primary} />
                       <Text style={[styles.filterTitle, { color: theme.text }]}>DIRECCIÓN O ÁREA</Text>
-                      <View style={[styles.filterBadge, { backgroundColor: '#3B82F6' }]}>
+                      <View style={[styles.filterBadge, { backgroundColor: theme.info }]}>
                         <Text style={styles.filterBadgeText}>{filters.area.length}</Text>
                       </View>
                     </View>
@@ -1157,7 +1016,7 @@ export default function MyInboxScreen({ navigation }) {
                           key={area}
                           style={[
                             styles.filterOption,
-                            filters.area.includes(area) && { ...styles.filterOptionActive, backgroundColor: '#3B82F6' }
+                            filters.area.includes(area) && { ...styles.filterOptionActive, backgroundColor: theme.info }
                           ]}
                           onPress={() => {
                             setFilters(prev => ({
@@ -1183,7 +1042,7 @@ export default function MyInboxScreen({ navigation }) {
                   </View>
 
                   {/* Separador visual */}
-                  <View style={[styles.filterSeparator, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F0F0F0' }]} />
+                  <View style={[styles.filterSeparator, { backgroundColor: theme.border }]} />
                 </>
               )}
 
@@ -1194,18 +1053,18 @@ export default function MyInboxScreen({ navigation }) {
                     styles.filterOption,
                     styles.filterOptionLarge,
                     { marginTop: 0 },
-                    filters.overdue && { 
-                      ...styles.filterOptionActive, 
-                      backgroundColor: '#FF3B30' 
+                    filters.overdue && {
+                      ...styles.filterOptionActive,
+                      backgroundColor: theme.error
                     }
                   ]}
                   onPress={() => setFilters(prev => ({ ...prev, overdue: !prev.overdue }))}
                 >
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <Ionicons 
-                      name={filters.overdue ? "alert-circle" : "alert-circle-outline"} 
-                      size={18} 
-                      color={filters.overdue ? '#FFFFFF' : '#FF3B30'} 
+                    <Ionicons
+                      name={filters.overdue ? "alert-circle" : "alert-circle-outline"}
+                      size={18}
+                      color={filters.overdue ? '#FFFFFF' : theme.error}
                     />
                     <Text style={[
                       styles.filterOptionText,
@@ -1221,7 +1080,7 @@ export default function MyInboxScreen({ navigation }) {
               {/* Botón para limpiar filtros */}
               {(filters.status.length > 0 || filters.priority.length > 0 || filters.area.length > 0 || filters.overdue) && (
                 <>
-                  <View style={[styles.filterSeparator, { backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : '#F0F0F0' }]} />
+                  <View style={[styles.filterSeparator, { backgroundColor: theme.border }]} />
                   <TouchableOpacity
                     style={[styles.clearFiltersBtn, { borderColor: theme.primary, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(159, 34, 65, 0.05)' }]}
                     onPress={() => setFilters({ status: [], priority: [], area: [], overdue: false })}
@@ -1234,7 +1093,7 @@ export default function MyInboxScreen({ navigation }) {
             </ScrollView>
 
             {/* Footer con acciones */}
-            <View style={[styles.modalFooter, { borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#F0F0F0' }]}>
+            <View style={[styles.modalFooter, { borderTopColor: theme.border }]}>
               <TouchableOpacity
                 style={[styles.modalFooterBtn, styles.modalFooterBtnSecondary, { borderColor: theme.textSecondary }]}
                 onPress={() => setShowFilters(false)}
@@ -1263,7 +1122,7 @@ export default function MyInboxScreen({ navigation }) {
         <View style={styles.modalOverlay}>
           <View style={[styles.confirmModalContent, { backgroundColor: theme.card }]}>
             <View style={styles.confirmModalIcon}>
-              <Ionicons name="checkmark-circle" size={48} color="#10B981" />
+              <Ionicons name="checkmark-circle" size={48} color={theme.success} />
             </View>
             <Text style={[styles.confirmModalTitle, { color: theme.text }]}>
               ¿Cerrar esta tarea?
@@ -1311,7 +1170,7 @@ export default function MyInboxScreen({ navigation }) {
             </View>
 
             <View style={styles.helpModalItem}>
-              <View style={[styles.helpModalIcon, { backgroundColor: '#8B5CF6' }]}>
+              <View style={[styles.helpModalIcon, { backgroundColor: theme.secondary }]}>
                 <Ionicons name="arrow-forward" size={18} color="#FFFFFF" />
               </View>
               <View style={styles.helpModalTextContainer}>
@@ -1323,7 +1182,7 @@ export default function MyInboxScreen({ navigation }) {
             </View>
 
             <View style={styles.helpModalItem}>
-              <View style={[styles.helpModalIcon, { backgroundColor: '#10B981' }]}>
+              <View style={[styles.helpModalIcon, { backgroundColor: theme.success }]}>
                 <Ionicons name="checkmark" size={18} color="#FFFFFF" />
               </View>
               <View style={styles.helpModalTextContainer}>
@@ -1335,7 +1194,7 @@ export default function MyInboxScreen({ navigation }) {
             </View>
 
             <View style={styles.helpModalItem}>
-              <View style={[styles.helpModalIcon, { backgroundColor: '#3B82F6' }]}>
+              <View style={[styles.helpModalIcon, { backgroundColor: theme.info }]}>
                 <Ionicons name="chatbubble" size={18} color="#FFFFFF" />
               </View>
               <View style={styles.helpModalTextContainer}>
@@ -1347,7 +1206,7 @@ export default function MyInboxScreen({ navigation }) {
             </View>
 
             <View style={styles.helpModalItem}>
-              <View style={[styles.helpModalIcon, { backgroundColor: '#F59E0B' }]}>
+              <View style={[styles.helpModalIcon, { backgroundColor: theme.warning }]}>
                 <Ionicons name="warning" size={18} color="#FFFFFF" />
               </View>
               <View style={styles.helpModalTextContainer}>
@@ -1359,7 +1218,7 @@ export default function MyInboxScreen({ navigation }) {
             </View>
 
             <View style={styles.helpModalItem}>
-              <View style={[styles.helpModalIcon, { backgroundColor: '#6366F1' }]}>
+              <View style={[styles.helpModalIcon, { backgroundColor: theme.primary }]}>
                 <Ionicons name="options" size={18} color="#FFFFFF" />
               </View>
               <View style={styles.helpModalTextContainer}>
@@ -1382,7 +1241,7 @@ export default function MyInboxScreen({ navigation }) {
 
       {/* Barra de acciones - Solo cuando hay selección */}
       {selectedTaskIds.size > 0 && (
-        <View style={[styles.actionsBar, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <View style={[styles.actionsBar, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.95)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
           <View style={styles.actionsBarLeft}>
             <View style={styles.selectionInfo}>
               <View style={[styles.selectionBadge, { backgroundColor: theme.primary }]}>
@@ -1396,7 +1255,7 @@ export default function MyInboxScreen({ navigation }) {
           
           <View style={styles.bulkActions}>
             <TouchableOpacity
-              style={[styles.bulkActionBtn, { backgroundColor: '#EF4444' }]}
+              style={[styles.bulkActionBtn, { backgroundColor: theme.error }]}
               onPress={deleteSelectedTasks}
             >
               <Ionicons name="trash" size={16} color="#FFFFFF" />
@@ -1412,11 +1271,11 @@ export default function MyInboxScreen({ navigation }) {
       )}
 
       {/* Toggle vista compacta */}
-      <View style={[styles.compactToggleRow, { backgroundColor: theme.background }]}>
+      <View style={[styles.compactToggleRow, { backgroundColor: 'transparent' }]}>
         <TouchableOpacity
           style={[
             styles.compactToggleBtn,
-            { backgroundColor: compactView ? theme.primary : (isDark ? '#2a2a2a' : '#f0f0f0') }
+            { backgroundColor: compactView ? theme.primary : (isDark ? theme.glass : theme.glassStrong) }
           ]}
           onPress={() => {
             hapticLight();
@@ -1516,6 +1375,8 @@ export default function MyInboxScreen({ navigation }) {
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         windowSize={5}
         maxToRenderPerBatch={6}
         initialNumToRender={8}
@@ -1546,9 +1407,9 @@ export default function MyInboxScreen({ navigation }) {
 }
 
 const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) => StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: theme.background
+  container: {
+    flex: 1,
+    backgroundColor: theme.background,
   },
   contentWrapper: {
     flex: 1,
@@ -1556,12 +1417,14 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     width: '100%'
   },
   headerGradient: {
-    borderBottomLeftRadius: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
     shadowColor: '#9F2241',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    elevation: 10
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 12,
+    overflow: 'hidden',
   },
   header: {
     flexDirection: 'row',
@@ -1569,7 +1432,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     alignItems: 'center',
     paddingHorizontal: padding,
     paddingTop: isDesktop ? 32 : 48,
-    paddingBottom: 20
+    paddingBottom: 24,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -1577,55 +1440,58 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     gap: 12,
   },
   headerIconWrapper: {
-    width: 44,
-    height: 44,
+    width: 42,
+    height: 42,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 8,
   },
   greeting: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: 'rgba(255,255,255,0.8)',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.72)',
+    letterSpacing: 0.3,
   },
-  heading: { 
-    fontSize: 26, 
+  heading: {
+    fontSize: 28,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.5,
+    textShadowColor: 'rgba(0,0,0,0.20)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   overdueBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EF4444',
+    backgroundColor: 'rgba(255,59,48,0.32)',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 20,
+    paddingVertical: 5,
+    borderRadius: 99,
     gap: 4,
-    shadowColor: '#EF4444',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(255,100,100,0.45)',
   },
   overdueBadgeText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
   },
   headerIconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.20)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1633,7 +1499,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     position: 'absolute',
     top: -4,
     right: -4,
-    backgroundColor: '#F59E0B',
+    backgroundColor: theme.warning,
     borderRadius: 10,
     minWidth: 18,
     height: 18,
@@ -1648,13 +1514,15 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     fontWeight: '800',
   },
   addButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#FFFFFF',
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+    borderWidth: 1,
+    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 4,
@@ -1673,7 +1541,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     borderRadius: 16,
     padding: 16,
     borderWidth: 1,
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 8,
@@ -1711,12 +1579,6 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     paddingVertical: 10,
     borderRadius: 12,
     gap: 10,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '500',
-    paddingVertical: 0,
   },
   searchDivider: {
     width: 1,
@@ -1790,26 +1652,24 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     justifyContent: 'center',
     alignItems: 'center',
   },
-  // Acciones rápidas de tarea (iconos)
-  quickActionsRow: {
+  // Item wrapper para selección + card
+  itemWrapper: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    alignItems: 'center',
     gap: 6,
-    paddingHorizontal: 12,
-    paddingBottom: 8,
-    marginTop: -4,
+    marginBottom: 4,
+    paddingHorizontal: 4,
+    borderRadius: 18,
   },
-  quickActionBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  selectionCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.12,
-    shadowRadius: 2,
-    elevation: 2,
+    flexShrink: 0,
+    marginLeft: 8,
   },
   // Quick Stats
   quickStatsContainer: {
@@ -1832,18 +1692,18 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     minWidth: 80,
   },
   quickStatOverdue: {
-    backgroundColor: '#FEE2E2',
-    borderColor: '#EF4444',
+    backgroundColor: theme.errorAlpha,
+    borderColor: theme.error,
   },
   quickStatValue: {
     fontSize: 16,
     fontWeight: '700',
-    color: '#EF4444',
+    color: theme.error,
   },
   quickStatLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: '#B91C1C',
+    color: theme.errorDark,
   },
   // Active Filters Chips
   activeFiltersContainer: {
@@ -1889,15 +1749,15 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     position: 'absolute',
     top: -4,
     right: -4,
-    backgroundColor: '#EF4444',
+    backgroundColor: theme.error,
     borderRadius: 12,
     minWidth: 24,
     height: 24,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: '#FFFFFF',
-    shadowColor: '#EF4444',
+    borderColor: theme.card,
+    shadowColor: theme.error,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.4,
     shadowRadius: 4,
@@ -1915,7 +1775,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     borderRadius: isDesktop ? 28 : isTablet ? 27 : 30,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#9F2241',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
@@ -1938,7 +1798,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     borderWidth: 2,
     ...Platform.select({
       ios: {
-        shadowColor: '#9F2241',
+        shadowColor: theme.primary,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.15,
         shadowRadius: 12,
@@ -1957,7 +1817,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     marginRight: 14,
     ...Platform.select({
       ios: {
-        shadowColor: '#9F2241',
+        shadowColor: theme.primary,
         shadowOffset: { width: 0, height: 3 },
         shadowOpacity: 0.3,
         shadowRadius: 6,
@@ -2009,7 +1869,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     borderWidth: 2,
     borderColor: 'rgba(218, 165, 32, 0.5)',
     backgroundColor: isDark ? 'rgba(218, 165, 32, 0.15)' : 'rgba(218, 165, 32, 0.1)',
-    shadowColor: '#DAA520',
+    shadowColor: theme.warning,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 10,
@@ -2025,7 +1885,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     fontWeight: '900',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    color: '#DAA520',
+    color: theme.warning,
     textShadowColor: 'rgba(0,0,0,0.1)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 2
@@ -2037,7 +1897,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     borderWidth: 2,
     backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF',
     borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E9D5FF',
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -2096,7 +1956,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     paddingBottom: 32,
     ...SHADOWS.xl,
     backgroundColor: theme.surface,
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
     shadowRadius: 16,
@@ -2143,7 +2003,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     justifyContent: 'center',
     minHeight: isDesktop ? 48 : isTablet ? 44 : 44,
     marginBottom: isTablet ? 0 : 8,
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -2154,8 +2014,8 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     borderColor: theme.primary
   },
   actionBtnDanger: {
-    backgroundColor: '#EF4444',
-    borderColor: '#EF4444'
+    backgroundColor: theme.error,
+    borderColor: theme.error
   },
   actionText: {
     fontSize: isDesktop ? 13 : isTablet ? 12 : 11,
@@ -2201,7 +2061,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     borderWidth: 1.5,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: theme.glassShadow,
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.1,
         shadowRadius: 12,
@@ -2224,6 +2084,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     flex: 1,
     paddingVertical: 10,
     fontSize: 16,
+    fontWeight: '500',
     color: theme.text,
   },
   filterButton: {
@@ -2233,14 +2094,14 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E0E0E0',
+    borderColor: theme.border,
   },
   filtersPanel: {
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
     gap: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#F0F0F0',
+    borderBottomColor: theme.border,
   },
   filterGroupHeader: {
     flexDirection: 'row',
@@ -2286,10 +2147,10 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     paddingVertical: 12,
     paddingHorizontal: SPACING.lg,
     borderRadius: RADIUS.xl,
-    borderWidth: 1.5,
-    borderColor: isDark ? 'rgba(255,255,255,0.2)' : '#E0E0E0',
-    backgroundColor: theme.card,
-    shadowColor: '#000',
+    borderWidth: 1,
+    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 6,
@@ -2328,7 +2189,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     borderWidth: 2,
     marginTop: SPACING.md,
     backgroundColor: 'transparent',
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -2344,7 +2205,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#F0F0F0',
+    borderBottomColor: theme.border,
   },
   counterText: {
     fontSize: 12,
@@ -2358,7 +2219,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     paddingVertical: 10,
     paddingHorizontal: SPACING.md,
     borderRadius: RADIUS.lg,
-    backgroundColor: '#FF3B30',
+    backgroundColor: theme.error,
   },
   // 🎨 ESTILOS DEL FOOTER DEL MODAL
   modalFooter: {
@@ -2368,7 +2229,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     paddingVertical: SPACING.lg,
     borderTopWidth: 1,
     backgroundColor: theme.card,
-    borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : '#F0F0F0',
+    borderTopColor: theme.border,
   },
   modalFooterBtn: {
     flex: 1,
@@ -2379,7 +2240,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     paddingHorizontal: SPACING.lg,
     borderRadius: RADIUS.xl,
     borderWidth: 2,
-    shadowColor: '#000',
+    shadowColor: theme.glassShadow,
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
@@ -2446,7 +2307,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     backgroundColor: 'transparent',
   },
   confirmModalBtnConfirm: {
-    backgroundColor: '#10B981',
+    backgroundColor: theme.success,
   },
   confirmModalBtnText: {
     fontSize: 14,
@@ -2470,7 +2331,7 @@ const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) 
     marginBottom: SPACING.lg,
     paddingBottom: SPACING.md,
     borderBottomWidth: 1,
-    borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E5E5',
+    borderBottomColor: theme.border,
   },
   helpModalTitle: {
     fontSize: 18,

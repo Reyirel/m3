@@ -48,7 +48,7 @@ export async function calculateProductivityStreak(userEmail) {
     // Calcular racha actual
     let currentStreak = 0;
     const today = new Date();
-    const todayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+    const _todayKey = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
     
     for (let i = 0; i < days.length; i++) {
       const day = days[i];
@@ -83,7 +83,7 @@ export async function calculateProductivityStreak(userEmail) {
     
     return { currentStreak, longestStreak };
   } catch (error) {
-    console.error('Error calculando racha:', error);
+    if (__DEV__) console.error('Error calculando racha:', error);
     return { currentStreak: 0, longestStreak: 0 };
   }
 }
@@ -122,7 +122,7 @@ export async function calculateAverageCompletionTime(userEmail) {
     const average = completionTimes.reduce((sum, time) => sum + time, 0) / completionTimes.length;
     return average;
   } catch (error) {
-    console.error('Error calculando tiempo promedio:', error);
+    if (__DEV__) console.error('Error calculando tiempo promedio:', error);
     return 0;
   }
 }
@@ -176,7 +176,7 @@ export async function getWeeklyProductivity(userEmail) {
     
     return weekData;
   } catch (error) {
-    console.error('Error obteniendo productividad semanal:', error);
+    if (__DEV__) console.error('Error obteniendo productividad semanal:', error);
     return [];
   }
 }

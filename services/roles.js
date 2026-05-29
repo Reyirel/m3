@@ -72,7 +72,7 @@ export const createUserProfile = async (userId, data) => {
 export const updateUserProfile = async (userId, updates) => {
   try {
     // No permitir cambio de rol desde aquí (solo admin)
-    const { role, ...safeUpdates } = updates;
+    const { role: _role, ...safeUpdates } = updates;
     await updateDoc(doc(db, 'users', userId), {
       ...safeUpdates,
       updatedAt: new Date().toISOString()
@@ -162,7 +162,7 @@ export const getUsersByDepartment = async (department) => {
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
-    console.error('Error obteniendo usuarios por departamento:', error);
+    if (__DEV__) console.error('Error obteniendo usuarios por departamento:', error);
     return [];
   }
 };
@@ -179,7 +179,7 @@ export const getUsersByRole = async (role) => {
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
-    console.error('Error obteniendo usuarios por rol:', error);
+    if (__DEV__) console.error('Error obteniendo usuarios por rol:', error);
     return [];
   }
 };
@@ -251,7 +251,7 @@ export const getTitularesByAreas = async (areas) => {
     
     return titulares;
   } catch (error) {
-    console.error('Error obteniendo titulares por áreas:', error);
+    if (__DEV__) console.error('Error obteniendo titulares por áreas:', error);
     return [];
   }
 };
@@ -268,7 +268,7 @@ export const getAllUsers = async () => {
     const snapshot = await getDocs(q);
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
   } catch (error) {
-    console.error('Error obteniendo usuarios:', error);
+    if (__DEV__) console.error('Error obteniendo usuarios:', error);
     return [];
   }
 };

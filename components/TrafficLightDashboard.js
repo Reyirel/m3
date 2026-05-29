@@ -97,10 +97,10 @@ export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact
   };
 
   const statusConfig = {
-    critical: { color: '#DC2626', bgColor: '#FEE2E2', icon: 'alert-circle', label: 'Crítico' },
-    urgent: { color: '#F59E0B', bgColor: '#FEF3C7', icon: 'warning', label: 'Urgente' },
-    warning: { color: '#EAB308', bgColor: '#FEF9C3', icon: 'time', label: 'Atención' },
-    healthy: { color: '#10B981', bgColor: '#D1FAE5', icon: 'checkmark-circle', label: 'Al día' },
+    critical: { color: theme.error, bgColor: theme.errorAlpha, icon: 'alert-circle', label: 'Crítico' },
+    urgent: { color: theme.warning, bgColor: theme.warningAlpha, icon: 'warning', label: 'Urgente' },
+    warning: { color: theme.warning, bgColor: theme.warningAlpha, icon: 'time', label: 'Atención' },
+    healthy: { color: theme.success, bgColor: theme.successAlpha, icon: 'checkmark-circle', label: 'Al día' },
   };
 
   // Resumen general
@@ -128,21 +128,21 @@ export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact
           <Text style={[styles.compactTitle, { color: theme.text }]}>Semáforo de Áreas</Text>
         </View>
         <View style={styles.compactSummary}>
-          <View style={[styles.summaryBadge, { backgroundColor: '#D1FAE5' }]}>
-            <Text style={[styles.summaryNumber, { color: '#10B981' }]}>{summary.green}</Text>
-            <Text style={[styles.summaryLabel, { color: '#10B981' }]}>✓</Text>
+          <View style={[styles.summaryBadge, { backgroundColor: theme.successAlpha }]}>
+            <Text style={[styles.summaryNumber, { color: theme.success }]}>{summary.green}</Text>
+            <Text style={[styles.summaryLabel, { color: theme.success }]}>✓</Text>
           </View>
-          <View style={[styles.summaryBadge, { backgroundColor: '#FEF9C3' }]}>
-            <Text style={[styles.summaryNumber, { color: '#EAB308' }]}>{summary.yellow}</Text>
-            <Text style={[styles.summaryLabel, { color: '#EAB308' }]}>⏳</Text>
+          <View style={[styles.summaryBadge, { backgroundColor: theme.warningAlpha }]}>
+            <Text style={[styles.summaryNumber, { color: theme.warning }]}>{summary.yellow}</Text>
+            <Text style={[styles.summaryLabel, { color: theme.warning }]}>⏳</Text>
           </View>
-          <View style={[styles.summaryBadge, { backgroundColor: '#FEF3C7' }]}>
-            <Text style={[styles.summaryNumber, { color: '#F59E0B' }]}>{summary.orange}</Text>
-            <Text style={[styles.summaryLabel, { color: '#F59E0B' }]}>⚡</Text>
+          <View style={[styles.summaryBadge, { backgroundColor: theme.warningAlpha }]}>
+            <Text style={[styles.summaryNumber, { color: theme.warning }]}>{summary.orange}</Text>
+            <Text style={[styles.summaryLabel, { color: theme.warning }]}>⚡</Text>
           </View>
-          <View style={[styles.summaryBadge, { backgroundColor: '#FEE2E2' }]}>
-            <Text style={[styles.summaryNumber, { color: '#DC2626' }]}>{summary.red}</Text>
-            <Text style={[styles.summaryLabel, { color: '#DC2626' }]}>⚠</Text>
+          <View style={[styles.summaryBadge, { backgroundColor: theme.errorAlpha }]}>
+            <Text style={[styles.summaryNumber, { color: theme.error }]}>{summary.red}</Text>
+            <Text style={[styles.summaryLabel, { color: theme.error }]}>⚠</Text>
           </View>
         </View>
       </View>
@@ -159,22 +159,22 @@ export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact
         </View>
         <View style={styles.headerSummary}>
           <Tooltip content="Al día: Tareas con +48h para vencer o sin fecha" position="bottom">
-            <View style={[styles.miniIndicator, { backgroundColor: '#10B981' }]}>
+            <View style={[styles.miniIndicator, { backgroundColor: theme.success }]}>
               <AnimatedNumber value={summary.green} duration={500} delay={0} style={styles.miniText} />
             </View>
           </Tooltip>
           <Tooltip content="Atención: Tareas que vencen en 24-48 horas" position="bottom">
-            <View style={[styles.miniIndicator, { backgroundColor: '#EAB308' }]}>
+            <View style={[styles.miniIndicator, { backgroundColor: theme.warning }]}>
               <AnimatedNumber value={summary.yellow} duration={500} delay={100} style={styles.miniText} />
             </View>
           </Tooltip>
           <Tooltip content="Urgente: Tareas que vencen en menos de 24h" position="bottom">
-            <View style={[styles.miniIndicator, { backgroundColor: '#F59E0B' }]}>
+            <View style={[styles.miniIndicator, { backgroundColor: theme.warning }]}>
               <AnimatedNumber value={summary.orange} duration={500} delay={200} style={styles.miniText} />
             </View>
           </Tooltip>
           <Tooltip content="Crítico: Tareas vencidas que requieren atención inmediata" position="bottom">
-            <View style={[styles.miniIndicator, { backgroundColor: '#DC2626' }]}>
+            <View style={[styles.miniIndicator, { backgroundColor: theme.error }]}>
               <AnimatedNumber value={summary.red} duration={500} delay={300} style={styles.miniText} />
             </View>
           </Tooltip>
@@ -184,19 +184,19 @@ export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact
       {/* Leyenda */}
       <View style={styles.legend}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+          <View style={[styles.legendDot, { backgroundColor: theme.success }]} />
           <Text style={[styles.legendText, { color: theme.textSecondary }]}>Al día (+48h)</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#EAB308' }]} />
+          <View style={[styles.legendDot, { backgroundColor: theme.warning }]} />
           <Text style={[styles.legendText, { color: theme.textSecondary }]}>24-48h</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+          <View style={[styles.legendDot, { backgroundColor: theme.warning }]} />
           <Text style={[styles.legendText, { color: theme.textSecondary }]}>&lt;24h</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#DC2626' }]} />
+          <View style={[styles.legendDot, { backgroundColor: theme.error }]} />
           <Text style={[styles.legendText, { color: theme.textSecondary }]}>Vencidas</Text>
         </View>
       </View>
@@ -217,9 +217,11 @@ export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact
                 key={metric.area}
                 style={[
                   styles.areaCard,
-                  { 
-                    backgroundColor: isDark ? theme.card : '#FFFFFF',
+                  {
+                    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
                     borderLeftColor: config.color,
+                    borderWidth: 1,
+                    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
                   }
                 ]}
                 onPress={() => onAreaPress?.(metric.area)}
@@ -246,16 +248,16 @@ export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact
                 {/* Semáforo visual */}
                 <View style={styles.trafficLight}>
                   <View style={styles.lightRow}>
-                    <View style={[styles.light, { backgroundColor: metric.green > 0 ? '#10B981' : '#E5E7EB' }]}>
+                    <View style={[styles.light, { backgroundColor: metric.green > 0 ? theme.success : theme.border }]}>
                       <Text style={styles.lightText}>{metric.green}</Text>
                     </View>
-                    <View style={[styles.light, { backgroundColor: metric.yellow > 0 ? '#EAB308' : '#E5E7EB' }]}>
+                    <View style={[styles.light, { backgroundColor: metric.yellow > 0 ? theme.warning : theme.border }]}>
                       <Text style={styles.lightText}>{metric.yellow}</Text>
                     </View>
-                    <View style={[styles.light, { backgroundColor: metric.orange > 0 ? '#F59E0B' : '#E5E7EB' }]}>
+                    <View style={[styles.light, { backgroundColor: metric.orange > 0 ? theme.warning : theme.border }]}>
                       <Text style={styles.lightText}>{metric.orange}</Text>
                     </View>
-                    <View style={[styles.light, { backgroundColor: metric.red > 0 ? '#DC2626' : '#E5E7EB' }]}>
+                    <View style={[styles.light, { backgroundColor: metric.red > 0 ? theme.error : theme.border }]}>
                       <Text style={styles.lightText}>{metric.red}</Text>
                     </View>
                   </View>
@@ -265,27 +267,27 @@ export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact
                 <View style={styles.progressContainer}>
                   <View style={styles.progressBar}>
                     {metric.green > 0 && (
-                      <View style={[styles.progressSegment, { 
-                        flex: metric.green, 
-                        backgroundColor: '#10B981' 
+                      <View style={[styles.progressSegment, {
+                        flex: metric.green,
+                        backgroundColor: theme.success,
                       }]} />
                     )}
                     {metric.yellow > 0 && (
-                      <View style={[styles.progressSegment, { 
-                        flex: metric.yellow, 
-                        backgroundColor: '#EAB308' 
+                      <View style={[styles.progressSegment, {
+                        flex: metric.yellow,
+                        backgroundColor: theme.warning,
                       }]} />
                     )}
                     {metric.orange > 0 && (
-                      <View style={[styles.progressSegment, { 
-                        flex: metric.orange, 
-                        backgroundColor: '#F59E0B' 
+                      <View style={[styles.progressSegment, {
+                        flex: metric.orange,
+                        backgroundColor: theme.warning,
                       }]} />
                     )}
                     {metric.red > 0 && (
-                      <View style={[styles.progressSegment, { 
-                        flex: metric.red, 
-                        backgroundColor: '#DC2626' 
+                      <View style={[styles.progressSegment, {
+                        flex: metric.red,
+                        backgroundColor: theme.error,
                       }]} />
                     )}
                   </View>
@@ -299,10 +301,10 @@ export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact
   );
 }
 
-const createStyles = (theme, isDark, compact) => StyleSheet.create({
+const createStyles = (theme, isDark, _compact) => StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: isDark ? theme.background : '#F5F7FA',
+    backgroundColor: 'transparent',
   },
   header: {
     flexDirection: 'row',
@@ -310,9 +312,9 @@ const createStyles = (theme, isDark, compact) => StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: isDark ? theme.card : '#FFFFFF',
+    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
     borderBottomWidth: 1,
-    borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB',
+    borderBottomColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -344,9 +346,9 @@ const createStyles = (theme, isDark, compact) => StyleSheet.create({
     justifyContent: 'center',
     gap: 16,
     paddingVertical: 10,
-    backgroundColor: isDark ? theme.card : '#FFFFFF',
+    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
     borderBottomWidth: 1,
-    borderBottomColor: isDark ? 'rgba(255,255,255,0.1)' : '#E5E7EB',
+    borderBottomColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
   },
   legendItem: {
     flexDirection: 'row',
@@ -373,14 +375,14 @@ const createStyles = (theme, isDark, compact) => StyleSheet.create({
   areaCard: {
     width: isDesktop ? '33%' : '100%',
     minWidth: isDesktop ? 280 : undefined,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 14,
     borderLeftWidth: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowRadius: 8,
+    elevation: 3,
   },
   areaHeader: {
     flexDirection: 'row',
@@ -449,8 +451,10 @@ const createStyles = (theme, isDark, compact) => StyleSheet.create({
   // Estilos compactos
   compactContainer: {
     padding: 12,
-    backgroundColor: isDark ? theme.card : '#FFFFFF',
-    borderRadius: 12,
+    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
   },
   compactHeader: {
     flexDirection: 'row',

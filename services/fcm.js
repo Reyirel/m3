@@ -3,7 +3,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
-import { collection, doc, setDoc, getDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getCurrentSession } from './authFirestore';
 
@@ -13,6 +13,7 @@ const TOKENS_COLLECTION = 'fcmTokens';
  * Configurar el handler de notificaciones
  */
 export function configureNotifications() {
+  if (Platform.OS === 'web') return;
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
       shouldShowAlert: true,
@@ -186,7 +187,7 @@ export async function sendPushNotification(tokens, notification) {
       body: JSON.stringify(messages),
     });
 
-    const result = await response.json();
+    await response.json();
     return true;
   } catch (error) {
     return false;

@@ -3,7 +3,7 @@
 
 import { useState, useEffect } from 'react';
 import { Dimensions, Platform } from 'react-native';
-import { BREAKPOINTS, getColumnCount, getResponsivePadding, getResponsiveValue, MAX_WIDTHS, RESPONSIVE_PADDING, getMaxWidth } from '../theme/tokens';
+import { BREAKPOINTS, getColumnCount, getResponsivePadding, getResponsiveValue, RESPONSIVE_PADDING, getMaxWidth } from '../theme/tokens';
 
 // Hook para detectar cambios de tamaño de pantalla
 export const useResponsive = () => {

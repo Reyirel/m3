@@ -1,8 +1,9 @@
 // services/analytics.js
 // Servicio de análisis y estadísticas de tareas
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '../firebase';
-import { toMs, diffMs, isBefore } from '../utils/dateUtils';
+import { toMs, diffMs } from '../utils/dateUtils';
+import { isInProgress } from '../utils/taskStatus';
 import { isTaskAssignedToUser, getTaskArea } from '../utils/taskHelpers';
 
 // ✅ OPTIMIZACIÓN: Cache simple con TTL
@@ -62,7 +63,7 @@ export const getGeneralMetrics = async (userId, userRole) => {
     const total = tasks.length;
     const completed = tasks.filter(t => t.status === 'cerrada').length;
     const pending = tasks.filter(t => t.status === 'pendiente').length;
-    const inProgress = tasks.filter(t => t.status === 'en_proceso' || t.status === 'en-progreso' || t.status === 'en_progreso' || t.status === 'en progreso').length;
+    const inProgress = tasks.filter(t => isInProgress(t.status)).length;
     const inReview = tasks.filter(t => t.status === 'en_revision').length;
     const overdue = tasks.filter(t => 
       t.status !== 'cerrada' && t.dueAt && toMs(t.dueAt) < now
@@ -107,7 +108,8 @@ export const getGeneralMetrics = async (userId, userRole) => {
       ? (completedThisWeek / createdThisWeek * 100).toFixed(1) 
       : 0;
 
-    return {
+    // ✅ OPTIMIZACIÓN: Guardar en cache antes de retornar
+    const result = {
       success: true,
       metrics: {
         total,
@@ -127,9 +129,6 @@ export const getGeneralMetrics = async (userId, userRole) => {
         weeklyProductivity: parseFloat(weeklyProductivity),
       }
     };
-
-    // ✅ OPTIMIZACIÓN: Guardar en cache
-    const result = { success: true, metrics };
     setCachedData(cacheKey, result);
     return result;
   } catch (error) {
@@ -388,7 +387,7 @@ export const getSecretarioMetrics = async () => {
       const tasksOverdue = tasksPending.filter(t => t.dueAt && toMs(t.dueAt) < now);
 
       // Tareas en proceso y en revisión
-      const tasksInProgress = tasksCreated.filter(t => t.status === 'en_proceso' || t.status === 'en-progreso' || t.status === 'en progreso');
+      const tasksInProgress = tasksCreated.filter(t => isInProgress(t.status));
       const tasksInReview = tasksCreated.filter(t => t.status === 'en_revision');
 
       // Tiempo promedio de completitud
@@ -473,7 +472,7 @@ export const getSecretarioMetrics = async () => {
       totals
     };
   } catch (error) {
-    console.error('Error obteniendo métricas de secretarios:', error);
+    if (__DEV__) console.error('Error obteniendo métricas de secretarios:', error);
     return { success: false, error: error.message };
   }
 };

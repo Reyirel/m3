@@ -153,7 +153,7 @@ class NetworkQualityMonitor {
       // Use CORS-compatible endpoint for speed test
       const testUrl = 'https://httpbin.org/bytes/1024';
       const startTime = Date.now();
-      const startBytes = 0;
+      const _startBytes = 0;
 
       const response = await fetch(testUrl, { method: 'HEAD' });
       const contentLength = parseInt(response.headers.get('content-length'), 10);

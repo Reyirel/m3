@@ -2,7 +2,7 @@
 // Dashboard ÚNICO y UNIFICADO para Admin
 // Combina: KPIs, Evolución, Comparativa, Cumplimiento, Rendimiento
 
-import React, { useState, useEffect, useCallback, useRef, useMemo, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  ActivityIndicator,
   Dimensions,
   Animated,
   Modal,
@@ -300,21 +299,21 @@ export default function AdminExecutiveDashboard({ navigation }) {
       mounted = false;
       if (unsubscribeUsers) unsubscribeUsers();
     };
-  }, []);
+  }, [fadeAnim, slideAnim, useNativeDriver]);
 
-  const onRefresh = useCallback(async () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    await loadInitialData();
-    setRefreshing(false);
+    // Los datos vienen de onSnapshot (reactivo) y useTasks; solo simular refresh visual
+    setTimeout(() => setRefreshing(false), 800);
   }, []);
 
   // === UTILIDADES ===
   
   const getCompletionColor = (rate) => {
-    if (rate >= 80) return '#10B981';
-    if (rate >= 60) return '#F59E0B';
-    if (rate >= 40) return '#F97316';
-    return '#EF4444';
+    if (rate >= 80) return theme.success;
+    if (rate >= 60) return theme.warning;
+    if (rate >= 40) return theme.warningDark;
+    return theme.error;
   };
 
   const getRoleLabel = (role) => {
@@ -356,13 +355,13 @@ export default function AdminExecutiveDashboard({ navigation }) {
   const renderOverview = () => (
     <View>
       {/* KPIs principales + tasas en una sola card */}
-      <View style={[styles.section, { backgroundColor: theme.card }]}>
+      <View style={[styles.section, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         <View style={styles.kpiGrid}>
           {[
-            { label: 'Total', value: globalMetrics.totalTasks, color: theme.text, bg: isDark ? '#1E293B' : '#F8FAFC', icon: 'document-text', iconColor: '#3B82F6' },
-            { label: 'Completadas', value: globalMetrics.completedTasks, color: '#10B981', bg: isDark ? '#162118' : '#ECFDF5', icon: 'checkmark-circle', iconColor: '#10B981' },
-            { label: 'En progreso', value: globalMetrics.inProgressTasks, color: '#3B82F6', bg: isDark ? '#162030' : '#EFF6FF', icon: 'sync', iconColor: '#3B82F6' },
-            { label: 'Vencidas', value: globalMetrics.overdueTasks, color: '#EF4444', bg: isDark ? '#2D1515' : '#FEF2F2', icon: 'alert-circle', iconColor: '#EF4444' },
+            { label: 'Total', value: globalMetrics.totalTasks, color: theme.text, bg: isDark ? theme.glass : 'rgba(255,255,255,0.85)', icon: 'document-text', iconColor: theme.info },
+            { label: 'Completadas', value: globalMetrics.completedTasks, color: theme.success, bg: theme.successAlpha, icon: 'checkmark-circle', iconColor: theme.success },
+            { label: 'En progreso', value: globalMetrics.inProgressTasks, color: theme.info, bg: theme.infoAlpha, icon: 'sync', iconColor: theme.info },
+            { label: 'Vencidas', value: globalMetrics.overdueTasks, color: theme.error, bg: theme.errorAlpha, icon: 'alert-circle', iconColor: theme.error },
           ].map(kpi => (
             <View key={kpi.label} style={[styles.kpiCard, { backgroundColor: kpi.bg }]}>
               <Ionicons name={kpi.icon} size={20} color={kpi.iconColor} style={{ marginBottom: 6 }} />
@@ -391,7 +390,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
         {/* Comparativa mes actual vs anterior — inline compacta */}
         <View style={[styles.compactComparison, { borderTopColor: theme.border, marginTop: 14, paddingTop: 14 }]}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Ionicons name="trending-up" size={14} color="#9C27B0" />
+            <Ionicons name="trending-up" size={14} color={theme.secondary} />
             <Text style={[styles.compactCompLabel, { color: theme.textSecondary }]}>Este mes vs anterior</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -402,9 +401,9 @@ export default function AdminExecutiveDashboard({ navigation }) {
             <Text style={[styles.compactCompValue, { color: theme.textSecondary }]}>
               {monthlyComparison.lastMonth}
             </Text>
-            <View style={[styles.compactBadge, { backgroundColor: monthlyComparison.improving ? '#10B98120' : '#EF444420' }]}>
-              <Ionicons name={monthlyComparison.improving ? 'arrow-up' : 'arrow-down'} size={11} color={monthlyComparison.improving ? '#10B981' : '#EF4444'} />
-              <Text style={{ color: monthlyComparison.improving ? '#10B981' : '#EF4444', fontSize: 11, fontWeight: '700' }}>
+            <View style={[styles.compactBadge, { backgroundColor: monthlyComparison.improving ? theme.successAlpha : theme.errorAlpha }]}>
+              <Ionicons name={monthlyComparison.improving ? 'arrow-up' : 'arrow-down'} size={11} color={monthlyComparison.improving ? theme.success : theme.error} />
+              <Text style={{ color: monthlyComparison.improving ? theme.success : theme.error, fontSize: 11, fontWeight: '700' }}>
                 {monthlyComparison.change > 0 ? '+' : ''}{monthlyComparison.change}%
               </Text>
             </View>
@@ -414,20 +413,20 @@ export default function AdminExecutiveDashboard({ navigation }) {
 
       {/* Áreas con más vencidas */}
       {topOverdueAreas.length > 0 && (
-        <View style={[styles.section, { backgroundColor: theme.card }]}>
+        <View style={[styles.section, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
           <View style={styles.sectionHeader}>
-            <Ionicons name="warning" size={18} color="#EF4444" />
+            <Ionicons name="warning" size={18} color={theme.error} />
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Áreas con más retrasos</Text>
           </View>
           {topOverdueAreas.map(([area, count]) => (
             <View key={area} style={[styles.rateItem, { marginTop: 8 }]}>
               <View style={styles.rateHeader}>
                 <Text style={[styles.rateLabel, { color: theme.text }]} numberOfLines={1}>{area}</Text>
-                <Text style={[styles.rateValue, { color: '#EF4444' }]}>{count} vencida{count !== 1 ? 's' : ''}</Text>
+                <Text style={[styles.rateValue, { color: theme.error }]}>{count} vencida{count !== 1 ? 's' : ''}</Text>
               </View>
               <ProgressBar
                 progress={Math.min(100, (count / Math.max(globalMetrics.overdueTasks, 1)) * 100)}
-                color="#EF4444"
+                color={theme.error}
                 size="small"
               />
             </View>
@@ -437,12 +436,12 @@ export default function AdminExecutiveDashboard({ navigation }) {
 
       {/* Botón para ver evolución histórica */}
       <TouchableOpacity
-        style={[styles.evolutionButton, { backgroundColor: theme.card, borderColor: theme.border }]}
+        style={[styles.evolutionButton, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}
         onPress={() => setShowEvolutionModal(true)}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <View style={{ backgroundColor: '#3B82F620', padding: 8, borderRadius: 10 }}>
-            <Ionicons name="analytics" size={18} color="#3B82F6" />
+          <View style={{ backgroundColor: theme.infoAlpha, padding: 8, borderRadius: 10 }}>
+            <Ionicons name="analytics" size={18} color={theme.info} />
           </View>
           <View>
             <Text style={[{ fontSize: 14, fontWeight: '700', color: theme.text }]}>Evolución histórica</Text>
@@ -456,9 +455,9 @@ export default function AdminExecutiveDashboard({ navigation }) {
 
   // Sección: Evolución
   const renderEvolution = () => (
-    <View style={[styles.section, { backgroundColor: theme.card }]}>
+    <View style={[styles.section, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
       <View style={styles.sectionHeader}>
-        <Ionicons name="analytics" size={20} color="#3B82F6" />
+        <Ionicons name="analytics" size={20} color={theme.info} />
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Evolución</Text>
       </View>
       
@@ -489,8 +488,8 @@ export default function AdminExecutiveDashboard({ navigation }) {
             data={{
               labels: evolutionData.labels,
               datasets: [
-                { data: evolutionData.completedData.length ? evolutionData.completedData : [0], color: () => '#10B981', strokeWidth: 3 },
-                { data: evolutionData.createdData.length ? evolutionData.createdData : [0], color: () => '#3B82F6', strokeWidth: 2 },
+                { data: evolutionData.completedData.length ? evolutionData.completedData : [0], color: () => theme.success, strokeWidth: 3 },
+                { data: evolutionData.createdData.length ? evolutionData.createdData : [0], color: () => theme.info, strokeWidth: 2 },
               ],
               legend: ['Completadas', 'Creadas'],
             }}
@@ -521,11 +520,11 @@ export default function AdminExecutiveDashboard({ navigation }) {
       {/* Leyenda */}
       <View style={styles.legendContainer}>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+          <View style={[styles.legendDot, { backgroundColor: theme.success }]} />
           <Text style={[styles.legendText, { color: theme.textSecondary }]}>Completadas</Text>
         </View>
         <View style={styles.legendItem}>
-          <View style={[styles.legendDot, { backgroundColor: '#3B82F6' }]} />
+          <View style={[styles.legendDot, { backgroundColor: theme.info }]} />
           <Text style={[styles.legendText, { color: theme.textSecondary }]}>Creadas</Text>
         </View>
       </View>
@@ -541,16 +540,16 @@ export default function AdminExecutiveDashboard({ navigation }) {
       : (secretariaMetrics.length > 0 ? Math.round(secretariaMetrics.reduce((a, b) => a + b.completionRate, 0) / secretariaMetrics.length) : 0);
 
     return (
-      <View style={[styles.section, { backgroundColor: theme.card }]}>
+      <View style={[styles.section, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         {/* Toggle Directores / Secretarías */}
-        <View style={[styles.segmentToggle, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+        <View style={[styles.segmentToggle, { backgroundColor: isDark ? theme.surfaceL2 : theme.surfaceL3 }]}>
           {[
             { key: 'directors', label: 'Directores', icon: 'people' },
             { key: 'secretarios', label: 'Secretarías', icon: 'business' },
           ].map(seg => (
             <TouchableOpacity
               key={seg.key}
-              style={[styles.segmentBtn, complianceView === seg.key && { backgroundColor: theme.card, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 }]}
+              style={[styles.segmentBtn, complianceView === seg.key && { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.9)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 }]}
               onPress={() => setComplianceView(seg.key)}
             >
               <Ionicons name={seg.icon} size={14} color={complianceView === seg.key ? theme.primary : theme.textSecondary} />
@@ -561,16 +560,16 @@ export default function AdminExecutiveDashboard({ navigation }) {
 
         {/* Resumen en 3 chips */}
         <View style={[styles.complianceSummary, { marginTop: 14 }]}>
-          <View style={[styles.complianceCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
+          <View style={[styles.complianceCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
             <Text style={[styles.complianceValue, { color: theme.text }]}>{activeMetrics.length}</Text>
             <Text style={[styles.complianceLabel, { color: theme.textSecondary }]}>Total</Text>
           </View>
-          <View style={[styles.complianceCard, { backgroundColor: isDark ? '#1E2620' : '#ECFDF5' }]}>
-            <Text style={[styles.complianceValue, { color: '#10B981' }]}>{avgRate}%</Text>
+          <View style={[styles.complianceCard, { backgroundColor: theme.successAlpha }]}>
+            <Text style={[styles.complianceValue, { color: theme.success }]}>{avgRate}%</Text>
             <Text style={[styles.complianceLabel, { color: theme.textSecondary }]}>Promedio</Text>
           </View>
-          <View style={[styles.complianceCard, { backgroundColor: isDark ? '#2D1E1E' : '#FEF2F2' }]}>
-            <Text style={[styles.complianceValue, { color: '#EF4444' }]}>
+          <View style={[styles.complianceCard, { backgroundColor: theme.errorAlpha }]}>
+            <Text style={[styles.complianceValue, { color: theme.error }]}>
               {isDirectors
                 ? userMetrics.filter(u => u.overdueTasks > 0).length
                 : secretariaMetrics.filter(s => s.overdueTasks > 0).length}
@@ -590,10 +589,10 @@ export default function AdminExecutiveDashboard({ navigation }) {
             userMetrics.map((user, index) => (
               <TouchableOpacity
                 key={user.id || index}
-                style={[styles.userCard, { backgroundColor: isDark ? '#1E1E23' : '#F8FAFC', borderLeftColor: getCompletionColor(user.completionRate) }]}
+                style={[styles.userCard, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderLeftColor: getCompletionColor(user.completionRate) }]}
                 onPress={() => { setSelectedUser(user); setShowUserModal(true); }}
               >
-                <Text style={[styles.rankNumber, { color: index < 3 ? '#F59E0B' : theme.textSecondary, width: 24 }]}>#{index + 1}</Text>
+                <Text style={[styles.rankNumber, { color: index < 3 ? theme.warning : theme.textSecondary, width: 24 }]}>#{index + 1}</Text>
                 <Avatar name={user.displayName || user.email} size={36} />
                 <View style={styles.userInfo}>
                   <Text style={[styles.userName, { color: theme.text }]} numberOfLines={1}>{user.displayName || user.email?.split('@')[0]}</Text>
@@ -601,7 +600,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
                 </View>
                 <View style={styles.userStats}>
                   <Text style={[styles.userRate, { color: getCompletionColor(user.completionRate) }]}>{user.completionRate}%</Text>
-                  {user.overdueTasks > 0 && <Text style={styles.overdueText}>{user.overdueTasks} venc.</Text>}
+                  {user.overdueTasks > 0 && <Text style={[styles.overdueText, { color: theme.error }]}>{user.overdueTasks} venc.</Text>}
                 </View>
               </TouchableOpacity>
             ))
@@ -609,7 +608,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
             secretariaMetrics.map((data, index) => (
               <TouchableOpacity
                 key={data.secretario.id || index}
-                style={[styles.secretariaCard, { backgroundColor: isDark ? '#1E1E23' : '#F8FAFC', borderLeftColor: getCompletionColor(data.completionRate) }]}
+                style={[styles.secretariaCard, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderLeftColor: getCompletionColor(data.completionRate) }]}
                 onPress={() => { setSelectedUser({ ...data.secretario, ...data }); setShowUserModal(true); }}
               >
                 <View style={styles.secretariaHeader}>
@@ -623,9 +622,9 @@ export default function AdminExecutiveDashboard({ navigation }) {
                 <View style={styles.secretariaStats}>
                   {[
                     { v: data.totalTasks, l: 'Total', c: theme.text },
-                    { v: data.completedTasks, l: 'Compl.', c: '#10B981' },
-                    { v: data.overdueTasks, l: 'Vencidas', c: '#EF4444' },
-                    { v: data.directorsCount, l: 'Direct.', c: '#3B82F6' },
+                    { v: data.completedTasks, l: 'Compl.', c: theme.success },
+                    { v: data.overdueTasks, l: 'Vencidas', c: theme.error },
+                    { v: data.directorsCount, l: 'Direct.', c: theme.info },
                   ].map((s, i, arr) => (
                     <React.Fragment key={s.l}>
                       <View style={styles.statItem}>
@@ -651,10 +650,10 @@ export default function AdminExecutiveDashboard({ navigation }) {
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Header shimmer */}
         <LinearGradient
-          colors={['#9F2241', '#BC955C']}
+          colors={theme.gradientHeader}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.header, { paddingBottom: 20 }]}
+          style={[styles.header, { paddingBottom: 20, shadowColor: theme.primary }]}
         >
           <ShimmerEffect width={140} height={14} borderRadius={6} style={{ marginBottom: 8 }} />
           <ShimmerEffect width={220} height={24} borderRadius={8} />
@@ -683,10 +682,10 @@ export default function AdminExecutiveDashboard({ navigation }) {
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       {/* Header */}
       <LinearGradient
-        colors={['#9F2241', '#BC955C']}
+        colors={theme.gradientHeader}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { shadowColor: theme.primary }]}
       >
         <View style={styles.headerContent}>
           <View>
@@ -703,7 +702,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
       </LinearGradient>
 
       {/* Tabs de navegación — 3 tabs */}
-      <View style={[styles.tabsContainer, { backgroundColor: theme.card, borderBottomColor: theme.border }]}>
+      <View style={[styles.tabsContainer, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderBottomColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         <View style={styles.tabsScroll}>
           <TabButton id="overview" label="Resumen" icon="grid" />
           <TabButton id="compliance" label="Personas" icon="people" />
@@ -723,7 +722,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
           {activeTab === 'trafficlight' && (
             <TrafficLightDashboard
               tasks={tasks}
-              onAreaPress={(area) => navigation.navigate('Tasks', { filterArea: area })}
+              onAreaPress={(area) => navigation.navigate('Home', { filterArea: area })}
             />
           )}
           <View style={{ height: 100 }} />
@@ -776,16 +775,16 @@ export default function AdminExecutiveDashboard({ navigation }) {
                 </View>
                 
                 <View style={styles.modalStats}>
-                  <View style={[styles.modalStatCard, { backgroundColor: isDark ? '#1E293B' : '#F8FAFC' }]}>
+                  <View style={[styles.modalStatCard, { backgroundColor: isDark ? theme.surfaceL2 : theme.surface }]}>
                     <Text style={[styles.modalStatValue, { color: theme.text }]}>{selectedUser.totalTasks || 0}</Text>
                     <Text style={[styles.modalStatLabel, { color: theme.textSecondary }]}>Total</Text>
                   </View>
-                  <View style={[styles.modalStatCard, { backgroundColor: isDark ? '#1E2620' : '#ECFDF5' }]}>
-                    <Text style={[styles.modalStatValue, { color: '#10B981' }]}>{selectedUser.completedTasks || 0}</Text>
+                  <View style={[styles.modalStatCard, { backgroundColor: theme.successAlpha }]}>
+                    <Text style={[styles.modalStatValue, { color: theme.success }]}>{selectedUser.completedTasks || 0}</Text>
                     <Text style={[styles.modalStatLabel, { color: theme.textSecondary }]}>Completadas</Text>
                   </View>
-                  <View style={[styles.modalStatCard, { backgroundColor: isDark ? '#2D1E1E' : '#FEF2F2' }]}>
-                    <Text style={[styles.modalStatValue, { color: '#EF4444' }]}>{selectedUser.overdueTasks || 0}</Text>
+                  <View style={[styles.modalStatCard, { backgroundColor: theme.errorAlpha }]}>
+                    <Text style={[styles.modalStatValue, { color: theme.error }]}>{selectedUser.overdueTasks || 0}</Text>
                     <Text style={[styles.modalStatLabel, { color: theme.textSecondary }]}>Vencidas</Text>
                   </View>
                 </View>
@@ -813,7 +812,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
                       Directores ({selectedUser.directors.length})
                     </Text>
                     {selectedUser.directors.map((director, i) => (
-                      <View key={i} style={[styles.modalDirectorItem, { backgroundColor: isDark ? '#1E293B' : '#F1F5F9' }]}>
+                      <View key={i} style={[styles.modalDirectorItem, { backgroundColor: isDark ? theme.surfaceL2 : theme.surfaceL3 }]}>
                         <Avatar name={director.displayName || director.email} size={32} />
                         <Text style={[styles.modalDirectorName, { color: theme.text }]}>
                           {director.displayName || director.email?.split('@')[0]}
@@ -838,13 +837,13 @@ const styles = StyleSheet.create({
   loadingText: { marginTop: 12, fontSize: 14 },
   
   // Header
-  header: { paddingTop: 50, paddingBottom: 20, paddingHorizontal: 20 },
+  header: { paddingTop: 50, paddingBottom: 28, paddingHorizontal: 20, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 12, overflow: 'hidden' },
   headerContent: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerLabel: { fontSize: 11, color: 'rgba(255,255,255,0.7)', letterSpacing: 1.5, textTransform: 'uppercase' },
-  headerTitle: { fontSize: 26, fontWeight: '700', color: '#FFFFFF', marginTop: 4 },
-  headerBadge: { backgroundColor: 'rgba(255,255,255,0.2)', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 12, alignItems: 'center' },
-  headerBadgeText: { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
-  headerBadgeLabel: { fontSize: 10, color: 'rgba(255,255,255,0.8)' },
+  headerLabel: { fontSize: 12, color: 'rgba(255,255,255,0.72)', letterSpacing: 0.3, fontWeight: '500' },
+  headerTitle: { fontSize: 30, fontWeight: '800', color: '#FFFFFF', marginTop: 4, letterSpacing: -0.5, textShadowColor: 'rgba(0,0,0,0.20)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4 },
+  headerBadge: { backgroundColor: 'rgba(255,255,255,0.14)', paddingHorizontal: 14, paddingVertical: 10, borderRadius: 16, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)' },
+  headerBadgeText: { fontSize: 22, fontWeight: '900', color: '#FFFFFF' },
+  headerBadgeLabel: { fontSize: 10, color: 'rgba(255,255,255,0.75)', fontWeight: '500' },
   
   // Tabs
   tabsContainer: { borderBottomWidth: 1, paddingVertical: 10 },
@@ -928,8 +927,8 @@ const styles = StyleSheet.create({
   userRole: { fontSize: 11, marginTop: 2 },
   userStats: { alignItems: 'flex-end' },
   userRate: { fontSize: 18, fontWeight: '800' },
-  overdueBadge: { backgroundColor: '#EF444420', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginTop: 4 },
-  overdueText: { color: '#EF4444', fontSize: 10, fontWeight: '600' },
+  overdueBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginTop: 4 },
+  overdueText: { fontSize: 10, fontWeight: '600' },
   
   // Secretaria Cards
   secretariaCard: { padding: 14, borderRadius: 14, marginBottom: 12, borderLeftWidth: 4 },

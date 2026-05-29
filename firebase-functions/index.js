@@ -16,7 +16,7 @@ const messaging = admin.messaging();
  */
 export const processPushNotificationQueue = functions.pubsub
   .schedule('every 5 minutes')
-  .onRun(async (context) => {
+  .onRun(async (_context) => {
     try {
       const now = new Date();
 
@@ -154,7 +154,7 @@ export const processPushNotificationQueue = functions.pubsub
  */
 export const processScheduledNotifications = functions.pubsub
   .schedule('every 1 minutes')
-  .onRun(async (context) => {
+  .onRun(async (_context) => {
     try {
       const now = new Date();
 
@@ -214,7 +214,7 @@ export const processScheduledNotifications = functions.pubsub
  */
 export const cleanupExpiredTokens = functions.pubsub
   .schedule('every 1 hours')
-  .onRun(async (context) => {
+  .onRun(async (_context) => {
     try {
       const now = new Date();
 
@@ -335,10 +335,10 @@ export const onReportRated = functions.firestore
  */
 export const notifyDueTasksReminder = functions.pubsub
   .schedule('every 30 minutes')
-  .onRun(async (context) => {
+  .onRun(async (_context) => {
     try {
       const now = Date.now();
-      const in6Hours = new Date(now + 6 * 60 * 60 * 1000);
+      const _in6Hours = new Date(now + 6 * 60 * 60 * 1000);
       const in24Hours = new Date(now + 24 * 60 * 60 * 1000);
 
       // Obtener tareas que vencen en las próximas 6-24 horas

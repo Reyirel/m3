@@ -1,6 +1,6 @@
 // components/ReportDetailsModal.js
 // 🎯 Modal para mostrar detalles de reportes sin sobrecargar la pantalla principal
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import {
   Modal,
   View,
@@ -9,10 +9,12 @@ import {
   ScrollView,
   TouchableOpacity,
   Animated,
+  Platform,
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { useTheme } from '../contexts/ThemeContext';
 import { useResponsive } from '../utils/responsive';
 
@@ -24,7 +26,7 @@ export default function ReportDetailsModal({
   type = 'general', // 'general' | 'areas' | 'priority'
 }) {
   const { theme, isDark } = useTheme();
-  const { width, padding } = useResponsive();
+  const { padding } = useResponsive();
   const { height } = useWindowDimensions();
   const slideAnim = useRef(new Animated.Value(height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -57,7 +59,7 @@ export default function ReportDetailsModal({
         }),
       ]).start();
     }
-  }, [visible]);
+  }, [visible, fadeAnim, height, slideAnim]);
 
   const renderGeneralStats = () => (
     <View style={{ gap: 12 }}>
@@ -123,7 +125,7 @@ export default function ReportDetailsModal({
           key={area}
           style={[
             styles.areaCard,
-            { backgroundColor: theme.card, borderColor: theme.bgSecondary }
+{ backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle }
           ]}
         >
           <Text style={[styles.areaName, { color: theme.text }]}>
@@ -189,14 +191,16 @@ export default function ReportDetailsModal({
           style={[
             styles.modalContent,
             {
-              backgroundColor: theme.bg,
+              backgroundColor: isDark ? '#1C1118' : '#FFFFFF',
+              borderTopWidth: 1,
+              borderTopColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)',
               transform: [{ translateY: slideAnim }],
             },
           ]}
         >
           {/* Header */}
           <LinearGradient
-            colors={[theme.primary, theme.primary + 'dd']}
+            colors={theme.gradientHeader}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.header}
@@ -225,7 +229,7 @@ export default function ReportDetailsModal({
 }
 
 const StatRow = ({ label, value, color, icon }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   return (
     <View style={styles.statRow}>
       <Ionicons name={icon} size={20} color={color} />
@@ -245,7 +249,7 @@ const StatRow = ({ label, value, color, icon }) => {
 };
 
 const MetricBadge = ({ label, value, color }) => {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   return (
     <View style={{ flex: 1, alignItems: 'center' }}>
       <Text style={[styles.badgeValue, { color }]}>
@@ -269,9 +273,14 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     maxHeight: '80%',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -6 },
+    shadowOpacity: 0.30,
+    shadowRadius: 20,
+    elevation: 16,
   },
   header: {
     paddingVertical: 16,

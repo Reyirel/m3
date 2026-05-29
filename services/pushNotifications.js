@@ -6,8 +6,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { db } from '../firebase';
-import { collection, addDoc, doc, updateDoc, getDocs, deleteDoc, query, where, serverTimestamp } from 'firebase/firestore';
-import { getCurrentSession } from './authFirestore';
+import { collection, addDoc, doc, getDocs, deleteDoc, query, where, serverTimestamp } from 'firebase/firestore';
 
 const log = __DEV__ ? console.log : () => {};
 
@@ -17,11 +16,9 @@ const log = __DEV__ ? console.log : () => {};
  */
 export const getPushNotificationToken = async () => {
   try {
-    let token;
-
     if (Platform.OS === 'web') {
       // Web no soporta push notifications igual
-      console.warn('Push notifications not available on web');
+      if (__DEV__) console.warn('Push notifications not available on web');
       return null;
     }
 
@@ -34,11 +31,11 @@ export const getPushNotificationToken = async () => {
       });
       return token;
     } else {
-      console.warn('Expo project ID not found');
+      if (__DEV__) console.warn('Expo project ID not found');
       return null;
     }
   } catch (error) {
-    console.error('Error getting push token:', error);
+    if (__DEV__) console.error('Error getting push token:', error);
     return null;
   }
 };
@@ -53,7 +50,7 @@ export const registerPushToken = async (userId) => {
     const token = await getPushNotificationToken();
 
     if (!token) {
-      console.warn('No push token available');
+      if (__DEV__) console.warn('No push token available');
       return;
     }
 
@@ -68,7 +65,7 @@ export const registerPushToken = async (userId) => {
 
     log('Push token registered:', token);
   } catch (error) {
-    console.error('Error registering push token:', error);
+    if (__DEV__) console.error('Error registering push token:', error);
   }
 };
 
@@ -91,7 +88,7 @@ export const sendPushNotification = async (userId, notification) => {
       expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
     });
   } catch (error) {
-    console.error('Error sending push notification:', error);
+    if (__DEV__) console.error('Error sending push notification:', error);
   }
 };
 
@@ -143,7 +140,7 @@ export const batchSendPushNotifications = async (userIds = [], notification) => 
     await Promise.all(promises);
     log(`Sent notifications to ${userIds.length} users`);
   } catch (error) {
-    console.error('Error batch sending notifications:', error);
+    if (__DEV__) console.error('Error batch sending notifications:', error);
   }
 };
 
@@ -169,7 +166,7 @@ export const notifyTaskAssignment = async (taskId, taskTitle, assignedUserIds = 
 
     await batchSendPushNotifications(assignedUserIds, notification);
   } catch (error) {
-    console.error('Error notifying task assignment:', error);
+    if (__DEV__) console.error('Error notifying task assignment:', error);
   }
 };
 
@@ -195,7 +192,7 @@ export const notifySubtaskCompletion = async (taskId, subtaskTitle, teamMemberId
 
     await batchSendPushNotifications(teamMemberIds, notification);
   } catch (error) {
-    console.error('Error notifying subtask completion:', error);
+    if (__DEV__) console.error('Error notifying subtask completion:', error);
   }
 };
 
@@ -221,7 +218,7 @@ export const notifyTaskDueSOON = async (taskId, taskTitle, responsibleUserId, ho
 
     await sendPushNotification(responsibleUserId, notification);
   } catch (error) {
-    console.error('Error notifying task due soon:', error);
+    if (__DEV__) console.error('Error notifying task due soon:', error);
   }
 };
 
@@ -249,7 +246,7 @@ export const notifyNewReport = async (reportId, taskId, reportTitle, reviewerIds
 
     await batchSendPushNotifications(reviewerIds, notification);
   } catch (error) {
-    console.error('Error notifying new report:', error);
+    if (__DEV__) console.error('Error notifying new report:', error);
   }
 };
 
@@ -278,7 +275,7 @@ export const notifyReportRated = async (reportId, taskId, rating, submitterId, r
 
     await sendPushNotification(submitterId, notification);
   } catch (error) {
-    console.error('Error notifying report rated:', error);
+    if (__DEV__) console.error('Error notifying report rated:', error);
   }
 };
 
@@ -305,7 +302,7 @@ export const cleanupExpiredTokens = async () => {
     log(`Cleaned up ${deleted} expired tokens`);
     return deleted;
   } catch (error) {
-    console.error('Error cleaning up tokens:', error);
+    if (__DEV__) console.error('Error cleaning up tokens:', error);
     return 0;
   }
 };
@@ -331,6 +328,6 @@ export const schedulePushNotification = async (userId, notification, sendAt) => 
 
     log('Notification scheduled for:', sendAt);
   } catch (error) {
-    console.error('Error scheduling notification:', error);
+    if (__DEV__) console.error('Error scheduling notification:', error);
   }
 };

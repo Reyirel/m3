@@ -120,7 +120,7 @@ export default function AreaFormModal({
       <View style={styles.overlay}>
         <WebSafeBlur intensity={isDark ? 80 : 90} style={styles.blurContainer}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-            <View style={[styles.modalContent, { backgroundColor: isDark ? '#1e1e23' : '#FFFFFF' }]}>
+            <View style={[styles.modalContent, { backgroundColor: isDark ? '#1C1118' : '#FFFFFF', borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)' }]}>
               {/* Header */}
               <View style={styles.header}>
                 <Text style={[styles.title, { color: theme.text }]}>
@@ -140,8 +140,8 @@ export default function AreaFormModal({
                     style={[
                       styles.inputContainer,
                       {
-                        borderColor: errors.nombre ? '#FF3B30' : theme.border,
-                        backgroundColor: isDark ? '#2a2a2e' : '#f5f5f7',
+                        borderColor: errors.nombre ? theme.error : theme.border,
+                        backgroundColor: isDark ? theme.glass : theme.glassStrong,
                       },
                     ]}
                   >
@@ -196,7 +196,7 @@ export default function AreaFormModal({
                       styles.textareaContainer,
                       {
                         borderColor: theme.border,
-                        backgroundColor: isDark ? '#2a2a2e' : '#f5f5f7',
+                        backgroundColor: isDark ? theme.glass : theme.glassStrong,
                       },
                     ]}
                   >
@@ -223,7 +223,7 @@ export default function AreaFormModal({
                   styles.footer,
                   {
                     borderTopColor: theme.border,
-                    backgroundColor: isDark ? '#1a1a1f' : '#f9f9fb',
+                    backgroundColor: isDark ? theme.surface : theme.glassStrong,
                   },
                 ]}
               >
@@ -285,7 +285,7 @@ const createStyles = (theme, isDark) =>
       paddingHorizontal: 20,
       paddingBottom: 20,
       borderBottomWidth: 1,
-      borderBottomColor: isDark ? '#2a2a2e' : '#e5e5ea',
+      borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)',
     },
     title: {
       fontSize: 18,
@@ -352,7 +352,7 @@ const createStyles = (theme, isDark) =>
       height: 20,
     },
     errorText: {
-      color: '#FF3B30',
+      color: theme.error,
       fontSize: 12,
       fontWeight: '500',
       marginTop: 6,
@@ -379,7 +379,7 @@ const createStyles = (theme, isDark) =>
       backgroundColor: 'transparent',
     },
     saveButton: {
-      backgroundColor: '#5E72E4',
+      backgroundColor: theme.primary,
     },
     buttonText: {
       fontSize: 14,

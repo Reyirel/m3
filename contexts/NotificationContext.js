@@ -37,7 +37,7 @@ export const useNotification = () => {
 
 export const NotificationProvider = ({ children }) => {
   const [currentNotification, setCurrentNotification] = useState(null);
-  const [notificationQueue, setNotificationQueue] = useState([]);
+  const [_notificationQueue, setNotificationQueue] = useState([]);
   const notificationQueueRef = useRef([]);
 
   /**

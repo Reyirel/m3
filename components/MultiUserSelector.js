@@ -1,6 +1,6 @@
 // components/MultiUserSelector.js
 // Selector de múltiples usuarios para asignaciones
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -15,27 +15,24 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
+import { useTheme } from '../contexts/ThemeContext';
 
 export default function MultiUserSelector({ 
   selectedUsers = [], 
   onSelectionChange = () => {},
   role = 'admin',
   area = null,
-  secretarioEmail = null,
+  _secretarioEmail = null,
   allowedAreas = []  // Array de áreas permitidas para secretarios
 }) {
+  const { theme } = useTheme();
   const [users, setUsers] = useState([]);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const [searchText, setSearchText] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Cargar usuarios disponibles
-  useEffect(() => {
-    loadUsers();
-  }, [role, area, allowedAreas.length]);
-
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
       const usersRef = collection(db, 'users');
@@ -98,16 +95,21 @@ export default function MultiUserSelector({
     } finally {
       setLoading(false);
     }
-  };
+  }, [role, area, allowedAreas]);
+
+  // Cargar usuarios disponibles
+  useEffect(() => {
+    loadUsers();
+  }, [loadUsers]);
 
   // Helpers para mostrar roles
   const getRoleColor = (role) => {
     const colors = {
-      admin: '#DC2626',
+      admin: theme.error,
       secretario: '#9F2241',
       director: '#235B4E'
     };
-    return colors[role] || '#6B7280';
+    return colors[role] || theme.textMuted;
   };
 
   const getRoleLabel = (role) => {
@@ -124,8 +126,8 @@ export default function MultiUserSelector({
     const roleConfig = [
       { role: 'secretario', title: 'Secretarios', color: '#9F2241' },
       { role: 'director', title: 'Directores', color: '#235B4E' },
-      { role: 'otros', title: 'Otros Funcionarios', color: '#6B7280' },
-      { role: 'admin', title: 'Admins', color: '#DC2626' },
+      { role: 'otros', title: 'Otros Funcionarios', color: theme.textMuted },
+      { role: 'admin', title: 'Admins', color: theme.error },
     ];
     
     return roleConfig

@@ -2,7 +2,7 @@
 // Card con animaciones de spring physics
 // ⚡ Optimizado con React.memo
 import React, { useRef, memo } from 'react';
-import { Animated, TouchableOpacity, StyleSheet } from 'react-native';
+import { Animated, TouchableOpacity } from 'react-native';
 import { hapticLight } from '../utils/haptics';
 
 const SpringCard = memo(function SpringCard({ 

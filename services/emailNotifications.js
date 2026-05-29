@@ -2,15 +2,20 @@
 // Servicio para enviar notificaciones por email
 // Requiere configurar SendGrid API Key en variables de entorno
 
-const SENDGRID_API_KEY = 'TU_API_KEY_DE_SENDGRID'; // Cambiar por tu key
+const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
+const APP_URL = process.env.APP_URL || process.env.EXPO_PUBLIC_APP_URL || '';
 import { toMs } from '../utils/dateUtils';
-const FROM_EMAIL = 'noreply@todoapp.com'; // Cambiar por tu email verificado
+const FROM_EMAIL = process.env.FROM_EMAIL || process.env.EXPO_PUBLIC_FROM_EMAIL || 'noreply@todoapp.com';
 
 /**
  * Enviar email usando SendGrid API
  * @param {Object} params - {to, subject, html}
  */
 async function sendEmail({ to, subject, html }) {
+  if (!SENDGRID_API_KEY) {
+    if (__DEV__) console.warn('sendEmail: SENDGRID_API_KEY no configurada, email no enviado');
+    return { success: false, error: 'SENDGRID_API_KEY no configurada' };
+  }
   try {
     const response = await fetch('https://api.sendgrid.com/v3/mail/send', {
       method: 'POST',
@@ -117,7 +122,7 @@ export async function notifyTaskAssigned(task, assignedTo) {
     const html = getEmailTemplate(
       'Nueva Tarea Asignada',
       content,
-      'https://tudominio.com/tasks/' + task.id,
+      APP_URL ? `${APP_URL}/tasks/${task.id}` : null,
       'Ver Tarea'
     );
     
@@ -161,7 +166,7 @@ export async function notifyTaskDueSoon(task, assignedTo) {
   const html = getEmailTemplate(
     'Tarea Próxima a Vencer',
     content,
-    'https://tudominio.com/tasks/' + task.id,
+    APP_URL ? `${APP_URL}/tasks/${task.id}` : null,
     'Abrir Tarea'
   );
   
@@ -190,7 +195,7 @@ export async function notifyNewChatMessage(task, message, recipient) {
   const html = getEmailTemplate(
     'Nuevo Mensaje',
     content,
-    'https://tudominio.com/tasks/' + task.id + '/chat',
+    APP_URL ? `${APP_URL}/tasks/${task.id}/chat` : null,
     'Ver Chat'
   );
   
@@ -240,7 +245,7 @@ export async function sendDailySummary(userEmail, summary) {
   const html = getEmailTemplate(
     'Resumen Diario de Tareas',
     content,
-    'https://tudominio.com',
+    APP_URL || null,
     'Abrir App'
   );
   

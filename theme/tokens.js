@@ -137,6 +137,59 @@ export const RESPONSIVE_PADDING = {
   desktopLarge: { horizontal: 48, vertical: 40 },
 };
 
+// Glassmorphism tokens — usar para cards, modals, inputs con efecto vidrio
+export const GLASS = {
+  // Modo oscuro: vidrio sutil sobre fondo profundo
+  dark: {
+    bg:          'rgba(255, 255, 255, 0.07)',
+    bgMedium:    'rgba(255, 255, 255, 0.11)',
+    bgStrong:    'rgba(255, 255, 255, 0.17)',
+    bgPrimary:   'rgba(159, 34, 65, 0.20)',
+    border:      'rgba(255, 255, 255, 0.14)',
+    borderLight: 'rgba(255, 255, 255, 0.07)',
+    highlight:   'rgba(255, 255, 255, 0.04)',
+    shadow:      'rgba(0, 0, 0, 0.50)',
+    blur:        20,
+  },
+  // Modo claro: vidrio esmerilado / frosted glass
+  light: {
+    bg:          'rgba(255, 255, 255, 0.72)',
+    bgMedium:    'rgba(255, 255, 255, 0.85)',
+    bgStrong:    'rgba(255, 255, 255, 0.94)',
+    bgPrimary:   'rgba(159, 34, 65, 0.08)',
+    border:      'rgba(255, 255, 255, 0.65)',
+    borderLight: 'rgba(0, 0, 0, 0.06)',
+    highlight:   'rgba(255, 255, 255, 1.0)',
+    shadow:      'rgba(0, 0, 0, 0.10)',
+    blur:        20,
+  },
+};
+
+// Duraciones y curvas de animación estándar
+// Usar estos valores en lugar de hardcodear ms en cada pantalla
+export const ANIMATION = {
+  // Duraciones
+  fast: 150,       // micro-interacciones (feedback táctil)
+  normal: 300,     // transiciones de estado
+  slow: 500,       // entradas de pantalla
+  verySlow: 800,   // animaciones de celebración/énfasis
+
+  // Spring configs predefinidos
+  spring: {
+    snappy: { tension: 100, friction: 8 },   // rápido y con rebote
+    smooth: { tension: 80,  friction: 12 },  // suave y preciso
+    gentle: { tension: 50,  friction: 7 },   // lento y natural
+  },
+
+  // Timing easing por tipo de movimiento
+  // Usar con Easing de react-native
+  easing: {
+    enter: 'Easing.out(Easing.cubic)',   // elementos que entran
+    exit:  'Easing.in(Easing.cubic)',    // elementos que salen
+    inOut: 'Easing.inOut(Easing.ease)', // movimientos continuos
+  },
+};
+
 // Helper para obtener responsive values
 export const getResponsiveValue = (screenWidth, values) => {
   if (screenWidth >= BREAKPOINTS.desktopLarge) return values.desktopLarge || values.desktop;

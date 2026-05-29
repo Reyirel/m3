@@ -7,7 +7,6 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  ActivityIndicator,
   Image,
   RefreshControl,
   Modal,
@@ -16,6 +15,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import ShimmerEffect from '../components/ShimmerEffect';
 import { subscribeToAllReports, rateTaskReport, deleteTaskReport } from '../services/reportsService';
@@ -63,7 +63,10 @@ const AdminReportsScreen = ({ navigation }) => {
   }, []);
 
   const onRefresh = useCallback(() => {
+    // Con onSnapshot los datos ya son en tiempo real —
+    // solo reseteamos el indicador visual tras un breve delay
     setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 800);
   }, []);
 
   const getFilteredReports = () => {
@@ -116,12 +119,12 @@ const AdminReportsScreen = ({ navigation }) => {
 
   const getRoleBadgeColor = (role) => {
     const colors = {
-      director: '#3498db',
-      secretario: '#9b59b6',
-      operativo: '#2ecc71',
-      admin: '#f39c12',
+      director: theme.info,
+      secretario: theme.secondary,
+      operativo: theme.success,
+      admin: theme.warning,
     };
-    return colors[role] || '#95a5a6';
+    return colors[role] || theme.textMuted;
   };
 
   const formatDate = (timestamp) => {
@@ -188,7 +191,7 @@ const AdminReportsScreen = ({ navigation }) => {
             <Ionicons
               name={star <= (rating || 0) ? 'star' : 'star-outline'}
               size={interactive ? 32 : 18}
-              color={star <= (rating || 0) ? '#f1c40f' : '#ccc'}
+              color={star <= (rating || 0) ? theme.warning : theme.border}
             />
           </TouchableOpacity>
         ))}
@@ -198,7 +201,7 @@ const AdminReportsScreen = ({ navigation }) => {
 
   const renderReportCard = useCallback(({ item }) => (
     <TouchableOpacity
-      style={[styles.reportCard, { backgroundColor: isDark ? '#1a1a1a' : '#fff' }]}
+      style={[styles.reportCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.90)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}
       onPress={() => {
         setSelectedReport(item);
         setShowModal(true);
@@ -208,7 +211,7 @@ const AdminReportsScreen = ({ navigation }) => {
     >
       <View style={styles.reportHeader}>
         <View style={styles.reportTitleRow}>
-          <Text style={[styles.reportTitle, { color: isDark ? '#fff' : '#000' }]} numberOfLines={1}>
+          <Text style={[styles.reportTitle, { color: theme.text }]} numberOfLines={1}>
             {item.title}
           </Text>
           {item.rating > 0 && renderStars(item.rating)}
@@ -222,30 +225,30 @@ const AdminReportsScreen = ({ navigation }) => {
         </View>
       </View>
 
-      <Text style={[styles.reportDescription, { color: isDark ? '#aaa' : '#666' }]} numberOfLines={2}>
+      <Text style={[styles.reportDescription, { color: theme.textSecondary }]} numberOfLines={2}>
         {item.description}
       </Text>
 
       <View style={styles.reportMeta}>
         <View style={styles.metaItem}>
           <Ionicons name="person-outline" size={14} color={theme.primary} />
-          <Text style={[styles.metaText, { color: isDark ? '#aaa' : '#666' }]}>
+          <Text style={[styles.metaText, { color: theme.textSecondary }]}>
             {item.createdByName}
           </Text>
         </View>
         <View style={styles.metaItem}>
           <Ionicons name="business-outline" size={14} color={theme.primary} />
-          <Text style={[styles.metaText, { color: isDark ? '#aaa' : '#666' }]} numberOfLines={1}>
+          <Text style={[styles.metaText, { color: theme.textSecondary }]} numberOfLines={1}>
             {item.createdByArea || item.area || 'Sin área'}
           </Text>
         </View>
       </View>
 
       <View style={styles.reportFooter}>
-        <Text style={[styles.taskLabel, { color: isDark ? '#888' : '#999' }]}>
+        <Text style={[styles.taskLabel, { color: theme.textTertiary || theme.textSecondary }]}>
           Tarea: {item.taskInfo?.title || 'Sin título'}
         </Text>
-        <Text style={[styles.dateText, { color: isDark ? '#666' : '#999' }]}>
+        <Text style={[styles.dateText, { color: theme.textTertiary || theme.textSecondary }]}>
           {formatDate(item.createdAt)}
         </Text>
       </View>
@@ -260,16 +263,17 @@ const AdminReportsScreen = ({ navigation }) => {
       )}
 
       {!item.rating && (
-        <View style={styles.pendingBadge}>
+        <View style={[styles.pendingBadge, { backgroundColor: theme.error }]}>
           <Text style={styles.pendingText}>Pendiente de calificar</Text>
         </View>
       )}
     </TouchableOpacity>
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   ), [isDark, theme, setSelectedReport, setShowModal]);
 
   const renderGroupHeader = (title, count) => (
-    <View style={[styles.groupHeader, { backgroundColor: isDark ? '#111' : '#f0f0f0' }]}>
-      <Text style={[styles.groupTitle, { color: isDark ? '#fff' : '#333' }]}>{title}</Text>
+    <View style={[styles.groupHeader, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}>
+      <Text style={[styles.groupTitle, { color: theme.text }]}>{title}</Text>
       <View style={[styles.countBadge, { backgroundColor: theme.primary }]}>
         <Text style={styles.countText}>{count}</Text>
       </View>
@@ -287,9 +291,9 @@ const AdminReportsScreen = ({ navigation }) => {
         onRequestClose={() => setShowModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: isDark ? '#1a1a1a' : '#fff' }]}>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? 'rgba(15,10,25,0.97)' : 'rgba(255,255,255,0.98)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)', borderWidth: 1 }]}>
             <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: isDark ? '#fff' : '#000' }]}>
+              <Text style={[styles.modalTitle, { color: theme.text }]}>
                 Detalle del Reporte
               </Text>
               <TouchableOpacity
@@ -298,17 +302,17 @@ const AdminReportsScreen = ({ navigation }) => {
                 accessibilityRole="button"
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Ionicons name="close" size={28} color={isDark ? '#fff' : '#000'} />
+                <Ionicons name="close" size={28} color={theme.text} />
               </TouchableOpacity>
             </View>
 
             <ScrollView style={styles.modalBody}>
-              <Text style={[styles.detailTitle, { color: isDark ? '#fff' : '#000' }]}>
+              <Text style={[styles.detailTitle, { color: theme.text }]}>
                 {selectedReport.title}
               </Text>
 
               <View style={styles.detailSection}>
-                <Text style={[styles.sectionLabel, { color: isDark ? '#888' : '#666' }]}>Enviado por</Text>
+                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Enviado por</Text>
                 <View style={styles.senderInfo}>
                   <View style={[styles.roleBadge, { backgroundColor: getRoleBadgeColor(selectedReport.createdByRole) }]}>
                     <Text style={styles.roleBadgeText}>
@@ -317,26 +321,26 @@ const AdminReportsScreen = ({ navigation }) => {
                        selectedReport.createdByRole || 'Usuario'}
                     </Text>
                   </View>
-                  <Text style={[styles.senderName, { color: isDark ? '#fff' : '#333' }]}>
+                  <Text style={[styles.senderName, { color: theme.text }]}>
                     {selectedReport.createdByName}
                   </Text>
                 </View>
-                <Text style={[styles.senderArea, { color: isDark ? '#aaa' : '#666' }]}>
+                <Text style={[styles.senderArea, { color: theme.textSecondary }]}>
                   {selectedReport.createdByArea || selectedReport.area}
                 </Text>
               </View>
 
               <View style={styles.detailSection}>
-                <Text style={[styles.sectionLabel, { color: isDark ? '#888' : '#666' }]}>Descripción</Text>
-                <Text style={[styles.detailDescription, { color: isDark ? '#ccc' : '#333' }]}>
+                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Descripción</Text>
+                <Text style={[styles.detailDescription, { color: theme.text }]}>
                   {selectedReport.description}
                 </Text>
               </View>
 
               <View style={styles.detailSection}>
-                <Text style={[styles.sectionLabel, { color: isDark ? '#888' : '#666' }]}>Tarea relacionada</Text>
+                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Tarea relacionada</Text>
                 <TouchableOpacity
-                  style={[styles.taskLink, { backgroundColor: isDark ? '#333' : '#f5f5f5' }]}
+                  style={[styles.taskLink, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}
                   onPress={() => {
                     setShowModal(false);
                     navigation.navigate('TaskReportsAndActivity', {
@@ -354,7 +358,7 @@ const AdminReportsScreen = ({ navigation }) => {
 
               {selectedReport.images && selectedReport.images.length > 0 && (
                 <View style={styles.detailSection}>
-                  <Text style={[styles.sectionLabel, { color: isDark ? '#888' : '#666' }]}>
+                  <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>
                     Imágenes ({selectedReport.images.length})
                   </Text>
                   <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -381,17 +385,17 @@ const AdminReportsScreen = ({ navigation }) => {
               )}
 
               <View style={styles.detailSection}>
-                <Text style={[styles.sectionLabel, { color: isDark ? '#888' : '#666' }]}>Calificación</Text>
+                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Calificación</Text>
                 {selectedReport.rating ? (
                   <View style={styles.ratingDisplay}>
                     {renderStars(selectedReport.rating)}
-                    <Text style={[styles.ratingText, { color: isDark ? '#fff' : '#333' }]}>
+                    <Text style={[styles.ratingText, { color: theme.text }]}>
                       {selectedReport.rating} / 5
                     </Text>
                   </View>
                 ) : (
                   <View>
-                    <Text style={[styles.ratePrompt, { color: isDark ? '#aaa' : '#666' }]}>
+                    <Text style={[styles.ratePrompt, { color: theme.textSecondary }]}>
                       Calificar este reporte:
                     </Text>
                     {renderStars(0, true, (rating) => 
@@ -402,8 +406,8 @@ const AdminReportsScreen = ({ navigation }) => {
               </View>
 
               <View style={styles.detailSection}>
-                <Text style={[styles.sectionLabel, { color: isDark ? '#888' : '#666' }]}>Fecha</Text>
-                <Text style={[styles.dateDetail, { color: isDark ? '#ccc' : '#333' }]}>
+                <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Fecha</Text>
+                <Text style={[styles.dateDetail, { color: theme.text }]}>
                   {formatDate(selectedReport.createdAt)}
                 </Text>
               </View>
@@ -411,10 +415,10 @@ const AdminReportsScreen = ({ navigation }) => {
               {/* Botón de eliminar reportes */}
               <View style={styles.detailSection}>
                 <TouchableOpacity
-                  style={[styles.deleteButton, { borderColor: '#E53935' }]}
+                  style={styles.deleteButton}
                   onPress={() => handleDeleteReport(selectedReport.id, selectedReport.taskId)}
                 >
-                  <Ionicons name="trash-outline" size={20} color="#E53935" />
+                  <Ionicons name="trash-outline" size={20} color={theme.error} />
                   <Text style={styles.deleteButtonText}>Eliminar este reporte</Text>
                 </TouchableOpacity>
               </View>
@@ -436,23 +440,41 @@ const AdminReportsScreen = ({ navigation }) => {
     },
     innerContainer: {
       flex: 1,
-      backgroundColor: isDark ? '#000' : '#f5f5f5',
+      backgroundColor: 'transparent',
     },
     header: {
       flexDirection: 'row',
       alignItems: 'center',
-      padding: 16,
-      backgroundColor: isDark ? '#1a1a1a' : '#fff',
-      borderBottomWidth: 1,
-      borderBottomColor: isDark ? '#333' : '#e0e0e0',
+      paddingHorizontal: 16,
+      paddingTop: Platform.OS === 'web' ? 16 : 48,
+      paddingBottom: 24,
+      borderBottomLeftRadius: 32,
+      borderBottomRightRadius: 32,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.35,
+      shadowRadius: 20,
+      elevation: 12,
+      overflow: 'hidden',
     },
     backButton: {
-      marginRight: 16,
+      marginRight: 12,
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: 'rgba(255,255,255,0.14)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.20)',
+      justifyContent: 'center',
+      alignItems: 'center',
     },
     headerTitle: {
-      fontSize: 20,
-      fontWeight: 'bold',
-      color: isDark ? '#fff' : '#000',
+      fontSize: 24,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      letterSpacing: -0.5,
+      textShadowColor: 'rgba(0,0,0,0.20)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
     },
     statsRow: {
       flexDirection: 'row',
@@ -504,20 +526,20 @@ const AdminReportsScreen = ({ navigation }) => {
     },
     groupByLabel: {
       fontSize: 13,
-      color: isDark ? '#888' : '#666',
+      color: theme.textSecondary,
     },
     groupByButton: {
       paddingHorizontal: 12,
       paddingVertical: 6,
       borderRadius: 12,
-      backgroundColor: isDark ? '#333' : '#e0e0e0',
+      backgroundColor: theme.border,
     },
     groupByButtonActive: {
       backgroundColor: theme.primary,
     },
     groupByText: {
       fontSize: 12,
-      color: isDark ? '#fff' : '#333',
+      color: theme.text,
     },
     groupHeader: {
       flexDirection: 'row',
@@ -603,7 +625,7 @@ const AdminReportsScreen = ({ navigation }) => {
       alignItems: 'center',
       paddingTop: 8,
       borderTopWidth: 1,
-      borderTopColor: isDark ? '#333' : '#eee',
+      borderTopColor: theme.border,
     },
     taskLabel: {
       fontSize: 12,
@@ -625,7 +647,6 @@ const AdminReportsScreen = ({ navigation }) => {
       position: 'absolute',
       top: 8,
       right: 8,
-      backgroundColor: '#e74c3c',
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderRadius: 8,
@@ -686,7 +707,7 @@ const AdminReportsScreen = ({ navigation }) => {
       alignItems: 'center',
       padding: 16,
       borderBottomWidth: 1,
-      borderBottomColor: isDark ? '#333' : '#eee',
+      borderBottomColor: theme.border,
     },
     modalTitle: {
       fontSize: 18,
@@ -783,17 +804,18 @@ const AdminReportsScreen = ({ navigation }) => {
       padding: 14,
       borderRadius: 12,
       borderWidth: 2,
-      borderColor: '#E53935',
-      backgroundColor: isDark ? '#3a2422' : '#ffebee',
+      borderColor: theme.error,
+      backgroundColor: theme.errorAlpha,
     },
     deleteButtonText: {
-      color: '#E53935',
+      color: theme.error,
       fontSize: 16,
       fontWeight: '600',
     },
   }), [isDark, theme]);
 
   // ⚠️ Hooks DEBEN ir antes de cualquier return condicional
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const groupedReports = useMemo(() => getGroupedReports(), [reports, filter, groupBy]);
   const { pendingCount, ratedCount, avgRating } = useMemo(() => {
     const rated = reports.filter(r => r.rating);
@@ -817,15 +839,15 @@ const AdminReportsScreen = ({ navigation }) => {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#000' : '#f5f5f5' }]}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       <View style={styles.innerContainer}>
-      <View style={styles.header}>
+      <LinearGradient colors={theme.gradientHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { shadowColor: theme.primary }]}>
         <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} accessibilityLabel="Volver" accessibilityRole="button">
-          <Ionicons name="arrow-back" size={24} color={isDark ? '#fff' : '#000'} />
+          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Reportes de Áreas</Text>
-      </View>
+      </LinearGradient>
 
       {/* Stats */}
       <View style={styles.statsRow}>
@@ -833,15 +855,15 @@ const AdminReportsScreen = ({ navigation }) => {
           <Text style={styles.statNumber}>{reports.length}</Text>
           <Text style={styles.statLabel}>Total</Text>
         </View>
-        <View style={[styles.statCard, { backgroundColor: '#e74c3c' }]}>
+        <View style={[styles.statCard, { backgroundColor: theme.error }]}>
           <Text style={styles.statNumber}>{pendingCount}</Text>
           <Text style={styles.statLabel}>Pendientes</Text>
         </View>
-        <View style={[styles.statCard, { backgroundColor: '#2ecc71' }]}>
+        <View style={[styles.statCard, { backgroundColor: theme.success }]}>
           <Text style={styles.statNumber}>{ratedCount}</Text>
           <Text style={styles.statLabel}>Calificados</Text>
         </View>
-        <View style={[styles.statCard, { backgroundColor: '#f1c40f' }]}>
+        <View style={[styles.statCard, { backgroundColor: theme.warning }]}>
           <Text style={styles.statNumber}>{avgRating}</Text>
           <Text style={styles.statLabel}>Promedio</Text>
         </View>
@@ -855,7 +877,7 @@ const AdminReportsScreen = ({ navigation }) => {
             style={[
               styles.filterButton,
               filter === f && styles.filterButtonActive,
-              { borderColor: isDark ? '#444' : '#ddd' }
+              { borderColor: theme.border }
             ]}
             onPress={() => setFilter(f)}
             accessibilityRole="tab"
@@ -864,7 +886,7 @@ const AdminReportsScreen = ({ navigation }) => {
           >
             <Text style={[
               styles.filterText,
-              { color: filter === f ? '#fff' : (isDark ? '#aaa' : '#666') }
+              { color: filter === f ? '#fff' : (theme.textSecondary) }
             ]}>
               {f === 'all' ? 'Todos' : f === 'pending' ? 'Pendientes' : 'Calificados'}
             </Text>
@@ -891,16 +913,16 @@ const AdminReportsScreen = ({ navigation }) => {
       {/* Reports List */}
       {loadError ? (
         <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? '#1E1E22' : '#FFF0EE' }]}>
-            <Ionicons name="cloud-offline-outline" size={48} color="#FF3B30" />
+          <View style={[styles.emptyIconWrapper, { backgroundColor: theme.errorAlpha }]}>
+            <Ionicons name="cloud-offline-outline" size={48} color={theme.error} />
           </View>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>Error de conexión</Text>
           <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No se pudieron cargar los reportes.</Text>
         </View>
       ) : groupedReports.length === 0 ? (
         <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? '#1E1E22' : '#F5F5F7' }]}>
-            <Ionicons name="document-text-outline" size={48} color={isDark ? '#444' : '#C7C7CC'} />
+          <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}>
+            <Ionicons name="document-text-outline" size={48} color={theme.textMuted} />
           </View>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>Sin reportes</Text>
           <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
@@ -911,8 +933,26 @@ const AdminReportsScreen = ({ navigation }) => {
         <FlatList
           data={groupedReports}
           keyExtractor={([key]) => key}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor={theme.primary}
+              colors={[theme.primary]}
+            />
+          }
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', paddingVertical: 60, gap: 12 }}>
+              <Ionicons name="document-text-outline" size={52} color={theme.textMuted} />
+              <Text style={{ fontSize: 17, fontWeight: '700', color: theme.text }}>
+                Sin reportes
+              </Text>
+              <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center', paddingHorizontal: 40 }}>
+                No hay reportes que coincidan con los filtros seleccionados
+              </Text>
+            </View>
           }
           windowSize={5}
           maxToRenderPerBatch={4}

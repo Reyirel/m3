@@ -11,19 +11,20 @@ export default function StatColumn({
   icon = 'checkmark-circle',
   title = 'Estado',
   count = 0,
-  headerColor = '#10B981',
+  headerColor = null,
   items = [], // Array de items para mostrar
-  backgroundColor = '#F0F9FF',
+  _backgroundColor = null,
 }) {
   const { theme, isDark } = useTheme();
+  const resolvedHeaderColor = resolvedHeaderColor ?? theme.success;
 
   return (
-    <View style={[styles.container, { backgroundColor: isDark ? '#1F2937' : '#F9FAFB' }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
       {/* Header de columna */}
       <View
         style={[
           styles.header,
-          { backgroundColor: headerColor },
+          { backgroundColor: resolvedHeaderColor },
         ]}
       >
         <View style={styles.headerContent}>
@@ -50,9 +51,9 @@ export default function StatColumn({
               style={[
                 styles.item,
                 {
-                  borderLeftColor: headerColor,
-                  backgroundColor: isDark ? '#2D3748' : '#FFFFFF',
-                  borderColor: isDark ? '#374151' : '#E5E7EB',
+                  borderLeftColor: resolvedHeaderColor,
+                  backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.9)',
+                  borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
                 }
               ]}
             >
@@ -62,7 +63,7 @@ export default function StatColumn({
                 </Text>
               )}
               {item.value && (
-                <Text style={[styles.itemValue, { color: headerColor }]}>
+                <Text style={[styles.itemValue, { color: resolvedHeaderColor }]}>
                   {item.value}
                 </Text>
               )}
@@ -78,7 +79,7 @@ export default function StatColumn({
             <Ionicons
               name="folder-open-outline"
               size={32}
-              color={headerColor}
+              color={resolvedHeaderColor}
               style={{ opacity: 0.3, marginBottom: 8 }}
             />
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
@@ -107,7 +108,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: '#E5E7EB',
   },
   header: {
     paddingHorizontal: 16,

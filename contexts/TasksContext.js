@@ -3,9 +3,12 @@
 // ⚡ Optimizado con useMemo para evitar re-renders innecesarios
 
 import React, { createContext, useState, useEffect, useRef, useMemo } from 'react';
+import logger from '../services/Logger';
 import { subscribeToTasks } from '../services/tasks';
 import { getCurrentSession } from '../services/authFirestore';
 import { deleteManager } from '../utils/deleteManager';
+import { enableNetwork, disableNetwork } from 'firebase/firestore';
+import { db } from '../firebase';
 
 // Usar globalThis para que React.lazy() bundles compartan la misma instancia de contexto
 if (!globalThis.__TASKS_CONTEXT__) {
@@ -16,9 +19,25 @@ export const TasksContext = globalThis.__TASKS_CONTEXT__;
 export function TasksProvider({ children }) {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState(true);
   const [hasSession, setHasSession] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const unsubscribeTasksRef = useRef(null);
+
+  // Detectar cambios de conectividad del navegador/dispositivo
+  useEffect(() => {
+    const handleOnline  = () => { setIsOnline(true);  try { enableNetwork(db); } catch {} };
+    const handleOffline = () => { setIsOnline(false); try { disableNetwork(db); } catch {} };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('online',  handleOnline);
+      window.addEventListener('offline', handleOffline);
+      setIsOnline(navigator.onLine ?? true);
+      return () => {
+        window.removeEventListener('online',  handleOnline);
+        window.removeEventListener('offline', handleOffline);
+      };
+    }
+  }, []);
 
   // 🔍 EFECTO 1: Verificar disponibilidad de sesión (con reintentos)
   useEffect(() => {
@@ -27,6 +46,7 @@ export function TasksProvider({ children }) {
     const MAX_CHECKS = 30; // 3 segundos a 100ms por check
 
     const checkSession = async () => {
+      let sessionFound = false;
       while (mounted && checkCount < MAX_CHECKS) {
         const sessionResult = await getCurrentSession();
         if (!mounted) return;
@@ -39,7 +59,7 @@ export function TasksProvider({ children }) {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
       // Si se alcanza MAX_CHECKS sin sesión, marcar como listo
-      if (mounted && !hasSession) {
+      if (mounted && !sessionFound) {
         setIsLoading(false);
       }
     };
@@ -79,17 +99,20 @@ export function TasksProvider({ children }) {
           retryCount = 0;
         });
       } catch (error) {
-        if (__DEV__) console.error('❌ Error en setupSubscription:', error.message);
+        logger.error('TasksContext', 'Failed to setup task subscription', error, {
+          retryCount,
+          userEmail: currentUser?.email,
+        });
         if (retryCount < MAX_RETRIES && mounted) {
           retryCount++;
           const delayMs = 500 * retryCount;
-          if (__DEV__) console.warn(`Reintentando suscripción (${retryCount}/${MAX_RETRIES}) en ${delayMs}ms...`);
+          logger.warn('TasksContext', `Retrying subscription (${retryCount}/${MAX_RETRIES}) in ${delayMs}ms`);
           setTimeout(() => {
             if (mounted) setupSubscription();
           }, delayMs);
         } else {
           setIsLoading(false);
-          if (__DEV__) console.error('❌ Agotados reintentos de suscripción a tareas');
+          logger.error('TasksContext', 'Max retries exceeded for task subscription');
         }
       }
     };
@@ -114,9 +137,10 @@ export function TasksProvider({ children }) {
     tasks,
     setTasks,
     isLoading,
+    isOnline,
     currentUser,
-    deleteManager, // Expose deleteManager for delete operations
-  }), [tasks, isLoading, currentUser]);
+    deleteManager,
+  }), [tasks, isLoading, isOnline, currentUser]);
 
   return (
     <TasksContext.Provider value={value}>

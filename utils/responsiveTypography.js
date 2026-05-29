@@ -3,7 +3,6 @@
 // Problema: Tipografía fija en móvil pequeño ocupaba mucho espacio
 // Solución: Función que escala linealmente según viewport
 
-import { Dimensions } from 'react-native';
 import { BREAKPOINTS } from '../theme/tokens';
 
 /**

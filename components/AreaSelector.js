@@ -23,13 +23,13 @@ export default function AreaSelector({
   onSelectArea = () => {},
   areaIcons = {},
   userRole = 'admin',
-  userDepartment = null,
+  _userDepartment = null,
   disabled = false,
   theme = {},
   isDark = false
 }) {
   // Mapeo de áreas a departamentos (mismo del TaskDetailScreen)
-  const areaToDepMap = useMemo(() => ({
+  const _areaToDepMap = useMemo(() => ({
     'Jurídica': 'juridica',
     'Obras': 'obras',
     'Tesorería': 'tesoreria',
@@ -58,7 +58,7 @@ export default function AreaSelector({
   };
 
   // Verificar si un usuario puede seleccionar un área
-  const canSelectArea = (area) => {
+  const canSelectArea = (_area) => {
     if (disabled) return false;
     if (userRole === 'admin') return true;
     return false;
@@ -74,7 +74,7 @@ export default function AreaSelector({
       style={styles.container}
     >
       <View style={styles.scrollContent}>
-        {areas.map((area, index) => {
+        {areas.map((area, _index) => {
           const isSelectable = canSelectArea(area);
           const isSelected = selectedArea === area;
           const color = areaColors[area] || theme.primary || '#9F2241';

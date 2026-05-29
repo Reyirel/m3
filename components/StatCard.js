@@ -1,26 +1,34 @@
 // components/StatCard.js
-// Tarjeta de estadística mejorada con mejor diseño visual
-// ✨ Componente rediseñado para mejor UX/UI
-// ⚡ Optimizado con React.memo
-
+// Tarjeta de estadística con diseño glassmorphism premium con rim glow
 import React, { useRef, useEffect, memo } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { GlassView } from '../utils/GlassView';
+
 
 const StatCard = memo(function StatCard({
   icon = 'checkmark-circle',
-  iconColor = '#10B981',
+  iconColor,
   label = 'Completadas',
   value = '0',
   subtitle = '',
   trend = null,  // { direction: 'up' | 'down', value: '5%' }
-  variant = 'default', // default, success, warning, error, info
+  variant = 'default',
   animated = true,
 }) {
   const { theme, isDark } = useTheme();
-  const scaleAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.88)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
+
+  const VARIANT_COLORS = {
+    success: { base: theme.success, light: theme.successAlpha, dark: theme.successAlpha },
+    warning: { base: theme.warning, light: theme.warningAlpha, dark: theme.warningAlpha },
+    error:   { base: theme.error,   light: theme.errorAlpha,   dark: theme.errorAlpha   },
+    info:    { base: theme.info,    light: theme.infoAlpha,    dark: theme.infoAlpha    },
+  };
 
   useEffect(() => {
     if (animated) {
@@ -28,214 +36,205 @@ const StatCard = memo(function StatCard({
         Animated.spring(scaleAnim, {
           toValue: 1,
           useNativeDriver: true,
-          tension: 40,
-          friction: 7,
+          tension: 50,
+          friction: 8,
         }),
         Animated.timing(opacityAnim, {
           toValue: 1,
-          duration: 300,
+          duration: 280,
           useNativeDriver: true,
-        })
+        }),
       ]).start();
     } else {
       scaleAnim.setValue(1);
       opacityAnim.setValue(1);
     }
-  }, [animated]);
+  }, [animated, scaleAnim, opacityAnim]);
 
-  const getVariantStyles = () => {
-    switch (variant) {
-      case 'success':
-        return {
-          bgColor: '#10B98115',
-          borderColor: '#10B981',
-          textColor: '#10B981',
-          iconBg: '#10B98115',
-        };
-      case 'warning':
-        return {
-          bgColor: '#F59E0B15',
-          borderColor: '#F59E0B',
-          textColor: '#F59E0B',
-          iconBg: '#F59E0B15',
-        };
-      case 'error':
-        return {
-          bgColor: '#EF444415',
-          borderColor: '#EF4444',
-          textColor: '#EF4444',
-          iconBg: '#EF444415',
-        };
-      case 'info':
-        return {
-          bgColor: '#3B82F615',
-          borderColor: '#3B82F6',
-          textColor: '#3B82F6',
-          iconBg: '#3B82F615',
-        };
-      default:
-        return {
-          bgColor: isDark ? 'rgba(255, 107, 157, 0.1)' : 'rgba(159, 34, 65, 0.1)',
-          borderColor: theme.primary,
-          textColor: theme.primary,
-          iconBg: `${theme.primary}15`,
-        };
-    }
-  };
+  const vc = VARIANT_COLORS[variant];
+  const accentColor = vc ? vc.base : theme.primary;
+  const iconBg = vc
+    ? vc.light
+    : theme.primaryAlpha;
+  const resolvedIconColor = iconColor || accentColor;
 
-  const variantStyles = getVariantStyles();
+  const glassBg = isDark ? theme.glass : theme.glassStrong;
+  const glassBorder = isDark ? theme.glassBorder : theme.glassBorderSubtle;
 
   return (
     <Animated.View
       style={[
         styles.wrapper,
-        {
-          transform: [{ scale: scaleAnim }],
-          opacity: opacityAnim,
-        },
+        { transform: [{ scale: scaleAnim }], opacity: opacityAnim },
       ]}
     >
-      <View
-        style={[
-          styles.container,
-          {
-            backgroundColor: variantStyles.bgColor,
-            borderColor: variantStyles.borderColor,
-          },
-        ]}
+      {/* Outer glass container with deep blur effect */}
+      <View style={styles.glassOuter}>
+        <BlurView intensity={isDark ? 50 : 60} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+      </View>
+      
+      <GlassView
+        intensity={isDark ? 55 : 70}
+        tint={isDark ? 'dark' : 'light'}
+        noBlur
+        style={[styles.container, { backgroundColor: glassBg, borderColor: glassBorder, shadowColor: theme.glassShadow }]}
       >
+        <LinearGradient
+          colors={[accentColor, accentColor + '00']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0 }}
+          style={styles.accentStrip}
+        />
+
         {/* Content */}
         <View style={styles.content}>
+          {/* Icon + Trend row */}
           <View style={styles.topRow}>
-            {/* Icon */}
-            <View
-              style={[
-                styles.iconContainer,
-                { backgroundColor: variantStyles.iconBg },
-              ]}
-            >
-              <Ionicons name={icon} size={28} color={iconColor || variantStyles.textColor} />
+            <View style={[styles.iconContainer, { backgroundColor: iconBg }]}>
+              <Ionicons name={icon} size={22} color={resolvedIconColor} />
             </View>
-          </View>
-
-          <Text style={[styles.label, { color: theme.textSecondary }]}>
-            {label}
-          </Text>
-          
-          <View style={styles.valueRow}>
-            <Text style={[styles.value, { color: variantStyles.textColor }]}>
-              {value}
-            </Text>
-
             {trend && (
-              <View
-                style={[
-                  styles.trend,
-                  {
-                    backgroundColor: trend.direction === 'up' ? '#10B98115' : '#EF444415',
-                    borderColor: trend.direction === 'up' ? '#10B981' : '#EF4444',
-                  },
-                ]}
-              >
+              <View style={[
+                styles.trend,
+                {
+                  backgroundColor: trend.direction === 'up'
+                    ? theme.successAlpha
+                    : theme.errorAlpha,
+                },
+              ]}>
                 <Ionicons
                   name={trend.direction === 'up' ? 'arrow-up' : 'arrow-down'}
-                  size={11}
-                  color={trend.direction === 'up' ? '#10B981' : '#EF4444'}
+                  size={10}
+                  color={trend.direction === 'up' ? theme.success : theme.error}
                 />
-                <Text
-                  style={[
-                    styles.trendText,
-                    { color: trend.direction === 'up' ? '#10B981' : '#EF4444' },
-                  ]}
-                >
+                <Text style={[
+                  styles.trendText,
+                  { color: trend.direction === 'up' ? theme.success : theme.error },
+                ]}>
                   {trend.value}
                 </Text>
               </View>
             )}
           </View>
 
-          {subtitle && (
-            <Text style={[styles.subtitle, { color: theme.textTertiary }]}>
+          {/* Value */}
+          <Text style={[styles.value, { color: theme.text }]}>
+            {value}
+          </Text>
+
+          {/* Label */}
+          <Text style={[styles.label, { color: theme.textSecondary }]} numberOfLines={1}>
+            {label}
+          </Text>
+
+          {subtitle ? (
+            <Text style={[styles.subtitle, { color: theme.textTertiary }]} numberOfLines={1}>
               {subtitle}
             </Text>
-          )}
+          ) : null}
         </View>
-      </View>
+
+        {/* Inner Rim Glow */}
+        <View style={[styles.rimGlow, {
+          borderColor: isDark ? theme.glassBorder : theme.glassBorderStrong,
+          borderWidth: 1.5,
+        }]} />
+
+        {/* Bottom accent border */}
+        <View style={[styles.bottomBorder, { backgroundColor: accentColor + '40' }]} />
+      </GlassView>
     </Animated.View>
   );
 });
 
 StatCard.displayName = 'StatCard';
-
 export default StatCard;
 
 const styles = StyleSheet.create({
   wrapper: {
     flex: 1,
   },
+  glassOuter: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+    overflow: 'hidden',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 8,
+  },
   container: {
-    flexDirection: 'column',
-    alignItems: 'flex-start',
-    justifyContent: 'flex-start',
-    paddingHorizontal: 14,
-    paddingVertical: 16,
-    borderRadius: 14,
+    borderRadius: 18,
     borderWidth: 1,
-    minHeight: 120,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    overflow: 'hidden',
+    minHeight: 118,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.14,
+    shadowRadius: 12,
+    elevation: 5,
   },
-  topRow: {
+  accentStrip: {
+    height: 3,
     width: '100%',
-    marginBottom: 8,
-  },
-  iconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   content: {
-    width: '100%',
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: '500',
-    marginBottom: 6,
-    opacity: 0.75,
-  },
-  valueRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 2,
-  },
-  value: {
-    fontSize: 28,
-    fontWeight: '800',
+    paddingHorizontal: 14,
+    paddingTop: 12,
+    paddingBottom: 14,
     flex: 1,
+  },
+  topRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  iconContainer: {
+    width: 38,
+    height: 38,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   trend: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
+    borderRadius: 20,
     gap: 2,
   },
   trendText: {
-    fontSize: 11,
-    fontWeight: '600',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  value: {
+    fontSize: 30,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+    lineHeight: 34,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '500',
+    marginTop: 3,
+    opacity: 0.80,
   },
   subtitle: {
     fontSize: 11,
-    marginTop: 4,
+    marginTop: 3,
     fontWeight: '400',
     opacity: 0.65,
+  },
+  rimGlow: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+    pointerEvents: 'none',
+  },
+  bottomBorder: {
+    height: 2,
+    marginHorizontal: 14,
+    borderRadius: 1,
+    marginBottom: 10,
   },
 });

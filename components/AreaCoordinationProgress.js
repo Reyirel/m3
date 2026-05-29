@@ -43,23 +43,23 @@ export default function AreaCoordinationProgress({ parentTaskId, onSubtaskPress,
   
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.surface }]}>
+      <View style={[styles.container, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
         <ActivityIndicator color={theme.primary} />
       </View>
     );
   }
-  
+
   if (subtasks.length === 0) {
     return null;
   }
-  
-  const completedCount = subtasks.filter(st => 
+
+  const completedCount = subtasks.filter(st =>
     st.status === 'completada' || st.status === 'en_revision'
   ).length;
   const progress = Math.round((completedCount / subtasks.length) * 100);
-  
+
   return (
-    <View style={[styles.container, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+    <View style={[styles.container, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
       {/* Header con progreso general */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -98,9 +98,10 @@ export default function AreaCoordinationProgress({ parentTaskId, onSubtaskPress,
               style={[
                 styles.areaItem, 
                 { 
-                  backgroundColor: isDark ? theme.card : '#F8F9FA',
+                  backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+                  borderWidth: 1,
                   borderLeftColor: config.color,
-                  borderColor: isCurrentArea ? theme.primary : 'transparent'
+                  borderColor: isCurrentArea ? theme.primary : (isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)')
                 }
               ]}
               onPress={() => onSubtaskPress && onSubtaskPress(subtask)}
@@ -134,7 +135,7 @@ export default function AreaCoordinationProgress({ parentTaskId, onSubtaskPress,
       </View>
       
       {/* Mensaje informativo */}
-      <View style={[styles.infoBox, { backgroundColor: isDark ? theme.card : '#E8F4FF' }]}>
+      <View style={[styles.infoBox, { backgroundColor: isDark ? 'rgba(0,122,255,0.12)' : 'rgba(0,122,255,0.08)', borderWidth: 1, borderColor: isDark ? 'rgba(0,122,255,0.25)' : 'rgba(0,122,255,0.15)' }]}>
         <Ionicons name="information-circle-outline" size={16} color="#007AFF" />
         <Text style={[styles.infoText, { color: theme.textSecondary }]}>
           Cada área debe completar su parte. La tarea general se completará cuando todas las áreas terminen.

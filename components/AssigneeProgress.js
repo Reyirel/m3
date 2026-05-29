@@ -4,8 +4,9 @@
 import React, { memo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '../contexts/ThemeContext';
 
-const AssigneeProgress = ({ 
+const AssigneeProgress = ({
   assignees = [], // [{email, displayName, completed, completedAt}]
   currentUserEmail = null,
   onConfirm = null, // Callback cuando el usuario confirma su parte
@@ -13,6 +14,8 @@ const AssigneeProgress = ({
   isAdmin = false,
   compact = false
 }) => {
+  const { theme, isDark } = useTheme();
+  const styles = createStyles(theme);
   const confirmedCount = assignees.filter(a => a.completed).length;
   const totalCount = assignees.length;
   const progress = totalCount > 0 ? (confirmedCount / totalCount) * 100 : 0;
@@ -49,14 +52,14 @@ const AssigneeProgress = ({
   }
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Ionicons name="people" size={18} color="#6366F1" />
-          <Text style={styles.title}>Confirmaciones por asignado</Text>
+          <Ionicons name="people" size={18} color={theme.secondary} />
+          <Text style={[styles.title, { color: theme.text }]}>Confirmaciones por asignado</Text>
         </View>
-        <View style={styles.progressBadge}>
-          <Text style={styles.progressText}>{confirmedCount}/{totalCount}</Text>
+        <View style={[styles.progressBadge, { backgroundColor: theme.infoAlpha }]}>
+          <Text style={[styles.progressText, { color: theme.secondary }]}>{confirmedCount}/{totalCount}</Text>
         </View>
       </View>
       
@@ -76,7 +79,7 @@ const AssigneeProgress = ({
       
       {/* Lista de asignados */}
       <View style={styles.assigneesList}>
-        {assignees.map((assignee, index) => (
+        {assignees.map((assignee, _index) => (
           <View 
             key={assignee.email} 
             style={[
@@ -90,20 +93,21 @@ const AssigneeProgress = ({
                 styles.statusIcon,
                 assignee.completed ? styles.statusCompleted : styles.statusPending
               ]}>
-                <Ionicons 
-                  name={assignee.completed ? "checkmark" : "time-outline"} 
-                  size={14} 
-                  color={assignee.completed ? "#FFFFFF" : "#9CA3AF"} 
+                <Ionicons
+                  name={assignee.completed ? "checkmark" : "time-outline"}
+                  size={14}
+                  color={assignee.completed ? '#FFF' : theme.textMuted}
                 />
               </View>
               <View style={styles.assigneeTextContainer}>
                 <Text style={[
                   styles.assigneeName,
-                  assignee.completed && styles.assigneeNameCompleted
+                  { color: theme.text },
+                  assignee.completed && { color: theme.success }
                 ]}>
                   {assignee.displayName}
                   {assignee.email.toLowerCase() === currentUserEmail?.toLowerCase() && (
-                    <Text style={styles.youLabel}> (Tú)</Text>
+                    <Text style={[styles.youLabel, { color: theme.secondary }]}> (Tú)</Text>
                   )}
                 </Text>
                 {assignee.completed && assignee.completedAt && (
@@ -120,7 +124,7 @@ const AssigneeProgress = ({
                 style={styles.removeButton}
                 onPress={() => onRemoveConfirmation(assignee.email)}
               >
-                <Ionicons name="close-circle" size={20} color="#EF4444" />
+                <Ionicons name="close-circle" size={20} color={theme.error} />
               </TouchableOpacity>
             )}
           </View>
@@ -129,27 +133,27 @@ const AssigneeProgress = ({
       
       {/* Botón para que el usuario actual confirme */}
       {currentUserEmail && currentUserAssignee && !currentUserCompleted && onConfirm && (
-        <TouchableOpacity 
-          style={styles.confirmButton}
+        <TouchableOpacity
+          style={[styles.confirmButton, { backgroundColor: theme.primary }]}
           onPress={onConfirm}
           activeOpacity={0.8}
         >
-          <Ionicons name="checkmark-circle" size={22} color="#FFFFFF" />
+          <Ionicons name="checkmark-circle" size={22} color="#FFF" />
           <Text style={styles.confirmButtonText}>Confirmar mi parte completada</Text>
         </TouchableOpacity>
       )}
-      
+
       {currentUserCompleted && (
-        <View style={styles.confirmedBanner}>
-          <Ionicons name="checkmark-done" size={20} color="#10B981" />
-          <Text style={styles.confirmedBannerText}>Ya confirmaste tu parte</Text>
+        <View style={[styles.confirmedBanner, { backgroundColor: theme.successAlpha, borderColor: theme.success }]}>
+          <Ionicons name="checkmark-done" size={20} color={theme.success} />
+          <Text style={[styles.confirmedBannerText, { color: theme.success }]}>Ya confirmaste tu parte</Text>
         </View>
       )}
       
       {progress === 100 && (
-        <View style={styles.allCompleteBanner}>
-          <Ionicons name="trophy" size={20} color="#F59E0B" />
-          <Text style={styles.allCompleteBannerText}>
+        <View style={[styles.allCompleteBanner, { backgroundColor: theme.warningAlpha, borderColor: theme.warning }]}>
+          <Ionicons name="trophy" size={20} color={theme.warning} />
+          <Text style={[styles.allCompleteBannerText, { color: theme.warning }]}>
             Todos han confirmado - Listo para revisión del admin
           </Text>
         </View>
@@ -158,9 +162,8 @@ const AssigneeProgress = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     padding: 16,
     marginVertical: 8,
@@ -170,7 +173,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
     borderWidth: 1,
-    borderColor: '#F3F4F6',
   },
   header: {
     flexDirection: 'row',
@@ -186,10 +188,10 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#1F2937',
+    color: theme.text,
   },
   progressBadge: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: theme.infoAlpha,
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -197,7 +199,7 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#6366F1',
+    color: theme.secondary,
   },
   progressBarContainer: {
     flexDirection: 'row',
@@ -208,22 +210,22 @@ const styles = StyleSheet.create({
   progressBar: {
     flex: 1,
     height: 8,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: theme.border,
     borderRadius: 4,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.secondary,
     borderRadius: 4,
   },
   progressComplete: {
-    backgroundColor: '#10B981',
+    backgroundColor: theme.success,
   },
   progressPercentage: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#6B7280',
+    color: theme.textSecondary,
     minWidth: 40,
     textAlign: 'right',
   },
@@ -236,18 +238,18 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 10,
     paddingHorizontal: 12,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.glass,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: theme.border,
   },
   assigneeItemCompleted: {
-    backgroundColor: '#F0FDF4',
-    borderColor: '#BBF7D0',
+    backgroundColor: theme.successAlpha,
+    borderColor: theme.success,
   },
   assigneeItemCurrent: {
     borderWidth: 2,
-    borderColor: '#6366F1',
+    borderColor: theme.secondary,
   },
   assigneeInfo: {
     flexDirection: 'row',
@@ -263,10 +265,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statusCompleted: {
-    backgroundColor: '#10B981',
+    backgroundColor: theme.success,
   },
   statusPending: {
-    backgroundColor: '#E5E7EB',
+    backgroundColor: theme.border,
   },
   assigneeTextContainer: {
     flex: 1,
@@ -274,18 +276,18 @@ const styles = StyleSheet.create({
   assigneeName: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#374151',
+    color: theme.text,
   },
   assigneeNameCompleted: {
-    color: '#059669',
+    color: theme.success,
   },
   youLabel: {
-    color: '#6366F1',
+    color: theme.secondary,
     fontWeight: '700',
   },
   completedAt: {
     fontSize: 12,
-    color: '#6B7280',
+    color: theme.textSecondary,
     marginTop: 2,
   },
   removeButton: {
@@ -296,12 +298,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.primary,
     paddingVertical: 14,
     paddingHorizontal: 20,
     borderRadius: 12,
     marginTop: 16,
-    shadowColor: '#6366F1',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
@@ -317,36 +319,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#ECFDF5',
+    backgroundColor: theme.successAlpha,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 10,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: '#A7F3D0',
+    borderColor: theme.success,
   },
   confirmedBannerText: {
     fontSize: 14,
     fontWeight: '500',
-    color: '#059669',
+    color: theme.success,
   },
   allCompleteBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#FFFBEB',
+    backgroundColor: theme.warningAlpha,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 10,
     marginTop: 12,
     borderWidth: 1,
-    borderColor: '#FDE68A',
+    borderColor: theme.warning,
   },
   allCompleteBannerText: {
     fontSize: 13,
     fontWeight: '500',
-    color: '#B45309',
+    color: theme.warning,
     flex: 1,
     textAlign: 'center',
   },
@@ -359,18 +361,18 @@ const styles = StyleSheet.create({
   compactProgressBar: {
     flex: 1,
     height: 6,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: theme.border,
     borderRadius: 3,
     overflow: 'hidden',
   },
   compactProgressFill: {
     height: '100%',
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.secondary,
     borderRadius: 3,
   },
   compactText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: theme.textSecondary,
     minWidth: 80,
   },
 });

@@ -22,7 +22,7 @@ import ProgressBar from '../components/ProgressBar';
 import Avatar from '../components/Avatar';
 import WebSafeBlur from '../components/WebSafeBlur';
 
-const { width } = Dimensions.get('window');
+Dimensions.get('window');
 
 export default function AreaChiefDashboard({ navigation }) {
   const { theme, isDark } = useTheme();
@@ -34,7 +34,7 @@ export default function AreaChiefDashboard({ navigation }) {
   const [filter, setFilter] = useState('all'); // all, pendiente, en_progreso, completed
 
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const { tasks: contextTasks, isLoading: contextLoading, currentUser } = useTasks();
+  const { tasks: contextTasks, isLoading: contextLoading } = useTasks();
 
   // Recalculate whenever context tasks update
   useEffect(() => {
@@ -49,7 +49,7 @@ export default function AreaChiefDashboard({ navigation }) {
       duration: 400,
       useNativeDriver: true,
     }).start();
-  }, [contextTasks, contextLoading]);
+  }, [contextTasks, contextLoading, fadeAnim]);
 
   const loadChiefData = () => {
     setRefreshing(true);
@@ -128,7 +128,7 @@ export default function AreaChiefDashboard({ navigation }) {
       style={[
         styles.taskCard,
         {
-          backgroundColor: isDark ? '#2a2a2e' : '#f5f5f7',
+          backgroundColor: isDark ? theme.glass : theme.glassStrong,
           borderColor: theme.border,
         },
       ]}
@@ -141,9 +141,9 @@ export default function AreaChiefDashboard({ navigation }) {
           {
             backgroundColor:
               task.status === 'cerrada'
-                ? '#34C759'
+                ? theme.success
                 : task.status === 'en_progreso'
-                ? '#FF9500'
+                ? theme.warning
                 : theme.primary,
           },
         ]}
@@ -220,8 +220,8 @@ export default function AreaChiefDashboard({ navigation }) {
   if (loadError) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: 40, gap: 16 }]}>
-        <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: isDark ? '#1E1E22' : '#FFF0EE', justifyContent: 'center', alignItems: 'center' }}>
-          <Ionicons name="cloud-offline-outline" size={48} color="#FF3B30" />
+        <View style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: theme.errorAlpha, justifyContent: 'center', alignItems: 'center' }}>
+          <Ionicons name="cloud-offline-outline" size={48} color={theme.error} />
         </View>
         <Text style={{ fontSize: 18, fontWeight: '700', color: theme.text, textAlign: 'center' }}>Error de conexión</Text>
         <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center' }}>No se pudo cargar el dashboard.</Text>
@@ -245,29 +245,29 @@ export default function AreaChiefDashboard({ navigation }) {
     >
       {/* Header */}
       <LinearGradient
-        colors={[theme.primary, theme.primary + '80']}
+        colors={theme.gradientHeader}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { shadowColor: theme.primary }]}
       >
         <WebSafeBlur intensity={90} style={[styles.headerBlur, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
           <TouchableOpacity
             onPress={() => navigation.goBack()}
-            style={{ padding: 8 }}
+            style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', justifyContent: 'center', alignItems: 'center' }}
             accessibilityLabel="Volver"
             accessibilityRole="button"
           >
-            <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+            <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
           </TouchableOpacity>
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1, marginHorizontal: 12 }}>
             <Text style={styles.title}>Dashboard</Text>
             <Text style={styles.subtitle}>Tus tareas y equipo</Text>
           </View>
           <TouchableOpacity
             onPress={() => navigation.navigate('MyAreaReports')}
-            style={{ padding: 8, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 8 }}
+            style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', justifyContent: 'center', alignItems: 'center' }}
           >
-            <Ionicons name="document-text" size={24} color="#FFFFFF" />
+            <Ionicons name="document-text" size={20} color="#FFFFFF" />
           </TouchableOpacity>
         </WebSafeBlur>
       </LinearGradient>
@@ -280,8 +280,8 @@ export default function AreaChiefDashboard({ navigation }) {
         {/* Métricas Generales */}
         {metrics && (
           <View style={styles.metricsSection}>
-            <View style={[styles.metricCard, { backgroundColor: isDark ? '#2a2a2e' : '#f5f5f7' }]}>
-              <Ionicons name="checkmark-circle" size={24} color="#34C759" />
+            <View style={[styles.metricCard, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle, borderWidth: 1 }]}>
+              <Ionicons name="checkmark-circle" size={24} color={theme.success} />
               <Text style={[styles.metricValue, { color: theme.text }]}>
                 {metrics.fullyCompletedTasks}
               </Text>
@@ -290,8 +290,8 @@ export default function AreaChiefDashboard({ navigation }) {
               </Text>
             </View>
 
-            <View style={[styles.metricCard, { backgroundColor: isDark ? '#2a2a2e' : '#f5f5f7' }]}>
-              <Ionicons name="time" size={24} color="#FF9500" />
+            <View style={[styles.metricCard, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle, borderWidth: 1 }]}>
+              <Ionicons name="time" size={24} color={theme.warning} />
               <Text style={[styles.metricValue, { color: theme.text }]}>
                 {metrics.tasksInProgress}
               </Text>
@@ -300,7 +300,7 @@ export default function AreaChiefDashboard({ navigation }) {
               </Text>
             </View>
 
-            <View style={[styles.metricCard, { backgroundColor: isDark ? '#2a2a2e' : '#f5f5f7' }]}>
+            <View style={[styles.metricCard, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle, borderWidth: 1 }]}>
               <Ionicons name="list" size={24} color={theme.primary} />
               <Text style={[styles.metricValue, { color: theme.text }]}>
                 {metrics.totalTasks}
@@ -308,7 +308,7 @@ export default function AreaChiefDashboard({ navigation }) {
               <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Total</Text>
             </View>
 
-            <View style={[styles.metricCard, { backgroundColor: isDark ? '#2a2a2e' : '#f5f5f7' }]}>
+            <View style={[styles.metricCard, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle, borderWidth: 1 }]}>
               <Ionicons name="trending-up" size={24} color={theme.primary} />
               <Text style={[styles.metricValue, { color: theme.text }]}>
                 {metrics.avgProgress}%
@@ -320,13 +320,13 @@ export default function AreaChiefDashboard({ navigation }) {
 
         {/* Progress Overview */}
         {metrics && metrics.totalTasks > 0 && (
-          <View style={[styles.progressCard, { backgroundColor: isDark ? '#2a2a2e' : '#f5f5f7' }]}>
+          <View style={[styles.progressCard, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle, borderWidth: 1 }]}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Progreso General</Text>
             <ProgressBar
               progress={metrics.avgProgress}
               size="medium"
               showLabel={true}
-              color={metrics.avgProgress === 100 ? '#34C759' : theme.primary}
+              color={metrics.avgProgress === 100 ? theme.success : theme.primary}
             />
             <Text style={[styles.progressDetails, { color: theme.textSecondary }]}>
               {metrics.fullyCompletedTasks} de {metrics.totalTasks} tareas completadas
@@ -337,7 +337,7 @@ export default function AreaChiefDashboard({ navigation }) {
         {/* Acceso a Reportes */}
         <TouchableOpacity
           onPress={() => navigation.navigate('MyAreaReports')}
-          style={[styles.reportsButton, { backgroundColor: isDark ? '#2a2a2e' : '#f5f5f7', borderColor: theme.primary }]}
+          style={[styles.reportsButton, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: theme.primary }]}
           activeOpacity={0.7}
         >
           <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}>
@@ -364,11 +364,9 @@ export default function AreaChiefDashboard({ navigation }) {
               onPress={() => setFilter(f)}
               style={[
                 styles.filterButton,
-                filter === f && {
-                  backgroundColor: theme.primary,
-                  borderColor: theme.primary,
-                },
-                { borderColor: theme.border },
+                filter === f
+                  ? { backgroundColor: theme.primary, borderColor: theme.primary }
+                  : { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' },
               ]}
               activeOpacity={0.7}
             >
@@ -435,22 +433,33 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingTop: 48,
-    paddingBottom: 20,
+    paddingBottom: 24,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.35,
+    shadowRadius: 20,
+    elevation: 12,
+    overflow: 'hidden',
   },
   headerBlur: {
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 14,
   },
   title: {
     fontSize: 28,
-    fontWeight: '900',
+    fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.5,
+    textShadowColor: 'rgba(0,0,0,0.20)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
   },
   subtitle: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255,255,255,0.72)',
     marginTop: 4,
+    fontWeight: '500',
   },
   content: {
     flex: 1,
@@ -466,30 +475,33 @@ const styles = StyleSheet.create({
   metricCard: {
     flex: 1,
     minWidth: '22%',
-    paddingVertical: 16,
+    paddingVertical: 18,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
     gap: 8,
   },
   metricValue: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '900',
+    letterSpacing: -0.5,
   },
   metricLabel: {
     fontSize: 11,
     fontWeight: '600',
+    textAlign: 'center',
   },
   progressCard: {
     paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 16,
     marginBottom: 16,
     gap: 12,
   },
   cardTitle: {
     fontSize: 16,
     fontWeight: '700',
+    letterSpacing: -0.3,
   },
   progressDetails: {
     fontSize: 12,
@@ -499,10 +511,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderRadius: 12,
+    paddingVertical: 16,
+    borderRadius: 16,
     marginBottom: 16,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   reportIconBg: {
     width: 44,
@@ -523,16 +540,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
     marginBottom: 16,
+    flexWrap: 'wrap',
   },
   filterButton: {
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 99,
     borderWidth: 1,
   },
   filterLabel: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   tasksSection: {
     marginBottom: 16,
@@ -549,24 +567,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingRight: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     overflow: 'hidden',
     minHeight: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
   },
   statusBar: {
-    width: 4,
+    width: 5,
     height: '100%',
   },
   cardContent: {
     flex: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 14,
     gap: 6,
   },
   taskTitle: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: '700',
+    letterSpacing: -0.2,
   },
   taskMeta: {
     flexDirection: 'row',

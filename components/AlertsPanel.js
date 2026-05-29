@@ -8,8 +8,6 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
-  Animated
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -34,10 +32,10 @@ export default function AlertsPanel({
 
   const getSeverityColor = (severity) => {
     switch (severity) {
-      case 'critical': return '#DC2626';
-      case 'warning': return '#F59E0B';
-      case 'info': return '#3B82F6';
-      default: return '#10B981';
+      case 'critical': return theme.error;
+      case 'warning': return theme.warning;
+      case 'info': return theme.info;
+      default: return theme.success;
     }
   };
 
@@ -63,7 +61,7 @@ export default function AlertsPanel({
             style={[
               styles.alertCard,
               {
-                backgroundColor: isDark ? '#7F1D1D' : '#FEE2E2',
+                backgroundColor: isDark ? theme.glass : theme.errorAlpha,
                 borderLeftColor: getSeverityColor(alert.severity),
                 borderWidth: 1,
                 borderLeftWidth: 4
@@ -75,10 +73,10 @@ export default function AlertsPanel({
                 <Ionicons
                   name={getSeverityIcon(alert.severity)}
                   size={20}
-                  color={'#DC2626'}
+                  color={theme.error}
                   style={styles.alertIcon}
                 />
-                <Text style={[styles.alertTitle, { color: isDark ? '#FCA5A5' : '#DC2626' }]}>
+                <Text style={[styles.alertTitle, { color: theme.error }]}>
                   {alert.title}
                 </Text>
               </View>
@@ -88,7 +86,7 @@ export default function AlertsPanel({
                   onDismiss(alert.id);
                 }}
               >
-                <Ionicons name="close" size={20} color={isDark ? '#FCA5A5' : '#DC2626'} />
+                <Ionicons name="close" size={20} color={theme.error} />
               </TouchableOpacity>
             </View>
 
@@ -107,7 +105,7 @@ export default function AlertsPanel({
                     </View>
                     <View style={styles.statItem}>
                       <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Problema</Text>
-                      <Text style={[styles.statValue, { color: '#DC2626' }]}>
+                      <Text style={[styles.statValue, { color: theme.error }]}>
                         {alert.stats.overdue || alert.stats.pending || 0}
                       </Text>
                     </View>
@@ -115,7 +113,7 @@ export default function AlertsPanel({
                 )}
                 {alert.action && (
                   <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: '#DC2626' }]}
+                    style={[styles.actionButton, { backgroundColor: theme.error }]}
                     onPress={() => onAlertPress(alert)}
                   >
                     <Text style={styles.actionText}>{alert.action}</Text>
@@ -139,7 +137,7 @@ export default function AlertsPanel({
             style={[
               styles.alertCard,
               {
-                backgroundColor: isDark ? '#78350F' : '#FEF3C7',
+                backgroundColor: isDark ? theme.glass : theme.warningAlpha,
                 borderLeftColor: getSeverityColor(alert.severity),
                 borderLeftWidth: 4
               }
@@ -150,17 +148,17 @@ export default function AlertsPanel({
                 <Ionicons
                   name="warning"
                   size={18}
-                  color={'#F59E0B'}
+                  color={theme.warning}
                   style={styles.alertIcon}
                 />
-                <Text style={[styles.alertTitle, { color: isDark ? '#FBBF24' : '#B45309' }]} numberOfLines={2}>
+                <Text style={[styles.alertTitle, { color: theme.warning }]} numberOfLines={2}>
                   {alert.title}
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={() => setDismissedAlerts(new Set([...dismissedAlerts, alert.id]))}
               >
-                <Ionicons name="close" size={18} color={isDark ? '#FBBF24' : '#B45309'} />
+                <Ionicons name="close" size={18} color={theme.warning} />
               </TouchableOpacity>
             </View>
           </SpringCard>
@@ -176,12 +174,12 @@ export default function AlertsPanel({
             activeOpacity={0.7}
           >
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="bulb-outline" size={16} color="#F59E0B" />
+              <Ionicons name="bulb-outline" size={16} color={theme.warning} />
               <Text style={[styles.suggestionsTitle, { color: theme.text }]}>
                 Sugerencias de optimización
               </Text>
-              <View style={[styles.suggestionsBadge, { backgroundColor: '#F59E0B20' }]}>
-                <Text style={{ color: '#F59E0B', fontSize: 11, fontWeight: '700' }}>{suggestions.length}</Text>
+              <View style={[styles.suggestionsBadge, { backgroundColor: theme.warningAlpha }]}>
+                <Text style={{ color: theme.warning, fontSize: 11, fontWeight: '700' }}>{suggestions.length}</Text>
               </View>
             </View>
             <Ionicons
@@ -191,7 +189,7 @@ export default function AlertsPanel({
             />
           </TouchableOpacity>
           {suggestionsExpanded && suggestions.map((suggestion, index) => (
-            <View key={index} style={[styles.suggestionItem, { backgroundColor: theme.card }]}>
+            <View key={index} style={[styles.suggestionItem, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
               <Ionicons
                 name={
                   suggestion.priority === 'critical' ? 'alert' :
@@ -199,8 +197,8 @@ export default function AlertsPanel({
                 }
                 size={18}
                 color={
-                  suggestion.priority === 'critical' ? '#DC2626' :
-                  suggestion.priority === 'high' ? '#F59E0B' : '#3B82F6'
+                  suggestion.priority === 'critical' ? theme.error :
+                  suggestion.priority === 'high' ? theme.warning : theme.info
                 }
               />
               <View style={styles.suggestionContent}>

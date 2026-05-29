@@ -229,7 +229,7 @@ function ListView({ orgData, setOrgData, persist, theme, isDark }) {
                         style={[list.iconBtn, { marginLeft: 2 }]}
                         hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
                       >
-                        <Ionicons name="close-circle-outline" size={15} color="#EF4444" />
+                        <Ionicons name="close-circle-outline" size={15} color={theme.error} />
                       </TouchableOpacity>
                     </View>
                   ))}

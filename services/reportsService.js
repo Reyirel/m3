@@ -11,8 +11,7 @@ import {
   getDocs,
   onSnapshot,
   serverTimestamp,
-  arrayUnion,
-  writeBatch
+  arrayUnion
 } from '../firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toMs } from '../utils/dateUtils';
@@ -84,7 +83,7 @@ const notifyAdminsOfNewReport = async (taskId, reportId, reportTitle, createdByN
     }
 
   } catch (error) {
-    console.error('Error notificando a admins:', error);
+    if (__DEV__) console.error('Error notificando a admins:', error);
     // No lanzar error para no interrumpir el flujo del reporte
   }
 };
@@ -173,7 +172,7 @@ export const createTaskReport = async (taskId, userId, reportData) => {
 
     return docRef.id;
   } catch (error) {
-    console.error('Error creating task report:', error);
+    if (__DEV__) console.error('Error creating task report:', error);
     throw error;
   }
 };
@@ -209,7 +208,7 @@ export const uploadReportImage = async (taskId, reportId, imageData) => {
           }
           blob = new Blob([u8arr], { type: 'image/jpeg' });
         } catch (decodeError) {
-          console.warn('⚠️ Could not decode base64:', decodeError);
+          if (__DEV__) console.warn('⚠️ Could not decode base64:', decodeError);
         }
       } else if (imageData.uri && !dataUrl) {
         // Convertir URI de imagen (expo-image-picker) a blob
@@ -224,7 +223,7 @@ export const uploadReportImage = async (taskId, reportId, imageData) => {
             reader.readAsDataURL(blob);
           });
         } catch (fetchError) {
-          console.warn('⚠️ Could not fetch URI:', fetchError);
+          if (__DEV__) console.warn('⚠️ Could not fetch URI:', fetchError);
         }
       }
     }
@@ -237,7 +236,7 @@ export const uploadReportImage = async (taskId, reportId, imageData) => {
         await uploadBytes(storageRef, blob);
         downloadURL = await getDownloadURL(storageRef);
       } catch (storageError) {
-        console.warn('⚠️ Storage upload failed:', storageError.message);
+        if (__DEV__) console.warn('⚠️ Storage upload failed:', storageError.message);
       }
     }
 
@@ -262,7 +261,7 @@ export const uploadReportImage = async (taskId, reportId, imageData) => {
 
     return downloadURL;
   } catch (error) {
-    console.error('❌ Error uploading report image:', error);
+    if (__DEV__) console.error('❌ Error uploading report image:', error);
     throw error;
   }
 };
@@ -304,7 +303,7 @@ export const rateTaskReport = async (taskId, reportId, rating, comment = '', rat
       comment,
     });
   } catch (error) {
-    console.error('Error rating task report:', error);
+    if (__DEV__) console.error('Error rating task report:', error);
     throw error;
   }
 };
@@ -357,7 +356,7 @@ export const getUserReports = async (userId) => {
     });
     return reports;
   } catch (error) {
-    console.error('Error getting user reports:', error);
+    if (__DEV__) console.error('Error getting user reports:', error);
     throw error;
   }
 };
@@ -380,7 +379,7 @@ export const logTaskActivity = async (taskId, userId, action, details = {}) => {
       timestamp: serverTimestamp(),
     });
   } catch (error) {
-    console.error('Error logging task activity:', error);
+    if (__DEV__) console.error('Error logging task activity:', error);
     throw error;
   }
 };
@@ -428,7 +427,7 @@ export const deleteTaskReport = async (taskId, reportId) => {
     
     return { success: true, message: 'Reporte eliminado correctamente' };
   } catch (error) {
-    console.error('Error eliminando reporte:', error);
+    if (__DEV__) console.error('Error eliminando reporte:', error);
     throw new Error(`No se pudo eliminar el reporte: ${error.message}`);
   }
 };
@@ -478,7 +477,7 @@ export const getReportStatistics = async (area = null) => {
       reports,
     };
   } catch (error) {
-    console.error('Error getting report statistics:', error);
+    if (__DEV__) console.error('Error getting report statistics:', error);
     throw error;
   }
 };
@@ -597,7 +596,7 @@ export const getReportsGroupedByArea = async () => {
 
     return grouped;
   } catch (error) {
-    console.error('Error getting grouped reports:', error);
+    if (__DEV__) console.error('Error getting grouped reports:', error);
     throw error;
   }
 };

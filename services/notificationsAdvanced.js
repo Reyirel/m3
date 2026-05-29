@@ -3,8 +3,8 @@
 // Soporta tareas, subtareas, áreas, y eventos del sistema
 
 import * as Notifications from 'expo-notifications';
-import { toMs } from '../utils/dateUtils';
 import { Platform } from 'react-native';
+import { toMs } from '../utils/dateUtils';
 import {
   collection,
   addDoc,
@@ -15,6 +15,7 @@ import {
   updateDoc,
   doc,
   getDoc,
+  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getCurrentSession } from './authFirestore';
@@ -28,16 +29,17 @@ const NOTIFICATION_HISTORY_COLLECTION = 'notification_history';
  * Configurar notificaciones
  */
 export const configureNotifications = async () => {
+  if (Platform.OS === 'web') return false;
   // Solicitar permisos
   const { status } = await Notifications.requestPermissionsAsync();
   if (status !== 'granted') {
-    console.warn('Permisos de notificaciones denegados');
+    if (__DEV__) console.warn('Permisos de notificaciones denegados');
     return false;
   }
 
   // Configurar controlador de notificaciones
   Notifications.setNotificationHandler({
-    handleNotification: async (notification) => {
+    handleNotification: async (_notification) => {
       return {
         shouldShowAlert: true,
         shouldPlaySound: true,
@@ -54,6 +56,7 @@ export const configureNotifications = async () => {
  * @param {Object} options - { title, body, data?, delay? }
  */
 export const sendLocalNotification = async (options) => {
+  if (Platform.OS === 'web') return null;
   try {
     const { title, body, data = {}, delay = 1000 } = options;
 
@@ -74,7 +77,7 @@ export const sendLocalNotification = async (options) => {
     log('📲 Notificación local enviada:', notificationId);
     return notificationId;
   } catch (error) {
-    console.error('Error en notificación local:', error);
+    if (__DEV__) console.error('Error en notificación local:', error);
     return null;
   }
 };
@@ -109,7 +112,7 @@ export const notifyTaskAssigned = async (task) => {
       });
     }
   } catch (error) {
-    console.error('Error notificando tarea asignada:', error);
+    if (__DEV__) console.error('Error notificando tarea asignada:', error);
   }
 };
 
@@ -138,7 +141,7 @@ export const notifySubtaskCompleted = async (subtask, completedBy) => {
       data: { taskId: subtask.taskId, subtaskId: subtask.id },
     });
   } catch (error) {
-    console.error('Error notificando subtarea completada:', error);
+    if (__DEV__) console.error('Error notificando subtarea completada:', error);
   }
 };
 
@@ -168,7 +171,7 @@ export const notifyTaskDueSoon = async (task) => {
       data: { taskId: task.id, type: 'due_soon' },
     });
   } catch (error) {
-    console.error('Error notificando vencimiento:', error);
+    if (__DEV__) console.error('Error notificando vencimiento:', error);
   }
 };
 
@@ -204,7 +207,7 @@ export const notifyAreaCreated = async (area) => {
       data: { areaId: area.id, type: 'area_created' },
     });
   } catch (error) {
-    console.error('Error notificando área:', error);
+    if (__DEV__) console.error('Error notificando área:', error);
   }
 };
 
@@ -228,7 +231,7 @@ const recordNotification = async (notification) => {
       readAt: null,
     });
   } catch (error) {
-    console.error('Error registrando notificación:', error);
+    if (__DEV__) console.error('Error registrando notificación:', error);
   }
 };
 
@@ -267,7 +270,7 @@ export const markNotificationAsRead = async (notificationId) => {
     // Si no se encontró en ninguna colección, solo logueamos sin error
     log('Notificación ya no existe o fue eliminada:', notificationId);
   } catch (error) {
-    console.error('Error marcando como leída:', error);
+    if (__DEV__) console.error('Error marcando como leída:', error);
   }
 };
 
@@ -305,7 +308,7 @@ export const deleteNotification = async (notificationId) => {
     // Si no se encontró en ninguna colección, solo logueamos sin error
     log('Notificación ya no existe:', notificationId);
   } catch (error) {
-    console.error('Error eliminando notificación:', error);
+    if (__DEV__) console.error('Error eliminando notificación:', error);
     throw new Error(`No se pudo eliminar la notificación: ${error.message}`);
   }
 };
@@ -345,7 +348,7 @@ export const getMyNotifications = async (limit = 50) => {
           }
         });
       } catch (e) {
-        console.error('Error buscando en notifications:', e);
+        if (__DEV__) console.error('Error buscando en notifications:', e);
       }
     }
 
@@ -365,7 +368,7 @@ export const getMyNotifications = async (limit = 50) => {
           }
         });
       } catch (e) {
-        console.error('Error buscando por email:', e);
+        if (__DEV__) console.error('Error buscando por email:', e);
       }
 
       // 3. Buscar en notification_history (historial antiguo)
@@ -383,7 +386,7 @@ export const getMyNotifications = async (limit = 50) => {
           }
         });
       } catch (e) {
-        console.error('Error buscando en history:', e);
+        if (__DEV__) console.error('Error buscando en history:', e);
       }
     }
 
@@ -394,7 +397,7 @@ export const getMyNotifications = async (limit = 50) => {
       return bTime - aTime;
     }).slice(0, limit);
   } catch (error) {
-    console.error('Error obteniendo notificaciones:', error);
+    if (__DEV__) console.error('Error obteniendo notificaciones:', error);
     return [];
   }
 };
@@ -418,7 +421,7 @@ export const cleanOldNotifications = async () => {
 
     log(`🧹 Limpias ${snapshot.docs.length} notificaciones antiguas`);
   } catch (error) {
-    console.error('Error limpiando notificaciones:', error);
+    if (__DEV__) console.error('Error limpiando notificaciones:', error);
   }
 };
 
@@ -481,7 +484,7 @@ export const getUnreadNotificationsCount = async () => {
 
     return count;
   } catch (error) {
-    console.error('Error contando notificaciones:', error);
+    if (__DEV__) console.error('Error contando notificaciones:', error);
     return 0;
   }
 };

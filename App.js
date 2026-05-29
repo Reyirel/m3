@@ -2,39 +2,50 @@
 import './polyfills'; // Debe ser lo primero
 import 'react-native-gesture-handler';
 
-// 🔒 SEGURIDAD: Deshabilitar console.log en producción, pero mantener errores
+// Filtrar ruido de librerías en web (aplica siempre, dev y prod)
 const originalError = console.error;
-console.log = () => {};
-console.warn = () => {};
-console.info = () => {};
-console.debug = () => {};
-// Filtrar errores de CORS de Google (inofensivos en desarrollo)
+const originalWarn  = console.warn;
+const NOISE_PATTERNS = [
+  'CORS', 'favicon', 'transform-origin',
+  'Unexpected text node', 'onStartShouldSetResponder', 'onResponder',
+];
 console.error = (...args) => {
-  const message = args[0]?.toString() || '';
-  // Filtrar advertencias de librerías en web que no afectan funcionalidad
-  if (
-    message.includes('CORS') ||
-    message.includes('google') ||
-    message.includes('favicon') ||
-    message.includes('transform-origin') ||       // react-native-reanimated 4.x en web
-    message.includes('Unexpected text node') ||   // RNW: nodos de texto en View (librerías)
-    message.includes('onStartShouldSetResponder') || // RNW: props de responder en DOM
-    message.includes('onResponder')               // RNW: props de responder en DOM
-  ) return;
+  const msg = args[0]?.toString() || '';
+  if (NOISE_PATTERNS.some(p => msg.includes(p))) return;
   originalError(...args);
 };
+console.warn = (...args) => {
+  const msg = args[0]?.toString() || '';
+  if (NOISE_PATTERNS.some(p => msg.includes(p))) return;
+  originalWarn(...args);
+};
+
+// Suprimir logs en producción (no en desarrollo)
+const _isProd = typeof __DEV__ !== 'undefined' ? !__DEV__ : process.env.NODE_ENV === 'production';
+if (_isProd) {
+  console.log  = () => {};
+  console.info = () => {};
+  console.debug = () => {};
+}
 
 import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, ActivityIndicator, StyleSheet, Alert, TouchableOpacity, Platform, StatusBar, SafeAreaView } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
+import { BlurView } from 'expo-blur';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { TasksProvider, useTasks } from './contexts/TasksContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { getGestureHandlerRootView } from './utils/platformComponents';
+import PremiumTabBar from './components/PremiumTabBar';
+import DesktopSidebar, { SIDEBAR_WIDTH } from './components/DesktopSidebar';
+import { ScreenTransition } from './components';
+import { useResponsive } from './utils/responsive';
+import MeshBackground from './components/MeshBackground';
 
 // ✅ OPTIMIZACIÓN: Lazy loading de screens (-40% bundle inicial)
 const LoginScreen = React.lazy(() => import('./screens/LoginScreen'));
@@ -56,23 +67,28 @@ const AreaChiefDashboard = React.lazy(() => import('./screens/AreaChiefDashboard
 const AreaManagementScreen = React.lazy(() => import('./screens/area/AreaManagementScreen'));
 const AnalyticsScreen = React.lazy(() => import('./screens/AnalyticsScreen'));
 const TaskReportsAndActivityScreen = React.lazy(() => import('./screens/TaskReportsAndActivityScreen'));
+const ProfileScreenEnhanced = React.lazy(() => import('./screens/ProfileScreenEnhanced'));
+const SearchScreenEnhanced = React.lazy(() => import('./screens/SearchScreenEnhanced'));
+const SettingsScreenEnhanced = React.lazy(() => import('./screens/SettingsScreenEnhanced'));
 import { getCurrentSession, logoutUser } from './services/authFirestore';
 import { startConnectivityMonitoring } from './services/offlineQueue';
 import { toMs } from './utils/dateUtils';
 import { setupNotificationResponseListener } from './services/notifications';
-import { registerPushToken, setupPushNotificationListener } from './services/pushNotifications';
-import { initConnectionListener, syncPendingOperations, clearOfflineData } from './services/offlineSync';
+import { initConnectionListener, clearOfflineData } from './services/offlineSync';
 import OfflineIndicator from './components/OfflineIndicator';
 import OfflineSyncIndicator from './components/OfflineSyncIndicator';
+import OfflineBanner from './components/OfflineBanner';
 import ErrorBoundary from './components/ErrorBoundary';
+import ImprovedErrorBoundary from './components/ImprovedErrorBoundary';
 import { startAutoCacheCleanup, stopAutoCacheCleanup } from './utils/cacheManager';
 import * as productionLogger from './utils/productionLogger';
+import logger from './services/Logger';
 import { startNetworkMonitoring, stopNetworkMonitoring } from './utils/networkMonitor';
 
 // ✅ OPTIMIZACIÓN: Performance Monitoring
 if (Platform.OS === 'web') {
   try {
-    const { initPerformanceMonitoring } = require('./utils/performanceMonitor');
+    require('./utils/performanceMonitor');
     // Se inicializará en el useEffect de App
   } catch (e) {
     // Performance monitoring no disponible
@@ -95,24 +111,29 @@ const Tab = createBottomTabNavigator();
 const GestureHandlerRootView = getGestureHandlerRootView();
 
 // 🔄 Componente de carga para lazy-loaded screens
-const ScreenFallback = () => (
-  <View style={styles.loadingContainer}>
-    <ActivityIndicator size="large" color="#8B0000" />
-  </View>
-);
-
-// Referencia global de navegación
-let globalNavigationRef = null;
+function ScreenFallback() {
+  const { theme } = useTheme();
+  return (
+    <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+      <ActivityIndicator size="large" color={theme.primary} />
+    </View>
+  );
+}
 
 // Tab Navigator con todas las pantallas
-function MainTabs({ onLogout, initialSession }) {
+function MainTabs({ onLogout, initialSession, navigation }) {
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const { tasks: contextTasks } = useTasks();
+  const { isDesktop, isTablet } = useResponsive();
+  const usesSidebar = isDesktop || isTablet;
   // Usar initialSession para evitar flash de tabs condicionales en primer render
   const [currentUser, setCurrentUser] = useState(initialSession || null);
   const [overdueCount, setOverdueCount] = useState(0);
   const [urgentCount, setUrgentCount] = useState(0); // 🔔 Tareas urgentes (vencidas + próximas <24h)
   const unsubPushRef = useRef(null);
+  const tabNavRef = useRef(null);
+  const [activeRouteName, setActiveRouteName] = useState('Home');
 
   // Obtener sesión actual solo una vez al montar
   useEffect(() => {
@@ -159,11 +180,13 @@ function MainTabs({ onLogout, initialSession }) {
     setOverdueCount(overdueNow.length);
     setUrgentCount(urgent.length);
 
-    try {
-      const Notifications = require('expo-notifications');
-      Notifications.default?.setBadgeCountAsync(overdueNow.length).catch(() => {});
-    } catch {
-      // no-op
+    if (Platform.OS !== 'web') {
+      try {
+        const Notifications = require('expo-notifications');
+        Notifications.default?.setBadgeCountAsync(overdueNow.length).catch(() => {});
+      } catch {
+        // no-op
+      }
     }
   }, [contextTasks]);
 
@@ -185,10 +208,10 @@ function MainTabs({ onLogout, initialSession }) {
   // Función para obtener el color del badge por rol
   const getRoleBadgeColor = (role) => {
     switch (role) {
-      case 'admin': return '#DC2626';
+      case 'admin': return theme.error;
       case 'secretario': return theme.primary;
-      case 'director': return '#235B4E';
-      default: return '#3B82F6';
+      case 'director': return theme.success;
+      default: return theme.info;
     }
   };
 
@@ -202,45 +225,46 @@ function MainTabs({ onLogout, initialSession }) {
     }
   };
 
+  // Rutas del sidebar calculadas según rol del usuario
+  const sidebarRoutes = React.useMemo(() => {
+    const routes = [
+      { name: 'Home' },
+      { name: 'Kanban' },
+      { name: 'Calendar' },
+      { name: 'Inbox' },
+    ];
+    if (canSeeReports) routes.push({ name: 'Reports' });
+    if (isSecretario) routes.push({ name: 'SecretarioDashboard' });
+    if (isAdmin) routes.push({ name: 'ExecutiveDashboard' });
+    if (isAdmin) routes.push({ name: 'Admin' });
+    return routes;
+  }, [isAdmin, isSecretario, canSeeReports]);
+
   return (
-    <View style={{ flex: 1 }}>
-      {/* Header con usuario y botón de logout */}
-      {currentUser && (
-        <View style={styles.userHeader}>
-          <View style={styles.userInfo}>
-            <View style={[
-              styles.roleBadge, 
-              { backgroundColor: getRoleBadgeColor(currentUser.role) }
-            ]}>
-              <Ionicons 
-                name={getRoleIcon(currentUser.role)} 
-                size={12} 
-                color="#FFFFFF" 
-                style={{ marginRight: 4 }}
-              />
-              <Text style={styles.roleBadgeText}>
-                {getRoleLabel(currentUser.role)}
-              </Text>
-            </View>
-            <Text style={styles.userName} numberOfLines={1}>{currentUser.displayName || currentUser.email}</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => {
-              if (!onLogout) {
-                alert('Error: No se puede cerrar sesión');
-                return;
-              }
-              
-              onLogout();
-            }}
-            style={styles.logoutBtn}
-          >
-            <Ionicons name="log-out-outline" size={20} color={theme.primary} />
-            <Text style={[styles.logoutText, { color: theme.primary }]}>Salir</Text>
-          </TouchableOpacity>
-        </View>
+    <View style={{ flex: 1, flexDirection: usesSidebar ? 'row' : 'column' }}>
+      {/* Sidebar — solo tablet/desktop */}
+      {usesSidebar && (
+        <DesktopSidebar
+          routes={sidebarRoutes}
+          activeRouteName={activeRouteName}
+          onNavigate={(name) => tabNavRef.current?.navigate(name)}
+          currentUser={currentUser}
+          overdueCount={overdueCount}
+          urgentCount={urgentCount}
+          onLogout={onLogout}
+          stackNavigation={navigation}
+        />
       )}
+      <View style={{ flex: 1 }}>
       <Tab.Navigator
+        tabBar={(props) => {
+          tabNavRef.current = props.navigation;
+          if (usesSidebar) return null;
+          return <PremiumTabBar {...props} isDark={isDark} insets={insets} />;
+        }}
+        screenListeners={({ route }) => ({
+          focus: () => setActiveRouteName(route.name),
+        })}
         screenOptions={({ route }) => ({
           headerShown: false,
           tabBarIcon: ({ focused, color, size }) => {
@@ -254,29 +278,9 @@ function MainTabs({ onLogout, initialSession }) {
             return <Ionicons name={iconName} size={size} color={color} />;
           },
           tabBarActiveTintColor: theme.primary,
-          tabBarInactiveTintColor: theme.textSecondary,
-          tabBarStyle: {
-            backgroundColor: theme.card,
-            borderTopColor: theme.border,
-            borderTopWidth: 1,
-            height: Platform.OS === 'ios' ? 85 : 70,
-            paddingBottom: Platform.OS === 'ios' ? 25 : 12,
-            paddingTop: 8,
-            elevation: 8,
-          },
-          tabBarLabelStyle: {
-            fontSize: 11,
-            fontWeight: '700',
-            marginTop: 4,
-            letterSpacing: 0.3,
-          },
-          tabBarIconStyle: {
-            marginTop: 2,
-          },
-          // Animaciones entre tabs
-          tabBarHideOnKeyboard: true,
-          animation: 'fade',
-          animationDuration: 250,
+          tabBarInactiveTintColor: theme.iconInactive,
+          isDark: isDark,
+          insets: insets,
         })}
       >
       <Tab.Screen 
@@ -284,8 +288,8 @@ function MainTabs({ onLogout, initialSession }) {
         options={{ 
           title: 'Inicio',
           tabBarBadge: urgentCount > 0 ? urgentCount : undefined,
-          tabBarBadgeStyle: { 
-            backgroundColor: urgentCount > 3 ? '#DC2626' : '#FF9500',
+          tabBarBadgeStyle: {
+            backgroundColor: urgentCount > 3 ? theme.error : theme.warning,
             color: '#FFFFFF',
             fontSize: 10,
             fontWeight: '800',
@@ -331,8 +335,8 @@ function MainTabs({ onLogout, initialSession }) {
         options={{ 
           title: 'Bandeja',
           tabBarBadge: overdueCount > 0 ? overdueCount : undefined,
-          tabBarBadgeStyle: { 
-            backgroundColor: '#DC2626',
+          tabBarBadgeStyle: {
+            backgroundColor: theme.error,
             color: '#FFFFFF',
             fontSize: 11,
             fontWeight: '700',
@@ -414,6 +418,7 @@ function MainTabs({ onLogout, initialSession }) {
         </Tab.Screen>
       )}
     </Tab.Navigator>
+      </View>
     </View>
   );
 }
@@ -427,32 +432,15 @@ export default function App() {
   
   // Función de logout que maneja todo el proceso
   const handleLogout = async () => {
+    // Siempre cerrar sesión aunque algo falle
+    try { await logoutUser(); } catch {}
+    try { await clearOfflineData(); } catch {}
+    setIsAuthenticated(false);
+    setIsLoading(false);
+    setForceUpdate(prev => prev + 1);
     try {
-      // Limpiar sesión de AsyncStorage
-      await logoutUser();
-      
-      // Limpiar cache offline
-      await clearOfflineData();
-      
-      // Forzar actualización completa
-      setIsAuthenticated(false);
-      setIsLoading(false);
-      setForceUpdate(prev => prev + 1);
-      
-      // Toast de confirmación
-      Toast.show({
-        type: 'success',
-        text1: 'Sesión cerrada',
-        text2: 'Has cerrado sesión exitosamente',
-        position: 'top'
-      });
-      
-    } catch (error) {
-      // Forzar logout incluso con error
-      setIsAuthenticated(false);
-      setIsLoading(false);
-      setForceUpdate(prev => prev + 1);
-    }
+      Toast.show({ type: 'success', text1: 'Sesión cerrada', position: 'top' });
+    } catch {}
   };
   
   useEffect(() => {
@@ -460,6 +448,7 @@ export default function App() {
     
     // 🚀 Inicializar logger de producción
     productionLogger.logInfo('App starting');
+    logger.info('App', 'Application starting', { platform: Platform.OS });
     
     // ✅ OPTIMIZACIÓN: Inicializar Performance Monitoring
     if (Platform.OS === 'web') {
@@ -546,22 +535,26 @@ export default function App() {
   }
   
   return (
-    <ErrorBoundary>
-    <ThemeProvider>
-      <GestureHandlerRootView style={{ flex: 1 }}>
+    <ImprovedErrorBoundary navigation={navigationRef}>
+      <ErrorBoundary>
+        <ThemeProvider>
+          <GestureHandlerRootView style={{ flex: 1 }}>
+            <MeshBackground>
         {/* Indicador de estado offline */}
         {isAuthenticated && <OfflineIndicator />}
         {/* Indicador de reportes pendientes de sincronizar */}
         {isAuthenticated && <OfflineSyncIndicator compact={true} />}
-        
+
         <NotificationProvider>
         <TasksProvider key={forceUpdate}>
+        <OfflineBanner />
         <NavigationContainer ref={navigationRef} key={`navigation-${forceUpdate}`}>
           <Stack.Navigator
             screenOptions={{
               headerShown: false,
-              animation: 'slide_from_right',
-              animationDuration: 250,
+              animation: Platform.OS === 'web' ? 'fade' : 'slide_from_right',
+              animationDuration: Platform.OS === 'web' ? 300 : 400,
+              animationEnabled: true,
             }}
           >
             {!isAuthenticated ? (
@@ -713,9 +706,9 @@ export default function App() {
                     </Suspense>
                   )}
                 </Stack.Screen>
-                <Stack.Screen 
-                  name="MyAreaReports" 
-                  options={{ 
+                <Stack.Screen
+                  name="MyAreaReports"
+                  options={{
                     headerShown: false,
                     presentation: 'card',
                     animation: 'slide_from_right'
@@ -724,6 +717,45 @@ export default function App() {
                   {(props) => (
                     <Suspense fallback={<ScreenFallback />}>
                       <MyAreaReportsScreen {...props} />
+                    </Suspense>
+                  )}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="Profile"
+                  options={{
+                    presentation: 'card',
+                    animation: 'slide_from_right'
+                  }}
+                >
+                  {(props) => (
+                    <Suspense fallback={<ScreenFallback />}>
+                      <ProfileScreenEnhanced {...props} onLogout={handleLogout} />
+                    </Suspense>
+                  )}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="Search"
+                  options={{
+                    presentation: 'card',
+                    animation: 'slide_from_right'
+                  }}
+                >
+                  {(props) => (
+                    <Suspense fallback={<ScreenFallback />}>
+                      <SearchScreenEnhanced {...props} />
+                    </Suspense>
+                  )}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="Settings"
+                  options={{
+                    presentation: 'card',
+                    animation: 'slide_from_right'
+                  }}
+                >
+                  {(props) => (
+                    <Suspense fallback={<ScreenFallback />}>
+                      <SettingsScreenEnhanced {...props} onLogout={handleLogout} />
                     </Suspense>
                   )}
                 </Stack.Screen>
@@ -737,9 +769,11 @@ export default function App() {
         {/* Vercel Analytics - Solo en web */}
         {Platform.OS === 'web' && Analytics && <Analytics />}
         {Platform.OS === 'web' && SpeedInsights && <SpeedInsights />}
-      </GestureHandlerRootView>
-    </ThemeProvider>
-    </ErrorBoundary>
+            </MeshBackground>
+          </GestureHandlerRootView>
+        </ThemeProvider>
+      </ErrorBoundary>
+    </ImprovedErrorBoundary>
   );
 }
 
@@ -761,11 +795,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    paddingTop: 45,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5EA'
+    paddingBottom: 10,
+    // backgroundColor y borderBottomColor se aplican inline con theme
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   userInfo: {
     flexDirection: 'row',
@@ -776,7 +808,6 @@ const styles = StyleSheet.create({
   roleBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#5856D6',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
@@ -790,22 +821,23 @@ const styles = StyleSheet.create({
   },
   userName: {
     fontSize: 14,
-    color: '#1C1C1E',
     fontWeight: '600',
     flex: 1
+    // color se aplica inline con theme.text
   },
   logoutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFE5E5',
     paddingHorizontal: 12,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 12,
-    gap: 4
+    gap: 4,
+    minHeight: 44, // touch target mínimo
+    minWidth: 44,
   },
   logoutText: {
     fontSize: 12,
-    color: '#9F2241',
     fontWeight: '700'
+    // color se aplica inline con theme.error
   }
 });

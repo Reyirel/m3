@@ -12,8 +12,6 @@ import {
   where,
   onSnapshot,
   serverTimestamp,
-  deleteDoc,
-  writeBatch,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getCurrentSession } from '../authFirestore';
@@ -91,7 +89,7 @@ export const createArea = async (areaData) => {
       areaId: docRef.id,
     };
   } catch (error) {
-    console.error('❌ Error creando área:', error);
+    if (__DEV__) console.error('❌ Error creando área:', error);
     return {
       success: false,
       error: error.message
@@ -165,7 +163,7 @@ export const updateArea = async (areaId, updates) => {
     log(`✅ Área actualizada: ${areaId}`);
     return { success: true };
   } catch (error) {
-    console.error('❌ Error editando área:', error);
+    if (__DEV__) console.error('❌ Error editando área:', error);
     return {
       success: false,
       error: error.message
@@ -228,7 +226,7 @@ export const deleteArea = async (areaId) => {
     log(`✅ Área eliminada: ${areaId}`);
     return { success: true };
   } catch (error) {
-    console.error('❌ Error eliminando área:', error);
+    if (__DEV__) console.error('❌ Error eliminando área:', error);
     return {
       success: false,
       error: error.message
@@ -255,7 +253,7 @@ export const getAreaById = async (areaId) => {
       ...areaSnap.data(),
     };
   } catch (error) {
-    console.error('Error obteniendo área:', error);
+    if (__DEV__) console.error('Error obteniendo área:', error);
     return null;
   }
 };
@@ -283,13 +281,13 @@ export const subscribeToAreas = (callback) => {
 
       callback(areas);
     }, (error) => {
-      console.error('Error en suscripción a áreas:', error);
+      if (__DEV__) console.error('Error en suscripción a áreas:', error);
       callback([]);
     });
 
     return unsubscribe;
   } catch (error) {
-    console.error('Error suscribiendo a áreas:', error);
+    if (__DEV__) console.error('Error suscribiendo a áreas:', error);
     return () => {};
   }
 };
@@ -311,7 +309,7 @@ export const getAllAreas = async () => {
       }))
       .sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999));
   } catch (error) {
-    console.error('Error obteniendo áreas:', error);
+    if (__DEV__) console.error('Error obteniendo áreas:', error);
     return [];
   }
 };
@@ -356,7 +354,7 @@ export const assignAreaChief = async (areaId, userId) => {
     log(`✅ Jefe asignado a área: ${areaId}`);
     return { success: true };
   } catch (error) {
-    console.error('Error asignando jefe:', error);
+    if (__DEV__) console.error('Error asignando jefe:', error);
     return {
       success: false,
       error: error.message
@@ -380,7 +378,7 @@ async function logAreaAudit(areaId, action, oldData, newData, userId) {
       timestamp: serverTimestamp(),
     });
   } catch (error) {
-    console.error('Error en auditoría:', error);
+    if (__DEV__) console.error('Error en auditoría:', error);
   }
 }
 
@@ -402,7 +400,7 @@ export const getAreaAuditLog = async (areaId) => {
       }))
       .sort((a, b) => (toMs(b.timestamp) || 0) - (toMs(a.timestamp) || 0));
   } catch (error) {
-    console.error('Error obteniendo auditoría:', error);
+    if (__DEV__) console.error('Error obteniendo auditoría:', error);
     return [];
   }
 };

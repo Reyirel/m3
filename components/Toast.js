@@ -1,8 +1,8 @@
 // components/Toast.js
 // Componente de Toast para feedback visual de acciones
 // Versión compatible con web y mobile
-import React, { useEffect, useRef } from 'react';
-import { Animated, Text, StyleSheet, View, TouchableOpacity, Platform } from 'react-native';
+import React, { useEffect, useRef, useCallback } from 'react';
+import { Animated, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const Toast = ({ 
@@ -18,6 +18,23 @@ const Toast = ({
 
   // Disable native driver on web
   const useNativeDriver = Platform.OS !== 'web';
+
+  const hideToast = useCallback(() => {
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: -100,
+        duration: 250,
+        useNativeDriver: useNativeDriver
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: useNativeDriver
+      })
+    ]).start(() => {
+      if (onHide) onHide();
+    });
+  }, [translateY, opacity, useNativeDriver, onHide]);
 
   useEffect(() => {
     if (visible) {
@@ -43,24 +60,7 @@ const Toast = ({
 
       return () => clearTimeout(timer);
     }
-  }, [visible, duration]);
-
-  const hideToast = () => {
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: -100,
-        duration: 250,
-        useNativeDriver: useNativeDriver
-      }),
-      Animated.timing(opacity, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: useNativeDriver
-      })
-    ]).start(() => {
-      if (onHide) onHide();
-    });
-  };
+  }, [visible, duration, hideToast, opacity, translateY, useNativeDriver]);
 
   if (!visible) return null;
 
@@ -84,6 +84,8 @@ const Toast = ({
     }
   };
 
+  const accentColor = getColor();
+
   return (
     <Animated.View
       style={[
@@ -91,23 +93,28 @@ const Toast = ({
         {
           transform: [{ translateY }],
           opacity,
-          backgroundColor: getColor()
+          backgroundColor: 'rgba(18, 10, 15, 0.92)',
+          borderColor: accentColor + '55',
+          borderLeftColor: accentColor,
+          ...(Platform.OS === 'web' ? { backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)' } : {}),
         }
       ]}
     >
-      <Ionicons name={getIcon()} size={24} color="#FFFFFF" style={styles.icon} />
+      <View style={[styles.iconBadge, { backgroundColor: accentColor + '22' }]}>
+        <Ionicons name={getIcon()} size={20} color={accentColor} />
+      </View>
       <Text style={styles.message} numberOfLines={2}>{message}</Text>
-      
+
       {action && (
-        <TouchableOpacity 
-          style={styles.actionButton}
+        <TouchableOpacity
+          style={[styles.actionButton, { backgroundColor: accentColor + '25', borderColor: accentColor + '60' }]}
           onPress={() => {
             action.onPress();
             hideToast();
           }}
           activeOpacity={0.7}
         >
-          <Text style={styles.actionText}>{action.label}</Text>
+          <Text style={[styles.actionText, { color: accentColor }]}>{action.label}</Text>
         </TouchableOpacity>
       )}
     </Animated.View>
@@ -118,41 +125,48 @@ const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     top: 60,
-    left: 20,
-    right: 20,
+    left: 16,
+    right: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
+    paddingVertical: 14,
+    paddingHorizontal: 14,
     borderRadius: 16,
+    borderWidth: 1,
+    borderLeftWidth: 3,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 8,
-    zIndex: 9999
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 16,
+    elevation: 10,
+    zIndex: 9999,
+    gap: 12,
   },
-  icon: {
-    marginRight: 12
+  iconBadge: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   message: {
     flex: 1,
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    letterSpacing: 0.2
+    letterSpacing: 0.1,
+    lineHeight: 20,
   },
   actionButton: {
-    marginLeft: 12,
     paddingVertical: 6,
     paddingHorizontal: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
     borderRadius: 8,
+    borderWidth: 1,
   },
   actionText: {
-    color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
-    letterSpacing: 0.3
+    letterSpacing: 0.3,
   }
 });
 

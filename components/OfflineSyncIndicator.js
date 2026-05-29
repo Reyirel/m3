@@ -11,7 +11,6 @@ import {
   Modal,
   ScrollView,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -31,11 +30,13 @@ const OfflineSyncIndicator = ({ compact = false }) => {
     container: {
       paddingHorizontal: 16,
       paddingVertical: 12,
-      backgroundColor: isDark ? '#272727' : '#f5f5f5',
-      borderRadius: 8,
+      backgroundColor: isDark ? theme.glass : theme.glassStrong,
+      borderRadius: 12,
       marginVertical: 8,
+      borderWidth: 1,
+      borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle,
       borderLeftWidth: 4,
-      borderLeftColor: hasFailedReports ? '#FF3B30' : '#FFA500',
+      borderLeftColor: hasFailedReports ? theme.error : theme.warning,
     },
     compactContainer: {
       flexDirection: 'row',
@@ -79,9 +80,11 @@ const OfflineSyncIndicator = ({ compact = false }) => {
       fontWeight: '600',
     },
     detailModalContent: {
-      backgroundColor: isDark ? '#1a1a1a' : '#fff',
-      borderRadius: 12,
-      padding: 16,
+      backgroundColor: isDark ? '#1C1118' : '#FFFFFF',
+      borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)',
+      borderWidth: 1,
+      borderRadius: 20,
+      padding: 20,
       marginHorizontal: 16,
     },
     detailTitle: {

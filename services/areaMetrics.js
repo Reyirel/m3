@@ -1,8 +1,8 @@
 // services/areaMetrics.js
 // Servicio mejorado para calcular y gestionar métricas por área
 
-import { getCurrentSession } from './authFirestore';
 import { toMs } from '../utils/dateUtils';
+import { isInProgress } from '../utils/taskStatus';
 
 // No importamos Firebase aquí porque areaMetrics solo calcula datos locales
 // Los datos ya vienen de otras funciones que sí usan Firebase
@@ -61,13 +61,13 @@ export const calculateDetailedAreaMetrics = (tasks = [], previousTasks = []) => 
       }
     } else if (status === 'pendiente') {
       byArea[area].pending++;
-    } else if (status === 'en progreso' || status === 'en_progreso' || status === 'en-progreso') {
+    } else if (isInProgress(status)) {
       byArea[area].inProgress++;
     }
 
     // Contar tareas atrasadas
-    if (task.dueDate) {
-      const dueDate = toMs(task.dueDate);
+    if (task.dueAt) {
+      const dueDate = toMs(task.dueAt);
       const now = Date.now();
       if (dueDate < now && (status !== 'cerrada' && status !== 'completada')) {
         byArea[area].overdue++;
@@ -181,12 +181,12 @@ export const getAreaTaskDistribution = (tasks, areaName) => {
       distribution.completed++;
     } else if (status === 'pendiente') {
       distribution.pending++;
-    } else if (status === 'en progreso' || status === 'en_progreso' || status === 'en-progreso') {
+    } else if (isInProgress(status)) {
       distribution.inProgress++;
     }
 
-    if (task.dueDate) {
-      const dueDate = toMs(task.dueDate);
+    if (task.dueAt) {
+      const dueDate = toMs(task.dueAt);
       if (dueDate < Date.now() && (status !== 'cerrada' && status !== 'completada')) {
         distribution.overdue++;
       }

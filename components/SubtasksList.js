@@ -32,7 +32,7 @@ function SubtasksList({
   delegateUsers = [],
   currentUser = null
 }) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   // Secretarios y admin pueden eliminar subtareas
   const canDelete = canEdit || currentUser?.role === 'secretario';
   const [subtasks, setSubtasks] = useState([]);
@@ -81,7 +81,7 @@ function SubtasksList({
       });
       
       // Esperar a que se complete (con timeout de respaldo)
-      const subtaskId = await Promise.race([addSubtaskPromise, timeoutPromise]);
+      await Promise.race([addSubtaskPromise, timeoutPromise]);
       
       // La subtarea se creó exitosamente, esperar un poco para que la BD se actualice
       await new Promise(resolve => setTimeout(resolve, 800));
@@ -220,7 +220,7 @@ function SubtasksList({
   const SubtaskItem = ({ item }) => (
     <View>
       <TouchableOpacity
-        style={[styles.subtaskItem, item.status === 'completada' && styles.subtaskCompleted]}
+        style={[styles.subtaskItem, { backgroundColor: isDark ? theme.glass : '#F9F9F9' }, item.status === 'completada' && { backgroundColor: theme.successAlpha, borderLeftColor: theme.success }]}
         onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}
       >
         <TouchableOpacity
@@ -228,7 +228,7 @@ function SubtasksList({
           onPress={() => handleToggleSubtask(item.id, item.status)}
         >
           {item.status === 'completada' ? (
-            <Ionicons name="checkmark-circle" size={24} color="#4CAF50" />
+            <Ionicons name="checkmark-circle" size={24} color={theme.success} />
           ) : (
             <View style={styles.uncheckedBox} />
           )}
@@ -245,7 +245,7 @@ function SubtasksList({
           </Text>
           
           {item.completedAt && item.status === 'completada' && (
-            <Text style={styles.completedTime}>
+            <Text style={[styles.completedTime, { color: theme.success }]}>
               ✓ Completada hace {formatTimeAgo(item.completedAt)}
             </Text>
           )}
@@ -280,7 +280,7 @@ function SubtasksList({
               {/* Botón de delegar (solo si canEdit, canDelegate y hay usuarios disponibles) */}
               {canEdit && canDelegate && delegateUsers.length > 0 && (
                 <TouchableOpacity
-                  style={[styles.actionButton, styles.delegateButton]}
+                  style={[styles.actionButton, { backgroundColor: theme.warning }]}
                   onPress={() => handleOpenDelegateModal(item)}
                 >
                   <Ionicons name="person-add-outline" size={16} color="#FFF" />
@@ -289,7 +289,7 @@ function SubtasksList({
               )}
               
               <TouchableOpacity
-                style={[styles.actionButton, styles.deleteButton]}
+                style={[styles.actionButton, { backgroundColor: theme.error }]}
                 onPress={() => handleDeleteSubtask(item.id)}
               >
                 <Ionicons name="trash-outline" size={16} color="#FFF" />
@@ -376,7 +376,7 @@ function SubtasksList({
       {/* Botón para agregar */}
       {canEdit && (
         <TouchableOpacity
-          style={styles.addButton}
+          style={[styles.addButton, { backgroundColor: theme.primary }]}
           onPress={() => setShowAddForm(true)}
         >
           <Ionicons name="add-circle" size={20} color="#FFF" />

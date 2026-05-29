@@ -1,25 +1,29 @@
 // components/ContextMenu.js
 // Menú contextual para long-press en TaskItem
 import React, { useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  TouchableOpacity, 
-  StyleSheet, 
-  Modal, 
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Modal,
   Animated,
-  Dimensions 
+  Dimensions,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BlurView } from 'expo-blur';
+import { useTheme } from '../contexts/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
-export default function ContextMenu({ 
-  visible, 
-  onClose, 
+export default function ContextMenu({
+  visible,
+  onClose,
   position = { x: 0, y: 0 },
   actions = []
 }) {
+  const { theme, isDark } = useTheme();
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -42,7 +46,7 @@ export default function ContextMenu({
       scaleAnim.setValue(0);
       opacityAnim.setValue(0);
     }
-  }, [visible]);
+  }, [visible, opacityAnim, scaleAnim]);
 
   if (!visible) return null;
 
@@ -69,17 +73,56 @@ export default function ContextMenu({
               top: position.y,
               left: adjustedX,
               opacity: opacityAnim,
-              transform: [{ scale: scaleAnim }]
+              transform: [{ scale: scaleAnim }],
+              backgroundColor: isDark ? 'rgba(28, 17, 24, 0.82)' : 'rgba(255, 255, 255, 0.82)',
+              borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle,
+              shadowColor: theme.glassShadow,
             }
           ]}
         >
+          {/* Blur layer — native */}
+          {Platform.OS !== 'web' && (
+            <View style={[StyleSheet.absoluteFillObject, styles.blurLayer]}>
+              <BlurView
+                intensity={isDark ? 80 : 65}
+                tint={isDark ? 'dark' : 'light'}
+                style={StyleSheet.absoluteFill}
+              />
+            </View>
+          )}
+          {/* Blur layer — web */}
+          {Platform.OS === 'web' && (
+            <View
+              style={[
+                StyleSheet.absoluteFillObject,
+                styles.blurLayer,
+                {
+                  backdropFilter: `blur(${isDark ? 20 : 16}px)`,
+                  WebkitBackdropFilter: `blur(${isDark ? 20 : 16}px)`,
+                },
+              ]}
+            />
+          )}
+          {/* Top highlight stripe */}
+          <View
+            pointerEvents="none"
+            style={[
+              styles.menuHighlight,
+              { backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.75)' },
+            ]}
+          />
           {actions.map((action, index) => (
             <TouchableOpacity
               key={index}
               style={[
                 styles.menuItem,
+                {
+                  borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)',
+                },
                 index === actions.length - 1 && styles.lastMenuItem,
-                action.danger && styles.dangerItem
+                action.danger && {
+                  backgroundColor: theme.errorAlpha,
+                },
               ]}
               onPress={() => {
                 onClose();
@@ -87,22 +130,35 @@ export default function ContextMenu({
               }}
               activeOpacity={0.7}
             >
-              <Ionicons 
-                name={action.icon} 
-                size={20} 
-                color={action.danger ? '#FF3B30' : '#007AFF'} 
-                style={styles.menuIcon}
-              />
-              <Text 
+              <View style={[
+                styles.actionIconBg,
+                { backgroundColor: action.danger ? theme.errorAlpha : theme.infoAlpha }
+              ]}>
+                <Ionicons
+                  name={action.icon}
+                  size={18}
+                  color={action.danger ? theme.error : theme.info}
+                />
+              </View>
+              <Text
                 style={[
                   styles.menuText,
-                  action.danger && styles.dangerText
+                  { color: action.danger ? theme.error : theme.text },
                 ]}
               >
                 {action.label}
               </Text>
             </TouchableOpacity>
           ))}
+          {/* Rim glow */}
+          <View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFillObject,
+              styles.menuRim,
+              { borderColor: theme.glassBorderSubtle },
+            ]}
+          />
         </Animated.View>
       </TouchableOpacity>
     </Modal>
@@ -116,39 +172,54 @@ const styles = StyleSheet.create({
   },
   menu: {
     position: 'absolute',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 14,
-    minWidth: 200,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 12,
+    borderRadius: 18,
+    minWidth: 210,
+    borderWidth: 1,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.40,
+    shadowRadius: 24,
+    elevation: 18,
     overflow: 'hidden',
+  },
+  blurLayer: {
+    borderRadius: 18,
+    overflow: 'hidden',
+  },
+  menuHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 20,
+    right: 20,
+    height: 1,
+    borderRadius: 1,
+    zIndex: 3,
+  },
+  menuRim: {
+    borderRadius: 18,
+    borderWidth: 1,
+    zIndex: 3,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
+    paddingVertical: 13,
+    paddingHorizontal: 14,
     borderBottomWidth: 0.5,
-    borderBottomColor: '#E5E5EA',
+    gap: 12,
   },
   lastMenuItem: {
     borderBottomWidth: 0,
   },
-  dangerItem: {
-    backgroundColor: '#FFF5F5',
-  },
-  menuIcon: {
-    marginRight: 12,
+  actionIconBg: {
+    width: 34,
+    height: 34,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   menuText: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
-  },
-  dangerText: {
-    color: '#FF3B30',
+    fontSize: 15,
+    fontWeight: '600',
+    flex: 1,
   },
 });

@@ -1,8 +1,8 @@
 // components/DeleteConfirmDialog.js
 // Diálogo mejorado para confirmación de eliminación con detalles y opciones
 
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ConfirmDialog from './ConfirmDialog';
 import { useTheme } from '../contexts/ThemeContext';

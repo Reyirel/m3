@@ -3,15 +3,17 @@
 // Muestra quién trabaja y quién no en base a confirmaciones
 
 import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getComplianceMetrics } from '../services/taskConfirmations';
+import { useTheme } from '../contexts/ThemeContext';
 
 const ComplianceReport = ({ 
   tasks = [],
   onUserPress = null,
   showDetails = true 
 }) => {
+  const { theme } = useTheme();
   const [expandedUser, setExpandedUser] = useState(null);
   const [sortBy, setSortBy] = useState('complianceRate'); // 'complianceRate', 'assigned', 'pending'
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc' = peor primero para identificar quién no trabaja
@@ -49,9 +51,9 @@ const ComplianceReport = ({
     : 0;
 
   const getComplianceColor = (rate) => {
-    if (rate >= 80) return '#10B981'; // Verde
-    if (rate >= 50) return '#F59E0B'; // Amarillo
-    return '#EF4444'; // Rojo
+    if (rate >= 80) return theme.success;
+    if (rate >= 50) return theme.warning;
+    return theme.error;
   };
 
   const getComplianceLabel = (rate) => {
@@ -63,7 +65,7 @@ const ComplianceReport = ({
   if (metrics.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Ionicons name="analytics-outline" size={48} color="#9CA3AF" />
+        <Ionicons name="analytics-outline" size={48} color={theme.textMuted} />
         <Text style={styles.emptyText}>No hay datos de cumplimiento</Text>
         <Text style={styles.emptySubtext}>Las métricas aparecerán cuando haya tareas con confirmaciones</Text>
       </View>
@@ -75,7 +77,7 @@ const ComplianceReport = ({
       {/* Header con resumen */}
       <View style={styles.header}>
         <View style={styles.titleRow}>
-          <Ionicons name="stats-chart" size={22} color="#6366F1" />
+          <Ionicons name="stats-chart" size={22} color={theme.secondary} />
           <Text style={styles.title}>Reporte de Cumplimiento</Text>
         </View>
         <Text style={styles.subtitle}>Quién trabaja y quién no</Text>
@@ -88,11 +90,11 @@ const ComplianceReport = ({
           <Text style={styles.summaryLabel}>Asignadas</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Text style={[styles.summaryValue, { color: '#10B981' }]}>{totalConfirmed}</Text>
+          <Text style={[styles.summaryValue, { color: theme.success }]}>{totalConfirmed}</Text>
           <Text style={styles.summaryLabel}>Confirmadas</Text>
         </View>
         <View style={styles.summaryCard}>
-          <Text style={[styles.summaryValue, { color: '#EF4444' }]}>{totalPending}</Text>
+          <Text style={[styles.summaryValue, { color: theme.error }]}>{totalPending}</Text>
           <Text style={styles.summaryLabel}>Pendientes</Text>
         </View>
         <View style={[styles.summaryCard, { backgroundColor: getComplianceColor(avgComplianceRate) + '15' }]}>
@@ -143,9 +145,9 @@ const ComplianceReport = ({
               {/* Posición/Ranking */}
               <View style={[
                 styles.rankBadge,
-                { backgroundColor: index < 3 
-                  ? (index === 0 ? '#EF4444' : index === 1 ? '#F59E0B' : '#6B7280') 
-                  : '#E5E7EB' 
+                { backgroundColor: index < 3
+                  ? (index === 0 ? theme.error : index === 1 ? theme.warning : theme.textMuted)
+                  : theme.border
                 }
               ]}>
                 <Text style={styles.rankText}>{index + 1}</Text>
@@ -198,21 +200,21 @@ const ComplianceReport = ({
               <View style={styles.expandedDetails}>
                 <View style={styles.detailRow}>
                   <View style={styles.detailItem}>
-                    <Ionicons name="checkmark-circle" size={16} color="#10B981" />
+                    <Ionicons name="checkmark-circle" size={16} color={theme.success} />
                     <Text style={styles.detailText}>{user.confirmed} confirmadas</Text>
                   </View>
                   <View style={styles.detailItem}>
-                    <Ionicons name="time" size={16} color="#F59E0B" />
+                    <Ionicons name="time" size={16} color={theme.warning} />
                     <Text style={styles.detailText}>{user.pending} pendientes</Text>
                   </View>
                 </View>
                 <View style={styles.detailRow}>
                   <View style={styles.detailItem}>
-                    <Ionicons name="flash" size={16} color="#3B82F6" />
+                    <Ionicons name="flash" size={16} color={theme.info} />
                     <Text style={styles.detailText}>{user.onTime} a tiempo</Text>
                   </View>
                   <View style={styles.detailItem}>
-                    <Ionicons name="warning" size={16} color="#EF4444" />
+                    <Ionicons name="warning" size={16} color={theme.error} />
                     <Text style={styles.detailText}>{user.late} tarde</Text>
                   </View>
                 </View>
@@ -234,15 +236,15 @@ const ComplianceReport = ({
         <Text style={styles.legendTitle}>Leyenda de colores:</Text>
         <View style={styles.legendItems}>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#EF4444' }]} />
+            <View style={[styles.legendDot, { backgroundColor: theme.error }]} />
             <Text style={styles.legendText}>{'< 50%'} - Necesita atención</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#F59E0B' }]} />
+            <View style={[styles.legendDot, { backgroundColor: theme.warning }]} />
             <Text style={styles.legendText}>50-79% - Regular</Text>
           </View>
           <View style={styles.legendItem}>
-            <View style={[styles.legendDot, { backgroundColor: '#10B981' }]} />
+            <View style={[styles.legendDot, { backgroundColor: theme.success }]} />
             <Text style={styles.legendText}>≥ 80% - Excelente</Text>
           </View>
         </View>

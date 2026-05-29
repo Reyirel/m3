@@ -1,4 +1,58 @@
-﻿<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
-  <rect width="1024" height="1024" fill="#4630EB"/>
-  <text x="512" y="600" font-size="400" text-anchor="middle" fill="white" font-family="Arial">TODO</text>
+<svg width="1024" height="1024" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Rich burgundy gradient -->
+    <linearGradient id="bg" x1="25%" y1="0%" x2="75%" y2="100%">
+      <stop offset="0%" stop-color="#C94060"/>
+      <stop offset="50%" stop-color="#9F2241"/>
+      <stop offset="100%" stop-color="#6B1530"/>
+    </linearGradient>
+    <!-- Subtle top radial highlight -->
+    <radialGradient id="topGlow" cx="50%" cy="0%" r="75%" fx="50%" fy="0%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.20)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+    <!-- Circle fill: semi-transparent white -->
+    <radialGradient id="circFill" cx="40%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.22)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.06)"/>
+    </radialGradient>
+    <!-- Check shadow -->
+    <filter id="checkShadow" x="-40%" y="-40%" width="180%" height="180%">
+      <feDropShadow dx="0" dy="10" stdDeviation="24" flood-color="#3D0010" flood-opacity="0.45"/>
+    </filter>
+    <!-- Circle glow -->
+    <filter id="circleGlow" x="-15%" y="-15%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="0" stdDeviation="28" flood-color="#9F2241" flood-opacity="0.55"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1024" height="1024" rx="224" ry="224" fill="url(#bg)"/>
+  <!-- Top glow overlay -->
+  <rect width="1024" height="1024" rx="224" ry="224" fill="url(#topGlow)"/>
+
+  <!-- Glass circle -->
+  <circle cx="512" cy="512" r="320" fill="url(#circFill)" filter="url(#circleGlow)"/>
+  <circle cx="512" cy="512" r="320" fill="none" stroke="rgba(255,255,255,0.28)" stroke-width="2.5"/>
+
+  <!-- Bold checkmark — centered, clean -->
+  <g filter="url(#checkShadow)">
+    <polyline
+      points="310,515 455,660 720,360"
+      fill="none"
+      stroke="white"
+      stroke-width="96"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+    />
+  </g>
+
+  <!-- Subtle gloss arc on top half of circle -->
+  <path
+    d="M 220,480 A 310,310 0 0 1 804,480"
+    fill="none"
+    stroke="rgba(255,255,255,0.14)"
+    stroke-width="60"
+    stroke-linecap="round"
+  />
 </svg>

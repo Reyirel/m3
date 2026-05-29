@@ -9,8 +9,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Alert,
-  ActivityIndicator,
-  FlatList,
   RefreshControl,
   Platform,
 } from 'react-native';
@@ -100,7 +98,7 @@ export default function AreaManagementScreen({ navigation }) {
   const direcciones = areas.filter((a) => a.tipo === 'direccion');
 
   const renderAreaCard = (area) => (
-    <View key={area.id} style={[styles.areaCard, { backgroundColor: isDark ? '#2a2a2e' : '#f5f5f7' }]}>
+    <View key={area.id} style={[styles.areaCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
       <View style={styles.areaCardContent}>
         <View style={styles.areaInfo}>
           <View
@@ -129,10 +127,10 @@ export default function AreaManagementScreen({ navigation }) {
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.actionBtn, { backgroundColor: '#FF3B30' + '20' }]}
+            style={[styles.actionBtn, { backgroundColor: theme.errorAlpha }]}
             onPress={() => handleDeleteArea(area)}
           >
-            <Ionicons name="trash" size={18} color="#FF3B30" />
+            <Ionicons name="trash" size={18} color={theme.error} />
           </TouchableOpacity>
         </View>
       </View>
@@ -141,8 +139,8 @@ export default function AreaManagementScreen({ navigation }) {
 
   if (loading) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <LinearGradient colors={[theme.primary, theme.primary + '80']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
+      <View style={[styles.container, { backgroundColor: 'transparent' }]}>
+        <LinearGradient colors={theme.gradientHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { shadowColor: theme.primary }]}>
           <WebSafeBlur intensity={90} style={styles.headerBlur}>
             <View style={styles.headerContent}>
               <View style={styles.headerLeft}>
@@ -169,12 +167,12 @@ export default function AreaManagementScreen({ navigation }) {
   }
 
   return (
-    <View style={[styles.container, { backgroundColor: theme.background }]}>
+    <View style={[styles.container, { backgroundColor: 'transparent' }]}>
       <LinearGradient
-        colors={[theme.primary, theme.primary + '80']}
+        colors={theme.gradientHeader}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { shadowColor: theme.primary }]}
       >
         <WebSafeBlur intensity={90} style={styles.headerBlur}>
           <View style={styles.headerContent}>
@@ -255,14 +253,21 @@ export default function AreaManagementScreen({ navigation }) {
   );
 }
 
-const createStyles = (theme, isDark) =>
+const createStyles = (_theme, _isDark) =>
   StyleSheet.create({
     container: {
       flex: 1,
     },
     header: {
       paddingTop: 48,
-      paddingBottom: 12,
+      paddingBottom: 20,
+      borderBottomLeftRadius: 32,
+      borderBottomRightRadius: 32,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.35,
+      shadowRadius: 20,
+      elevation: 12,
+      overflow: 'hidden',
     },
     headerBlur: {
       paddingHorizontal: 16,
@@ -279,27 +284,38 @@ const createStyles = (theme, isDark) =>
       flex: 1,
     },
     backBtn: {
-      padding: 8,
+      width: 38,
+      height: 38,
       marginRight: 12,
-      borderRadius: 8,
+      borderRadius: 19,
+      backgroundColor: 'rgba(255,255,255,0.14)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.20)',
       justifyContent: 'center',
       alignItems: 'center',
     },
     title: {
-      fontSize: 28,
-      fontWeight: '900',
+      fontSize: 26,
+      fontWeight: '800',
       color: '#FFFFFF',
       letterSpacing: -0.5,
+      textShadowColor: 'rgba(0,0,0,0.20)',
+      textShadowOffset: { width: 0, height: 1 },
+      textShadowRadius: 4,
     },
     subtitle: {
       fontSize: 13,
-      color: 'rgba(255, 255, 255, 0.7)',
-      marginTop: 4,
+      color: 'rgba(255, 255, 255, 0.72)',
+      marginTop: 2,
+      fontWeight: '500',
     },
     createBtn: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: 'rgba(255,255,255,0.14)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.20)',
       justifyContent: 'center',
       alignItems: 'center',
     },
@@ -320,14 +336,14 @@ const createStyles = (theme, isDark) =>
       gap: 10,
     },
     areaCard: {
-      borderRadius: 12,
-      padding: 12,
+      borderRadius: 16,
+      padding: 14,
       marginBottom: 8,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.05,
-      shadowRadius: 4,
-      elevation: 2,
+      shadowOpacity: 0.08,
+      shadowRadius: 8,
+      elevation: 3,
     },
     areaCardContent: {
       flexDirection: 'row',
@@ -365,7 +381,7 @@ const createStyles = (theme, isDark) =>
     actionBtn: {
       width: 36,
       height: 36,
-      borderRadius: 8,
+      borderRadius: 10,
       justifyContent: 'center',
       alignItems: 'center',
     },

@@ -32,12 +32,16 @@ export const confirmTaskCompletion = async (taskId, user) => {
     }
     
     const task = taskSnap.data();
-    const assignedTo = task.assignedTo || [];
+    // Normalizar assignedTo — puede ser string (legacy) o array
+    const rawAssigned = task.assignedTo;
+    const assignedTo = Array.isArray(rawAssigned)
+      ? rawAssigned
+      : rawAssigned ? [rawAssigned] : [];
     const completedBy = task.completedBy || [];
-    
+
     // Verificar que el usuario está asignado
     const userEmail = user.email?.toLowerCase().trim() || '';
-    if (!assignedTo.some(e => e?.toLowerCase().trim() === userEmail)) {
+    if (!assignedTo.some(e => (e || '').toLowerCase().trim() === userEmail)) {
       throw new Error('No estás asignado a esta tarea');
     }
     
@@ -79,7 +83,7 @@ export const confirmTaskCompletion = async (taskId, user) => {
       totalAssigned: assignedTo.length
     };
   } catch (error) {
-    console.error('Error confirmando tarea:', error);
+    if (__DEV__) console.error('Error confirmando tarea:', error);
     throw error;
   }
 };
@@ -116,7 +120,7 @@ export const removeTaskConfirmation = async (taskId, userEmail) => {
     
     return { success: true };
   } catch (error) {
-    console.error('Error removiendo confirmación:', error);
+    if (__DEV__) console.error('Error removiendo confirmación:', error);
     throw error;
   }
 };
@@ -163,7 +167,7 @@ export const getTaskConfirmationStatus = async (taskId) => {
       allCompleted: pending.length === 0 && confirmed.length > 0
     };
   } catch (error) {
-    console.error('Error obteniendo estado de confirmaciones:', error);
+    if (__DEV__) console.error('Error obteniendo estado de confirmaciones:', error);
     throw error;
   }
 };

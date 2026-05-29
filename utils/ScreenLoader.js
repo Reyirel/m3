@@ -39,7 +39,7 @@ export const ScreenFallback = ({ theme = {} }) => (
  *   { timeout: 5000 }
  * );
  */
-export const lazyScreen = (importFunc, options = {}) => {
+export const lazyScreen = (importFunc, _options = {}) => {
   const LazyComponent = lazy(importFunc);
   
   const LazyScreenWrapper = (props) => (
@@ -95,7 +95,7 @@ export const preloadScreen = async (importFunc) => {
   try {
     await importFunc();
   } catch (error) {
-    console.warn('Failed to preload screen:', error);
+    if (__DEV__) console.warn('Failed to preload screen:', error);
   }
 };
 
@@ -116,9 +116,9 @@ export const preloadScreen = async (importFunc) => {
 export const batchPreloadScreens = async (importFuncs) => {
   try {
     await Promise.all(importFuncs.map(preloadScreen));
-    console.log('[Optimization] Screens preloaded successfully');
+    if (__DEV__) console.log('[Optimization] Screens preloaded successfully');
   } catch (error) {
-    console.warn('[Optimization] Batch preload failed:', error);
+    if (__DEV__) console.warn('[Optimization] Batch preload failed:', error);
   }
 };
 
@@ -136,10 +136,10 @@ export const withPerformanceMonitoring = (componentName, importFunc) => {
     try {
       const component = await importFunc();
       const loadTime = Date.now() - startTime;
-      console.log(`[Performance] ${componentName} loaded in ${loadTime}ms`);
+      if (__DEV__) console.log(`[Performance] ${componentName} loaded in ${loadTime}ms`);
       return component;
     } catch (error) {
-      console.error(`[Performance] Failed to load ${componentName}:`, error);
+      if (__DEV__) console.error(`[Performance] Failed to load ${componentName}:`, error);
       throw error;
     }
   });

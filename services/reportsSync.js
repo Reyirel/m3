@@ -8,7 +8,6 @@ import {
   getPendingReports,
   markReportAsSynced,
   markReportAsFailed,
-  deletePendingReport,
   retryFailedReports,
 } from './offlineReportsService';
 
@@ -52,7 +51,7 @@ export const syncPendingReport = async (pendingReport) => {
               reader.readAsDataURL(blob);
             });
           } catch (convError) {
-            console.warn('⚠️ No se pudo convertir imagen a base64:', convError);
+            if (__DEV__) console.warn('⚠️ No se pudo convertir imagen a base64:', convError);
           }
 
           // Subir
@@ -64,7 +63,7 @@ export const syncPendingReport = async (pendingReport) => {
           });
 
         } catch (imgError) {
-          console.error(`⚠️ Error en imagen ${idx + 1}:`, imgError);
+          if (__DEV__) console.error(`⚠️ Error en imagen ${idx + 1}:`, imgError);
           // Continuar con las siguientes imágenes
         }
       }
@@ -80,7 +79,7 @@ export const syncPendingReport = async (pendingReport) => {
     };
 
   } catch (error) {
-    console.error('❌ Error sincronizando reporte:', error);
+    if (__DEV__) console.error('❌ Error sincronizando reporte:', error);
     await markReportAsFailed(pendingReport.id);
     throw error;
   }
@@ -136,7 +135,7 @@ export const syncAllPendingReports = async (onProgress = null) => {
           reportId: report.id,
           error: error.message,
         });
-        console.error(`❌ Error en reporte ${report.id}:`, error);
+        if (__DEV__) console.error(`❌ Error en reporte ${report.id}:`, error);
 
         if (onProgress) {
           onProgress({
@@ -161,7 +160,7 @@ export const syncAllPendingReports = async (onProgress = null) => {
     };
 
   } catch (error) {
-    console.error('❌ Error en sincronización masiva:', error);
+    if (__DEV__) console.error('❌ Error en sincronización masiva:', error);
     return {
       success: 0,
       failed: 0,
@@ -192,7 +191,7 @@ export const checkAndSyncPendingReports = async () => {
     };
 
   } catch (error) {
-    console.error('Error verificando reportes pendientes:', error);
+    if (__DEV__) console.error('Error verificando reportes pendientes:', error);
     return { hasPending: false, error: error.message };
   }
 };
@@ -200,11 +199,11 @@ export const checkAndSyncPendingReports = async () => {
 /**
  * Limpiar reportes que fallaron muchas veces
  */
-export const cleanupFailedReports = async (maxAge = 7) => {
+export const cleanupFailedReports = async (_maxAge = 7) => {
   try {
     await retryFailedReports();
   } catch (error) {
-    console.error('Error limpiando reportes fallidos:', error);
+    if (__DEV__) console.error('Error limpiando reportes fallidos:', error);
   }
 };
 

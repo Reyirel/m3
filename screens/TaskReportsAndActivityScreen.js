@@ -16,6 +16,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { subscribeToTaskReports, subscribeToTaskActivity, rateTaskReport, deleteTaskReport } from '../services/reportsService';
 import ReportFormModal from '../components/ReportFormModal';
@@ -45,37 +46,45 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
   const styles = useMemo(() => StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: isDark ? '#000' : '#f5f5f5',
+      backgroundColor: theme.background,
     },
     header: {
-      backgroundColor: isDark ? '#1a1a1a' : '#fff',
       paddingHorizontal: 16,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: isDark ? '#333' : '#e0e0e0',
+      paddingTop: Platform.OS === 'web' ? 16 : 48,
+      paddingBottom: 22,
+      borderBottomLeftRadius: 32,
+      borderBottomRightRadius: 32,
       flexDirection: 'row',
       alignItems: 'center',
       gap: 12,
+      shadowOffset: { width: 0, height: 10 },
+      shadowOpacity: 0.35,
+      shadowRadius: 20,
+      elevation: 12,
+      overflow: 'hidden',
     },
     headerTitle: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: isDark ? '#fff' : '#000',
-      marginBottom: 4,
+      fontSize: 18,
+      fontWeight: '800',
+      color: '#FFFFFF',
+      marginBottom: 2,
+      letterSpacing: -0.3,
     },
     backButton: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)',
+      width: 38,
+      height: 38,
+      borderRadius: 19,
+      backgroundColor: 'rgba(255,255,255,0.14)',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.20)',
       justifyContent: 'center',
       alignItems: 'center',
     },
     tabsContainer: {
       flexDirection: 'row',
-      backgroundColor: isDark ? '#1a1a1a' : '#fff',
+      backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
       borderBottomWidth: 1,
-      borderBottomColor: isDark ? '#333' : '#e0e0e0',
+      borderBottomColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
     },
     tab: {
       flex: 1,
@@ -90,7 +99,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     tabText: {
       fontSize: 13,
       fontWeight: '600',
-      color: isDark ? '#666' : '#999',
+      color: theme.textSecondary,
     },
     activeTabText: {
       color: theme.primary,
@@ -121,7 +130,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     },
     emptySubtext: {
       fontSize: 13,
-      color: isDark ? '#888' : '#666',
+      color: theme.textSecondary,
       textAlign: 'center',
       marginBottom: 24,
     },
@@ -141,10 +150,12 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     },
     // Report styles
     reportCard: {
-      backgroundColor: isDark ? '#1a1a1a' : '#fff',
+      backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+      borderWidth: 1,
+      borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
       marginHorizontal: 12,
       marginVertical: 8,
-      borderRadius: 12,
+      borderRadius: 16,
       borderLeftWidth: 4,
       borderLeftColor: theme.primary,
       overflow: 'hidden',
@@ -159,7 +170,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     reportTitle: {
       fontSize: 14,
       fontWeight: '600',
-      color: isDark ? '#fff' : '#000',
+      color: theme.text,
       flex: 1,
     },
     reportMeta: {
@@ -170,13 +181,13 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     },
     reportDate: {
       fontSize: 12,
-      color: isDark ? '#888' : '#666',
+      color: theme.textSecondary,
     },
     ratingBadge: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: 2,
-      backgroundColor: isDark ? '#272727' : '#f0f0f0',
+      backgroundColor: isDark ? theme.glass : theme.glassStrong,
       paddingHorizontal: 8,
       paddingVertical: 4,
       borderRadius: 4,
@@ -190,11 +201,11 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
       paddingHorizontal: 12,
       paddingVertical: 10,
       borderTopWidth: 1,
-      borderTopColor: isDark ? '#272727' : '#f0f0f0',
+      borderTopColor: isDark ? theme.glass : theme.glassStrong,
     },
     reportDescription: {
       fontSize: 13,
-      color: isDark ? '#ccc' : '#333',
+      color: theme.text,
       lineHeight: 20,
       marginBottom: 12,
     },
@@ -210,18 +221,18 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
       width: (width - 48) / 2,
       height: (width - 48) / 2,
       borderRadius: 8,
-      backgroundColor: isDark ? '#272727' : '#f0f0f0',
+      backgroundColor: isDark ? theme.glass : theme.glassStrong,
     },
     ratingSection: {
       borderTopWidth: 1,
-      borderTopColor: isDark ? '#272727' : '#f0f0f0',
+      borderTopColor: isDark ? theme.glass : theme.glassStrong,
       paddingTop: 10,
       marginTop: 10,
     },
     ratingLabel: {
       fontSize: 12,
       fontWeight: '600',
-      color: isDark ? '#888' : '#666',
+      color: theme.textSecondary,
       marginBottom: 8,
     },
     starsContainer: {
@@ -234,14 +245,14 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
       width: 44,
       height: 44,
       borderRadius: 22,
-      backgroundColor: isDark ? '#272727' : '#f5f5f5',
+      backgroundColor: isDark ? theme.glass : theme.glassStrong,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 2,
-      borderColor: isDark ? '#333' : '#e0e0e0',
+      borderColor: theme.border,
     },
     starActive: {
-      backgroundColor: '#FFD700',
+      backgroundColor: theme.warning,
     },
     // Activity styles
     activityItem: {
@@ -249,8 +260,8 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
       paddingHorizontal: 12,
       paddingVertical: 12,
       borderBottomWidth: 1,
-      borderBottomColor: isDark ? '#272727' : '#f0f0f0',
-      backgroundColor: isDark ? '#1a1a1a' : '#fff',
+      borderBottomColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+      backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
     },
     activityIcon: {
       width: 40,
@@ -267,16 +278,16 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     activityAction: {
       fontSize: 14,
       fontWeight: '600',
-      color: isDark ? '#fff' : '#000',
+      color: theme.text,
       marginBottom: 2,
     },
     activityTime: {
       fontSize: 12,
-      color: isDark ? '#888' : '#666',
+      color: theme.textSecondary,
     },
     activityDetails: {
       fontSize: 12,
-      color: isDark ? '#aaa' : '#555',
+      color: theme.textSecondary,
       marginTop: 4,
       fontStyle: 'italic',
     },
@@ -346,7 +357,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
         <TouchableOpacity
           onPress={() => handleDeleteReport(reportId)}
           style={{
-            backgroundColor: '#FF3B30',
+            backgroundColor: theme.error,
             justifyContent: 'center',
             alignItems: 'center',
             width: 80,
@@ -425,11 +436,11 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
         <View style={{ flex: 1 }}>
           <Text style={styles.reportTitle}>{item.title}</Text>
           <View style={styles.reportMeta}>
-            <Ionicons name="time-outline" size={12} color={isDark ? '#888' : '#666'} />
+            <Ionicons name="time-outline" size={12} color={theme.textSecondary} />
             <Text style={styles.reportDate}>{formatDate(item.createdAt)}</Text>
             {item.rating > 0 && (
               <View style={styles.ratingBadge}>
-                <Ionicons name="star" size={12} color="#FFD700" />
+                <Ionicons name="star" size={12} color={theme.warning} />
                 <Text style={styles.ratingText}>{item.rating}/5</Text>
               </View>
             )}
@@ -486,7 +497,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
                       <Ionicons
                         name={isHovered ? 'star' : 'star-outline'}
                         size={28}
-                        color={isHovered ? '#FFD700' : isDark ? '#666' : '#ccc'}
+                        color={isHovered ? theme.warning : theme.textMuted}
                       />
                     </TouchableOpacity>
                   );
@@ -528,13 +539,13 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         {/* Header shimmer */}
-        <View style={[styles.header, { paddingTop: 12, paddingBottom: 12 }]}>
+        <LinearGradient colors={theme.gradientHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { paddingTop: 12, paddingBottom: 12 }]}>
           <ShimmerEffect width={32} height={32} borderRadius={8} />
           <View style={{ flex: 1, marginLeft: 12, gap: 8 }}>
             <ShimmerEffect width="60%" height={16} borderRadius={6} />
             <ShimmerEffect width="40%" height={12} borderRadius={5} />
           </View>
-        </View>
+        </LinearGradient>
         {/* Tab bar shimmer */}
         <View style={{ flexDirection: 'row', paddingHorizontal: 16, gap: 8, marginBottom: 12 }}>
           <ShimmerEffect width={100} height={36} borderRadius={18} />
@@ -564,19 +575,19 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <LinearGradient colors={theme.gradientHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.header}>
         {/* Botón de regresar */}
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           style={styles.backButton}
           activeOpacity={0.7}
         >
-          <Ionicons name="chevron-back" size={24} color={isDark ? '#fff' : '#333'} />
+          <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
-        
+
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle} numberOfLines={1}>{taskTitle}</Text>
-          <Text style={{ fontSize: 13, color: isDark ? '#888' : '#666' }}>
+          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
             Reportes e Historial
           </Text>
         </View>
@@ -589,16 +600,18 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
             style={{
               paddingHorizontal: 12,
               paddingVertical: 8,
-              backgroundColor: theme.primary,
+              backgroundColor: 'rgba(255,255,255,0.2)',
               borderRadius: 8,
               justifyContent: 'center',
               alignItems: 'center',
+              borderWidth: 1,
+              borderColor: 'rgba(255,255,255,0.25)',
             }}
           >
             <Ionicons name="download" size={18} color="#fff" />
           </TouchableOpacity>
         )}
-      </View>
+      </LinearGradient>
 
       <View style={styles.tabsContainer}>
         <TouchableOpacity

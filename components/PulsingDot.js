@@ -26,7 +26,7 @@ const PulsingDot = ({
         }),
       ])
     ).start();
-  }, []);
+  }, [duration, pulseAnim]);
 
   const scale = pulseAnim.interpolate({
     inputRange: [0, 1],

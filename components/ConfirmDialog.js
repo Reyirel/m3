@@ -1,14 +1,15 @@
 // components/ConfirmDialog.js
 // Diálogo de confirmación personalizado elegante
 import React from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, Animated, ActivityIndicator } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, Animated, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
-import WebSafeBlur from './WebSafeBlur';
+import { GlassView } from '../utils/GlassView';
 
-export default function ConfirmDialog({ 
-  visible, 
-  title = 'Confirmar', 
+export default function ConfirmDialog({
+  visible,
+  title = 'Confirmar',
   message = '¿Estás seguro?',
   confirmText = 'Aceptar',
   cancelText = 'Cancelar',
@@ -18,7 +19,7 @@ export default function ConfirmDialog({
   isDangerous = false,
   isLoading = false,
   onConfirm,
-  onCancel 
+  onCancel
 }) {
   const { theme, isDark } = useTheme();
   const scaleAnim = React.useRef(new Animated.Value(0.9)).current;
@@ -33,14 +34,13 @@ export default function ConfirmDialog({
         useNativeDriver: true,
       }).start();
     } else {
-      // ⚡ Cierre más rápido (100ms en lugar de animación suave)
       Animated.timing(scaleAnim, {
         toValue: 0.8,
         duration: 100,
         useNativeDriver: true,
       }).start(() => scaleAnim.setValue(0.9));
     }
-  }, [visible]);
+  }, [visible, scaleAnim]);
 
   const handleConfirm = () => {
     if (!isLoading) {
@@ -54,6 +54,14 @@ export default function ConfirmDialog({
     }
   };
 
+  const confirmBg = isDangerousDialog ? theme.error : theme.primary;
+  const confirmShadow = isDangerousDialog ? theme.error : theme.primary;
+  const accentStart = isDangerousDialog ? theme.error : iconColor;
+  const iconBg = isDangerousDialog
+    ? theme.errorAlpha
+    : iconColor + (isDark ? '25' : '18');
+  const resolvedIconColor = isDangerousDialog ? theme.error : iconColor;
+
   return (
     <Modal
       visible={visible}
@@ -61,78 +69,109 @@ export default function ConfirmDialog({
       animationType="fade"
       onRequestClose={handleCancel}
     >
-      <View style={styles.overlay}>
-        <TouchableOpacity 
-          style={styles.backdrop} 
-          activeOpacity={1} 
+      <View style={[styles.overlay, { backgroundColor: theme.overlay }]}>
+        <TouchableOpacity
+          style={styles.backdrop}
+          activeOpacity={1}
           onPress={handleCancel}
         />
-        
-        <Animated.View 
-          style={[
-            styles.dialog,
-            { 
-              backgroundColor: theme.card,
-              transform: [{ scale: scaleAnim }]
-            }
-          ]}
-        >
-          {/* Icono */}
-          <View style={[styles.iconContainer, { 
-            backgroundColor: isDangerousDialog ? '#FEE2E2' : iconColor + '20' 
-          }]}>
-            <Ionicons 
-              name={icon} 
-              size={48} 
-              color={isDangerousDialog ? '#DC2626' : iconColor} 
+
+        <Animated.View style={{ transform: [{ scale: scaleAnim }], width: '85%', maxWidth: 400 }}>
+          <GlassView
+            intensity={isDark ? 60 : 80}
+            tint={isDark ? 'dark' : 'light'}
+            style={[
+              styles.dialog,
+              {
+                backgroundColor: isDark ? theme.glass : theme.glassStrong,
+                borderColor: isDark ? theme.glassBorder : theme.glassBorderStrong,
+                shadowColor: theme.glassShadow,
+                ...(Platform.OS === 'web' ? { backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)' } : {}),
+              }
+            ]}
+          >
+            {/* Top highlight stripe — glass reflection */}
+            <View
+              pointerEvents="none"
+              style={[
+                styles.dialogHighlight,
+                { backgroundColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(255,255,255,0.72)' },
+              ]}
             />
-          </View>
 
-          {/* Título */}
-          <Text style={[styles.title, { color: theme.text }]}>
-            {title}
-          </Text>
+            {/* Top accent strip */}
+            <LinearGradient
+              colors={[accentStart, accentStart + '00']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.accentStrip}
+            />
 
-          {/* Mensaje */}
-          <Text style={[styles.message, { color: theme.textSecondary }]}>
-            {message}
-          </Text>
+            {/* Icono */}
+            <View style={[styles.iconContainer, { backgroundColor: iconBg }]}>
+              <Ionicons
+                name={icon}
+                size={48}
+                color={resolvedIconColor}
+              />
+            </View>
 
-          {/* Botones */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={[styles.button, styles.cancelButton, { 
-                backgroundColor: theme.backgroundSecondary,
-                borderColor: theme.border,
-                opacity: isLoading ? 0.5 : 1
-              }]}
-              onPress={handleCancel}
-              activeOpacity={0.7}
-              disabled={isLoading}
-            >
-              <Text style={[styles.buttonText, { color: theme.text }]}>
-                {cancelText}
-              </Text>
-            </TouchableOpacity>
+            {/* Título */}
+            <Text style={[styles.title, { color: theme.text }]}>
+              {title}
+            </Text>
 
-            <TouchableOpacity
-              style={[styles.button, styles.confirmButton, { 
-                backgroundColor: isDangerousDialog ? '#DC2626' : '#9F2241',
-                opacity: isLoading ? 0.8 : 1
-              }]}
-              onPress={handleConfirm}
-              activeOpacity={0.8}
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <ActivityIndicator color="#FFFFFF" size="small" />
-              ) : (
-                <Text style={[styles.buttonText, styles.confirmButtonText]}>
-                  {confirmText}
+            {/* Mensaje */}
+            <Text style={[styles.message, { color: theme.textSecondary }]}>
+              {message}
+            </Text>
+
+            {/* Rim glow */}
+            <View
+              pointerEvents="none"
+              style={[
+                styles.dialogRim,
+                { borderColor: theme.glassBorderSubtle },
+              ]}
+            />
+
+            {/* Botones */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.button, styles.cancelButton, {
+                  backgroundColor: isDark ? theme.glass : theme.glassLight,
+                  borderColor: isDark ? theme.glassBorder : theme.glassBorderSubtle,
+                  opacity: isLoading ? 0.5 : 1,
+                }]}
+                onPress={handleCancel}
+                activeOpacity={0.7}
+                disabled={isLoading}
+              >
+                <Text style={[styles.buttonText, { color: theme.text }]}>
+                  {cancelText}
                 </Text>
-              )}
-            </TouchableOpacity>
-          </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.button, styles.confirmButton, {
+                  backgroundColor: confirmBg,
+                  shadowColor: confirmShadow,
+                  opacity: isLoading ? 0.8 : 1,
+                }]}
+                onPress={handleConfirm}
+                activeOpacity={0.8}
+                disabled={isLoading}
+              >
+                {isLoading ? (
+                  <ActivityIndicator color="#FFFFFF" size="small" />
+                ) : (
+                  <Text style={[styles.buttonText, styles.confirmButtonText]}>
+                    {confirmText}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </GlassView>
         </Animated.View>
       </View>
     </Modal>
@@ -144,7 +183,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   backdrop: {
     position: 'absolute',
@@ -154,16 +192,39 @@ const styles = StyleSheet.create({
     bottom: 0,
   },
   dialog: {
-    width: '85%',
-    maxWidth: 400,
     borderRadius: 24,
-    padding: 28,
+    paddingHorizontal: 28,
+    paddingBottom: 28,
     alignItems: 'center',
-    shadowColor: '#000',
+    borderWidth: 1,
     shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.5,
     shadowRadius: 40,
     elevation: 24,
+    overflow: 'hidden',
+  },
+  dialogHighlight: {
+    position: 'absolute',
+    top: 0,
+    left: 28,
+    right: 28,
+    height: 1,
+    borderRadius: 1,
+    zIndex: 2,
+    pointerEvents: 'none',
+  },
+  dialogRim: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 24,
+    borderWidth: 1,
+    zIndex: 2,
+    pointerEvents: 'none',
+  },
+  accentStrip: {
+    height: 3,
+    width: '100%',
+    marginBottom: 24,
+    alignSelf: 'stretch',
   },
   iconContainer: {
     width: 80,
@@ -205,7 +266,6 @@ const styles = StyleSheet.create({
   },
   confirmButton: {
     borderWidth: 0,
-    shadowColor: '#9F2241',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,

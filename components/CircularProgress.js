@@ -13,7 +13,7 @@ const CircularProgress = ({
   color = '#007AFF',
   backgroundColor = '#E5E5EA',
   showPercentage = true,
-  duration = 1000,
+  _duration = 1000,
 }) => {
   const animatedProgress = useRef(new Animated.Value(0)).current;
   const radius = (size - strokeWidth) / 2;
@@ -26,7 +26,7 @@ const CircularProgress = ({
       tension: 40,
       friction: 8,
     }).start();
-  }, [progress]);
+  }, [progress, animatedProgress]);
 
   const strokeDashoffset = animatedProgress.interpolate({
     inputRange: [0, 100],

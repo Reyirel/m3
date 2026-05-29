@@ -49,7 +49,7 @@ const LoadingIndicator = memo(function LoadingIndicator({
       loop.start();
     }
     return () => { if (loop) loop.stop(); };
-  }, [type]);
+  }, [type, dot1, dot2, dot3, spinValue]);
 
   const spin = spinValue.interpolate({
     inputRange: [0, 1],

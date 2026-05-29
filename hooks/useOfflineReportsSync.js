@@ -6,7 +6,7 @@
  */
 import { useEffect, useState, useCallback, useRef } from 'react';
 import NetInfo from '@react-native-community/netinfo';
-import { checkAndSyncPendingReports, syncAllPendingReports } from '../services/reportsSync';
+import { syncAllPendingReports } from '../services/reportsSync';
 import { getSyncStats } from '../services/offlineReportsService';
 
 export const useOfflineReportsSync = () => {
@@ -42,29 +42,6 @@ export const useOfflineReportsSync = () => {
     // Actualizar cada 5 segundos
     const interval = setInterval(loadStats, 5000);
     return () => clearInterval(interval);
-  }, []);
-
-  // Monitorear conexión
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener(state => {
-      const wasConnected = isConnected;
-      const nowConnected = state.isConnected === true;
-      
-      setIsConnected(nowConnected);
-      
-      // Si recuperó conexión, sincronizar
-      if (!wasConnected && nowConnected) {
-        console.log('🌐 Conexión recuperada, sincronizando reportes pendientes...');
-        performSync();
-      }
-    });
-
-    // También sincronizar al cargar
-    NetInfo.fetch().then(state => {
-      setIsConnected(state.isConnected === true);
-    });
-
-    return () => unsubscribe();
   }, []);
 
   const performSync = useCallback(async () => {
@@ -112,6 +89,30 @@ export const useOfflineReportsSync = () => {
       setIsSyncing(false);
       syncingRef.current = false;
     }
+  }, []);
+
+  // Monitorear conexión
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      const wasConnected = isConnected;
+      const nowConnected = state.isConnected === true;
+
+      setIsConnected(nowConnected);
+
+      // Si recuperó conexión, sincronizar
+      if (!wasConnected && nowConnected) {
+        console.log('🌐 Conexión recuperada, sincronizando reportes pendientes...');
+        performSync();
+      }
+    });
+
+    // También sincronizar al cargar
+    NetInfo.fetch().then(state => {
+      setIsConnected(state.isConnected === true);
+    });
+
+    return () => unsubscribe();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Función para sincronizar manualmente

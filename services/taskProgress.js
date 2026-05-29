@@ -7,9 +7,7 @@ import {
   doc,
   getDoc,
   onSnapshot,
-  query,
-  getDocs,
-  where
+  getDocs
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toMs } from '../utils/dateUtils';
@@ -45,7 +43,7 @@ export function subscribeToTaskProgress(taskId, callback) {
 
     return unsubscribe;
   } catch (error) {
-    console.error('Error en subscribeToTaskProgress:', error);
+    if (__DEV__) console.error('Error en subscribeToTaskProgress:', error);
     return () => {};
   }
 }
@@ -58,7 +56,7 @@ export function subscribeToTaskProgress(taskId, callback) {
  */
 function calculateProgress(taskData, subtasks) {
   const assignees = taskData.assignedTo || [];
-  const assignments = taskData.assignments || [];
+  const _assignments = taskData.assignments || [];
 
   // 1. Progreso general (basado en subtareas completadas)
   let overallProgress = 0;
@@ -152,7 +150,7 @@ export async function getTaskProgress(taskId) {
 
     return calculateProgress(taskData, subtasks);
   } catch (error) {
-    console.error('Error obteniendo progreso:', error);
+    if (__DEV__) console.error('Error obteniendo progreso:', error);
     return null;
   }
 }
@@ -177,17 +175,17 @@ export function subscribeToMultipleTasksProgress(taskIds, callback) {
 
   const unsubscribers = [];
   const progressMap = {};
-  let activeSubscriptions = 0;
+  let _activeSubscriptions = 0;
 
   // Suscribir a cada tarea
   taskIds.forEach(taskId => {
     const unsub = subscribeToTaskProgress(taskId, (progressData) => {
       if (progressData) {
         progressMap[taskId] = progressData;
-        activeSubscriptions = Object.keys(progressMap).length;
+        _activeSubscriptions = Object.keys(progressMap).length;
       } else {
         delete progressMap[taskId];
-        activeSubscriptions = Object.keys(progressMap).length;
+        _activeSubscriptions = Object.keys(progressMap).length;
       }
       
       // Enviar mapa actualizado (más eficiente que array)
@@ -206,7 +204,7 @@ export function subscribeToMultipleTasksProgress(taskIds, callback) {
         try {
           unsub();
         } catch (e) {
-          console.warn('Error al desuscribir:', e);
+          if (__DEV__) console.warn('Error al desuscribir:', e);
         }
       }
     });

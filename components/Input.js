@@ -1,11 +1,12 @@
 // components/Input.js
-// Input moderno con animaciones y validación visual
-import { useState } from 'react';
-import { View, TextInput, Text, StyleSheet } from 'react-native';
+// Input moderno con glasmorfismo, animaciones y validación visual
+import { useState, useRef, useEffect } from 'react';
+import { View, TextInput, Text, StyleSheet, Animated, Platform } from 'react-native';
+import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 
-export default function Input({ 
+export default function Input({
   label = '',
   placeholder = '',
   value = '',
@@ -18,19 +19,65 @@ export default function Input({
   secureTextEntry = false,
   keyboardType = 'default',
   autoCapitalize = 'sentences',
+  autoComplete,          // Pasa directamente al TextInput (web: 'email', 'current-password', etc.)
   accessibilityLabel,
   accessibilityHint,
   testID,
   style,
 }) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
   const [isFocused, setIsFocused] = useState(false);
 
-  const borderColor = error ? theme.error : isFocused ? theme.inputBorderFocused : theme.inputBorder;
+  // Animated values
+  const glowAnim = useRef(new Animated.Value(0)).current;
+  const iconScaleAnim = useRef(new Animated.Value(1)).current;
+  const labelColorAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(glowAnim, {
+        toValue: isFocused ? 1 : 0,
+        duration: 200,
+        useNativeDriver: false,
+      }),
+      Animated.spring(iconScaleAnim, {
+        toValue: isFocused ? 1.15 : 1,
+        friction: 6,
+        tension: 120,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [isFocused, glowAnim, iconScaleAnim]);
+
+  const borderColor = error
+    ? theme.error
+    : isFocused
+    ? theme.inputBorderFocused
+    : isDark ? theme.glassBorder : theme.border;
+
+  const glowOpacity = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+
+  const glowScale = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.98, 1.01],
+  });
+
+  const iconColor = error
+    ? theme.error
+    : isFocused
+    ? theme.primary
+    : theme.textSecondary;
 
   return (
-    <View style={[styles.container, style]}>
-      {label && (
+    <Animated.View style={[
+      styles.container,
+      style,
+      { transform: [{ scale: glowScale }] },
+    ]}>
+      {label ? (
         <Text
           style={[
             styles.label,
@@ -39,30 +86,64 @@ export default function Input({
         >
           {label}
         </Text>
+      ) : null}
+
+      {/* Animated glow halo */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            borderRadius: 14,
+            opacity: glowOpacity,
+            shadowColor: error ? theme.error : theme.primary,
+            shadowOffset: { width: 0, height: 0 },
+            shadowOpacity: 0.35,
+            shadowRadius: 10,
+          },
+        ]}
+      />
+
+      {/* Blur glass layer — native only; web usa backdropFilter en el contenedor */}
+      {Platform.OS !== 'web' && (
+        <View style={[StyleSheet.absoluteFill, { borderRadius: 12, overflow: 'hidden', zIndex: -1 }]}>
+          <BlurView
+            intensity={isFocused ? 60 : 30}
+            tint={isDark ? 'dark' : 'light'}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
       )}
 
       <View
         style={[
           styles.inputContainer,
           {
-            backgroundColor: theme.inputBackground,
+            backgroundColor: isFocused
+              ? (isDark ? theme.glassStrong : 'rgba(255,255,255,0.85)')
+              : (isDark ? theme.glass : 'rgba(255,255,255,0.60)'),
             borderColor,
-            borderWidth: 2,
+            borderWidth: isFocused ? 2 : 1.5,
+            // Web: backdropFilter con saturate para glass real
+            ...(Platform.OS === 'web' ? {
+              backdropFilter: `blur(${isFocused ? 24 : 16}px) saturate(180%)`,
+              WebkitBackdropFilter: `blur(${isFocused ? 24 : 16}px) saturate(180%)`,
+            } : {}),
           },
           disabled && styles.inputDisabled,
           multiline && { height: 100, alignItems: 'flex-start' },
         ]}
       >
         {icon && (
-          <View style={styles.iconContainer}>
-            <Ionicons 
-              name={icon} 
-              size={20} 
-              color={error ? theme.error : isFocused ? theme.primary : theme.textSecondary} 
+          <Animated.View style={[styles.iconContainer, { transform: [{ scale: iconScaleAnim }] }]}>
+            <Ionicons
+              name={icon}
+              size={20}
+              color={iconColor}
             />
-          </View>
+          </Animated.View>
         )}
-        
+
         <TextInput
           style={[
             styles.input,
@@ -80,6 +161,7 @@ export default function Input({
           secureTextEntry={secureTextEntry}
           keyboardType={keyboardType}
           autoCapitalize={autoCapitalize}
+          autoComplete={autoComplete}
           accessible={true}
           accessibilityLabel={accessibilityLabel || label || placeholder}
           accessibilityHint={accessibilityHint || (error ? `Error: ${error}` : undefined)}
@@ -89,21 +171,37 @@ export default function Input({
 
         {(error || success) && (
           <View style={styles.statusIcon}>
-            <Ionicons 
-              name={error ? "alert-circle" : "checkmark-circle"} 
-              size={20} 
-              color={error ? theme.error : theme.success} 
+            <Ionicons
+              name={error ? 'alert-circle' : 'checkmark-circle'}
+              size={20}
+              color={error ? theme.error : theme.success}
             />
           </View>
         )}
       </View>
 
-      {error && (
+      {/* Rim Glow */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          {
+            borderRadius: 12,
+            borderWidth: 1.5,
+            borderColor: error
+              ? theme.error + '55'
+              : isDark ? theme.glassBorder : theme.glassBorderStrong,
+            opacity: glowOpacity,
+          },
+        ]}
+      />
+
+      {error ? (
         <Text style={[styles.errorText, { color: theme.error }]}>
           {error}
         </Text>
-      )}
-    </View>
+      ) : null}
+    </Animated.View>
   );
 }
 
@@ -125,7 +223,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   inputDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   iconContainer: {
     marginRight: 10,

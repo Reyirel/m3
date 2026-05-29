@@ -13,9 +13,6 @@ let success = 0;
 // Verificar archivos necesarios
 const requiredFiles = [
   'vercel.json',
-  'api/send-email.js',
-  'services/emailNotifications.vercel.js',
-  'CONFIGURACION_VERCEL_PRO.md',
   'package.json'
 ];
 
@@ -84,32 +81,6 @@ if (vercelConfig.rewrites) {
 } else {
   console.log('  ⚠️ Rewrites no configurados');
   warnings++;
-}
-
-// Verificar API route
-console.log('\n🔌 Verificando API routes...');
-const apiFile = 'api/send-email.js';
-if (fs.existsSync(apiFile)) {
-  const apiContent = fs.readFileSync(apiFile, 'utf8');
-  
-  if (apiContent.includes('process.env.SENDGRID_API_KEY')) {
-    console.log('  ✅ API usa variables de entorno seguras');
-    success++;
-  } else {
-    console.log('  ❌ API NO usa variables de entorno');
-    errors++;
-  }
-  
-  if (apiContent.includes('emailRegex')) {
-    console.log('  ✅ Validación de email implementada');
-    success++;
-  } else {
-    console.log('  ⚠️ Sin validación de email');
-    warnings++;
-  }
-} else {
-  console.log('  ❌ API route no encontrada');
-  errors++;
 }
 
 // Verificar App.js
