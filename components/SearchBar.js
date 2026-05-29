@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, memo } from 'react';
+import React, { useState, useEffect, useCallback, memo, useRef, useImperativeHandle, forwardRef } from 'react';
 import { View, TextInput, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -13,10 +13,16 @@ import { hapticLight } from '../utils/haptics';
  * @param {string} placeholder - Placeholder text
  * @param {number} debounceMs - Debounce delay in milliseconds (default: 100)
  */
-const SearchBar = memo(function SearchBar({ onSearch, placeholder = 'Buscar tareas...', debounceMs = 100 }) {
+const SearchBar = memo(forwardRef(function SearchBar({ onSearch, placeholder = 'Buscar tareas...', debounceMs = 100 }, ref) {
   const { theme, isDark } = useTheme();
   const [searchText, setSearchText] = useState('');
   const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef(null);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => inputRef.current?.focus(),
+    clear: () => { setSearchText(''); onSearch(''); },
+  }));
 
   // Debounce search
   useEffect(() => {
@@ -86,6 +92,7 @@ const SearchBar = memo(function SearchBar({ onSearch, placeholder = 'Buscar tare
       />
       <Ionicons name="search" size={20} color={isFocused ? theme.primary : theme.textSecondary} style={styles.icon} />
       <TextInput
+        ref={inputRef}
         style={[styles.input, { color: theme.text }]}
         placeholder={placeholder}
         placeholderTextColor={theme.textSecondary}
@@ -112,7 +119,7 @@ const SearchBar = memo(function SearchBar({ onSearch, placeholder = 'Buscar tare
       )}
     </View>
   );
-});
+}));
 
 const styles = StyleSheet.create({
   container: {

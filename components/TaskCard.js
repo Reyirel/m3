@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Animated,
   Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { toMs } from '../utils/dateUtils';
@@ -37,6 +38,7 @@ export default function TaskCard({
 }) {
   const { theme, isDark } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const [hovered, setHovered] = useState(false);
 
   const handlePressIn = useCallback(() => {
     Animated.spring(scaleAnim, {
@@ -76,9 +78,17 @@ export default function TaskCard({
     : task.status === 'bloqueado' ? theme.error
     : theme.statusPending;
 
-  const dueDate = task.dueAt
-    ? new Date(toMs(task.dueAt)).toLocaleDateString('es-MX', { month: 'short', day: 'numeric' })
-    : null;
+  const dueDate = (() => {
+    if (!task.dueAt) return null;
+    const ms = toMs(task.dueAt);
+    const diffDays = Math.ceil((ms - Date.now()) / (1000 * 60 * 60 * 24));
+    if (diffDays === 0) return 'Hoy';
+    if (diffDays === 1) return 'Mañana';
+    if (diffDays === -1) return 'Ayer';
+    if (diffDays > 1 && diffDays < 7) return `en ${diffDays}d`;
+    if (diffDays < 0 && diffDays > -7) return `hace ${Math.abs(diffDays)}d`;
+    return new Date(ms).toLocaleDateString('es-MX', { month: 'short', day: 'numeric' });
+  })();
 
   return (
     <TouchableOpacity
@@ -91,25 +101,38 @@ export default function TaskCard({
       accessibilityLabel={`Tarea: ${task.title}`}
       accessibilityHint={`Prioridad ${task.priority}, estado ${task.status}`}
       style={Platform.OS === 'web' ? { cursor: 'pointer' } : undefined}
+      {...(Platform.OS === 'web' ? {
+        onMouseEnter: () => setHovered(true),
+        onMouseLeave: () => setHovered(false),
+      } : {})}
     >
       <Animated.View
         style={[
           styles.card,
           {
             backgroundColor: isDark ? theme.card : theme.glassStrong,
-            borderColor: isOverdue
+            borderColor: hovered
+              ? accentColor + '60'
+              : isOverdue
               ? theme.error + '40'
               : isClosed
               ? theme.success + '30'
               : isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
-            shadowColor: isOverdue ? theme.error : theme.shadowColor,
+            shadowColor: isOverdue ? theme.error : hovered ? accentColor : theme.shadowColor,
+            shadowOpacity: hovered ? 0.18 : 0.09,
+            shadowRadius: hovered ? 20 : 12,
             opacity: isClosed ? 0.72 : 1,
             transform: [{ scale: scaleAnim }],
           },
         ]}
       >
         {/* Left accent bar */}
-        <View style={[styles.leftBar, { backgroundColor: accentColor }]} />
+        <LinearGradient
+          colors={[accentColor, accentColor + '88']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.leftBar}
+        />
 
         <View style={styles.inner}>
           {/* Title + status badge */}

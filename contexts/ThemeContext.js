@@ -2,6 +2,7 @@
 // Contexto para manejar el tema (claro/oscuro) de la aplicación
 import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Appearance } from 'react-native';
 
 // Usar globalThis para que React.lazy() bundles compartan la misma instancia de contexto
 if (!globalThis.__THEME_CONTEXT__) {
@@ -59,9 +60,12 @@ export const ThemeProvider = ({ children }) => {
       const savedTheme = await AsyncStorage.getItem('appTheme');
       if (savedTheme !== null) {
         setIsDark(savedTheme === 'dark');
+      } else {
+        // Sin preferencia guardada → usar tema del sistema operativo
+        setIsDark(Appearance.getColorScheme() === 'dark');
       }
-    } catch (error) {
-      // Error loading theme
+    } catch {
+      setIsDark(Appearance.getColorScheme() === 'dark');
     }
   };
 

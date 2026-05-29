@@ -42,7 +42,9 @@ import { TasksProvider, useTasks } from './contexts/TasksContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { getGestureHandlerRootView } from './utils/platformComponents';
 import PremiumTabBar from './components/PremiumTabBar';
+import DesktopSidebar, { SIDEBAR_WIDTH } from './components/DesktopSidebar';
 import { ScreenTransition } from './components';
+import { useResponsive } from './utils/responsive';
 import MeshBackground from './components/MeshBackground';
 
 // ✅ OPTIMIZACIÓN: Lazy loading de screens (-40% bundle inicial)
@@ -119,15 +121,19 @@ function ScreenFallback() {
 }
 
 // Tab Navigator con todas las pantallas
-function MainTabs({ onLogout, initialSession }) {
+function MainTabs({ onLogout, initialSession, navigation }) {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { tasks: contextTasks } = useTasks();
+  const { isDesktop, isTablet } = useResponsive();
+  const usesSidebar = isDesktop || isTablet;
   // Usar initialSession para evitar flash de tabs condicionales en primer render
   const [currentUser, setCurrentUser] = useState(initialSession || null);
   const [overdueCount, setOverdueCount] = useState(0);
   const [urgentCount, setUrgentCount] = useState(0); // 🔔 Tareas urgentes (vencidas + próximas <24h)
   const unsubPushRef = useRef(null);
+  const tabNavRef = useRef(null);
+  const [activeRouteName, setActiveRouteName] = useState('Home');
 
   // Obtener sesión actual solo una vez al montar
   useEffect(() => {
@@ -219,10 +225,46 @@ function MainTabs({ onLogout, initialSession }) {
     }
   };
 
+  // Rutas del sidebar calculadas según rol del usuario
+  const sidebarRoutes = React.useMemo(() => {
+    const routes = [
+      { name: 'Home' },
+      { name: 'Kanban' },
+      { name: 'Calendar' },
+      { name: 'Inbox' },
+    ];
+    if (canSeeReports) routes.push({ name: 'Reports' });
+    if (isSecretario) routes.push({ name: 'SecretarioDashboard' });
+    if (isAdmin) routes.push({ name: 'ExecutiveDashboard' });
+    if (isAdmin) routes.push({ name: 'Admin' });
+    return routes;
+  }, [isAdmin, isSecretario, canSeeReports]);
+
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flex: 1, flexDirection: usesSidebar ? 'row' : 'column' }}>
+      {/* Sidebar — solo tablet/desktop */}
+      {usesSidebar && (
+        <DesktopSidebar
+          routes={sidebarRoutes}
+          activeRouteName={activeRouteName}
+          onNavigate={(name) => tabNavRef.current?.navigate(name)}
+          currentUser={currentUser}
+          overdueCount={overdueCount}
+          urgentCount={urgentCount}
+          onLogout={onLogout}
+          stackNavigation={navigation}
+        />
+      )}
+      <View style={{ flex: 1 }}>
       <Tab.Navigator
-        tabBarComponent={PremiumTabBar}
+        tabBar={(props) => {
+          tabNavRef.current = props.navigation;
+          if (usesSidebar) return null;
+          return <PremiumTabBar {...props} isDark={isDark} insets={insets} />;
+        }}
+        screenListeners={({ route }) => ({
+          focus: () => setActiveRouteName(route.name),
+        })}
         screenOptions={({ route }) => ({
           headerShown: false,
           tabBarIcon: ({ focused, color, size }) => {
@@ -376,6 +418,7 @@ function MainTabs({ onLogout, initialSession }) {
         </Tab.Screen>
       )}
     </Tab.Navigator>
+      </View>
     </View>
   );
 }

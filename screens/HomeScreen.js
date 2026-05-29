@@ -75,6 +75,20 @@ export default function HomeScreen({ navigation, onLogout }) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef(null);
   const deletingTasksRef = useRef(new Set());
+  const searchRef = useRef(null);
+
+  // Cmd+K / Ctrl+K → enfocar búsqueda (solo web)
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    const handler = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        searchRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, []);
 
   useEffect(() => {
     Animated.parallel([
@@ -371,6 +385,7 @@ export default function HomeScreen({ navigation, onLogout }) {
           onLogout={onLogout}
           onProfilePress={() => navigation.navigate('Profile')}
           onNotificationsPress={() => navigation.navigate('Notifications')}
+          searchRef={searchRef}
         />
 
         <OverdueAlert
@@ -443,16 +458,19 @@ export default function HomeScreen({ navigation, onLogout }) {
         <Animated.View style={{ flex: 1, opacity: listOpacity, transform: [{ translateY: listSlide }] }}>
           <FlatList
             ref={flatListRef}
+            key={isDesktop || isTablet ? 'grid-2' : 'list-1'}
             data={filteredTasks}
             keyExtractor={keyExtractor}
+            numColumns={isDesktop || isTablet ? 2 : 1}
+            columnWrapperStyle={isDesktop || isTablet ? { alignItems: 'flex-start' } : undefined}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
             getItemLayout={(_, index) => ({ length: 120, offset: 120 * index, index })}
             windowSize={5}
-            maxToRenderPerBatch={5}
+            maxToRenderPerBatch={isDesktop || isTablet ? 10 : 5}
             removeClippedSubviews
-            initialNumToRender={8}
+            initialNumToRender={isDesktop || isTablet ? 14 : 8}
             updateCellsBatchingPeriod={100}
             refreshControl={
               <RefreshControl
@@ -469,10 +487,10 @@ export default function HomeScreen({ navigation, onLogout }) {
                 {quickStatusFilter === 'todas' && tasks.length > 0 && (() => {
                   const overdue = tasks.filter(t => t.dueAt && toMs(t.dueAt) < Date.now() && t.status !== 'cerrada').length;
                   const stats = [
-                    { label: 'Pendientes', count: statusCounts.pendiente, color: theme.warning },
-                    { label: 'En proceso', count: statusCounts['en-progreso'], color: theme.info },
-                    overdue > 0 && { label: 'Vencidas', count: overdue, color: theme.error },
-                    { label: 'Cerradas', count: statusCounts.cerrada, color: theme.success },
+                    { label: 'Pendientes', count: statusCounts.pendiente, color: theme.warning, filter: 'pendiente', icon: 'time-outline' },
+                    { label: 'En proceso', count: statusCounts['en-progreso'], color: theme.info, filter: 'en-progreso', icon: 'play-circle-outline' },
+                    overdue > 0 && { label: 'Vencidas', count: overdue, color: theme.error, filter: null, icon: 'alert-circle-outline' },
+                    { label: 'Cerradas', count: statusCounts.cerrada, color: theme.success, filter: 'cerrada', icon: 'checkmark-done-circle-outline' },
                   ].filter(Boolean);
                   return (
                     <ScrollView
@@ -481,10 +499,24 @@ export default function HomeScreen({ navigation, onLogout }) {
                       contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 10 }}
                     >
                       {stats.map((s, i) => (
-                        <View key={i} style={[{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 99, borderWidth: 1 }, { backgroundColor: s.color + '14', borderColor: s.color + '40' }]}>
+                        <TouchableOpacity
+                          key={i}
+                          onPress={() => s.filter && (hapticLight(), setQuickStatusFilter(s.filter))}
+                          activeOpacity={s.filter ? 0.65 : 1}
+                          style={[{
+                            flexDirection: 'row', alignItems: 'center', gap: 5,
+                            paddingHorizontal: 12, paddingVertical: 7,
+                            borderRadius: 99, borderWidth: 1,
+                          }, {
+                            backgroundColor: s.color + '18',
+                            borderColor: s.color + (s.filter ? '55' : '33'),
+                          }]}
+                        >
+                          <Ionicons name={s.icon} size={13} color={s.color} />
                           <Text style={{ fontSize: 14, fontWeight: '800', color: s.color }}>{s.count}</Text>
                           <Text style={{ fontSize: 12, fontWeight: '500', color: s.color + 'CC' }}>{s.label}</Text>
-                        </View>
+                          {s.filter && <Ionicons name="chevron-forward" size={11} color={s.color + '88'} />}
+                        </TouchableOpacity>
                       ))}
                     </ScrollView>
                   );
@@ -517,17 +549,19 @@ export default function HomeScreen({ navigation, onLogout }) {
             }
             renderItem={({ item }) => {
               const card = (
-                <TaskCard
-                  task={item}
-                  onPress={() => { announce(`Abriendo: ${item.title}`); openDetail(item); }}
-                  onLongPress={() => {
-                    if (currentUser?.role === 'admin') {
-                      hapticMedium();
-                      if (item.status === 'completado') reopenTask(item);
-                      else toggleComplete(item);
-                    }
-                  }}
-                />
+                <View style={isDesktop || isTablet ? { flex: 1 } : undefined}>
+                  <TaskCard
+                    task={item}
+                    onPress={() => { announce(`Abriendo: ${item.title}`); openDetail(item); }}
+                    onLongPress={() => {
+                      if (currentUser?.role === 'admin') {
+                        hapticMedium();
+                        if (item.status === 'completado') reopenTask(item);
+                        else toggleComplete(item);
+                      }
+                    }}
+                  />
+                </View>
               );
 
               if (Platform.OS === 'web' || !currentUser || currentUser.role !== 'admin') return card;
@@ -627,8 +661,8 @@ export default function HomeScreen({ navigation, onLogout }) {
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                   <Ionicons name="help-circle" size={24} color={theme.primary} />
                   <View>
-                    <Text style={[styles.modalTitle, { color: theme.text }]}>Guía de Inicio</Text>
-                    <Text style={[styles.modalSub, { color: theme.textSecondary }]}>Cómo usar la pantalla principal</Text>
+                    <Text style={[styles.modalTitle, { color: theme.text }]}>Guía de la pantalla</Text>
+                    <Text style={[styles.modalSub, { color: theme.textSecondary }]}>Funciones y novedades de esta vista</Text>
                   </View>
                 </View>
                 <TouchableOpacity onPress={() => setShowHelpModal(false)}>
@@ -637,13 +671,15 @@ export default function HomeScreen({ navigation, onLogout }) {
               </View>
               <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
                 {[
-                  { icon: 'apps', color: theme.primary, title: 'Filtros de estado', desc: 'Los chips filtran la lista al instante.' },
-                  { icon: 'search', color: theme.info, title: 'Búsqueda', desc: 'Busca por título, descripción, responsable o etiqueta.' },
-                  { icon: 'warning', color: theme.warning, title: 'Tareas urgentes', desc: 'Las tareas con badge naranja vencen pronto.' },
-                  { icon: 'hand-left', color: theme.success, title: 'Swipe en móvil', desc: 'Arrastra una tarea a la izquierda para eliminarla.' },
-                  { icon: 'add-circle', color: theme.primary, title: 'Crear tarea', desc: 'Usa el botón + en la esquina inferior derecha.' },
+                  { icon: 'person-circle-outline', color: theme.primary, title: 'Avatar y saludo', desc: 'El encabezado te saluda por hora (buenos días/tardes/noches). Toca tu avatar para ir a tu perfil.' },
+                  { icon: 'stats-chart', color: theme.info, title: 'Chips de estadísticas', desc: 'Los chips de colores muestran conteos en vivo. Tócalos para filtrar la lista al instante.' },
+                  { icon: 'search', color: '#8B5CF6', title: 'Búsqueda inteligente', desc: 'Busca por título, descripción, responsable o etiqueta. La búsqueda se guarda entre sesiones.' },
+                  { icon: 'calendar-outline', color: theme.warning, title: 'Fechas relativas', desc: 'Las tarjetas muestran "Hoy", "Mañana" o "en 3d" para ver de un vistazo qué vence pronto.' },
+                  { icon: 'notifications-outline', color: '#FF9500', title: 'Notificaciones', desc: 'El badge rojo en la campana indica cuántas tienes sin leer. Tócala para verlas.' },
+                  { icon: 'hand-left', color: theme.success, title: 'Swipe para eliminar', desc: 'En móvil arrastra una tarjeta hacia la izquierda para eliminar la tarea.' },
+                  { icon: 'add-circle', color: theme.primary, title: 'Crear tarea', desc: 'Usa el botón + en la esquina inferior derecha. La IA sugiere subtareas según el título.' },
                 ].map((item, i) => (
-                  <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 10, borderBottomWidth: i < 4 ? 1 : 0, borderBottomColor: theme.border }}>
+                  <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 10, borderBottomWidth: i < 6 ? 1 : 0, borderBottomColor: theme.border }}>
                     <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: item.color + '20', justifyContent: 'center', alignItems: 'center' }}>
                       <Ionicons name={item.icon} size={16} color={item.color} />
                     </View>

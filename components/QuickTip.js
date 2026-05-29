@@ -195,28 +195,34 @@ export const resetAllTips = async () => {
 // Tips predefinidos para usar en la app
 export const TIPS = {
   HOME_SWIPE: {
-    tipId: 'home_swipe',
-    title: 'Filtra rápidamente',
-    message: 'Usa los chips de estado en la parte superior para filtrar tus tareas por estado.',
+    tipId: 'home_swipe_v2',
+    title: 'Filtra tocando los chips',
+    message: 'Los chips de colores (Pendientes, En proceso, Cerradas) filtran la lista al instante. El chip "Vencidas" te muestra cuántas atender.',
     icon: 'funnel',
   },
   HOME_CREATE: {
     tipId: 'home_create',
     title: 'Crea tu primera tarea',
-    message: 'Toca el botón + para crear una nueva tarea y empezar a organizar tu trabajo.',
+    message: 'Toca el botón + (abajo a la derecha) para crear una tarea. La IA sugiere subtareas automáticamente según el título.',
     icon: 'add-circle',
   },
   KANBAN_DRAG: {
     tipId: 'kanban_drag',
-    title: '📋 Toca para cambiar estado',
-    message: 'Toca una tarea para ver sus detalles. Usa los botones de acción para cambiar su estado.',
+    title: 'Cambia el estado fácilmente',
+    message: 'Toca una tarea para ver sus detalles. Desde ahí puedes mover su estado entre Pendiente, En Proceso, Revisión y Cerrada.',
     icon: 'hand-left',
   },
   REPORTS_PHOTO: {
     tipId: 'reports_photo',
-    title: '📸 Adjunta evidencia',
-    message: 'Puedes agregar fotos a tus reportes como evidencia de avance.',
+    title: 'Adjunta evidencia',
+    message: 'Toca el ícono de cámara en un reporte para agregar fotos. Funciona sin internet — se sube sola al reconectarte.',
     icon: 'camera',
+  },
+  TASK_DATES: {
+    tipId: 'task_dates_v2',
+    title: 'Fechas en lenguaje natural',
+    message: 'Las tarjetas muestran "Hoy", "Mañana" o "en 3d" para que sepas de un vistazo qué vence pronto sin leer fechas.',
+    icon: 'calendar-outline',
   },
 };
 

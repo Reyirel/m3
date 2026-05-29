@@ -12,11 +12,11 @@ import {
   TouchableOpacity,
   Platform,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import {
   GlassmorphicCard,
   GlassmorphicButton,
-  GlassmorphicAvatar,
   GlassmorphicDivider,
   GlassmorphicStatsCard,
 } from '../components';
@@ -29,6 +29,12 @@ import { isInProgress } from '../utils/taskStatus';
 import { hapticMedium } from '../utils/haptics';
 import { confirmAlert, infoAlert } from '../utils/alert';
 import { useResponsive } from '../utils/responsive';
+
+function getInitials(name = '') {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 const ProfileScreenEnhanced = ({ navigation, onLogout }) => {
   const { theme } = useTheme();
@@ -149,24 +155,39 @@ const ProfileScreenEnhanced = ({ navigation, onLogout }) => {
         style={styles.content}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.contentContainer}
+        contentInsetAdjustmentBehavior="never"
       >
-        {/* Avatar Section */}
-        <View style={styles.avatarSection}>
-          <GlassmorphicAvatar
-            name={displayName}
-            size="xlarge"
-            status="online"
-          />
-          <Text style={[styles.userName, { color: theme.text }]}>
-            {displayName}
-          </Text>
-          <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
-            {userEmail}
-          </Text>
-        </View>
+        {/* Hero Section — gradiente + avatar + progreso */}
+        <LinearGradient
+          colors={theme.gradientHeader}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0.6, y: 1 }}
+          style={styles.heroGradient}
+        >
+          <View style={styles.heroAvatar}>
+            <Text style={styles.heroAvatarText}>{getInitials(displayName)}</Text>
+          </View>
+          <Text style={styles.heroName}>{displayName}</Text>
+          {!!userEmail && (
+            <Text style={styles.heroEmail} numberOfLines={1}>{userEmail}</Text>
+          )}
+          <View style={styles.heroRoleBadge}>
+            <Ionicons name="shield-checkmark-outline" size={11} color="rgba(255,255,255,0.9)" />
+            <Text style={styles.heroRoleText}>{roleLabel.toUpperCase()}</Text>
+          </View>
+          {/* Barra de progreso de completado */}
+          <View style={styles.progressSection}>
+            <View style={styles.progressBg}>
+              <View style={[styles.progressFill, { width: `${completionRate}%` }]} />
+            </View>
+            <Text style={styles.progressLabel}>
+              {completionRate}% de tareas completadas
+            </Text>
+          </View>
+        </LinearGradient>
 
         {/* Statistics Grid */}
-        <View style={styles.statsGrid}>
+        <View style={[styles.statsGrid, { paddingHorizontal: 16 }]}>
           <GlassmorphicStatsCard
             icon="checkmark-circle"
             title="Completadas"
@@ -201,11 +222,11 @@ const ProfileScreenEnhanced = ({ navigation, onLogout }) => {
           />
         </View>
 
-        <GlassmorphicDivider />
+        <GlassmorphicDivider style={{ marginHorizontal: 16 }} />
 
         {/* Profile Sections */}
         {profileSections.map((section, sectionIndex) => (
-          <View key={sectionIndex} style={styles.section}>
+          <View key={sectionIndex} style={[styles.section, { paddingHorizontal: 16 }]}>
             <View style={styles.sectionHeader}>
               <View style={[styles.sectionIcon, { backgroundColor: theme.primaryAlpha }]}>
                 <Ionicons name={section.icon} size={18} color={theme.primary} />
@@ -223,7 +244,7 @@ const ProfileScreenEnhanced = ({ navigation, onLogout }) => {
         ))}
 
         {/* Logout Button */}
-        <View style={styles.section}>
+        <View style={[styles.section, { paddingHorizontal: 16 }]}>
           <GlassmorphicButton
             title="Cerrar Sesión"
             onPress={handleLogout}
@@ -234,7 +255,7 @@ const ProfileScreenEnhanced = ({ navigation, onLogout }) => {
           />
         </View>
 
-        <View style={styles.footer}>
+        <View style={[styles.footer, { paddingHorizontal: 16 }]}>
           <Text style={[styles.versionText, { color: theme.textMuted }]}>
             App v1.4.2
           </Text>
@@ -252,21 +273,89 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
     paddingBottom: 40,
     gap: 24,
   },
-  avatarSection: {
+  heroGradient: {
+    paddingTop: Platform.OS === 'ios' ? 16 : 16,
+    paddingBottom: 28,
+    paddingHorizontal: 24,
     alignItems: 'center',
-    gap: 12,
-    paddingVertical: 20,
+    gap: 6,
+    shadowColor: '#9F2241',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    elevation: 10,
   },
-  userName: {
-    fontSize: 20,
+  heroAvatar: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.22)',
+    borderWidth: 3,
+    borderColor: 'rgba(255,255,255,0.40)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  heroAvatarText: {
+    fontSize: 28,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 1,
+  },
+  heroName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: -0.4,
+  },
+  heroEmail: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.68)',
+    marginTop: 2,
+  },
+  heroRoleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    marginTop: 6,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
+  },
+  heroRoleText: {
+    fontSize: 11,
     fontWeight: '700',
+    color: 'rgba(255,255,255,0.92)',
+    letterSpacing: 1,
   },
-  userEmail: {
-    fontSize: 14,
+  progressSection: {
+    width: '100%',
+    marginTop: 14,
+    gap: 6,
+  },
+  progressBg: {
+    width: '100%',
+    height: 6,
+    borderRadius: 99,
+    backgroundColor: 'rgba(255,255,255,0.20)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: 6,
+    borderRadius: 99,
+    backgroundColor: 'rgba(255,255,255,0.85)',
+  },
+  progressLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+    color: 'rgba(255,255,255,0.65)',
+    textAlign: 'right',
   },
   statsGrid: {
     flexDirection: 'row',

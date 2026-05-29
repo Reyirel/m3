@@ -1,10 +1,11 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 
 export default function GlassChip({ label, icon, count, active = false, onPress }) {
-  const { theme } = useTheme();
+  const { theme, isDark } = useTheme();
+  const [hovered, setHovered] = useState(false);
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -12,10 +13,15 @@ export default function GlassChip({ label, icon, count, active = false, onPress 
       style={[
         styles.chip,
         {
-          backgroundColor: active ? theme.primaryAlpha : theme.glass,
-          borderColor: active ? theme.primary : theme.glassBorder,
+          backgroundColor: active ? theme.primaryAlpha : hovered ? (isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.05)') : theme.glass,
+          borderColor: active ? theme.primary : hovered ? theme.primary + '44' : theme.glassBorder,
+          transform: [{ scale: hovered && !active ? 1.03 : 1 }],
         },
       ]}
+      {...(Platform.OS === 'web' ? {
+        onMouseEnter: () => setHovered(true),
+        onMouseLeave: () => setHovered(false),
+      } : {})}
       accessible
       accessibilityRole="button"
       accessibilityState={{ selected: active }}

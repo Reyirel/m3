@@ -32,6 +32,7 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
   const isDark = isDarkProp ?? themeDark;
   const { width: screenWidth } = useWindowDimensions();
 
+  const isWide = screenWidth >= 768;
   const tabCount   = state.routes.length;
   const tabWidth   = screenWidth / tabCount;
   const pillPosition = useSharedValue(0);
@@ -73,6 +74,7 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
       style={[
         styles.container,
         {
+          height: isWide ? 74 : Platform.OS === 'ios' ? 80 : 66,
           paddingBottom: Platform.OS === 'ios' ? (insets?.bottom ?? 0) + 4 : 4,
           borderTopColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
           backgroundColor: isDark ? 'rgba(0,0,0,0.88)' : 'rgba(242,242,247,0.92)',
@@ -112,6 +114,7 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
           {
             width: tabWidth - 16,
             left: 8,
+            height: isWide ? 56 : 48,
             backgroundColor: theme.primary,
             shadowColor: theme.primary,
           },
@@ -163,7 +166,7 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
 
                 <Ionicons
                   name={iconName}
-                  size={22}
+                  size={isWide ? 24 : 22}
                   color={isFocused ? '#FFFFFF' : isDark ? theme.textMuted : theme.textSecondary}
                 />
 
@@ -174,6 +177,7 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
                       color: isFocused ? '#FFFFFF' : isDark ? theme.textMuted : theme.textSecondary,
                       fontWeight: isFocused ? '700' : '500',
                       opacity: isFocused ? 1 : 0.7,
+                      fontSize: isWide ? 12 : 10,
                     },
                   ]}
                   numberOfLines={1}
