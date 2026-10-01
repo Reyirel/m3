@@ -218,7 +218,7 @@ export const notifyAreaCreated = async (area) => {
 const recordNotification = async (notification) => {
   try {
     const sessionResult = await getCurrentSession();
-    const currentUserId = sessionResult.success ? sessionResult.session.uid : 'system';
+    const currentUserId = sessionResult.success ? sessionResult.session.userId : 'system';
 
     // Si no especifica userId, va a el usuario actual
     const userId = notification.userId || currentUserId;

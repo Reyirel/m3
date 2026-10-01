@@ -541,7 +541,7 @@ export default function AdminScreen({ navigation, onLogout }) {
                 {/* Flujo de tareas */}
                 <View style={[s.flowSection, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}>
                   <Text style={[s.flowSectionTitle, { color: isDark ? '#FFF' : '#1C1C1E' }]}>
-                    \📋 Flujo de Tareas
+                    📋 Flujo de Tareas
                   </Text>
                   {[
                     { n: '1', color: theme.primary,   title: 'Crear Tarea',      desc: 'Admin asigna a usuarios o área'      },
@@ -565,49 +565,6 @@ export default function AdminScreen({ navigation, onLogout }) {
                   ))}
                 </View>
 
-                {/* Credenciales */}
-                <View style={[s.flowSection, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}>
-                  <Text style={[s.flowSectionTitle, { color: isDark ? '#FFF' : '#1C1C1E' }]}>
-                    \🔐 Credenciales de Acceso
-                  </Text>
-                  {[
-                    {
-                      header: '\👤 ADMINISTRADOR', color: theme.primary,
-                      items: ['admin@todo.com → admin123'],
-                    },
-                    {
-                      header: '\📋 SECRETARIOS', color: theme.info,
-                      items: [
-                        'secretaria.general@municipio.com → SecGen2024',
-                        'tesoreria@municipio.com → Teso2024',
-                        'obras.publicas@municipio.com → Obras2024',
-                        'planeacion@municipio.com → Plan2024',
-                        'desarrollo.economico@municipio.com → DesEco2024',
-                        'bienestar.social@municipio.com → Bien2024',
-                        'seguridad.publica@municipio.com → Seg2024',
-                        'pueblos.indigenas@municipio.com → Pueblos2024',
-                      ],
-                    },
-                    {
-                      header: '\🏢 DIRECTORES — Contraseña: Dir2024', color: theme.success,
-                      items: [
-                        'amalia.escalante@municipio.com', 'jose.angeles@municipio.com',
-                        'brenda.martinez@municipio.com', 'ernesto.espinoza@municipio.com',
-                        'gerardo.mendoza@municipio.com', 'dulce.rosas@municipio.com',
-                        'alejandro.diaz@municipio.com', 'miguel.tolentino@municipio.com',
-                        'vanessa.martinez@municipio.com', 'berenice.moreno@municipio.com',
-                        'hipolito.bartolo@municipio.com', 'marcelino.capula@municipio.com',
-                      ],
-                    },
-                  ].map(group => (
-                    <View key={group.header} style={[s.credBox, { borderColor: group.color + '30', backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)' }]}>
-                      <Text style={[s.credHeader, { color: group.color }]}>{group.header}</Text>
-                      {group.items.map(item => (
-                        <Text key={item} style={[s.credItem, { color: isDark ? 'rgba(255,255,255,0.72)' : '#555' }]}>{item}</Text>
-                      ))}
-                    </View>
-                  ))}
-                </View>
               </ScrollView>
 
               <View style={{ padding: 16 }}>
@@ -829,7 +786,4 @@ const s = StyleSheet.create({
   roleBoxSmDesc: { color: 'rgba(255,255,255,0.7)', fontSize: 9, marginTop: 2 },
   stepBubble: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   stepNum:    { color: '#FFF', fontSize: 13, fontWeight: '800' },
-  credBox:    { borderRadius: 10, padding: 12, marginBottom: 8, borderWidth: 1 },
-  credHeader: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5, marginBottom: 6, textTransform: 'uppercase' },
-  credItem:   { fontSize: 11, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace', paddingVertical: 2, lineHeight: 17 },
 });

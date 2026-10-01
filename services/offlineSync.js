@@ -12,26 +12,68 @@ const OFFLINE_TASKS_KEY = '@offline_tasks';
 const PENDING_OPERATIONS_KEY = '@pending_operations';
 const LAST_SYNC_KEY = '@last_sync';
 
+// Una operación se reintenta hasta MAX_RETRIES veces antes de descartarse
+const MAX_RETRIES = 5;
+
 // Estado de conexión
 let isOnline = true;
 let connectionListeners = [];
 
+// Estado de sincronización
+let isSyncing = false;
+let syncListeners = [];
+let cacheListeners = [];
+
+// Errores que no se arreglan reintentando (permisos, datos inválidos, documento inexistente)
+const PERMANENT_ERROR_CODES = ['permission-denied', 'not-found', 'invalid-argument', 'unauthenticated', 'failed-precondition'];
+export const isPermanentError = (error) => {
+  const code = error?.code || '';
+  const message = error?.message || '';
+  return PERMANENT_ERROR_CODES.some(c => code.includes(c)) || message.includes('No document to update');
+};
+
+const notifySyncListeners = async (syncing) => {
+  if (syncListeners.length === 0) return;
+  const pendingCount = await getPendingCount();
+  syncListeners.forEach(listener => {
+    try { listener({ syncing, pendingCount }); } catch (_e) { /* silent */ }
+  });
+};
+
+// Suscribirse al estado de sincronización: callback({ syncing, pendingCount })
+export const subscribeSyncStatus = (callback) => {
+  syncListeners.push(callback);
+  return () => {
+    syncListeners = syncListeners.filter(cb => cb !== callback);
+  };
+};
+
+// Suscribirse a cambios del cache local de tareas (p. ej. tareas creadas sin conexión)
+export const subscribeToCacheChanges = (callback) => {
+  cacheListeners.push(callback);
+  return () => {
+    cacheListeners = cacheListeners.filter(cb => cb !== callback);
+  };
+};
+
 // Inicializar listener de conexión
 export const initConnectionListener = () => {
+  let firstEvent = true;
   return NetInfo.addEventListener(state => {
     const wasOffline = !isOnline;
     isOnline = state.isConnected && state.isInternetReachable !== false;
-    
+
     log('📶 Estado de conexión:', isOnline ? 'ONLINE' : 'OFFLINE');
-    
+
     // Notificar a los listeners
     connectionListeners.forEach(listener => listener(isOnline));
-    
-    // Si volvimos a estar online, sincronizar
-    if (wasOffline && isOnline) {
-      log('🔄 Reconectado - iniciando sincronización...');
+
+    // Al arrancar con conexión o al reconectar, sincronizar lo pendiente
+    if (isOnline && (wasOffline || firstEvent)) {
+      log('🔄 Conexión disponible - iniciando sincronización...');
       syncPendingOperations();
     }
+    firstEvent = false;
   });
 };
 
@@ -60,6 +102,9 @@ export const cacheTasksLocally = async (tasks, userEmail) => {
       : OFFLINE_TASKS_KEY;
     await AsyncStorage.setItem(key, JSON.stringify(tasks));
     await AsyncStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
+    cacheListeners.forEach(listener => {
+      try { listener(); } catch (_e) { /* silent */ }
+    });
   } catch (error) {
     if (__DEV__) console.error('Error guardando cache:', error);
   }
@@ -155,6 +200,7 @@ export const queueOperation = async (type, data, taskId = null, userEmail = null
     }
     
     log('📥 Operación encolada:', type, taskId || 'nueva tarea');
+    notifySyncListeners(isSyncing);
     return operation.id;
   } catch (error) {
     if (__DEV__) console.error('Error encolando operación:', error);
@@ -190,6 +236,22 @@ const removeOperation = async (operationId) => {
   }
 };
 
+// Registrar un intento fallido; devuelve true si la operación debe descartarse
+const registerFailedAttempt = async (operationId) => {
+  try {
+    const pendingOps = await getPendingOperations();
+    const op = pendingOps.find(o => o.id === operationId);
+    if (!op) return true;
+    op.retries = (op.retries || 0) + 1;
+    if (op.retries >= MAX_RETRIES) return true;
+    await AsyncStorage.setItem(PENDING_OPERATIONS_KEY, JSON.stringify(pendingOps));
+    return false;
+  } catch (error) {
+    if (__DEV__) console.error('Error registrando reintento:', error);
+    return false;
+  }
+};
+
 // Limpiar todas las operaciones pendientes (para casos de error)
 export const clearPendingOperations = async () => {
   try {
@@ -211,67 +273,87 @@ export const syncPendingOperations = async () => {
     return { success: false, synced: 0, pending: await getPendingCount() };
   }
   
+  // Evitar sincronizaciones simultáneas (duplicarían las operaciones CREATE)
+  if (isSyncing) {
+    return { success: false, synced: 0, pending: await getPendingCount() };
+  }
+
   const pendingOps = await getPendingOperations();
-  
+
   if (pendingOps.length === 0) {
     log('✅ No hay operaciones pendientes');
     return { success: true, synced: 0, pending: 0 };
   }
-  
+
   log('🔄 Sincronizando', pendingOps.length, 'operaciones pendientes...');
-  
+
+  isSyncing = true;
+  notifySyncListeners(true);
+
   let synced = 0;
   let errors = 0;
   let discarded = 0;
-  
-  // Ordenar por timestamp para mantener el orden correcto
-  const sortedOps = [...pendingOps].sort((a, b) => a.timestamp - b.timestamp);
-  
-  for (const op of sortedOps) {
-    try {
-      switch (op.type) {
-        case OPERATION_TYPES.CREATE:
-          await syncCreateOperation(op);
-          break;
-        case OPERATION_TYPES.UPDATE:
-          await syncUpdateOperation(op);
-          break;
-        case OPERATION_TYPES.DELETE:
-          await syncDeleteOperation(op);
-          break;
-      }
-      
-      await removeOperation(op.id);
-      synced++;
-      log('✅ Sincronizado:', op.type, op.taskId || 'nueva');
-    } catch (error) {
-      if (__DEV__) console.error('❌ Error sincronizando:', op.type, error.message);
-      
-      // Si el documento no existe, descartar inmediatamente
-      if (error.message.includes('No document to update') || 
-          error.message.includes('not-found') ||
-          error.code === 'not-found') {
+
+  try {
+    // Ordenar por timestamp para mantener el orden correcto
+    const sortedOps = [...pendingOps].sort((a, b) => a.timestamp - b.timestamp);
+
+    for (const op of sortedOps) {
+      try {
+        switch (op.type) {
+          case OPERATION_TYPES.CREATE:
+            await syncCreateOperation(op);
+            break;
+          case OPERATION_TYPES.UPDATE:
+            await syncUpdateOperation(op);
+            break;
+          case OPERATION_TYPES.DELETE:
+            await syncDeleteOperation(op);
+            break;
+        }
+
         await removeOperation(op.id);
-        discarded++;
-        log('🗑️ Operación descartada (documento no existe):', op.taskId);
-        continue;
+        synced++;
+        log('✅ Sincronizado:', op.type, op.taskId || 'nueva');
+      } catch (error) {
+        if (__DEV__) console.error('❌ Error sincronizando:', op.type, error.message);
+
+        // Errores permanentes: reintentar no sirve, descartar de inmediato
+        if (isPermanentError(error)) {
+          await removeOperation(op.id);
+          discarded++;
+          log('🗑️ Operación descartada (error permanente):', op.taskId, error.code);
+          continue;
+        }
+
+        // Errores transitorios: conservar en la cola hasta agotar los reintentos
+        errors++;
+        if (await registerFailedAttempt(op.id)) {
+          await removeOperation(op.id);
+          discarded++;
+          log('🗑️ Operación descartada tras agotar reintentos:', op.taskId);
+        }
       }
-      
-      errors++;
-      // Descartar después de 2 reintentos para no acumular errores
-      await removeOperation(op.id);
-      log('🗑️ Operación descartada por error:', op.taskId);
     }
+  } finally {
+    isSyncing = false;
   }
-  
+
   const remaining = await getPendingCount();
   log(`📊 Sincronización: ${synced} exitosos, ${discarded} descartados, ${errors} errores, ${remaining} pendientes`);
-  
+
   // Notificar a los listeners
   connectionListeners.forEach(listener => listener(isOnline));
-  
-  return { success: errors === 0, synced, pending: remaining };
+  notifySyncListeners(false);
+
+  return { success: errors === 0, synced, discarded, pending: remaining };
 };
+
+// Los Timestamp de Firestore se serializan en la cola como { seconds, nanoseconds }
+const reviveTimestamp = (value) =>
+  value && typeof value === 'object' && typeof value.seconds === 'number' && typeof value.toMillis !== 'function'
+    ? new Timestamp(value.seconds, value.nanoseconds || 0)
+    : value;
 
 // Sincronizar operación CREATE
 const syncCreateOperation = async (op) => {
@@ -340,6 +422,12 @@ const syncUpdateOperation = async (op) => {
   // Convertir fechas si es necesario
   if (updateData.dueAt && typeof updateData.dueAt === 'number') {
     updateData.dueAt = Timestamp.fromMillis(updateData.dueAt);
+  }
+  if (updateData.completedAt) {
+    updateData.completedAt = reviveTimestamp(updateData.completedAt);
+  }
+  if (Array.isArray(updateData.completedBy)) {
+    updateData.completedBy = updateData.completedBy.map(c => ({ ...c, completedAt: reviveTimestamp(c.completedAt) }));
   }
   
   // Eliminar campos undefined (Firestore no los acepta)
@@ -494,6 +582,9 @@ export default {
   initConnectionListener,
   subscribeToConnectionState,
   getConnectionState,
+  subscribeSyncStatus,
+  subscribeToCacheChanges,
+  isPermanentError,
   cacheTasksLocally,
   getCachedTasks,
   getLastSyncTime,

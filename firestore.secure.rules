@@ -1,0 +1,112 @@
+rules_version = '2';
+
+// Reglas para usar DESPUÉS de migrar los usuarios a Firebase Auth.
+// No desplegar antes: sin sesión de Firebase Auth nadie podría leer ni escribir.
+// Pasos en docs/MIGRACION_FIREBASE_AUTH.md
+//
+// IMPORTANTE: las reglas que coinciden con un mismo documento se suman (OR).
+// Por eso no hay regla comodín: cada colección se declara de forma explícita y
+// cualquier colección no listada queda denegada.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Documento del usuario que hace la petición (users/{uid})
+    function me() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Usuario con sesión, con documento en users y no desactivado
+    function isActive() {
+      return signedIn()
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && me().get('active', true) != false;
+    }
+
+    function isAdmin() {
+      return isActive() && me().role == 'admin';
+    }
+
+    // USUARIOS — solo el admin crea, borra o cambia rol/estado/área.
+    // Cada usuario puede editar su propio perfil salvo los campos de permisos.
+    match /users/{userId} {
+      allow read: if isActive();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin()
+        || (isActive() && request.auth.uid == userId
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                 .hasAny(['role', 'active', 'email', 'area', 'department', 'direcciones', 'areasPermitidas']));
+    }
+
+    // TAREAS — solo el admin borra
+    match /tasks/{taskId} {
+      allow read, create, update: if isActive();
+      allow delete: if isAdmin();
+
+      // Subtareas, mensajes de chat y demás subcolecciones
+      match /{subcollection}/{docId} {
+        allow read, create, update: if isActive();
+        allow delete: if isAdmin();
+      }
+    }
+
+    // REPORTES
+    match /task_reports/{reportId} {
+      allow read, create, update: if isActive();
+      allow delete: if isAdmin();
+    }
+
+    // ÁREAS y organigrama — solo el admin modifica
+    match /areas/{areaId} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+    match /metadata/{docId} {
+      allow read: if isActive();
+      allow write: if isAdmin();
+    }
+
+    // NOTIFICACIONES y colas de push
+    match /notifications/{docId} {
+      allow read, write: if isActive();
+    }
+    match /notification_history/{docId} {
+      allow read, write: if isActive();
+    }
+    match /push_notifications_queue/{docId} {
+      allow read, create: if isActive();
+    }
+    match /scheduled_notifications/{docId} {
+      allow read, write: if isActive();
+    }
+    match /user_push_tokens/{docId} {
+      allow read, write: if isActive();
+    }
+    match /fcmTokens/{docId} {
+      allow read, write: if isActive();
+    }
+
+    // POMODORO
+    match /pomodoroSessions/{docId} {
+      allow read, write: if isActive();
+    }
+
+    // HISTORIAL, FIRMAS y AUDITORÍA — solo se agregan, nunca se modifican ni borran
+    match /task_activity_log/{docId} {
+      allow read, create: if isActive();
+    }
+    match /signatures/{docId} {
+      allow read, create: if isActive();
+    }
+    match /auditLogs/{docId} {
+      allow read, create: if isActive();
+    }
+    match /area_audit/{docId} {
+      allow read, create: if isActive();
+    }
+  }
+}

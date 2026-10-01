@@ -9,9 +9,9 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { collection, query, where, getDocs, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { hashPassword } from '../../utils/hashUtils';
+import { adminSetUserPassword } from '../../services/authFirestore';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { hapticMedium } from '../../utils/haptics';
@@ -50,10 +50,7 @@ export default function PasswordResetForm({ isUserAdmin }) {
       }
 
       const userDoc = querySnapshot.docs[0];
-      const hashedPassword = await hashPassword(newPassword, resetEmail.toLowerCase());
-      await updateDoc(doc(db, 'users', userDoc.id), {
-        password: hashedPassword,
-      });
+      await adminSetUserPassword(userDoc.id, resetEmail, newPassword);
 
       showSuccess('La contraseña ha sido actualizada');
       setResetEmail('');

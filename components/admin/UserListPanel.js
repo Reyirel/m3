@@ -13,7 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
-import { hashPassword } from '../../utils/hashUtils';
+import { adminSetUserPassword } from '../../services/authFirestore';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { hapticLight, hapticMedium } from '../../utils/haptics';
@@ -84,11 +84,9 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
   const saveUserPassword = useCallback(async () => {
     if (!passwordUser || !newTempPassword.trim()) return;
     try {
-      const hashed = await hashPassword(newTempPassword.trim(), passwordUser.email.toLowerCase());
-      await updateDoc(doc(db, 'users', passwordUser.id), {
-        password: hashed,
-        tempPassword: newTempPassword.trim(),
-      });
+      await adminSetUserPassword(passwordUser.id, passwordUser.email, newTempPassword.trim());
+      // La contraseña ya no se guarda en texto plano: solo se muestra en esta ventana
+      setPasswordUser(prev => prev && { ...prev, tempPassword: newTempPassword.trim() });
       showSuccess('Contraseña actualizada');
       setShowTempPass(true);
       if (onUsersChanged) onUsersChanged();

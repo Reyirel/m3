@@ -41,22 +41,17 @@ describe('dateUtils - toMs()', () => {
     expect(toMs(isoString)).toBe(ms);
   });
 
-  test('retorna null para valores falsy', () => {
+  test('retorna null para null y undefined', () => {
     expect(toMs(null)).toBeNull();
     expect(toMs(undefined)).toBeNull();
-    expect(toMs(0)).toBeNull(); // Cuidado: 0 = falsy
   });
 
   test('retorna null para strings inválidos', () => {
     expect(toMs('invalid-date')).toBeNull();
   });
 
-  test('EDGE CASE: 0 se trata como falsy pero debería ser válido', () => {
-    // ⚠️ PROBLEMA ENCONTRADO: 0 es timestamp válido (epoch)
-    // Necesita refactoring para soportar 0 correctamente
-    const result = toMs(0);
-    expect(result).toBeNull(); // Comportamiento actual
-    // expect(result).toBe(0); // Comportamiento esperado
+  test('EDGE CASE: 0 es un timestamp válido (epoch)', () => {
+    expect(toMs(0)).toBe(0);
   });
 });
 
@@ -238,7 +233,7 @@ describe('EDGE CASES CRÍTICOS', () => {
       dueAt: { seconds: 1704067200 },
       status: 'abierta'
     };
-    expect(isOverdue(task)).toBe(false); // Timestamp de 2024-01-01
+    expect(isOverdue(task)).toBe(true); // Timestamp de 2024-01-01 (ya pasó)
   });
 
   test('comparar tasks con Timestamp.seconds > 1M', () => {
@@ -249,8 +244,7 @@ describe('EDGE CASES CRÍTICOS', () => {
   });
 
   test('CRÍTICO: zero timestamp (epoch)', () => {
-    // 0 es un timestamp válido pero se trata como falsy
-    expect(toMs(0)).toBeNull(); // ❌ BUG ENCONTRADO
-    // expect(toMs(0)).toBe(0); // ✅ Esperado
+    // 0 es un timestamp válido, no debe tratarse como falsy
+    expect(toMs(0)).toBe(0);
   });
 });

@@ -265,11 +265,10 @@ export default function LoginScreen({ onLogin }) {
 
             {/* CTA principal */}
             <TouchableOpacity
-              style={[styles.btn, loading && styles.btnLoading]}
+              style={[styles.btn, loading && styles.btnLoading, lockedUntil && { opacity: 0.5 }]}
               onPress={handleSubmit}
               disabled={loading || !!lockedUntil}
               activeOpacity={0.85}
-              style={[lockedUntil && { opacity: 0.5 }]}
             >
               {loading ? (
                 <>

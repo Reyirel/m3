@@ -40,7 +40,7 @@ function runFilters(tasks, options = {}) {
     if (filters.area && task.area !== filters.area) return false;
     if (filters.responsible && task.assignedTo !== filters.responsible) return false;
     if (filters.priority && task.priority !== filters.priority) return false;
-    if (filters.overdue && toMs(task.dueAt) >= Date.now()) return false;
+    if (filters.overdue && !isTaskOverdue(task)) return false;
     if (filters.dueToday) {
       const dueMs = toMs(task.dueAt);
       const dueDate = dueMs ? new Date(dueMs) : null;

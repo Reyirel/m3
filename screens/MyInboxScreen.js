@@ -607,7 +607,15 @@ export default function MyInboxScreen({ navigation }) {
     }
     
     const newStatus = task.status === 'cerrada' ? 'pendiente' : 'cerrada';
-    await updateTask(task.id, { status: newStatus });
+    await changeStatus(task.id, newStatus);
+  };
+
+  const changeStatus = async (taskId, newStatus) => {
+    try {
+      await updateTask(taskId, { status: newStatus });
+    } catch (e) {
+      showError('No se pudo actualizar la tarea');
+    }
   };
 
   const openDetail = (task) => {
@@ -665,9 +673,9 @@ export default function MyInboxScreen({ navigation }) {
             onPress={() => !isDeleting && openDetail(item)}
             onDelete={isAdmin ? () => deleteTask(item.id) : undefined}
             onToggleComplete={() => !isDeleting && toggleComplete(item)}
-            onReopen={isAdmin ? () => !isDeleting && updateTask(item.id, { status: 'pendiente' }) : undefined}
+            onReopen={isAdmin ? () => !isDeleting && changeStatus(item.id, 'pendiente') : undefined}
             onChangeStatus={item.status !== 'cerrada'
-              ? (task, newStatus) => !isDeleting && updateTask(task.id, { status: newStatus })
+              ? (task, newStatus) => !isDeleting && changeStatus(task.id, newStatus)
               : undefined}
             onChat={(task) => openChat(task)}
             currentUserRole={currentUser?.role || 'director'}

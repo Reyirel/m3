@@ -16,9 +16,9 @@ config.transformer.minifierConfig = {
     dead_code: true,
     passes: 2, // Multiple passes para mejor optimización
   },
-},
+};
 
 // ✅ OPTIMIZACIÓN: Excluir archivos de test del bundling
-config.resolver.blacklistRE = /node_modules\/(.*\/)?.*(test|__tests__|spec)\.(ts|js)$/;
+config.resolver.blockList =/node_modules\/(.*\/)?.*(test|__tests__|spec)\.(ts|js)$/;
 
 module.exports = config;

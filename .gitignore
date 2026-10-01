@@ -57,6 +57,9 @@ GoogleService-Info.plist
 
 # Datos sensibles
 data/
+migracion-contrasenas-temporales.csv
+*service-account*.json
+*serviceAccount*.json
 
 # Misc
 *.jks

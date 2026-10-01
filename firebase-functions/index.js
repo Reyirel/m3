@@ -401,6 +401,46 @@ export const notifyDueTasksReminder = functions.pubsub
   });
 
 /**
+ * Cambiar la contraseña de otro usuario. Solo administradores.
+ * Se llama desde la app con httpsCallable('adminSetUserPassword').
+ */
+export const adminSetUserPassword = functions.https.onCall(async (data, context) => {
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'Inicia sesión');
+  }
+
+  const callerSnap = await db.collection('users').doc(context.auth.uid).get();
+  const caller = callerSnap.data();
+  if (!callerSnap.exists || caller.role !== 'admin' || caller.active === false) {
+    throw new functions.https.HttpsError('permission-denied', 'Solo administradores');
+  }
+
+  const { userId, newPassword } = data || {};
+  if (!userId || typeof newPassword !== 'string' || newPassword.length < 6) {
+    throw new functions.https.HttpsError('invalid-argument', 'userId y contraseña (mínimo 6 caracteres) requeridos');
+  }
+
+  await admin.auth().updateUser(userId, { password: newPassword });
+  return { success: true };
+});
+
+/**
+ * Al borrar el documento de un usuario, borrar también su cuenta de Firebase Auth
+ */
+export const onUserDeleted = functions.firestore
+  .document('users/{userId}')
+  .onDelete(async (_snap, context) => {
+    try {
+      await admin.auth().deleteUser(context.params.userId);
+    } catch (error) {
+      if (error.code !== 'auth/user-not-found') {
+        console.error('Error in onUserDeleted:', error);
+      }
+    }
+    return null;
+  });
+
+/**
  * HTTP endpoint para testing (opcional)
  */
 export const testPushNotification = functions.https.onRequest(

@@ -1,16 +1,19 @@
 rules_version = '2';
 
 // Reglas de Firebase Storage para la app M3
+// Requieren sesión de Firebase Auth (ver docs/MIGRACION_FIREBASE_AUTH.md)
 service firebase.storage {
   match /b/{bucket}/o {
-    // Imágenes del chat - permitir lectura y escritura a usuarios autenticados
+    // Imágenes del chat
     match /chat-images/{imageId} {
-      // Permitir lectura a todos (para mostrar imágenes en el chat)
-      allow read: if true;
-      // Solo usuarios autenticados pueden subir imágenes
-      allow write: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
-    
+
+    // Imágenes de reportes de tareas
+    match /task_reports/{allPaths=**} {
+      allow read, write: if request.auth != null;
+    }
+
     // Regla general - denegar todo lo demás por seguridad
     match /{allPaths=**} {
       allow read, write: if false;

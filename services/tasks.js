@@ -37,6 +37,8 @@ import {
   getCachedTasks,
   getConnectionState,
   queueOperation,
+  subscribeToCacheChanges,
+  isPermanentError,
   OPERATION_TYPES
 } from './offlineSync';
 
@@ -172,6 +174,24 @@ export async function subscribeToTasks(callback) {
     }
 
     let isSubscribed = true;
+    let serverTasks = [];
+
+    // Emitir las tareas del servidor junto con las creadas sin conexión que aún no se sincronizan
+    const emit = async () => {
+      const cached = await getCachedTasks(userEmail);
+      if (!isSubscribed) return;
+      const pendingOffline = cached
+        .filter(t => t.isOffline && String(t.id).startsWith('temp_'))
+        .map(t => ({
+          ...t,
+          assignedTo: Array.isArray(t.assignedTo) ? t.assignedTo : t.assignedTo ? [t.assignedTo] : [],
+          status: normalizeStatus(t.status),
+          isDueOverdue: false,
+        }));
+      callback(pendingOffline.length > 0 ? [...pendingOffline, ...serverTasks] : serverTasks);
+    };
+    const unsubscribeCache = subscribeToCacheChanges(emit);
+
     const unsubscribeListener = onSnapshot(
       tasksQuery,
       (snapshot) => {
@@ -206,7 +226,8 @@ export async function subscribeToTasks(callback) {
         // Ordenar por createdAt descendente (necesario cuando director no usa orderBy en query)
         filteredTasks.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         logger.debug('TasksService', `Loaded ${filteredTasks.length} tasks`);
-        callback(filteredTasks);
+        serverTasks = filteredTasks;
+        emit();
       },
       (error) => {
         logger.error('TasksService', 'Snapshot listener error', error);
@@ -219,6 +240,7 @@ export async function subscribeToTasks(callback) {
       isSubscribed = false;
       _activeSubscriptions--;
       logger.debug('TasksService', 'Task subscription cleanup');
+      unsubscribeCache();
       if (unsubscribeListener) {
         unsubscribeListener();
       }
@@ -238,6 +260,7 @@ export async function subscribeToTasks(callback) {
  * @returns {Promise<string>} ID de la tarea creada
  */
 export async function createTask(task) {
+  let currentUserEmail = '';
   try {
     // ⏱️ Rate limiting check
     const rateCheck = await checkRateLimit('createTask');
@@ -251,14 +274,16 @@ export async function createTask(task) {
     const validation = validateData(task, 'task');
     if (!validation.valid) {
       productionLogger.logWarn('Invalid task data', { errors: validation.errors });
-      throw new Error(`Datos inválidos: ${validation.errors.join(', ')}`);
+      const error = new Error(`Datos inválidos: ${validation.errors.join(', ')}`);
+      error.code = 'INVALID_DATA';
+      throw error;
     }
 
     // Obtener información del usuario actual
     const sessionResult = await getCurrentSession();
     const currentUserUID = sessionResult.success ? sessionResult.session.userId : 'anonymous';
     const currentUserName = sessionResult.success ? sessionResult.session.displayName : 'Usuario Anónimo';
-    const currentUserEmail = sessionResult.success ? sessionResult.session.email : '';
+    currentUserEmail = sessionResult.success ? sessionResult.session.email : '';
 
     const taskData = {
       ...task,
@@ -353,7 +378,11 @@ export async function createTask(task) {
       return tempId;
     }
   } catch (error) {
-    // Si falla por cualquier razón, intentar modo offline
+    // Rate limit, datos inválidos y errores permanentes (permisos, etc.) no se
+    // reintentan offline: se propagan al caller
+    if (error.code === 'RATE_LIMIT_EXCEEDED' || error.code === 'INVALID_DATA' || isPermanentError(error)) throw error;
+
+    // Si falla por un error transitorio, intentar modo offline
     log('⚠️ Error creando tarea, guardando offline:', error.message);
 
     const tempId = `temp_${Date.now()}`;
@@ -361,15 +390,16 @@ export async function createTask(task) {
       ...task,
       id: tempId,
       isOffline: true,
+      createdBy: currentUserEmail,
       createdAt: Date.now(),
       updatedAt: Date.now()
     };
 
-    const cached = await getCachedTasks();
+    const cached = await getCachedTasks(currentUserEmail);
     cached.unshift(taskData);
-    await cacheTasksLocally(cached);
-    await queueOperation(OPERATION_TYPES.CREATE, task, tempId);
-    
+    await cacheTasksLocally(cached, currentUserEmail);
+    await queueOperation(OPERATION_TYPES.CREATE, taskData, tempId, currentUserEmail);
+
     return tempId;
   }
 }
@@ -470,7 +500,10 @@ export async function updateTask(taskId, updates) {
       await queueOperation(OPERATION_TYPES.UPDATE, updates, taskId, cacheUserEmail);
     }
   } catch (error) {
-    // Si falla Firebase, encolar para después
+    // Errores permanentes (permisos, documento inexistente): avisar al caller
+    if (isPermanentError(error)) throw error;
+
+    // Si falla Firebase por un error transitorio, encolar para después
     log('⚠️ Error actualizando, encolando para después:', error.message);
     await queueOperation(OPERATION_TYPES.UPDATE, updates, taskId, cacheUserEmail);
   }
@@ -569,7 +602,10 @@ export async function deleteTask(taskId) {
     return;
 
   } catch (error) {
-    // Si falla Firebase, encolar para después
+    // Errores permanentes (permisos, documento inexistente): avisar al caller
+    if (isPermanentError(error)) throw error;
+
+    // Si falla Firebase por un error transitorio, encolar para después
     log('⚠️ Error eliminando, encolando para después:', error.message);
     await queueOperation(OPERATION_TYPES.DELETE, {}, taskId, cacheUserEmail);
   }

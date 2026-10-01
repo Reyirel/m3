@@ -4,7 +4,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
-import { subscribeSyncStatus, syncQueue, getPendingCount } from '../services/offlineQueue';
+import { subscribeSyncStatus, syncPendingOperations, getPendingCount } from '../services/offlineSync';
 import { hapticLight } from '../utils/haptics';
 
 const SyncIndicator = () => {
@@ -60,7 +60,7 @@ const SyncIndicator = () => {
   const handlePress = () => {
     hapticLight();
     if (!syncing && pendingCount > 0) {
-      syncQueue(true); // Forzar sincronización
+      syncPendingOperations();
     }
   };
 
