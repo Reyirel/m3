@@ -58,6 +58,9 @@ GoogleService-Info.plist
 # Datos sensibles
 data/
 migracion-contrasenas-temporales.csv
+Nueva carpeta/
+credenciales-*.txt
+respaldo-usuarios-*.json
 *service-account*.json
 *serviceAccount*.json
 

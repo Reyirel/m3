@@ -1,6 +1,6 @@
 // config/areas.js
 // Configuración centralizada de todas las Secretarías y Direcciones del municipio
-// Actualizado: Marzo 2026 — estructura oficial del organigrama municipal
+// Actualizado: Octubre 2026 — estructura oficial del organigrama municipal
 
 export const SECRETARIAS = [
   'Despacho de la Presidencia',
@@ -30,7 +30,7 @@ export const SECRETARIAS_DIRECCIONES = {
     'Secretario Técnico',
   ],
 
-  // Secretaría General Municipal — José Manuel Zúñiga Guerrero
+  // Secretaría General Municipal — Jaime Aldrin Rosales Azuara
   'Secretaría General Municipal': [
     'Dirección de Gobierno',
     'Conciliación Municipal',
@@ -60,21 +60,23 @@ export const SECRETARIAS_DIRECCIONES = {
     'Dirección de Desarrollo Urbano y Ordenamiento Territorial',
     'Dirección de Servicios Públicos y Limpias',
     'Dirección de Servicios Municipales',
+    'Dirección de Medio Ambiente y Desarrollo Sostenible',
   ],
 
   // Secretaría de Planeación y Evaluación — Rigoberto Barrera Roldán
   'Secretaría de Planeación y Evaluación': [
+    'Dirección de Planeación y Evaluación',
     'Dirección de Tecnologías de la Información',
   ],
 
-  // Secretaría de Desarrollo Económico y Turismo — Lucila Ocampo Valle
+  // Secretaría de Desarrollo Económico y Turismo — Amalia Escalante Cruz
   'Secretaría de Desarrollo Económico y Turismo': [
     'Dirección de Turismo',
     'Dirección de Desarrollo Agropecuario y Proyectos Productivos',
     'Dirección de Desarrollo Económico',
   ],
 
-  // Secretaría de Bienestar Social — Socorro Vargas Chávez
+  // Secretaría de Bienestar Social — Diego Armando Corona Herrera
   'Secretaría de Bienestar Social': [
     'Dirección de Cultura',
     'Dirección del Deporte',
@@ -89,12 +91,13 @@ export const SECRETARIAS_DIRECCIONES = {
     'Dirección de Protección Civil y Bomberos',
   ],
 
-  // Secretaría de Desarrollo para Pueblos y Comunidades Indígenas — Lupita Anneth Patricio Reyes
+  // Secretaría de Desarrollo para Pueblos y Comunidades Indígenas — Anahí Catalán Legorreta
   'Secretaría de Desarrollo para Pueblos y Comunidades Indígenas': [],
 
   // Contraloría Municipal — Marianne Citlalli Chávez Guerrero (entidad autónoma)
   'Contraloría Municipal': [
     'Dirección de la Unidad de Investigación',
+    'Dirección de la Unidad de Substanciación',
     'Unidad Municipal de Transparencia y Acceso a la Información',
   ],
 };
@@ -151,13 +154,13 @@ export const AREA_ALIASES = {
   'Despacho Presidencial': 'Despacho de la Presidencia',
   // Variantes de direcciones
   'Oficialía del Registro del Estado Familiar': 'Oficial del Registro del Estado Familiar',
-  'Dirección Técnica de Planeación y Evaluación': 'Dirección de Tecnologías de la Información',
-  'Dirección de Planeación y Evaluación': 'Dirección de Tecnologías de la Información',
+  'Dirección Técnica de Planeación y Evaluación': 'Dirección de Planeación y Evaluación',
   'Dirección de Obra Pública': 'Dirección de Obras Públicas',
   'Dirección Jurídico': 'Dirección Jurídica',
   'Director Jurídico': 'Dirección Jurídica',
   'Contraloría': 'Contraloría Municipal',
   'Unidad de Investigación': 'Dirección de la Unidad de Investigación',
+  'Unidad de Substanciación': 'Dirección de la Unidad de Substanciación',
   'Dirección de Audiencias': 'Dirección de Audiencias y Atención Ciudadana',
   'Conciliador Municipal': 'Conciliación Municipal',
   'Instancia Municipal de la Juventud': 'Instancia Municipal de la Juventud',
@@ -182,6 +185,7 @@ export const DIRECCIONES = [
 
   // Contraloría Municipal
   'Dirección de la Unidad de Investigación',
+  'Dirección de la Unidad de Substanciación',
   'Unidad Municipal de Transparencia y Acceso a la Información',
 
   // Secretaría General Municipal
@@ -209,8 +213,10 @@ export const DIRECCIONES = [
   'Dirección de Desarrollo Urbano y Ordenamiento Territorial',
   'Dirección de Servicios Públicos y Limpias',
   'Dirección de Servicios Municipales',
+  'Dirección de Medio Ambiente y Desarrollo Sostenible',
 
   // Secretaría de Planeación y Evaluación
+  'Dirección de Planeación y Evaluación',
   'Dirección de Tecnologías de la Información',
 
   // Secretaría de Desarrollo Económico y Turismo
