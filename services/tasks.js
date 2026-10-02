@@ -22,7 +22,8 @@ import {
   where,
   serverTimestamp,
   Timestamp,
-  getDoc 
+  getDoc,
+  getDocs
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getCurrentSession } from './authFirestore';
@@ -679,11 +680,48 @@ export async function restoreTask(taskId) {
   if (!taskId) {
     throw new Error('taskId es requerido para restaurar');
   }
-  await updateDoc(doc(db, COLLECTION_NAME, taskId), {
+  const restoredFields = {
     deleted: false,
     deletedAt: null,
     deletedBy: null,
     updatedAt: serverTimestamp()
+  };
+  await updateDoc(doc(db, COLLECTION_NAME, taskId), restoredFields);
+
+  // Las subtareas por área se fueron a la papelera junto con la tarea: regresan con ella
+  try {
+    const subtasks = await getDocs(query(collection(db, COLLECTION_NAME), where('parentTaskId', '==', taskId)));
+    await Promise.all(
+      subtasks.docs
+        .filter(subtask => subtask.data().deleted)
+        .map(subtask => updateDoc(subtask.ref, restoredFields))
+    );
+  } catch (e) {
+    log('⚠️ Error restaurando subtareas:', e.message);
+  }
+}
+
+/**
+ * Suscribirse a la papelera (tareas eliminadas). Solo para el administrador.
+ * Las subtareas por área no se listan: se restauran junto con su tarea principal.
+ * @param {Function} callback - Recibe la lista, de la eliminada más reciente a la más antigua
+ * @param {Function} [onError]
+ * @returns {Function} Función para cancelar la suscripción
+ */
+export function subscribeToTrash(callback, onError) {
+  const trashQuery = query(collection(db, COLLECTION_NAME), where('deleted', '==', true));
+  return onSnapshot(trashQuery, (snapshot) => {
+    const tasks = snapshot.docs
+      .map(d => {
+        const data = d.data();
+        return { id: d.id, ...data, deletedAt: toMs(data.deletedAt), createdAt: toMs(data.createdAt) };
+      })
+      .filter(task => !task.isAreaSubtask)
+      .sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0));
+    callback(tasks);
+  }, (error) => {
+    logger.error('TasksService', 'Trash listener error', error);
+    if (onError) onError(error);
   });
 }
 

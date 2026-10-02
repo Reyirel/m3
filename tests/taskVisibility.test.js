@@ -7,7 +7,7 @@ jest.mock('../services/authFirestore', () => ({
   getCurrentSession: jest.fn(async () => ({ success: false })),
 }));
 
-import { canUserSeeTask, filterVisibleTasks } from '../utils/taskVisibility';
+import { canUserSeeTask, filterVisibleTasks, canUserSeeReport, filterVisibleReports } from '../utils/taskVisibility';
 import { haveAllAssigneesConfirmed, getAssignedEmails } from '../utils/taskHelpers';
 import { getSecretariasForAreas } from '../config/areas';
 import { canChangeTaskStatus } from '../services/permissions';
@@ -111,6 +111,52 @@ describe('canUserSeeTask', () => {
 
   test('sin rol no ve nada', () => {
     expect(canUserSeeTask(taskCatastro, { email: 'catastro@test.com' })).toBe(false);
+  });
+});
+
+describe('reportes por rol', () => {
+  const taskObras = { id: 't-obras', title: 'Bacheo', area: 'Dirección de Obras Públicas', secretarias: [OBRAS], assignedTo: ['gladys@test.com'] };
+  const reportObras = { id: 'r1', taskId: 't-obras', createdBy: 'gladys@test.com', area: 'Dirección de Obras Públicas', secretarias: [OBRAS] };
+  const reportCatastro = { id: 'r2', taskId: 't-catastro', createdBy: 'catastro@test.com', area: 'Dirección de Catastro', secretarias: [TESORERIA] };
+  const all = [reportObras, reportCatastro];
+
+  test('admin ve todos', () => {
+    expect(filterVisibleReports(all, [], admin)).toHaveLength(2);
+  });
+
+  test('director ve los suyos y los de tareas que tiene asignadas, no los de su secretaría completa', () => {
+    // Otro director de la misma secretaría (Obras) que no está asignado a la tarea
+    const otroDirector = { ...dirObras, email: 'otro.obras@test.com' };
+    expect(filterVisibleReports(all, [], otroDirector)).toHaveLength(0);
+    expect(filterVisibleReports(all, [taskObras], dirObras).map(r => r.id)).toEqual(['r1']);
+  });
+
+  test('director ve su propio reporte aunque la tarea ya no exista', () => {
+    expect(canUserSeeReport(reportCatastro, null, dirCatastro)).toBe(true);
+    expect(canUserSeeReport(reportCatastro, null, dirObras)).toBe(false);
+  });
+
+  test('secretario ve los reportes de su secretaría y no los de otra', () => {
+    expect(filterVisibleReports(all, [taskObras], secObras).map(r => r.id)).toEqual(['r1']);
+    expect(filterVisibleReports(all, [], secTesoreria).map(r => r.id)).toEqual(['r2']);
+  });
+
+  test('reportes antiguos sin el campo secretarias se ubican por su área', () => {
+    const old = { id: 'r3', taskId: 'x', createdBy: 'alguien@test.com', area: 'Dirección de Obra Pública' };
+    expect(canUserSeeReport(old, null, secObras)).toBe(true);
+    expect(canUserSeeReport(old, null, secTesoreria)).toBe(false);
+  });
+
+  test('el reporte de una tarea en la papelera no se muestra, salvo al autor y al admin', () => {
+    const deletedTask = { ...taskObras, deleted: true };
+    expect(canUserSeeReport(reportObras, deletedTask, secObras)).toBe(false);
+    expect(canUserSeeReport(reportObras, deletedTask, dirObras)).toBe(true);
+    expect(canUserSeeReport(reportObras, deletedTask, admin)).toBe(true);
+  });
+
+  test('agrega los datos de la tarea al reporte', () => {
+    const [report] = filterVisibleReports([reportObras], [taskObras], admin);
+    expect(report.taskInfo).toMatchObject({ title: 'Bacheo', area: 'Dirección de Obras Públicas' });
   });
 });
 

@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { subscribeToTaskReports, subscribeToTaskActivity, rateTaskReport, deleteTaskReport } from '../services/reportsService';
+import { canUserSeeReport } from '../utils/taskVisibility';
 import ReportFormModal from '../components/ReportFormModal';
 import { useTasks } from '../contexts/TasksContext';
 import ExportReportModal from '../components/ExportReportModal';
@@ -31,9 +32,21 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
   const { taskId, taskTitle } = route.params;
   const { theme, isDark } = useTheme();
   const { showSuccess, showError } = useNotification();
-  const { currentUser } = useTasks();
-  const [reports, setReports] = useState([]);
-  const [activities, setActivities] = useState([]);
+  const { currentUser, tasks } = useTasks();
+  const [allReports, setAllReports] = useState([]);
+  const [allActivities, setAllActivities] = useState([]);
+  // A esta pantalla se llega con el ID de la tarea (p. ej. desde una notificación):
+  // se muestra solo lo que el rol puede ver. La tarea está en `tasks` únicamente si
+  // el usuario tiene acceso a ella.
+  const visibleTask = useMemo(() => tasks.find(t => t.id === taskId) || null, [tasks, taskId]);
+  const reports = useMemo(
+    () => allReports.filter(report => canUserSeeReport(report, visibleTask, currentUser)),
+    [allReports, visibleTask, currentUser]
+  );
+  const activities = useMemo(
+    () => (currentUser?.role === 'admin' || visibleTask ? allActivities : []),
+    [allActivities, visibleTask, currentUser]
+  );
   const [tab, setTab] = useState('reports'); // 'reports' or 'activity'
   const [loading, setLoading] = useState(true);
   const [showReportForm, setShowReportForm] = useState(false);
@@ -301,8 +314,8 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     const loadData = async () => {
       try {
         if (!mounted) return;
-        unsubReportsRef.current = subscribeToTaskReports(taskId, setReports);
-        unsubActivityRef.current = subscribeToTaskActivity(taskId, setActivities);
+        unsubReportsRef.current = subscribeToTaskReports(taskId, setAllReports);
+        unsubActivityRef.current = subscribeToTaskActivity(taskId, setAllActivities);
         if (mounted) setLoading(false);
       } catch (error) {
         if (__DEV__) console.error('Error loading data:', error);
@@ -322,8 +335,8 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     setRefreshing(true);
     unsubReportsRef.current?.();
     unsubActivityRef.current?.();
-    unsubReportsRef.current = subscribeToTaskReports(taskId, setReports);
-    unsubActivityRef.current = subscribeToTaskActivity(taskId, setActivities);
+    unsubReportsRef.current = subscribeToTaskReports(taskId, setAllReports);
+    unsubActivityRef.current = subscribeToTaskActivity(taskId, setAllActivities);
     setTimeout(() => setRefreshing(false), 800);
   }, [taskId]);
 

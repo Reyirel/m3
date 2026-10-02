@@ -16,7 +16,7 @@ import {
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toMs } from '../utils/dateUtils';
 import { uriToDataUrl, dataUrlToBlob } from '../utils/imageData';
-import { canUserSeeTask } from '../utils/taskVisibility';
+import { canUserSeeTask, filterVisibleReports } from '../utils/taskVisibility';
 
 const storage = getStorage();
 
@@ -407,7 +407,7 @@ export const deleteTaskReport = async (taskId, reportId) => {
  * @param {string} area - Area name (optional)
  * @returns {Promise<Object>} Statistics
  */
-export const getReportStatistics = async (area = null) => {
+export const getReportStatistics = async (area = null, scope = null) => {
   try {
     let q;
     if (area) {
@@ -420,7 +420,7 @@ export const getReportStatistics = async (area = null) => {
     }
 
     const snapshot = await getDocs(q);
-    const reports = [];
+    let reports = [];
     snapshot.forEach((doc) => {
       const data = doc.data();
       if (!data.deleted) {
@@ -430,6 +430,11 @@ export const getReportStatistics = async (area = null) => {
         });
       }
     });
+
+    // scope = { user, tasks }: las estadísticas solo cuentan los reportes que ese usuario puede ver
+    if (scope?.user) {
+      reports = filterVisibleReports(reports, scope.tasks, scope.user);
+    }
 
     // Calculate statistics
     const totalReports = reports.length;
@@ -450,6 +455,25 @@ export const getReportStatistics = async (area = null) => {
     if (__DEV__) console.error('Error getting report statistics:', error);
     throw error;
   }
+};
+
+/**
+ * Suscripción a los reportes sin filtrar ni enriquecer, del más reciente al más antiguo.
+ * Quien la usa decide qué puede ver cada usuario con filterVisibleReports
+ * (utils/taskVisibility.js) y las tareas que ya tiene cargadas, sin lecturas extra por tarea.
+ * @param {Function} callback - Recibe la lista de reportes
+ * @returns {Function} Unsubscribe function
+ */
+export const subscribeToReports = (callback, onError) => {
+  return onSnapshot(query(collection(db, 'task_reports')), (snapshot) => {
+    const reports = [];
+    snapshot.forEach((doc) => {
+      const data = doc.data();
+      if (!data.deleted) reports.push({ id: doc.id, ...data });
+    });
+    reports.sort((a, b) => (toMs(b.createdAt) || 0) - (toMs(a.createdAt) || 0));
+    callback(reports);
+  }, onError);
 };
 
 /**

@@ -70,6 +70,7 @@ const TaskReportsAndActivityScreen = React.lazy(() => import('./screens/TaskRepo
 const ProfileScreenEnhanced = React.lazy(() => import('./screens/ProfileScreenEnhanced'));
 const SearchScreenEnhanced = React.lazy(() => import('./screens/SearchScreenEnhanced'));
 const SettingsScreenEnhanced = React.lazy(() => import('./screens/SettingsScreenEnhanced'));
+const TrashScreen = React.lazy(() => import('./screens/TrashScreen'));
 import { getCurrentSession, logoutUser } from './services/authFirestore';
 import { toMs } from './utils/dateUtils';
 import { setupNotificationResponseListener } from './services/notifications';
@@ -751,6 +752,20 @@ export default function App() {
                   {(props) => (
                     <Suspense fallback={<ScreenFallback />}>
                       <SettingsScreenEnhanced {...props} onLogout={handleLogout} />
+                    </Suspense>
+                  )}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="Trash"
+                  options={{
+                    headerShown: false,
+                    presentation: 'card',
+                    animation: 'slide_from_right'
+                  }}
+                >
+                  {(props) => (
+                    <Suspense fallback={<ScreenFallback />}>
+                      <TrashScreen {...props} />
                     </Suspense>
                   )}
                 </Stack.Screen>

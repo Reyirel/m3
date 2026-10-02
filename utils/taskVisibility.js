@@ -55,6 +55,56 @@ export function canUserSeeTask(task, user) {
   return getTaskAreas(task).some((area) => allowedAreas.has(norm(resolveAreaName(area.trim()))));
 }
 
+/**
+ * ¿Puede el usuario ver el reporte?
+ *   admin      → todos
+ *   cualquiera → los que él mismo envió
+ *   los demás  → los de las tareas que puede ver
+ *
+ * @param {Object} report - Reporte ({ createdBy, taskId, area, secretarias, createdBySecretaria })
+ * @param {Object|null} task - Tarea del reporte, si está entre las que el usuario tiene cargadas
+ * @param {Object} user - { role, email, area, direcciones }
+ * @returns {boolean}
+ */
+export function canUserSeeReport(report, task, user) {
+  if (!report || !user?.role) return false;
+  if (user.role === 'admin') return true;
+  if (norm(report.createdBy) === norm(user.email)) return true;
+
+  if (task) return !task.deleted && canUserSeeTask(task, user);
+
+  // La tarea no está entre las del usuario (o ya no existe). Un director solo ve
+  // reportes de tareas suyas; un secretario, los que el propio reporte ubica en su secretaría.
+  if (user.role !== 'secretario') return false;
+  return canUserSeeTask({
+    areas: [report.area, report.createdBySecretaria].filter(Boolean),
+    secretarias: report.secretarias,
+    assignedTo: [],
+  }, user);
+}
+
+/**
+ * Reportes que el usuario puede ver, con los datos de su tarea (taskInfo)
+ * @param {Array} reports - Reportes sin filtrar
+ * @param {Array} tasks - Tareas que el usuario tiene cargadas (ya filtradas por rol)
+ * @param {Object} user
+ * @returns {Array}
+ */
+export function filterVisibleReports(reports, tasks, user) {
+  const tasksById = new Map((tasks || []).map((task) => [task.id, task]));
+  return (reports || [])
+    .filter((report) => !report.deleted && canUserSeeReport(report, tasksById.get(report.taskId) || null, user))
+    .map((report) => {
+      const task = tasksById.get(report.taskId);
+      return {
+        ...report,
+        taskInfo: task
+          ? { title: task.title || 'Sin título', area: task.area || 'Sin área', assignedTo: task.assignedTo || [] }
+          : report.taskInfo || { title: 'Tarea no disponible', area: report.area || 'Sin área', assignedTo: [] },
+      };
+    });
+}
+
 /** Filtra una lista de tareas a las que el usuario puede ver (sin las de la papelera) */
 export function filterVisibleTasks(tasks, user) {
   return (tasks || []).filter((task) => !task.deleted && canUserSeeTask(task, user));
