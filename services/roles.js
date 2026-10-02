@@ -1,6 +1,7 @@
 import { doc, getDoc, setDoc, updateDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getCurrentSession } from './authFirestore';
+import { resolveAreaName, getDireccionesBySecretaria } from '../config/areas';
 
 // Roles disponibles en el sistema
 export const ROLES = {
@@ -184,6 +185,44 @@ export const getUsersByRole = async (role) => {
   }
 };
 
+// Nombre canónico de un área en minúsculas, para comparar sin depender de alias ni mayúsculas
+const areaKey = (name) => resolveAreaName((name || '').trim()).toLowerCase();
+
+/**
+ * ¿Es el usuario titular de esa área? Coincidencia exacta (tras resolver alias):
+ * elegir una dirección NO trae a las demás direcciones de la misma secretaría.
+ *   - secretario: su área es su secretaría (sus direcciones no lo hacen titular de ellas)
+ *   - director: su dirección está en areasPermitidas; si no tiene, en area
+ */
+export const isTitularOfArea = (user, area) => {
+  const target = areaKey(area);
+  if (!target || !user) return false;
+
+  const ownArea = areaKey(user.area || user.department);
+  if (user.role === 'secretario') return ownArea === target;
+
+  const permitidas = (user.areasPermitidas || []).map(areaKey).filter(Boolean);
+  return permitidas.length > 0 ? permitidas.includes(target) : ownArea === target;
+};
+
+/**
+ * ¿Está el director adscrito a la secretaría de este secretario?
+ * Se usa para limitar a quién puede delegar un secretario.
+ */
+export const isDirectorOfSecretario = (director, secretario) => {
+  const secretaria = resolveAreaName((secretario?.area || secretario?.department || '').trim());
+  if (!secretaria || !director) return false;
+
+  const scope = new Set(
+    [secretaria, ...getDireccionesBySecretaria(secretaria), ...(secretario.direcciones || [])]
+      .map(areaKey)
+      .filter(Boolean)
+  );
+  return [director.secretaria, director.area, ...(director.areasPermitidas || [])]
+    .map(areaKey)
+    .some(key => key && scope.has(key));
+};
+
 // Obtener titulares (directores/secretarios) de áreas específicas
 export const getTitularesByAreas = async (areas) => {
   try {
@@ -197,59 +236,12 @@ export const getTitularesByAreas = async (areas) => {
     
     const snapshot = await getDocs(q);
     const allUsers = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    
-    // Helper para normalizar nombres de área (quitar prefijos)
-    const normalizeArea = (name) => (name || '').trim()
-      .replace(/^(Secretaría|Dirección|Oficialía|Oficial)\s+(Técnica\s+)?(de|del|General)\s*/i, '')
-      .replace(/^(Secretaría|Dirección)\s+/i, '')
-      .trim().toLowerCase();
-    
-    // Helper para comparar dos nombres de área
-    const areasMatch = (a, b) => {
-      if (!a || !b) return false;
-      const aTrimmed = a.trim();
-      const bTrimmed = b.trim();
-      if (aTrimmed === bTrimmed) return true;
-      if (aTrimmed.length > 3 && bTrimmed.length > 3) {
-        if (aTrimmed.includes(bTrimmed) || bTrimmed.includes(aTrimmed)) return true;
-      }
-      const aNorm = normalizeArea(aTrimmed);
-      const bNorm = normalizeArea(bTrimmed);
-      if (aNorm && bNorm && aNorm.length > 3 && bNorm.length > 3) {
-        if (aNorm === bNorm || aNorm.includes(bNorm) || bNorm.includes(aNorm)) return true;
-      }
-      return false;
-    };
 
-    // Filtrar usuarios que son titulares de las áreas seleccionadas
-    const titulares = allUsers.filter(user => {
-      // Solo considerar directores y secretarios
-      const isTitular = ['director', 'secretario'].includes(user.role);
-      if (!isTitular) return false;
-      
-      // Campos del usuario para matching
-      const userArea = (user.area || user.department || '').trim();
-      const userDirecciones = user.direcciones || [];
-      const userAreasPermitidas = user.areasPermitidas || [];
-      
-      return areas.some(area => {
-        const areaTrimmed = (area || '').trim();
-        if (!areaTrimmed) return false;
-        
-        // 1. Coincidencia con el área principal del usuario
-        if (areasMatch(userArea, areaTrimmed)) return true;
-        
-        // 2. Coincidencia con areasPermitidas (campo clave para directores)
-        if (userAreasPermitidas.some(ap => areasMatch(ap, areaTrimmed))) return true;
-        
-        // 3. Coincidencia con direcciones a cargo (secretarios)
-        if (userDirecciones.some(dir => areasMatch(dir, areaTrimmed))) return true;
-        
-        return false;
-      });
-    });
-    
-    return titulares;
+    // Solo directores y secretarios que son titulares EXACTAMENTE de las áreas seleccionadas
+    return allUsers.filter(user =>
+      ['director', 'secretario'].includes(user.role) &&
+      areas.some(area => isTitularOfArea(user, area))
+    );
   } catch (error) {
     if (__DEV__) console.error('Error obteniendo titulares por áreas:', error);
     return [];

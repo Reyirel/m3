@@ -70,8 +70,8 @@ const TaskReportsAndActivityScreen = React.lazy(() => import('./screens/TaskRepo
 const ProfileScreenEnhanced = React.lazy(() => import('./screens/ProfileScreenEnhanced'));
 const SearchScreenEnhanced = React.lazy(() => import('./screens/SearchScreenEnhanced'));
 const SettingsScreenEnhanced = React.lazy(() => import('./screens/SettingsScreenEnhanced'));
+const TrashScreen = React.lazy(() => import('./screens/TrashScreen'));
 import { getCurrentSession, logoutUser } from './services/authFirestore';
-import { startConnectivityMonitoring } from './services/offlineQueue';
 import { toMs } from './utils/dateUtils';
 import { setupNotificationResponseListener } from './services/notifications';
 import { initConnectionListener, clearOfflineData } from './services/offlineSync';
@@ -147,7 +147,7 @@ function MainTabs({ onLogout, initialSession, navigation }) {
 
         // Registrar push notification token para FCM
         const { registerPushToken, setupPushNotificationListener } = require('./services/pushNotifications');
-        registerPushToken(result.session.uid).catch((err) => {
+        registerPushToken(result.session.userId).catch((err) => {
           console.warn('Push token registration skipped (non-critical):', err.message);
         });
 
@@ -477,9 +477,6 @@ export default function App() {
     // 🌐 Inicializar network quality monitor
     startNetworkMonitoring();
     
-    // Iniciar monitoreo de conectividad para sincronización offline
-    const unsubscribeConnectivity = startConnectivityMonitoring();
-    
     // 🌐 Inicializar listener de conexión para sincronización offline-first
     const unsubscribeConnection = initConnectionListener();
     
@@ -501,7 +498,7 @@ export default function App() {
           clearTimeout(timeout);
           if (result.success) {
             setInitialSession(result.session);
-            productionLogger.logInfo('User authenticated', { userId: result.session?.uid });
+            productionLogger.logInfo('User authenticated', { userId: result.session?.userId });
           }
         }
       })
@@ -517,7 +514,6 @@ export default function App() {
     return () => {
       mounted = false;
       clearTimeout(timeout);
-      if (unsubscribeConnectivity) unsubscribeConnectivity();
       if (unsubscribeConnection) unsubscribeConnection();
       if (notificationSubscription) notificationSubscription.remove();
       stopAutoCacheCleanup();
@@ -756,6 +752,20 @@ export default function App() {
                   {(props) => (
                     <Suspense fallback={<ScreenFallback />}>
                       <SettingsScreenEnhanced {...props} onLogout={handleLogout} />
+                    </Suspense>
+                  )}
+                </Stack.Screen>
+                <Stack.Screen
+                  name="Trash"
+                  options={{
+                    headerShown: false,
+                    presentation: 'card',
+                    animation: 'slide_from_right'
+                  }}
+                >
+                  {(props) => (
+                    <Suspense fallback={<ScreenFallback />}>
+                      <TrashScreen {...props} />
                     </Suspense>
                   )}
                 </Stack.Screen>

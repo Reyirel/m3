@@ -16,6 +16,7 @@ import { cancelNotification } from '../services/notifications';
 import { hapticMedium, hapticLight } from '../utils/haptics';
 import { useNotification } from '../contexts/NotificationContext';
 import { isTaskAssignedToUser } from '../utils/taskHelpers';
+import { canChangeTaskStatus } from '../services/permissions';
 import { deleteManager } from '../utils/deleteManager';
 import { confirmTaskCompletion, hasUserConfirmed } from '../services/taskConfirmations';
 import { useTheme } from '../contexts/ThemeContext';
@@ -607,7 +608,22 @@ export default function MyInboxScreen({ navigation }) {
     }
     
     const newStatus = task.status === 'cerrada' ? 'pendiente' : 'cerrada';
-    await updateTask(task.id, { status: newStatus });
+    await changeStatus(task.id, newStatus);
+  };
+
+  const changeStatus = async (taskId, newStatus) => {
+    // Misma regla que en Inicio y Kanban: cada rol solo puede hacer sus transiciones
+    const task = tasks.find(t => t.id === taskId);
+    const perm = canChangeTaskStatus(currentUser, task || { id: taskId }, newStatus);
+    if (!perm.canChange) {
+      showWarning(perm.reason || 'No tienes permisos para cambiar el estado');
+      return;
+    }
+    try {
+      await updateTask(taskId, { status: newStatus });
+    } catch (e) {
+      showError(e?.code === 'permission-denied' ? e.message : 'No se pudo actualizar la tarea');
+    }
   };
 
   const openDetail = (task) => {
@@ -665,9 +681,9 @@ export default function MyInboxScreen({ navigation }) {
             onPress={() => !isDeleting && openDetail(item)}
             onDelete={isAdmin ? () => deleteTask(item.id) : undefined}
             onToggleComplete={() => !isDeleting && toggleComplete(item)}
-            onReopen={isAdmin ? () => !isDeleting && updateTask(item.id, { status: 'pendiente' }) : undefined}
+            onReopen={isAdmin ? () => !isDeleting && changeStatus(item.id, 'pendiente') : undefined}
             onChangeStatus={item.status !== 'cerrada'
-              ? (task, newStatus) => !isDeleting && updateTask(task.id, { status: newStatus })
+              ? (task, newStatus) => !isDeleting && changeStatus(task.id, newStatus)
               : undefined}
             onChat={(task) => openChat(task)}
             currentUserRole={currentUser?.role || 'director'}

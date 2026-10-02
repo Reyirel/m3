@@ -52,7 +52,7 @@ const NotificationCard = React.memo(({ item, onPress, onDelete, theme, isDark, g
         <Text style={[cardStyles.notificationTitle, { color: theme.text, fontWeight: item.read ? '600' : '700' }]}>
           {item.title}
         </Text>
-        <Text style={[cardStyles.notificationBody, { color: theme.textSecondary }]}>{item.body}</Text>
+        <Text style={[cardStyles.notificationBody, { color: theme.textSecondary }]}>{item.body || item.message}</Text>
         <Text style={[cardStyles.notificationTime, { color: theme.textTertiary }]}>{formatTime(item.createdAt)}</Text>
       </View>
       {!item.read && <View style={[cardStyles.unreadBadge, { backgroundColor: getColor(item.type) }]} />}
@@ -143,6 +143,11 @@ export default function NotificationsScreen({ navigation }) {
         taskId: notification.taskId,
         taskTitle: 'Reporte'
       });
+    } else if (notification.taskId && notification.type === 'new_message') {
+      navigation.navigate('TaskChat', {
+        taskId: notification.taskId,
+        taskTitle: notification.taskTitle || 'Chat de tarea',
+      });
     } else if (notification.taskId && notification.type === 'task_assigned') {
       navigation.navigate('TaskProgress', { taskId: notification.taskId });
     } else if (notification.areaId && notification.type === 'area_created') {
@@ -221,6 +226,8 @@ export default function NotificationsScreen({ navigation }) {
         return 'person-circle';
       case 'new_report':
         return 'document-text';
+      case 'new_message':
+        return 'chatbubble-ellipses';
       default:
         return 'notifications';
     }

@@ -2,9 +2,22 @@
 // Sistema de confirmación individual para tareas con múltiples asignados
 // Cada asignado puede marcar su parte como completada
 
-import { doc, updateDoc, arrayUnion, arrayRemove, getDoc, Timestamp } from 'firebase/firestore';
+import { doc, updateDoc, arrayRemove, getDoc, runTransaction, Timestamp } from 'firebase/firestore';
 import { toMs } from '../utils/dateUtils';
+import { normalizeStatus, getAssignedEmails, getConfirmedEmails } from '../utils/taskHelpers';
 import { db } from '../firebase';
+import { updateParentTaskProgress } from './areaSubtasks';
+import { getConnectionState, queueOperation, OPERATION_TYPES } from './offlineSync';
+
+const normalizeEmail = (email) => (email || '').toLowerCase().trim();
+
+// Error de regla de negocio: reintentar no lo arregla, así que la cola sin conexión
+// lo descarta en vez de reintentarlo (ver isPermanentError en offlineSync.js)
+const preconditionError = (message) => {
+  const error = new Error(message);
+  error.code = 'failed-precondition';
+  return error;
+};
 
 /**
  * Estructura de confirmación:
@@ -20,68 +33,109 @@ import { db } from '../firebase';
  * Marcar la parte de un usuario como completada
  * @param {string} taskId - ID de la tarea
  * @param {object} user - Usuario que confirma {email, displayName, area}
- * @returns {Promise<{success: boolean, allCompleted: boolean, completedCount: number, totalAssigned: number}>}
+ * @param {object} [options]
+ * @param {object} [options.task] - Tarea como se ve en pantalla (para el conteo cuando no hay conexión)
+ * @param {boolean} [options.fromQueue] - true cuando la ejecuta la cola al recuperar la conexión
+ * @returns {Promise<{success: boolean, allCompleted: boolean, completedCount: number, totalAssigned: number, queued?: boolean}>}
  */
-export const confirmTaskCompletion = async (taskId, user) => {
+export const confirmTaskCompletion = async (taskId, user, { task: localTask = null, fromQueue = false } = {}) => {
   try {
     const taskRef = doc(db, 'tasks', taskId);
-    const taskSnap = await getDoc(taskRef);
-    
-    if (!taskSnap.exists()) {
-      throw new Error('Tarea no encontrada');
-    }
-    
-    const task = taskSnap.data();
-    // Normalizar assignedTo — puede ser string (legacy) o array
-    const rawAssigned = task.assignedTo;
-    const assignedTo = Array.isArray(rawAssigned)
-      ? rawAssigned
-      : rawAssigned ? [rawAssigned] : [];
-    const completedBy = task.completedBy || [];
+    const userEmail = normalizeEmail(user.email);
 
-    // Verificar que el usuario está asignado
-    const userEmail = user.email?.toLowerCase().trim() || '';
-    if (!assignedTo.some(e => (e || '').toLowerCase().trim() === userEmail)) {
-      throw new Error('No estás asignado a esta tarea');
+    // Sin conexión: una transacción no puede ejecutarse. La confirmación se guarda en la
+    // cola y se aplica al reconectar; mientras tanto la lista la muestra como pendiente.
+    if (!fromQueue && !getConnectionState()) {
+      const assignedTo = getAssignedEmails(localTask);
+      if (localTask && !assignedTo.includes(userEmail)) {
+        throw preconditionError('No estás asignado a esta tarea');
+      }
+      await queueOperation(
+        OPERATION_TYPES.CONFIRM,
+        { email: userEmail, displayName: user.displayName || user.email, area: user.area || '' },
+        taskId,
+        userEmail
+      );
+      const confirmed = getConfirmedEmails(localTask?.completedBy, assignedTo);
+      confirmed.add(userEmail);
+      return {
+        success: true,
+        queued: true,
+        allCompleted: false,
+        completedCount: confirmed.size,
+        totalAssigned: assignedTo.length
+      };
     }
-    
-    // Verificar si ya confirmó
-    const alreadyConfirmed = completedBy.some(c => c.email?.toLowerCase().trim() === userEmail);
-    if (alreadyConfirmed) {
-      throw new Error('Ya confirmaste tu parte de esta tarea');
+
+    // Transacción: si dos asignados confirman al mismo tiempo, ninguna confirmación
+    // se pierde y el paso a revisión se calcula con el estado real de la tarea.
+    const result = await runTransaction(db, async (transaction) => {
+      const taskSnap = await transaction.get(taskRef);
+
+      if (!taskSnap.exists()) {
+        throw preconditionError('Tarea no encontrada');
+      }
+
+      const task = taskSnap.data();
+      const assignedTo = getAssignedEmails(task);
+      const completedBy = task.completedBy || [];
+
+      // Verificar que el usuario está asignado
+      if (!assignedTo.includes(userEmail)) {
+        throw preconditionError('No estás asignado a esta tarea');
+      }
+
+      if (normalizeStatus(task.status) === 'cerrada') {
+        throw preconditionError('La tarea ya fue finalizada');
+      }
+
+      // Verificar si ya confirmó
+      if (completedBy.some(c => normalizeEmail(c.email) === userEmail)) {
+        throw preconditionError('Ya confirmaste tu parte de esta tarea');
+      }
+
+      const confirmation = {
+        email: userEmail,
+        displayName: user.displayName || user.email,
+        area: user.area || '',
+        completedAt: Timestamp.now()
+      };
+
+      // Solo cuentan las confirmaciones de quienes siguen asignados: una confirmación
+      // de alguien que ya no está en la tarea no sustituye la de un asignado actual.
+      const newCompletedBy = [...completedBy, confirmation];
+      const confirmedEmails = getConfirmedEmails(newCompletedBy, assignedTo);
+      const allCompleted = confirmedEmails.size === assignedTo.length;
+
+      const updateData = {
+        completedBy: newCompletedBy,
+        updatedAt: Timestamp.now()
+      };
+
+      // Si todos completaron, cambiar estado a "en_revision" para que admin valide
+      if (allCompleted) {
+        updateData.status = 'en_revision';
+        updateData.allCompletedAt = Timestamp.now();
+      }
+
+      transaction.update(taskRef, updateData);
+
+      return {
+        success: true,
+        allCompleted,
+        completedCount: confirmedEmails.size,
+        totalAssigned: assignedTo.length,
+        parentTaskId: task.isAreaSubtask ? task.parentTaskId : null
+      };
+    });
+
+    // Si era la subtarea de un área y pasó a revisión, actualizar el avance de la tarea principal
+    const { parentTaskId, ...summary } = result;
+    if (summary.allCompleted && parentTaskId) {
+      updateParentTaskProgress(parentTaskId).catch(() => {});
     }
-    
-    // Crear confirmación
-    const confirmation = {
-      email: userEmail,
-      displayName: user.displayName || user.email,
-      area: user.area || '',
-      completedAt: Timestamp.now()
-    };
-    
-    // Actualizar tarea
-    const newCompletedBy = [...completedBy, confirmation];
-    const allCompleted = newCompletedBy.length >= assignedTo.length;
-    
-    const updateData = {
-      completedBy: arrayUnion(confirmation),
-      updatedAt: Timestamp.now()
-    };
-    
-    // Si todos completaron, cambiar estado a "en_revision" para que admin valide
-    if (allCompleted) {
-      updateData.status = 'en_revision';
-      updateData.allCompletedAt = Timestamp.now();
-    }
-    
-    await updateDoc(taskRef, updateData);
-    
-    return {
-      success: true,
-      allCompleted,
-      completedCount: newCompletedBy.length,
-      totalAssigned: assignedTo.length
-    };
+
+    return summary;
   } catch (error) {
     if (__DEV__) console.error('Error confirmando tarea:', error);
     throw error;
@@ -106,7 +160,7 @@ export const removeTaskConfirmation = async (taskId, userEmail) => {
     const completedBy = task.completedBy || [];
     
     // Encontrar y remover la confirmación
-    const confirmationToRemove = completedBy.find(c => c.email.toLowerCase() === userEmail.toLowerCase());
+    const confirmationToRemove = completedBy.find(c => normalizeEmail(c.email) === normalizeEmail(userEmail));
     
     if (!confirmationToRemove) {
       throw new Error('El usuario no ha confirmado esta tarea');
@@ -140,16 +194,18 @@ export const getTaskConfirmationStatus = async (taskId) => {
     }
     
     const task = taskSnap.data();
-    const assignedTo = task.assignedTo || [];
-    const assignedToNames = task.assignedToNames || [];
+    const assignedTo = getAssignedEmails(task);
+    const assignments = task.assignments || [];
     const completedBy = task.completedBy || [];
-    
+
     // Construir lista de asignados con su estado
-    const assignees = assignedTo.map((email, index) => {
-      const confirmation = completedBy.find(c => c.email.toLowerCase() === email.toLowerCase());
+    // (el nombre se busca por correo: assignedToNames puede no coincidir en orden tras una delegación)
+    const assignees = assignedTo.map((email) => {
+      const confirmation = completedBy.find(c => normalizeEmail(c.email) === email);
+      const assignment = assignments.find(a => normalizeEmail(a.email) === email);
       return {
         email,
-        displayName: assignedToNames[index] || email,
+        displayName: assignment?.name || confirmation?.displayName || email,
         completed: !!confirmation,
         completedAt: confirmation?.completedAt || null
       };
@@ -180,7 +236,7 @@ export const getTaskConfirmationStatus = async (taskId) => {
  */
 export const hasUserConfirmed = (task, userEmail) => {
   if (!task || !task.completedBy || !userEmail) return false;
-  return task.completedBy.some(c => c.email.toLowerCase() === userEmail.toLowerCase());
+  return task.completedBy.some(c => normalizeEmail(c.email) === normalizeEmail(userEmail));
 };
 
 /**

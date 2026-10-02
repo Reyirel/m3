@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import ShimmerEffect from '../components/ShimmerEffect';
 import { subscribeToAllReports, rateTaskReport, deleteTaskReport } from '../services/reportsService';
+import { filterVisibleReports } from '../utils/taskVisibility';
 import { hapticSuccess, hapticWarning } from '../utils/haptics';
 import { toMs } from '../utils/dateUtils';
 import { useNotification } from '../contexts/NotificationContext';
@@ -30,8 +31,13 @@ const AdminReportsScreen = ({ navigation }) => {
   const { theme, isDark } = useTheme();
   const { isDesktop } = useResponsive();
   const { showSuccess, showError } = useNotification();
-  const { currentUser } = useTasks();
-  const [reports, setReports] = useState([]);
+  const { currentUser, tasks } = useTasks();
+  const [allReports, setReports] = useState([]);
+  // Pantalla del administrador. Si otro rol llegara a abrirla, solo ve lo que le corresponde.
+  const reports = useMemo(
+    () => (currentUser?.role === 'admin' ? allReports : filterVisibleReports(allReports, tasks, currentUser)),
+    [allReports, tasks, currentUser]
+  );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);

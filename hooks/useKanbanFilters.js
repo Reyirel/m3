@@ -30,7 +30,7 @@ export function useKanbanFilters(tasks = [], currentUser = null) {
       if (filters.area && task.area !== filters.area) return false;
       if (filters.responsible && task.assignedTo !== filters.responsible) return false;
       if (filters.priority && task.priority !== filters.priority) return false;
-      if (filters.overdue && toMs(task.dueAt) >= Date.now()) return false;
+      if (filters.overdue && !isTaskOverdue(task)) return false;
 
       if (filters.dueToday) {
         const dueMs = toMs(task.dueAt);
@@ -50,7 +50,7 @@ export function useKanbanFilters(tasks = [], currentUser = null) {
 
       return true;
     });
-  }, [filters]);
+  }, [filters, isTaskOverdue]);
 
   const sortTasks = useCallback((taskList) => {
     const sorted = [...taskList];
@@ -84,7 +84,7 @@ export function useKanbanFilters(tasks = [], currentUser = null) {
     tasks.forEach(t => {
       const dueMs = toMs(t.dueAt);
       const dueDate = new Date(dueMs);
-      if (dueMs < now && t.status !== 'cerrada') overdueCount++;
+      if (dueMs && dueMs < now && t.status !== 'cerrada') overdueCount++;
       if (dueDate.toDateString() === today.toDateString() && t.status !== 'cerrada') todayCount++;
       if (dueDate >= today && dueDate <= weekEnd && t.status !== 'cerrada') thisWeekCount++;
       if (userEmail && (t.responsables?.some(r => r.email === userEmail) || t.responsable === userEmail)) myTasksCount++;

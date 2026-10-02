@@ -26,6 +26,8 @@ import {
   increment,
   Timestamp
 } from 'firebase/firestore';
+import * as firebaseAuth from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getStorage } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
 import { Platform } from 'react-native';
@@ -54,6 +56,21 @@ if (__DEV__ && !extra.FIREBASE_API_KEY && !process.env.FIREBASE_API_KEY) {
 
 // Inicializar Firebase App (solo si no existe)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+
+// Inicializar Firebase Auth
+// - Web: persistencia del navegador (por defecto)
+// - Nativo: AsyncStorage, para que la sesión sobreviva al cerrar la app
+let auth;
+try {
+  auth = Platform.OS === 'web' || !firebaseAuth.getReactNativePersistence
+    ? firebaseAuth.getAuth(app)
+    : firebaseAuth.initializeAuth(app, {
+        persistence: firebaseAuth.getReactNativePersistence(AsyncStorage),
+      });
+} catch (e) {
+  // Si ya fue inicializado (hot reload), reutilizar instancia existente
+  auth = firebaseAuth.getAuth(app);
+}
 
 // Inicializar Analytics (solo en plataformas que lo soportan)
 let analytics = null;
@@ -95,8 +112,10 @@ try {
 }
 
 // Exportar app, db, storage, analytics y funciones de Firestore
-export { 
-  app, 
+export {
+  app,
+  auth,
+  firebaseConfig,
   db,
   storage,
   analytics,

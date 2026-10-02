@@ -22,6 +22,7 @@ import { createTaskReport, uploadReportImage } from '../services/reportsService'
 import { getCurrentSession } from '../services/authFirestore';
 import { savePendingReport } from '../services/offlineReportsService';
 import { useNotification } from '../contexts/NotificationContext';
+import { prepareImage } from '../utils/imageData';
 import WebSafeBlur from './WebSafeBlur';
 import { GlassmorphicButton } from './index';
 
@@ -39,6 +40,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
   const [errors, setErrors] = useState({});
   const [uploadProgress, setUploadProgress] = useState({});
   const [uploadingImages, setUploadingImages] = useState(false);
+  const [preparingImage, setPreparingImage] = useState(false);
   const [isOnline, setIsOnline] = useState(true);
   const [showTemplates, setShowTemplates] = useState(true);
 
@@ -382,6 +384,23 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     },
   }), [isDark, theme]);
 
+  // Agregar una foto: se reduce antes de guardarla en el formulario, para que el envío
+  // sea rápido y para poder conservarla en el dispositivo si no hay conexión
+  const addPickedImage = async (asset) => {
+    setPreparingImage(true);
+    try {
+      const prepared = await prepareImage(asset.uri);
+      setImages(prev => [...prev, {
+        id: `${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        uri: prepared.uri,
+        dataUrl: prepared.dataUrl,
+        uploading: false,
+      }]);
+    } finally {
+      setPreparingImage(false);
+    }
+  };
+
   const handleAddImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -392,12 +411,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       });
 
       if (!result.canceled && result.assets[0]) {
-        const newImage = {
-          id: Date.now().toString(),
-          uri: result.assets[0].uri,
-          uploading: false,
-        };
-        setImages([...images, newImage]);
+        await addPickedImage(result.assets[0]);
       }
     } catch (error) {
       if (__DEV__) console.error('Error picking image:', error);
@@ -420,12 +434,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       });
 
       if (!result.canceled && result.assets[0]) {
-        const newImage = {
-          id: Date.now().toString(),
-          uri: result.assets[0].uri,
-          uploading: false,
-        };
-        setImages([...images, newImage]);
+        await addPickedImage(result.assets[0]);
       }
     } catch (error) {
       if (__DEV__) console.error('Error taking photo:', error);
@@ -442,13 +451,13 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
 
     if (!title.trim()) {
       newErrors.title = 'El título es requerido';
-    } else if (title.length < 3) {
+    } else if (title.trim().length < 3) {
       newErrors.title = 'El título debe tener al menos 3 caracteres';
     }
 
     if (!description.trim()) {
       newErrors.description = 'La descripción es requerida';
-    } else if (description.length < 10) {
+    } else if (description.trim().length < 10) {
       newErrors.description = 'La descripción debe tener al menos 10 caracteres';
     }
 
@@ -456,207 +465,128 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     return Object.keys(newErrors).length === 0;
   };
 
+  // Foto en el formato que se puede guardar en el dispositivo (data URL; la URI como respaldo)
+  const storableImage = (img) => img.dataUrl || img.uri;
+
+  // Guardar el reporte (o solo las fotos que faltan de uno ya enviado) para enviarlo después.
+  // No pide confirmación: los diálogos con botones no funcionan en la versión web.
+  const saveForLater = async ({ cloudId = null, pendingImages = images, userId } = {}) => {
+    await savePendingReport({
+      taskId,
+      cloudId,
+      title: title.trim(),
+      description: description.trim(),
+      images: pendingImages.map(storableImage),
+      imageCount: pendingImages.length,
+      rating: rating > 0 ? rating : null,
+      ratingComment: ratingComment.trim(),
+      userId,
+    });
+  };
+
   const handleSubmit = async () => {
-    
-    if (!validateForm()) {
-      return;
-    }
-
-    // Verificar conexión antes de intentar
-    const netState = await NetInfo.fetch();
-    const hasInternet = netState.isConnected === true;
-    
-
-    // Si no hay internet, ofrecer guardar offline inmediatamente
-    if (!hasInternet) {
-      Alert.alert(
-        '📶 Sin Conexión',
-        'No tienes conexión a internet. ¿Quieres guardar el reporte para enviarlo cuando tengas conexión?',
-        [
-          {
-            text: 'Cancelar',
-            style: 'cancel',
-          },
-          {
-            text: 'Guardar para Después',
-            onPress: async () => {
-              try {
-                setLoading(true);
-                const session = await getCurrentSession();
-                await savePendingReport({
-                  taskId,
-                  title: title.trim(),
-                  description: description.trim(),
-                  images: images.map(img => img.uri),
-                  imageCount: images.length,
-                  rating: rating > 0 ? rating : null,
-                  ratingComment: ratingComment.trim(),
-                  userId: session.session?.userId,
-                });
-                showSuccess('💾 Reporte guardado localmente. Se enviará cuando haya conexión.');
-                setTimeout(() => closeAndReset(), 1000);
-              } catch (offlineError) {
-                if (__DEV__) console.error('Error guardando offline:', offlineError);
-                showError('Error al guardar: ' + offlineError.message);
-              } finally {
-                setLoading(false);
-              }
-            },
-          },
-        ]
-      );
+    if (loading || !validateForm()) {
       return;
     }
 
     setLoading(true);
     setUploadingImages(false);
-    
+
+    let currentUser = null;
+    let reportId = null;
+
     try {
       const result = await getCurrentSession();
-      
       if (!result.success || !result.session) {
         throw new Error('Usuario no autenticado');
       }
-      const currentUser = result.session;
+      currentUser = result.session;
 
-      
+      // Sin conexión: guardar en el dispositivo; se envía solo al recuperar la señal
+      const netState = await NetInfo.fetch();
+      if (netState.isConnected !== true) {
+        await saveForLater({ userId: currentUser.userId });
+        showSuccess('Reporte guardado en el dispositivo. Se enviará al recuperar la conexión.');
+        setTimeout(() => closeAndReset(), 800);
+        return;
+      }
+
       // PASO 1: Crear reporte SIN imágenes primero
-      const reportId = await createTaskReport(taskId, currentUser.userId, {
+      reportId = await createTaskReport(taskId, currentUser.userId, {
         title: title.trim(),
         description: description.trim(),
         rating: rating > 0 ? rating : null,
         ratingComment: ratingComment.trim(),
         images: [], // Vacío inicialmente
       });
-      
 
-      // PASO 2: Subir imágenes - Esperar a que TODAS terminen
+      // PASO 2: Subir imágenes una por una
+      const failedImages = [];
       if (images.length > 0) {
         setUploadingImages(true);
-        
-        let failedImages = 0;
-        let successfulImages = 0;
 
-        for (let idx = 0; idx < images.length; idx++) {
-          const img = images[idx];
-          const imageId = img.id;
-          
+        for (const img of images) {
           try {
-            // Actualizar progreso visual
             setUploadProgress(prev => ({
               ...prev,
-              [imageId]: { status: 'uploading', progress: 0 }
+              [img.id]: { status: 'uploading', progress: 0 }
             }));
 
-            // Primero intentar convertir a base64 como fallback
-            let base64Data = null;
-            try {
-              const response = await fetch(img.uri);
-              const blob = await response.blob();
-              base64Data = await new Promise((resolve) => {
-                const reader = new FileReader();
-                reader.onloadend = () => resolve(reader.result);
-                reader.readAsDataURL(blob);
-              });
-            } catch (convError) {
-              console.warn('⚠️ Could not convert to base64:', convError);
-            }
-            
-            // Subir imagen (con fallback a base64)
             await uploadReportImage(taskId, reportId, {
               uri: img.uri,
-              base64: base64Data ? base64Data.split(',')[1] : null,
-              dataUrl: base64Data,
+              dataUrl: img.dataUrl,
               uploadedBy: currentUser.userId,
             });
 
-            // Marcar como completada
-            successfulImages++;
             setUploadProgress(prev => ({
               ...prev,
-              [imageId]: { status: 'success', progress: 100 }
+              [img.id]: { status: 'success', progress: 100 }
             }));
-
           } catch (imgError) {
-            failedImages++;
-            if (__DEV__) console.error(`⚠️ Error processing image ${idx + 1}:`, imgError);
-            
+            failedImages.push(img);
+            if (__DEV__) console.error('⚠️ Error subiendo foto:', imgError);
             setUploadProgress(prev => ({
               ...prev,
-              [imageId]: { status: 'error', progress: 0, error: imgError.message }
+              [img.id]: { status: 'error', progress: 0, error: imgError.message }
             }));
           }
         }
 
         setUploadingImages(false);
-        
-        // Log final del resultado
-
-        if (failedImages > 0) {
-          // Si algunas fallaron, avisar pero permitir continuar
-          Alert.alert(
-            '⚠️ Aviso',
-            `${successfulImages}/${images.length} fotos se enviaron correctamente.\n${failedImages} foto(s) no se pudieron enviar. Puedes reintentar después.`,
-            [
-              {
-                text: 'Ir a Reportes',
-                onPress: () => closeAndReset(),
-              },
-            ]
-          );
-        } else {
-          showSuccess('✅ ¡Reporte y fotos enviados exitosamente!');
-        }
-      } else {
-        showSuccess('✅ ¡Reporte enviado exitosamente!');
       }
 
-      // PASO 3: Cerrar modal DESPUÉS de que terminen todos los uploads
-      setTimeout(() => {
-        closeAndReset();
-      }, 800);
+      // PASO 3: Las fotos que fallaron se guardan para reintentarse solas. El reporte ya
+      // existe, así que se guarda su ID: el reintento solo sube las fotos, no lo duplica.
+      if (failedImages.length > 0) {
+        await saveForLater({ cloudId: reportId, pendingImages: failedImages, userId: currentUser.userId });
+        showWarning(
+          `Reporte enviado. ${failedImages.length} de ${images.length} foto(s) no se pudieron subir y se reintentarán automáticamente.`
+        );
+      } else {
+        showSuccess(images.length > 0 ? 'Reporte y fotos enviados' : 'Reporte enviado');
+      }
+
+      setTimeout(() => closeAndReset(), 800);
 
     } catch (error) {
       if (__DEV__) console.error('❌ Error creating report:', error);
-      showError('Error: ' + error.message);
 
-      // Ofrecer opción de guardar offline
-      Alert.alert(
-        '❌ Error al Enviar',
-        'No se pudo enviar el reporte. ¿Quieres guardarlo localmente para enviarlo después?',
-        [
-          {
-            text: 'Descartar',
-            onPress: () => {
-              closeAndReset();
-            },
-          },
-          {
-            text: 'Guardar para Después',
-            onPress: async () => {
-              try {
-                await savePendingReport({
-                  taskId,
-                  title: title.trim(),
-                  description: description.trim(),
-                  images: images.map(img => img.uri),
-                  imageCount: images.length,
-                  rating: rating > 0 ? rating : null,
-                  ratingComment: ratingComment.trim(),
-                  userId: (await getCurrentSession()).session?.userId,
-                });
-                showSuccess('💾 Reporte guardado. Se enviará cuando haya conexión.');
-                closeAndReset();
-              } catch (offlineError) {
-                if (__DEV__) console.error('Error guardando offline:', offlineError);
-                showError('Error al guardar');
-              }
-            },
-          },
-        ]
-      );
+      // Si el reporte no llegó a crearse, se conserva en el dispositivo en vez de perderlo
+      if (!reportId && currentUser) {
+        try {
+          await saveForLater({ userId: currentUser.userId });
+          showWarning('No se pudo enviar ahora. El reporte quedó guardado y se enviará automáticamente.');
+          setTimeout(() => closeAndReset(), 800);
+        } catch (offlineError) {
+          if (__DEV__) console.error('Error guardando offline:', offlineError);
+          showError(offlineError.message || 'No se pudo enviar ni guardar el reporte');
+        }
+      } else {
+        showError('Error: ' + error.message);
+      }
     } finally {
       setLoading(false);
+      setUploadingImages(false);
     }
   };
 
@@ -843,7 +773,14 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
                   );
                 })}
 
-                {images.length < 5 && !uploadingImages && (
+                {preparingImage && (
+                  <View style={[styles.addImageButton, { borderStyle: 'solid' }]}>
+                    <ActivityIndicator color={theme.primary} />
+                    <Text style={styles.addImageText}>Preparando…</Text>
+                  </View>
+                )}
+
+                {images.length < 5 && !uploadingImages && !preparingImage && (
                   <View style={styles.imageButtonsRow}>
                     <TouchableOpacity
                       style={styles.addImageButton}
@@ -942,7 +879,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
             </GlassmorphicButton>
             <GlassmorphicButton
               onPress={handleSubmit}
-              disabled={loading}
+              disabled={loading || preparingImage}
               variant="primary"
               size="medium"
               style={{ flex: 1 }}

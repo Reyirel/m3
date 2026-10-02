@@ -23,7 +23,9 @@ const { width } = Dimensions.get('window');
 
 const AnalyticsScreen = ({ navigation }) => {
   const { theme, isDark } = useTheme();
-  const { tasks: contextTasks } = useTasks();
+  const { tasks: contextTasks, currentUser } = useTasks();
+  // Las estadísticas de reportes cuentan solo los que este usuario puede ver
+  const reportScope = { user: currentUser, tasks: contextTasks };
   // Top 5 tasks by quality rating — derived from role-filtered context tasks
   const tasks = useMemo(() =>
     contextTasks
@@ -486,7 +488,7 @@ const AnalyticsScreen = ({ navigation }) => {
   const onRefresh = async () => {
     setRefreshing(true);
     try {
-      const stats = await getReportStatistics();
+      const stats = await getReportStatistics(null, reportScope);
       setReportStats(stats);
       const metrics = await getOverallTaskMetrics();
       setTaskMetrics(metrics);
@@ -502,7 +504,7 @@ const AnalyticsScreen = ({ navigation }) => {
     const loadData = async () => {
       try {
         // Load report statistics
-        const stats = await getReportStatistics();
+        const stats = await getReportStatistics(null, reportScope);
         if (!mounted) return;
         setReportStats(stats);
 

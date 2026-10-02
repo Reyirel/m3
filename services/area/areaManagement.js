@@ -76,12 +76,12 @@ export const createArea = async (areaData) => {
       presupuesto: areaData.presupuesto || 0,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
-      createdBy: session.uid,
-      updatedBy: session.uid,
+      createdBy: session.userId,
+      updatedBy: session.userId,
     });
 
     // Registrar en auditoría
-    await logAreaAudit(docRef.id, 'created', null, { ...areaData }, session.uid);
+    await logAreaAudit(docRef.id, 'created', null, { ...areaData }, session.userId);
 
     log(`✅ Área creada: ${docRef.id}`);
     return {
@@ -135,7 +135,7 @@ export const updateArea = async (areaId, updates) => {
       icono: updates.icono || oldAreaData.icono,
       presupuesto: updates.presupuesto !== undefined ? updates.presupuesto : oldAreaData.presupuesto,
       updatedAt: serverTimestamp(),
-      updatedBy: session.uid,
+      updatedBy: session.userId,
     };
 
     // Si cambia nombre, verificar unicidad
@@ -158,7 +158,7 @@ export const updateArea = async (areaId, updates) => {
     await updateDoc(areaRef, allowedUpdates);
 
     // Auditoría
-    await logAreaAudit(areaId, 'updated', oldAreaData, updates, session.uid);
+    await logAreaAudit(areaId, 'updated', oldAreaData, updates, session.userId);
 
     log(`✅ Área actualizada: ${areaId}`);
     return { success: true };
@@ -217,11 +217,11 @@ export const deleteArea = async (areaId) => {
     await updateDoc(areaRef, {
       activa: false,
       updatedAt: serverTimestamp(),
-      updatedBy: session.uid,
+      updatedBy: session.userId,
     });
 
     // Auditoría
-    await logAreaAudit(areaId, 'deleted', oldAreaData, { activa: false }, session.uid);
+    await logAreaAudit(areaId, 'deleted', oldAreaData, { activa: false }, session.userId);
 
     log(`✅ Área eliminada: ${areaId}`);
     return { success: true };
@@ -345,11 +345,11 @@ export const assignAreaChief = async (areaId, userId) => {
     await updateDoc(areaRef, {
       jefeId: userId,
       updatedAt: serverTimestamp(),
-      updatedBy: session.uid,
+      updatedBy: session.userId,
     });
 
     // Auditoría
-    await logAreaAudit(areaId, 'chief_assigned', oldData, { jefeId: userId }, session.uid);
+    await logAreaAudit(areaId, 'chief_assigned', oldData, { jefeId: userId }, session.userId);
 
     log(`✅ Jefe asignado a área: ${areaId}`);
     return { success: true };

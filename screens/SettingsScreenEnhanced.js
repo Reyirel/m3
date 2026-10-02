@@ -25,6 +25,7 @@ import {
 } from '../components';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
+import { useTasks } from '../contexts/TasksContext';
 import { hapticMedium } from '../utils/haptics';
 import { confirmAlert, infoAlert } from '../utils/alert';
 import { logoutUser } from '../services/authFirestore';
@@ -33,6 +34,8 @@ import { useResponsive } from '../utils/responsive';
 const SettingsScreenEnhanced = ({ navigation, onLogout }) => {
   const { theme, isDark, toggleTheme } = useTheme();
   const { isTablet, padding } = useResponsive();
+  const { currentUser } = useTasks();
+  const isAdmin = currentUser?.role === 'admin';
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [soundEnabled, setSoundEnabled] = useState(true);
@@ -122,6 +125,22 @@ const SettingsScreenEnhanced = ({ navigation, onLogout }) => {
         },
       ],
     },
+    // Solo el administrador: lo eliminado se puede revisar y restaurar
+    ...(isAdmin ? [{
+      title: 'Administración',
+      icon: 'shield-checkmark-outline',
+      items: [
+        {
+          label: 'Papelera de tareas',
+          description: 'Ver y restaurar tareas eliminadas',
+          icon: 'trash-outline',
+          onPress: () => {
+            hapticMedium();
+            navigation.navigate('Trash');
+          },
+        },
+      ],
+    }] : []),
     {
       title: 'Cuenta',
       icon: 'person-outline',

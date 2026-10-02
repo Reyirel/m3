@@ -25,6 +25,7 @@
 
 import { useState } from 'react';
 import TaskCreator from '../services/TaskCreator';
+import { updateTask } from '../services/tasks';
 import { getCurrentSession } from '../services/authFirestore';
 import { scheduleNotificationForTask, cancelNotification } from '../services/notifications';
 import {
@@ -65,51 +66,26 @@ export function useTaskCreation() {
       // ============================================
 
       if (editingTask) {
-        // SECRETARIO: solo puede cambiar status
-        if (currentUser.role === 'secretario') {
-          const statusPermission = canChangeTaskStatus(
-            currentUser,
-            editingTask
-          );
-          if (statusPermission.canChange) {
-            // Actualizar solo status
-            const result = await TaskCreator.update(editingTask.id, {
-              ...editingTask,
-              status: formData.status,
-            });
-            setProgress(100);
-            setIsLoading(false);
-            return result;
-          } else {
-            return {
-              success: false,
-              error: 'Los secretarios solo pueden delegar tareas y crear subtareas',
-            };
-          }
-        }
-
-        // DIRECTOR: solo puede cambiar status hacia adelante
-        if (currentUser.role === 'director') {
+        // SECRETARIO y DIRECTOR: solo pueden cambiar el status, y solo las transiciones
+        // que les permite su rol. Se escribe únicamente ese campo: reenviar la tarea
+        // completa por TaskCreator.update reescribía asignados y avance.
+        if (currentUser.role === 'secretario' || currentUser.role === 'director') {
           const statusPermission = canChangeTaskStatus(
             currentUser,
             editingTask,
             formData.status
           );
-          if (statusPermission.canChange) {
-            // Actualizar solo status
-            const result = await TaskCreator.update(editingTask.id, {
-              ...editingTask,
-              status: formData.status,
-            });
-            setProgress(100);
+          if (!statusPermission.canChange) {
             setIsLoading(false);
-            return result;
-          } else {
             return {
               success: false,
               error: statusPermission.reason || 'Permiso insuficiente',
             };
           }
+          await updateTask(editingTask.id, { status: formData.status });
+          setProgress(100);
+          setIsLoading(false);
+          return { success: true, taskId: editingTask.id };
         }
 
         // ADMIN: chequear permisos generales

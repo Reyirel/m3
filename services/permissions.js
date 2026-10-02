@@ -2,6 +2,7 @@
 // Sistema centralizado de permisos para gestión de tareas
 // Define qué acciones puede realizar cada rol
 
+import { getAssignedEmails, haveAllAssigneesConfirmed } from '../utils/taskHelpers';
 
 /**
  * Roles disponibles en orden de jerarquía
@@ -245,11 +246,14 @@ export function canChangeTaskStatus(user, task, newStatus = null) {
     return { canChange: true, reason: 'Admin puede cambiar status', allowedStatuses: ['pendiente', 'en_proceso', 'en_revision', 'cerrada'] };
   }
   
-  const assignedTo = task.assignedTo || [];
-  const isAssigned = Array.isArray(assignedTo) 
-    ? assignedTo.some(email => email?.toLowerCase().trim() === user.email?.toLowerCase().trim())
-    : assignedTo?.toLowerCase().trim() === user.email?.toLowerCase().trim();
-  
+  const assignedEmails = getAssignedEmails(task);
+  const isAssigned = assignedEmails.includes((user.email || '').toLowerCase().trim());
+
+  // Tarea con varios asignados: nadie la manda a revisión por su cuenta.
+  // Cada quien confirma su parte y pasa a revisión sola cuando todos confirmaron.
+  const waitingForConfirmations = assignedEmails.length > 1 && !haveAllAssigneesConfirmed(task);
+  const confirmationsReason = 'Esta tarea tiene varios asignados: confirma tu parte y pasará a revisión cuando todos confirmen';
+
   // 🔒 DIRECTOR: Puede iniciar y enviar a revisión, pero NO puede cerrar
   if (user.role === ROLES.DIRECTOR) {
     if (!isAssigned) {
@@ -264,8 +268,13 @@ export function canChangeTaskStatus(user, task, newStatus = null) {
       'cerrada': []                  // NO puede reabrir
     };
     
-    const allowed = allowedTransitions[currentStatus] || [];
-    
+    const allowed = (allowedTransitions[currentStatus] || [])
+      .filter(status => !(status === 'en_revision' && waitingForConfirmations));
+
+    if (waitingForConfirmations && currentStatus === 'en_proceso' && (!newStatus || newStatus === 'en_revision')) {
+      return { canChange: false, reason: confirmationsReason, allowedStatuses: allowed };
+    }
+
     if (newStatus && !allowed.includes(newStatus)) {
       return { canChange: false, reason: `No puedes cambiar de ${currentStatus} a ${newStatus}`, allowedStatuses: allowed };
     }
@@ -282,10 +291,19 @@ export function canChangeTaskStatus(user, task, newStatus = null) {
     if (!isAssigned) {
       return { canChange: false, reason: 'Solo puedes gestionar tareas asignadas a ti', allowedStatuses: [] };
     }
+    const allowedStatuses = waitingForConfirmations
+      ? ['pendiente', 'en_proceso']
+      : ['pendiente', 'en_proceso', 'en_revision'];
     if (newStatus === 'cerrada') {
-      return { canChange: false, reason: 'Solo el administrador puede finalizar tareas', allowedStatuses: ['pendiente', 'en_proceso', 'en_revision'] };
+      return { canChange: false, reason: 'Solo el administrador puede finalizar tareas', allowedStatuses };
     }
-    return { canChange: true, reason: 'Secretario puede gestionar sus tareas', allowedStatuses: ['pendiente', 'en_proceso', 'en_revision'] };
+    if ((task.status || 'pendiente') === 'cerrada') {
+      return { canChange: false, reason: 'Solo el administrador puede reabrir tareas', allowedStatuses: [] };
+    }
+    if (newStatus === 'en_revision' && waitingForConfirmations) {
+      return { canChange: false, reason: confirmationsReason, allowedStatuses };
+    }
+    return { canChange: true, reason: 'Secretario puede gestionar sus tareas', allowedStatuses };
   }
   
   return { canChange: false, reason: 'No tienes permisos para cambiar el status de esta tarea', allowedStatuses: [] };

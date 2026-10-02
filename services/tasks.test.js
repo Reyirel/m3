@@ -38,6 +38,8 @@ jest.mock('./offlineSync', () => ({
   getCachedTasks: jest.fn(async () => []),
   getConnectionState: jest.fn(() => true), // online por defecto
   queueOperation: jest.fn(async () => {}),
+  subscribeToCacheChanges: jest.fn(() => jest.fn()),
+  isPermanentError: jest.fn(() => false),
   OPERATION_TYPES: { CREATE: 'CREATE', UPDATE: 'UPDATE', DELETE: 'DELETE' },
 }));
 jest.mock('../utils/dateUtils', () => ({
@@ -59,6 +61,7 @@ jest.mock('../utils/taskHelpers', () => ({
 jest.mock('../config/areas', () => ({
   getDireccionesBySecretaria: jest.fn(() => []),
   resolveAreaName: jest.fn(a => a || ''),
+  getSecretariasForAreas: jest.fn(() => []),
 }));
 jest.mock('firebase/firestore', () => ({
   collection: jest.fn(),

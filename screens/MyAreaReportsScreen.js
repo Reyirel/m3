@@ -18,17 +18,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import ShimmerEffect from '../components/ShimmerEffect';
-import { subscribeToAreaReports, subscribeToMyReports, rateTaskReport, deleteTaskReport } from '../services/reportsService';
+import { subscribeToReports, rateTaskReport, deleteTaskReport } from '../services/reportsService';
 import { hapticSuccess, hapticWarning } from '../utils/haptics';
-import { getDireccionesBySecretaria } from '../config/areas';
+import { filterVisibleReports } from '../utils/taskVisibility';
 import { useNotification } from '../contexts/NotificationContext';
 import { useTasks } from '../contexts/TasksContext';
 
 const MyAreaReportsScreen = ({ navigation }) => {
   const { theme, isDark } = useTheme();
   const { showError, showSuccess } = useNotification();
-  const { currentUser } = useTasks();
-  const [reports, setReports] = useState([]);
+  const { currentUser, tasks } = useTasks();
+  const [allReports, setAllReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
@@ -49,44 +49,29 @@ const MyAreaReportsScreen = ({ navigation }) => {
     if (!currentUser) return;
     setLoadError(false);
 
-    const userRole = currentUser.role;
-    const userEmail = currentUser.email;
-
     // Limpiar suscripción anterior
     if (unsubscribeRef.current) unsubscribeRef.current();
 
-    if (userRole === 'secretario') {
-      const direccionesOficiales = getDireccionesBySecretaria(currentUser.area || '');
-      const areasFirebase = currentUser.areasPermitidas || [];
-      const todasAreas = [...new Set([
-        currentUser.area,
-        ...direccionesOficiales,
-        ...areasFirebase
-      ])].filter(Boolean);
-
-      unsubscribeRef.current = subscribeToAreaReports(todasAreas, (data) => {
-        setReports(data);
-        setLoading(false);
-        setRefreshing(false);
-      }, onSubError);
-    } else if (userRole === 'director') {
-      unsubscribeRef.current = subscribeToAreaReports([currentUser.area], (data) => {
-        setReports(data);
-        setLoading(false);
-        setRefreshing(false);
-      }, onSubError);
-    } else {
-      unsubscribeRef.current = subscribeToMyReports(userEmail, (data) => {
-        setReports(data);
-        setLoading(false);
-        setRefreshing(false);
-      }, onSubError);
-    }
+    unsubscribeRef.current = subscribeToReports((data) => {
+      setAllReports(data);
+      setLoading(false);
+      setRefreshing(false);
+    }, onSubError);
 
     return () => {
       if (unsubscribeRef.current) unsubscribeRef.current();
     };
   }, [currentUser, onSubError]);
+
+  // Cada rol ve solo lo que le corresponde (misma regla que las tareas):
+  //   secretario → reportes de las tareas de su secretaría y los suyos
+  //   director   → reportes de las tareas que tiene asignadas y los suyos
+  // Antes el director recibía todos los reportes del área guardada en su usuario,
+  // que para casi todos es la secretaría completa.
+  const reports = useMemo(
+    () => filterVisibleReports(allReports, tasks, currentUser),
+    [allReports, tasks, currentUser]
+  );
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);

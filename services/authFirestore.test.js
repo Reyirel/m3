@@ -2,7 +2,18 @@
 // Tests para la capa de autenticación personalizada (email + hash)
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
-jest.mock('../firebase', () => ({ db: {} }));
+jest.mock('../firebase', () => ({ db: {}, auth: {}, app: {}, firebaseConfig: {} }));
+jest.mock('firebase/app', () => ({ initializeApp: jest.fn(), deleteApp: jest.fn() }));
+jest.mock('firebase/functions', () => ({ getFunctions: jest.fn(), httpsCallable: jest.fn() }));
+// Por defecto el usuario no existe en Firebase Auth → se usa el esquema anterior
+jest.mock('firebase/auth', () => ({
+  getAuth: jest.fn(),
+  signInWithEmailAndPassword: jest.fn(async () => {
+    throw Object.assign(new Error('not allowed'), { code: 'auth/operation-not-allowed' });
+  }),
+  createUserWithEmailAndPassword: jest.fn(),
+  signOut: jest.fn(async () => {}),
+}));
 jest.mock('firebase/firestore', () => ({
   collection: jest.fn(),
   query: jest.fn(),
@@ -18,7 +29,7 @@ jest.mock('../utils/hashUtils', () => ({
   hashPassword: jest.fn(async (pw, salt) => `hash:${pw}:${salt}`),
   sha256Hash: jest.fn(async (pw, salt) => `sha256:${pw}:${salt}`),
   legacyHash: jest.fn((str) => `legacy:${str}`),
-  getHashFormat: jest.fn(() => 'argon2'),
+  getHashFormat: jest.fn(() => 'pbkdf2'),
 }));
 jest.mock('@react-native-async-storage/async-storage', () => ({
   getItem: jest.fn(async () => null),
@@ -79,8 +90,8 @@ describe('authFirestore — normalización de email', () => {
     getDocs.mockResolvedValueOnce(makeSnapshot([{
       id: 'uid1',
       email,
-      passwordHash: storedHash,
-      hashFormat: 'argon2',
+      password: storedHash,
+      active: true,
       role: 'director',
       displayName: 'Test User',
       area: 'TI',
@@ -92,8 +103,43 @@ describe('authFirestore — normalización de email', () => {
     const result = await loginUser(email, password);
 
     expect(result.success).toBe(true);
-    expect(result.session.email).toBe(email);
-    expect(result.session.role).toBe('director');
+    expect(result.user.email).toBe(email);
+    expect(result.user.role).toBe('director');
+  });
+
+  test('loginUser usa Firebase Auth cuando el usuario ya está migrado', async () => {
+    const { signInWithEmailAndPassword } = require('firebase/auth');
+    const { getDoc } = require('firebase/firestore');
+    signInWithEmailAndPassword.mockResolvedValueOnce({ user: { uid: 'uid-auth' } });
+    getDoc.mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({ email: 'migrado@example.com', role: 'admin', displayName: 'Migrado' }),
+    });
+
+    const { loginUser } = require('./authFirestore');
+    const result = await loginUser('migrado@example.com', 'secret');
+
+    expect(result.success).toBe(true);
+    expect(result.user.userId).toBe('uid-auth');
+    expect(result.user.role).toBe('admin');
+    // No se consulta la colección por email ni se compara ningún hash
+    expect(getDocs).not.toHaveBeenCalled();
+  });
+
+  test('loginUser rechaza usuario migrado pero desactivado', async () => {
+    const { signInWithEmailAndPassword, signOut } = require('firebase/auth');
+    const { getDoc } = require('firebase/firestore');
+    signInWithEmailAndPassword.mockResolvedValueOnce({ user: { uid: 'uid-auth' } });
+    getDoc.mockResolvedValueOnce({
+      exists: () => true,
+      data: () => ({ email: 'baja@example.com', role: 'director', active: false }),
+    });
+
+    const { loginUser } = require('./authFirestore');
+    const result = await loginUser('baja@example.com', 'secret');
+
+    expect(result.success).toBe(false);
+    expect(signOut).toHaveBeenCalled();
   });
 });
 

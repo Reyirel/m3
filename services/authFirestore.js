@@ -1,13 +1,66 @@
 // services/authFirestore.js
-// Sistema de autenticación usando solo Firestore (sin Firebase Auth)
-import { collection, query, where, getDocs, addDoc, updateDoc, doc } from 'firebase/firestore';
-import { db } from '../firebase';
+// Sistema de autenticación.
+// Usa Firebase Auth para los usuarios ya migrados (ver docs/MIGRACION_FIREBASE_AUTH.md)
+// y cae al esquema anterior (hash en Firestore) para los que aún no lo están.
+import { collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, doc } from 'firebase/firestore';
+import { initializeApp, deleteApp } from 'firebase/app';
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+} from 'firebase/auth';
+import { getFunctions, httpsCallable } from 'firebase/functions';
+import { app, auth, db, firebaseConfig } from '../firebase';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { hashPassword, sha256Hash, legacyHash, getHashFormat } from '../utils/hashUtils';
 
 // Normalizar email de forma consistente (misma función usada en login)
 const normalizeEmailForAuth = (email) =>
   (email || '').replace(/[^a-zA-Z0-9@._\-+]/g, '').toLowerCase();
+
+// true cuando el usuario actual inició sesión con Firebase Auth (ya migrado)
+export const isFirebaseAuthSession = () => !!auth?.currentUser;
+
+// Construir y guardar la sesión local a partir del documento de usuario
+const saveSession = async (userId, userData) => {
+  // 🧹 LIMPIAR TODO EL CACHÉ de tareas al iniciar sesión
+  // Asegurar que se carguen datos frescos de Firestore sin contaminación
+  try {
+    const { clearOfflineData } = await import('./offlineSync');
+    await clearOfflineData();
+  } catch (cleanupError) {
+    if (__DEV__) console.error('Error limpiando caché en login:', cleanupError);
+  }
+
+  const session = {
+    userId,
+    email: (userData.email || '').toLowerCase().trim(),
+    displayName: userData.displayName,
+    role: userData.role,
+    department: userData.department || '',
+    area: userData.area || userData.department || '',
+    direcciones: userData.direcciones || [], // Direcciones a cargo del secretario
+    areasPermitidas: userData.areasPermitidas || [] // Todas las áreas permitidas
+  };
+
+  await AsyncStorage.setItem('userSession', JSON.stringify(session));
+  return session;
+};
+
+// Crear la cuenta en Firebase Auth sin cerrar la sesión del admin:
+// se usa una instancia secundaria de la app que se descarta al terminar.
+const createAuthAccount = async (email, password) => {
+  const secondaryApp = initializeApp(firebaseConfig, `user-creation-${Date.now()}`);
+  try {
+    const secondaryAuth = getAuth(secondaryApp);
+    const credential = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+    await signOut(secondaryAuth);
+    return credential.user.uid;
+  } finally {
+    await deleteApp(secondaryApp).catch(() => {});
+  }
+};
 
 // Registrar nuevo usuario
 export const registerUser = async (email, password, displayName, role = 'director') => {
@@ -22,7 +75,20 @@ export const registerUser = async (email, password, displayName, role = 'directo
       return { success: false, error: 'El usuario ya existe' };
     }
 
-    // Crear nuevo usuario
+    // Con Firebase Auth activo: la cuenta vive en Auth y el documento usa el mismo uid
+    if (isFirebaseAuthSession()) {
+      const uid = await createAuthAccount(normalizedEmail, password);
+      await setDoc(doc(db, 'users', uid), {
+        email: normalizedEmail,
+        displayName: displayName,
+        role: role,
+        active: true,
+        createdAt: new Date()
+      });
+      return { success: true, userId: uid, userData: { email, displayName, role } };
+    }
+
+    // Crear nuevo usuario (esquema anterior)
     const hashedPassword = await hashPassword(password, normalizedEmail);
     const docRef = await addDoc(usersRef, {
       email: normalizedEmail,
@@ -47,15 +113,40 @@ export const registerUser = async (email, password, displayName, role = 'directo
 export const loginUser = async (email, password) => {
   try {
     const normalizedEmail = normalizeEmailForAuth(email);
-    
+
+    // 1) Usuarios migrados: Firebase Auth valida la contraseña en el servidor
+    let firebaseUser = null;
+    try {
+      const credential = await signInWithEmailAndPassword(auth, normalizedEmail, password);
+      firebaseUser = credential.user;
+    } catch (_authError) {
+      // Sin cuenta en Firebase Auth (o proveedor deshabilitado): probar esquema anterior
+    }
+
+    if (firebaseUser) {
+      const userSnap = await getDoc(doc(db, 'users', firebaseUser.uid));
+      if (!userSnap.exists()) {
+        await signOut(auth).catch(() => {});
+        return { success: false, error: 'Usuario no encontrado' };
+      }
+      const userData = userSnap.data();
+      if (userData.active === false) {
+        await signOut(auth).catch(() => {});
+        return { success: false, error: 'Usuario desactivado' };
+      }
+      const session = await saveSession(firebaseUser.uid, userData);
+      return { success: true, user: session };
+    }
+
+    // 2) Esquema anterior: hash guardado en Firestore
     const usersRef = collection(db, 'users');
     const q = query(usersRef, where('email', '==', normalizedEmail));
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
-      return { success: false, error: 'Usuario no encontrado' };
+      return { success: false, error: 'Usuario no encontrado', code: 'user-not-found' };
     }
-    
+
     const userDoc = querySnapshot.docs[0];
     const userData = userDoc.data();
     
@@ -91,41 +182,46 @@ export const loginUser = async (email, password) => {
     }
 
     if (!passwordValid) {
-      return { success: false, error: 'Contraseña incorrecta' };
+      return { success: false, error: 'Contraseña incorrecta', code: 'wrong-password' };
     }
-    
+
     // Verificar si está activo
-    if (!userData.active) {
-      return { success: false, error: 'Usuario desactivado' };
+    if (userData.active === false) {
+      return { success: false, error: 'Usuario desactivado', code: 'user-disabled' };
     }
-    
-    // 🧹 LIMPIAR TODO EL CACHÉ de tareas al iniciar sesión
-    // Asegurar que se carguen datos frescos de Firestore sin contaminación
-    try {
-      const { clearOfflineData } = await import('./offlineSync');
-      await clearOfflineData();
-    } catch (cleanupError) {
-      if (__DEV__) console.error('Error limpiando caché en login:', cleanupError);
-    }
-    
-    // Guardar sesión en AsyncStorage
-    const session = {
-      userId: userDoc.id,
-      email: (userData.email || '').toLowerCase().trim(),
-      displayName: userData.displayName,
-      role: userData.role,
-      department: userData.department || '',
-      area: userData.area || userData.department || '',
-      direcciones: userData.direcciones || [], // Direcciones a cargo del secretario
-      areasPermitidas: userData.areasPermitidas || [] // Todas las áreas permitidas
-    };
-    
-    await AsyncStorage.setItem('userSession', JSON.stringify(session));
-    
+
+    const session = await saveSession(userDoc.id, userData);
+
     return { success: true, user: session };
   } catch (error) {
-    return { success: false, error: error.message };
+    // Con las reglas seguras activas, la colección users no se puede leer sin sesión:
+    // un login fallido en Firebase Auth termina aquí
+    if (error?.code === 'permission-denied') {
+      return { success: false, error: 'Credenciales incorrectas', code: 'wrong-password' };
+    }
+    // Cualquier otro error (sin conexión, fallo del dispositivo) NO es una contraseña
+    // equivocada: la pantalla de inicio no debe contarlo como intento fallido
+    return {
+      success: false,
+      error: 'No se pudo iniciar sesión. Revisa tu conexión e intenta de nuevo.',
+      code: 'unavailable',
+      detail: error?.message,
+    };
   }
+};
+
+// Cambiar la contraseña de otro usuario (solo admin)
+export const adminSetUserPassword = async (userId, email, newPassword) => {
+  // Usuarios migrados: solo el servidor puede cambiar la contraseña de otra cuenta
+  if (isFirebaseAuthSession()) {
+    const setPassword = httpsCallable(getFunctions(app), 'adminSetUserPassword');
+    await setPassword({ userId, newPassword });
+    return;
+  }
+
+  // Esquema anterior: hash en Firestore
+  const hashed = await hashPassword(newPassword, normalizeEmailForAuth(email));
+  await updateDoc(doc(db, 'users', userId), { password: hashed });
 };
 
 // Cerrar sesión
@@ -152,11 +248,16 @@ export const logoutUser = async () => {
 
     // Remover la sesión
     await AsyncStorage.removeItem('userSession');
+    if (auth?.currentUser) await signOut(auth).catch(() => {});
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }
 };
+
+// Cada cuánto se vuelve a leer el usuario desde Firestore para refrescar la sesión
+const SESSION_REFRESH_INTERVAL_MS = 60 * 1000;
+let lastSessionRefresh = 0;
 
 // Obtener sesión actual
 export const getCurrentSession = async () => {
@@ -168,8 +269,23 @@ export const getCurrentSession = async () => {
       session.email = normalizeEmailForAuth(session.email);
       await AsyncStorage.setItem('userSession', JSON.stringify(session));
 
+      // Sin conexión, o si se refrescó hace poco, se usa la sesión guardada.
+      // Esta función se llama en casi cada operación: consultar Firestore cada vez
+      // deja la app esperando cuando no hay red y multiplica las lecturas cuando sí hay.
+      let isOnline = true;
+      try {
+        const { getConnectionState } = await import('./offlineSync');
+        isOnline = getConnectionState();
+      } catch (_e) {
+        // Sin el estado de conexión se intenta el refresh normal
+      }
+      if (!isOnline || Date.now() - lastSessionRefresh < SESSION_REFRESH_INTERVAL_MS) {
+        return { success: true, session };
+      }
+
       // Refrescar datos del usuario desde Firebase para obtener campos actualizados
       try {
+        lastSessionRefresh = Date.now();
         const usersRef = collection(db, 'users');
         const q = query(usersRef, where('email', '==', session.email));
         const querySnapshot = await getDocs(q);
@@ -206,11 +322,14 @@ export const getCurrentSession = async () => {
     }
     return { success: false, error: 'No hay sesión activa' };
   } catch (error) {
-    // Si hay un error al parsear o leer, limpiamos la sesión corrupta
-    try {
-      await AsyncStorage.removeItem('userSession');
-    } catch (_cleanupError) {
-      // Error silencioso
+    // Solo una sesión ilegible (datos corruptos) se borra. Un fallo pasajero del
+    // dispositivo no debe cerrar la sesión y obligar a iniciar de nuevo.
+    if (error instanceof SyntaxError) {
+      try {
+        await AsyncStorage.removeItem('userSession');
+      } catch (_cleanupError) {
+        // Error silencioso
+      }
     }
     return { success: false, error: error.message };
   }

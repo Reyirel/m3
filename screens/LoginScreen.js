@@ -13,8 +13,10 @@ import Toast from 'react-native-toast-message';
 
 const BRAND = '#9F2241';
 const MAX_ATTEMPTS = 5;
-const LOCKOUT_MS = 15 * 60 * 1000; // 15 minutos
-const ATTEMPTS_KEY = 'login_attempts';
+const LOCKOUT_MS = 5 * 60 * 1000; // 5 minutos
+// Los intentos fallidos dejan de contar pasado este tiempo sin nuevos errores
+const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+const ATTEMPTS_KEY = 'login_attempts_by_email';
 const BRAND_DARK = '#7A1A32';
 const BRAND_GLOW = 'rgba(159, 34, 65, 0.35)';
 
@@ -33,6 +35,34 @@ export default function LoginScreen({ onLogin }) {
   const slideAnim  = useRef(new Animated.Value(32)).current;
   const shakeAnim  = useRef(new Animated.Value(0)).current;
 
+  // Intentos fallidos POR CUENTA (correo). Antes era un solo contador por dispositivo:
+  // cinco errores con cualquier cuenta bloqueaban también a las demás, y los intentos
+  // viejos nunca caducaban.
+  const attemptsMapRef = useRef({});
+
+  const emailKey = (value) => (value || '').trim().toLowerCase();
+
+  // Estado vigente de una cuenta: descarta bloqueos vencidos e intentos antiguos
+  const getEntry = (key) => {
+    const entry = attemptsMapRef.current[key];
+    if (!entry) return null;
+    const now = Date.now();
+    if (entry.lockedUntil) return now < entry.lockedUntil ? entry : null;
+    return now - (entry.lastAt || 0) < ATTEMPT_WINDOW_MS ? entry : null;
+  };
+
+  const saveAttempts = async () => {
+    try {
+      await AsyncStorage.setItem(ATTEMPTS_KEY, JSON.stringify(attemptsMapRef.current));
+    } catch {}
+  };
+
+  const showEntryFor = (value) => {
+    const entry = getEntry(emailKey(value));
+    setAttempts(entry?.count || 0);
+    setLockedUntil(entry?.lockedUntil || null);
+  };
+
   useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim,  { toValue: 1, duration: 480, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
@@ -44,18 +74,20 @@ export default function LoginScreen({ onLogin }) {
       if (!raw) return;
       try {
         const data = JSON.parse(raw);
-        if (data.lockedUntil && Date.now() < data.lockedUntil) {
-          setAttempts(data.count);
-          setLockedUntil(data.lockedUntil);
-        } else if (data.lockedUntil && Date.now() >= data.lockedUntil) {
-          AsyncStorage.removeItem(ATTEMPTS_KEY);
-        } else {
-          setAttempts(data.count || 0);
-        }
+        if (data && typeof data === 'object') attemptsMapRef.current = data;
       } catch {}
     });
+    // El contador anterior (uno solo para todo el dispositivo) ya no se usa
+    AsyncStorage.removeItem('login_attempts').catch(() => {});
     return () => clearInterval(timerRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Al cambiar de correo se muestra el estado de ESA cuenta
+  useEffect(() => {
+    showEntryFor(email);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [email]);
 
   // Cuenta regresiva del bloqueo
   useEffect(() => {
@@ -63,10 +95,11 @@ export default function LoginScreen({ onLogin }) {
     const update = () => {
       const remaining = lockedUntil - Date.now();
       if (remaining <= 0) {
+        delete attemptsMapRef.current[emailKey(email)];
+        saveAttempts();
         setLockedUntil(null);
         setAttempts(0);
         setLockTimer('');
-        AsyncStorage.removeItem(ATTEMPTS_KEY);
         clearInterval(timerRef.current);
       } else {
         const m = Math.floor(remaining / 60000);
@@ -77,6 +110,7 @@ export default function LoginScreen({ onLogin }) {
     update();
     timerRef.current = setInterval(update, 1000);
     return () => clearInterval(timerRef.current);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lockedUntil]);
 
   const triggerShake = () => {
@@ -90,7 +124,9 @@ export default function LoginScreen({ onLogin }) {
   };
 
   const handleSubmit = async () => {
-    if (lockedUntil && Date.now() < lockedUntil) {
+    const key = emailKey(email);
+    const current = getEntry(key);
+    if (current?.lockedUntil) {
       triggerShake();
       Toast.show({ type: 'error', text1: `Cuenta bloqueada. Espera ${lockTimer}`, position: 'top', visibilityTime: 3000 });
       return;
@@ -102,33 +138,50 @@ export default function LoginScreen({ onLogin }) {
     }
     setLoading(true);
     try {
-      const result = await loginUser(email.trim().toLowerCase(), password);
+      let result = await loginUser(key, password);
+      // El teclado del celular suele agregar un espacio al final al autocompletar
+      if (!result.success && result.code === 'wrong-password' && password !== password.trim()) {
+        result = await loginUser(key, password.trim());
+      }
+
       if (result.success) {
-        await AsyncStorage.removeItem(ATTEMPTS_KEY);
+        delete attemptsMapRef.current[key];
+        await saveAttempts();
         setAttempts(0);
         Toast.show({ type: 'success', text1: 'Bienvenido', position: 'bottom', visibilityTime: 1500 });
         setTimeout(() => { if (onLogin) onLogin(); }, 600);
-      } else {
-        triggerShake();
-        const newCount = attempts + 1;
-        setAttempts(newCount);
-        const remaining = MAX_ATTEMPTS - newCount;
-        if (newCount >= MAX_ATTEMPTS) {
-          const until = Date.now() + LOCKOUT_MS;
-          setLockedUntil(until);
-          await AsyncStorage.setItem(ATTEMPTS_KEY, JSON.stringify({ count: newCount, lockedUntil: until }));
-          Toast.show({ type: 'error', text1: 'Demasiados intentos', text2: 'Cuenta bloqueada por 15 minutos', position: 'top', visibilityTime: 4000 });
-        } else {
-          await AsyncStorage.setItem(ATTEMPTS_KEY, JSON.stringify({ count: newCount }));
-          Toast.show({
-            type: 'error',
-            text1: result.error || 'Credenciales incorrectas',
-            text2: remaining === 1 ? '⚠️ Último intento antes del bloqueo' : `${remaining} intentos restantes`,
-            position: 'top',
-            visibilityTime: 3000,
-          });
-        }
+        return;
       }
+
+      triggerShake();
+
+      // Solo una contraseña equivocada cuenta como intento. Un correo mal escrito,
+      // una cuenta desactivada o una falla de conexión no deben bloquear a nadie.
+      if (result.code !== 'wrong-password') {
+        Toast.show({ type: 'error', text1: result.error || 'No se pudo iniciar sesión', position: 'top', visibilityTime: 3500 });
+        return;
+      }
+
+      const newCount = (current?.count || 0) + 1;
+      const remaining = MAX_ATTEMPTS - newCount;
+      if (newCount >= MAX_ATTEMPTS) {
+        const until = Date.now() + LOCKOUT_MS;
+        attemptsMapRef.current[key] = { count: newCount, lastAt: Date.now(), lockedUntil: until };
+        setAttempts(newCount);
+        setLockedUntil(until);
+        Toast.show({ type: 'error', text1: 'Demasiados intentos', text2: `Esta cuenta queda bloqueada ${LOCKOUT_MS / 60000} minutos en este dispositivo`, position: 'top', visibilityTime: 4000 });
+      } else {
+        attemptsMapRef.current[key] = { count: newCount, lastAt: Date.now() };
+        setAttempts(newCount);
+        Toast.show({
+          type: 'error',
+          text1: result.error || 'Credenciales incorrectas',
+          text2: remaining === 1 ? '⚠️ Último intento antes del bloqueo' : `${remaining} intentos restantes`,
+          position: 'top',
+          visibilityTime: 3000,
+        });
+      }
+      await saveAttempts();
     } catch {
       triggerShake();
       Toast.show({ type: 'error', text1: 'Error de conexión', position: 'top', visibilityTime: 3000 });
@@ -265,11 +318,10 @@ export default function LoginScreen({ onLogin }) {
 
             {/* CTA principal */}
             <TouchableOpacity
-              style={[styles.btn, loading && styles.btnLoading]}
+              style={[styles.btn, loading && styles.btnLoading, lockedUntil && { opacity: 0.5 }]}
               onPress={handleSubmit}
               disabled={loading || !!lockedUntil}
               activeOpacity={0.85}
-              style={[lockedUntil && { opacity: 0.5 }]}
             >
               {loading ? (
                 <>

@@ -18,7 +18,7 @@ export const savePendingReport = async (reportData) => {
   try {
     const pendingReports = await getPendingReports();
     
-    const reportId = Date.now().toString();
+    const reportId = `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
     const pendingReport = {
       id: reportId,
       ...reportData,
@@ -29,11 +29,15 @@ export const savePendingReport = async (reportData) => {
     
     pendingReports.push(pendingReport);
     await AsyncStorage.setItem(PENDING_REPORTS_KEY, JSON.stringify(pendingReports));
-    
+
     log('💾 Reporte guardado offline:', reportId);
     return reportId;
   } catch (error) {
     if (__DEV__) console.error('❌ Error guardando reporte offline:', error);
+    // El almacenamiento del navegador es limitado (unos 5 MB): varias fotos pueden llenarlo
+    if (/quota|exceeded/i.test(error?.name || '') || /quota|exceeded/i.test(error?.message || '')) {
+      throw new Error('No hay espacio en el dispositivo para guardar el reporte con sus fotos. Quita alguna foto o envía antes los reportes pendientes.');
+    }
     throw error;
   }
 };
@@ -150,6 +154,22 @@ export const updatePendingReportImages = async (reportId, imageUris) => {
 };
 
 /**
+ * Actualizar campos de un reporte pendiente (p. ej. el ID que ya recibió en el servidor
+ * o las fotos que todavía faltan por subir)
+ */
+export const updatePendingReport = async (reportId, changes) => {
+  try {
+    const pending = await getPendingReports();
+    const index = pending.findIndex(r => r.id === reportId);
+    if (index === -1) return;
+    pending[index] = { ...pending[index], ...changes };
+    await AsyncStorage.setItem(PENDING_REPORTS_KEY, JSON.stringify(pending));
+  } catch (error) {
+    if (__DEV__) console.error('Error actualizando reporte pendiente:', error);
+  }
+};
+
+/**
  * Eliminar reporte pendiente
  */
 export const deletePendingReport = async (reportId) => {
@@ -214,27 +234,24 @@ export const getSyncStats = async () => {
 export const retryFailedReports = async () => {
   try {
     const failed = await getFailedReports();
+    if (failed.length === 0) return;
     const maxRetries = 5;
-    
-    for (const report of failed) {
-      if ((report.retries || 0) < maxRetries) {
-        // Mover de vuelta a pending
-        const pending = await getPendingReports();
-        pending.push({
-          ...report,
-          retries: (report.retries || 0) + 1,
-          status: 'pending_sync',
-        });
-        
-        const updated = failed.filter(r => r.id !== report.id);
-        await AsyncStorage.setItem(PENDING_REPORTS_KEY, JSON.stringify(pending));
-        await AsyncStorage.setItem(FAILED_REPORTS_KEY, JSON.stringify(updated));
-        
-        log(`🔄 Reporte ${report.id} movido para reintentar (intento ${report.retries + 1})`);
-      } else {
-        log(`❌ Reporte ${report.id} excedió máximo de reintentos`);
-      }
-    }
+
+    // Se decide todo sobre una sola lectura: mover uno por uno reescribía la lista de
+    // fallidos con datos viejos y los reportes ya movidos volvían a aparecer duplicados
+    const toRetry = failed.filter(r => (r.retries || 0) < maxRetries);
+    const exhausted = failed.filter(r => (r.retries || 0) >= maxRetries);
+    if (toRetry.length === 0) return;
+
+    const pending = await getPendingReports();
+    const pendingIds = new Set(pending.map(r => r.id));
+    toRetry.forEach(report => {
+      if (!pendingIds.has(report.id)) pending.push({ ...report, status: 'pending_sync' });
+    });
+
+    await AsyncStorage.setItem(PENDING_REPORTS_KEY, JSON.stringify(pending));
+    await AsyncStorage.setItem(FAILED_REPORTS_KEY, JSON.stringify(exhausted));
+    log(`🔄 ${toRetry.length} reporte(s) movidos para reintentar`);
   } catch (error) {
     if (__DEV__) console.error('Error reintentando reportes fallidos:', error);
   }

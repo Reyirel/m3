@@ -52,9 +52,12 @@ import { confirmAlert } from '../utils/alert';
 
 // Importar servicios y utilidades
 import { toMs } from '../utils/dateUtils';
-import { AREAS } from '../config/areas';
-import { getAllUsersNames, getTitularesByAreas } from '../services/roles';
+import { AREAS, getSecretariasForAreas } from '../config/areas';
+import { getAllUsersNames, getTitularesByAreas, isDirectorOfSecretario } from '../services/roles';
 import { canChangeTaskStatus } from '../services/permissions';
+import { updateTask } from '../services/tasks';
+import { getAssignedEmails } from '../utils/taskHelpers';
+import { getTaskAreas } from '../utils/taskVisibility';
 import {
   findSimilarTasks,
   suggestTaskMetadata,
@@ -76,6 +79,12 @@ export default function TaskDetailScreen({ route, navigation }) {
   // Task a editar o null para crear nueva
   const editingTask = route.params?.task || null;
   const isEditing = !!editingTask;
+  // Versión en tiempo real de la tarea: la que llegó por navegación es una copia y no
+  // refleja confirmaciones, delegaciones ni cambios de estado hechos después de abrirla
+  const liveTask = useMemo(
+    () => (editingTask ? tasks.find(t => t.id === editingTask.id) || editingTask : null),
+    [tasks, editingTask]
+  );
 
   // Permisos (usando hook)
   const permissions = useTaskPermissions(
@@ -201,48 +210,23 @@ export default function TaskDetailScreen({ route, navigation }) {
           avatar: d.data().photoURL || null,
           role: d.data().role || '',
           area: d.data().area || '',
+          secretaria: d.data().secretaria || '',
           direcciones: d.data().direcciones || [],
           areasPermitidas: d.data().areasPermitidas || [],
         }));
 
-        const normalizeStr = (s) => (s || '').trim().toLowerCase();
         const userRole = currentUser?.role;
-        const userDirecciones = currentUser?.direcciones || [];
+        const directors = allUsers.filter(u => u.role === 'director');
 
-        // Secretario: solo directores adscritos a sus direcciones
-        if (userRole === 'secretario' && userDirecciones.length > 0) {
-          const filtered = allUsers.filter(u => {
-            if (u.id === currentUser?.userId) return false;
-            if (u.role === 'admin') return true;
-            if (u.role === 'director') {
-              const uAreas = [u.area, ...(u.areasPermitidas || [])].map(normalizeStr).filter(Boolean);
-              return userDirecciones.some(dir => {
-                const d = normalizeStr(dir);
-                return uAreas.some(a => a.includes(d) || d.includes(a));
-              });
-            }
-            return false;
-          });
-          setAvailableUsers(filtered.length > 0 ? filtered : allUsers);
+        if (userRole === 'secretario') {
+          // Secretario: solo los directores adscritos a su secretaría — SIN fallback a todos
+          const ownDirectors = directors.filter(u =>
+            u.id !== currentUser?.userId && isDirectorOfSecretario(u, currentUser)
+          );
+          setAvailableUsers(ownDirectors);
+          setDelegateUsers(ownDirectors);
         } else {
           setAvailableUsers(allUsers);
-        }
-
-        // Poblar directores para delegación
-        const directors = allUsers.filter(u => u.role === 'director');
-        if (userRole === 'secretario') {
-          // Secretario solo puede delegar a directores de sus direcciones adscritas — SIN fallback
-          const filteredDirs = userDirecciones.length > 0
-            ? directors.filter(u => {
-                const uAreas = [u.area, ...(u.areasPermitidas || [])].map(normalizeStr).filter(Boolean);
-                return userDirecciones.some(dir => {
-                  const d = normalizeStr(dir);
-                  return uAreas.some(a => a.includes(d) || d.includes(a));
-                });
-              })
-            : [];
-          setDelegateUsers(filteredDirs);
-        } else {
           setDelegateUsers(directors);
         }
       } catch (e) {
@@ -250,7 +234,7 @@ export default function TaskDetailScreen({ route, navigation }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [currentUser?.role, currentUser?.userId, currentUser?.direcciones]);
+  }, [currentUser]);
 
   // Cargar responsables cuando cambian las áreas
   useEffect(() => {
@@ -334,48 +318,72 @@ export default function TaskDetailScreen({ route, navigation }) {
   };
 
   const handleStatusChange = useCallback(async (taskId, newStatus) => {
-    const check = canChangeTaskStatus(currentUser, editingTask || { id: taskId }, newStatus);
+    const check = canChangeTaskStatus(currentUser, liveTask || { id: taskId }, newStatus);
     if (!check.canChange) {
       showError(check.reason);
       return;
     }
     try {
-      const { doc, updateDoc } = await import('firebase/firestore');
-      const { db } = await import('../firebase');
-      await updateDoc(doc(db, 'tasks', taskId), {
-        status: newStatus,
-        updatedAt: new Date().toISOString(),
-      });
-    } catch {
-      showError('Error al actualizar el estado');
+      // updateTask aplica las reglas del servicio (solo el admin cierra) y actualiza
+      // el avance de la tarea principal cuando es la subtarea de un área
+      await updateTask(taskId, { status: newStatus });
+    } catch (e) {
+      showError(e?.code === 'permission-denied' ? e.message : 'Error al actualizar el estado');
     }
-  }, [currentUser, editingTask, showError]);
+  }, [currentUser, liveTask, showError]);
 
   const handleDelegate = useCallback(async (director) => {
-    if (!editingTask || !director) return;
+    if (!liveTask || !director) return;
+    // El secretario solo delega a directores de su secretaría (el admin, a cualquiera)
+    if (currentUser?.role === 'secretario' && !isDirectorOfSecretario(director, currentUser)) {
+      showError('Solo puedes delegar a directores de tu secretaría');
+      return;
+    }
     try {
-      const { doc, updateDoc } = await import('firebase/firestore');
-      const { db } = await import('../firebase');
-      // Normalizar assignedTo a array — arrayUnion falla si el campo es string en Firestore
-      const rawAssigned = editingTask.assignedTo;
-      const currentAssigned = Array.isArray(rawAssigned)
-        ? rawAssigned
-        : rawAssigned ? [rawAssigned] : [];
-      const newAssigned = currentAssigned.includes(director.email)
-        ? currentAssigned
-        : [...currentAssigned, director.email];
-      await updateDoc(doc(db, 'tasks', editingTask.id), {
+      const directorEmail = (director.email || '').toLowerCase().trim();
+      const directorName = director.displayName || director.name || directorEmail;
+      const currentAssigned = getAssignedEmails(liveTask);
+      const alreadyAssigned = currentAssigned.includes(directorEmail);
+      const newAssigned = alreadyAssigned ? currentAssigned : [...currentAssigned, directorEmail];
+
+      // Nombres y estado por asignado se reconstruyen por correo para que no se desordenen
+      const previousAssignments = Array.isArray(liveTask.assignments) ? liveTask.assignments : [];
+      const assignments = newAssigned.map(email =>
+        previousAssignments.find(a => (a.email || '').toLowerCase().trim() === email) || {
+          email,
+          name: email === directorEmail ? directorName : email,
+          status: 'pendiente',
+          completedAt: null,
+        }
+      );
+
+      const updates = {
         assignedTo: newAssigned,
-        delegatedTo: director.email,
+        assignedToNames: assignments.map(a => a.name || a.email),
+        assignments,
+        // La secretaría del director delegado también debe poder ver la tarea
+        secretarias: [...new Set([
+          ...(liveTask.secretarias || []),
+          ...getSecretariasForAreas([...getTaskAreas(liveTask), director.secretaria || director.area]),
+        ])],
+        delegatedTo: directorEmail,
         delegatedBy: currentUser?.email || '',
         delegatedAt: new Date().toISOString(),
-      });
-      showSuccess(`Tarea delegada a ${director.displayName || director.name}`);
+      };
+      // Si la tarea ya estaba en revisión porque todos habían confirmado, el nuevo
+      // asignado aún no confirma: regresa a en proceso
+      if (!alreadyAssigned && liveTask.status === 'en_revision') {
+        updates.status = 'en_proceso';
+      }
+
+      // updateTask funciona también sin conexión: guarda el cambio en la cola
+      await updateTask(liveTask.id, updates);
+      showSuccess(`Tarea delegada a ${directorName}`);
       setShowDelegateModal(false);
     } catch {
       showError('Error al delegar la tarea');
     }
-  }, [editingTask, currentUser, showSuccess, showError]);
+  }, [liveTask, currentUser, showSuccess, showError]);
 
   const handleSave = async () => {
     if (taskOps.isSaving) return;
@@ -453,7 +461,7 @@ export default function TaskDetailScreen({ route, navigation }) {
     return (
       <>
         <ReadOnlyTaskModal
-          task={editingTask}
+          task={liveTask}
           navigation={navigation}
           theme={theme}
           canAddSubtask={permissions.canAddSubtask}
