@@ -238,14 +238,21 @@ export async function subscribeToTasks(callback) {
     // Mostrar de inmediato la última copia guardada mientras responde Firestore
     emit({ skipIfEmpty: true });
 
+    // includeMetadataChanges: sin esto, cuando el cache está vacío y el servidor también
+    // responde vacío, Firestore no vuelve a avisar y la pantalla se quedaba cargando.
     const unsubscribeListeners = taskQueries.map((tasksQuery, queryIndex) => onSnapshot(
       tasksQuery,
+      { includeMetadataChanges: true },
       (snapshot) => {
         if (!isSubscribed) return;
 
         // Sin red y sin cache de Firestore (app nativa recién abierta) llega un resultado
-        // vacío "desde cache": no es que no haya tareas, se conserva la copia guardada.
-        if (snapshot.metadata?.fromCache && snapshot.empty && !hasServerData) return;
+        // vacío "desde cache": no es que no haya tareas, se muestra la copia guardada.
+        // Siempre se emite algo, para que las pantallas dejen de mostrar "cargando".
+        if (snapshot.metadata?.fromCache && snapshot.empty && !hasServerData) {
+          emit();
+          return;
+        }
         hasServerData = true;
 
         const now = Date.now();
