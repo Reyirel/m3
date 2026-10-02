@@ -15,6 +15,7 @@ import {
   Animated,
   Platform,
 } from 'react-native';
+import { confirmAlert } from '../utils/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
@@ -349,14 +350,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
         showError('Error al eliminar: ' + error.message);
       }
     };
-    if (Platform.OS === 'web') {
-      if (window.confirm('¿Eliminar este reporte?')) doDelete();
-    } else {
-      Alert.alert('Eliminar reporte', '¿Estás seguro?', [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar', style: 'destructive', onPress: doDelete },
-      ]);
-    }
+    confirmAlert('Eliminar reporte', '¿Estás seguro de que deseas eliminar este reporte?', doDelete, 'Eliminar');
   }, [taskId, showSuccess, showError]);
 
   const renderReportSwipeActions = useCallback((progress, dragX, reportId) => {

@@ -160,7 +160,7 @@ const InsightsPanel = React.memo(function InsightsPanel({
       {Object.values(predictions).some(p => p) && (
         <SpringCard style={[styles.insightCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
           <View style={styles.insightHeader}>
-            <Ionicons name="crystal-ball" size={20} color="#8B5CF6" />
+            <Ionicons name="sparkles" size={20} color="#8B5CF6" />
             <Text style={[styles.insightTitle, { color: theme.text }]}>Predicción</Text>
           </View>
 

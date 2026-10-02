@@ -50,16 +50,16 @@ export default function TaskFormBasic({
           placeholder="Describe la tarea..."
           icon="pencil"
           error={titleError}
-          maxLength={120}
+          maxLength={100}
           accessible={true}
           accessibilityLabel="Título de la tarea"
-          accessibilityHint="Ingresa el nombre o descripción breve de la tarea (máximo 120 caracteres)"
+          accessibilityHint="Ingresa el nombre o descripción breve de la tarea (máximo 100 caracteres)"
         />
 
         {/* DESCRIPCIÓN */}
         <View style={styles.descriptionSection}>
           <Text style={[styles.label, { color: theme.text }]}>
-            Descripción (opcional)
+            Descripción (mínimo 10 caracteres)
           </Text>
           <TextInput
             value={description}

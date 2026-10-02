@@ -78,7 +78,7 @@ export default function AreaSelector({
                 style={[styles.chip, { backgroundColor: theme.primary + '18', borderColor: theme.primary + '50' }]}
               >
                 <Text style={[styles.chipText, { color: theme.primary }]} numberOfLines={1}>
-                  {area.replace(/^Secretaría (de |del |General )?/i, '').replace(/^Dirección (de |del )?/i, '')}
+                  {area.replace(/^Secretaría (de |del )?/i, '').replace(/^Dirección (de |del )?/i, '')}
                 </Text>
                 <Ionicons name="close-circle" size={14} color={theme.primary} />
               </TouchableOpacity>

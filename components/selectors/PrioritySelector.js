@@ -8,11 +8,12 @@ import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 
+// Las tres prioridades que acepta el sistema al guardar (ValidationRules.priority) y que
+// usan los filtros y métricas. "Crítica" se ofrecía aquí pero la validación la rechazaba.
 const PRIORITIES = [
   { value: 'baja',    label: 'Baja',    icon: 'arrow-down',  color: '#34C759' },
   { value: 'media',   label: 'Media',   icon: 'remove',      color: '#FF9500' },
-  { value: 'alta',    label: 'Alta',    icon: 'arrow-up',    color: '#FF6B00' },
-  { value: 'critica', label: 'Crítica', icon: 'alert',       color: '#FF3B30' },
+  { value: 'alta',    label: 'Alta',    icon: 'arrow-up',    color: '#FF3B30' },
 ];
 
 export default function PrioritySelector({ value = 'media', onChange = () => {}, disabled = false }) {

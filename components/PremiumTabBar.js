@@ -25,7 +25,13 @@ const ROUTE_META = {
   Inbox:                { label: 'Bandeja',   icon: 'file-tray-full', iconOff: 'file-tray-outline' },
   Admin:                { label: 'Admin',     icon: 'settings',     iconOff: 'settings-outline' },
   SecretarioDashboard:  { label: 'Panel',     icon: 'briefcase',    iconOff: 'briefcase-outline' },
+  ExecutiveDashboard:   { label: 'Panel',     icon: 'speedometer',  iconOff: 'speedometer-outline' },
 };
+
+// Margen lateral de la fila de pestañas (debe coincidir con tabsContainer.paddingHorizontal)
+const BAR_PADDING = 8;
+// Espacio entre la píldora y los bordes de su pestaña
+const PILL_INSET = 4;
 
 export default function PremiumTabBar({ state, descriptors, navigation, isDark: isDarkProp, insets }) {
   const { theme, isDark: themeDark } = useTheme();
@@ -34,7 +40,9 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
 
   const isWide = screenWidth >= 768;
   const tabCount   = state.routes.length;
-  const tabWidth   = screenWidth / tabCount;
+  // Ancho real de cada pestaña: la fila tiene margen lateral, así que no es pantalla / pestañas.
+  // Con el cálculo anterior la píldora quedaba desplazada entre dos pestañas.
+  const tabWidth   = (screenWidth - BAR_PADDING * 2) / tabCount;
   const pillPosition = useSharedValue(0);
   const pillScale    = useSharedValue(1);
 
@@ -112,8 +120,8 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
         style={[
           styles.pillIndicator,
           {
-            width: tabWidth - 16,
-            left: 8,
+            width: tabWidth - PILL_INSET * 2,
+            left: BAR_PADDING + PILL_INSET,
             height: isWide ? 56 : 48,
             backgroundColor: theme.primary,
             shadowColor: theme.primary,
@@ -148,7 +156,7 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
             <TouchableOpacity
               key={route.key}
               onPress={onPress}
-              style={[styles.tab, { width: tabWidth }]}
+              style={styles.tab}
               activeOpacity={0.75}
               accessibilityRole="button"
               accessibilityLabel={meta.label}
@@ -209,7 +217,10 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 8,
+    // Por encima de la píldora: en web cada View crea su propia capa, y sin esto la
+    // píldora (zIndex 1) tapaba el icono y el texto de la pestaña seleccionada
+    zIndex: 2,
+    paddingHorizontal: BAR_PADDING,
     paddingTop: 4,
     paddingBottom: 4,
   },

@@ -124,7 +124,7 @@ export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact
     return (
       <View style={styles.compactContainer}>
         <View style={styles.compactHeader}>
-          <Ionicons name="traffic-light-outline" size={16} color={theme.textSecondary} />
+          <Ionicons name="ellipse-outline" size={16} color={theme.textSecondary} />
           <Text style={[styles.compactTitle, { color: theme.text }]}>Semáforo de Áreas</Text>
         </View>
         <View style={styles.compactSummary}>

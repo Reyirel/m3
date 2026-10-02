@@ -8,11 +8,14 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 
+// Los cuatro estados que usa el resto del sistema (tablero, filtros, permisos, métricas).
+// Antes ofrecía 'en_progreso', 'completado' y 'bloqueado', que no existen en ningún otro
+// lado: una tarea guardada así no aparecía en su columna ni contaba en los reportes.
 const STATUSES = [
   { value: 'pendiente',   label: 'Pendiente',   icon: 'time-outline',             color: '#8E8E93' },
-  { value: 'en_progreso', label: 'En Progreso',  icon: 'play-circle-outline',      color: '#007AFF' },
-  { value: 'completado',  label: 'Completado',   icon: 'checkmark-circle-outline', color: '#34C759' },
-  { value: 'bloqueado',   label: 'Bloqueado',    icon: 'lock-closed-outline',      color: '#FF3B30' },
+  { value: 'en_proceso',  label: 'En proceso',  icon: 'play-circle-outline',      color: '#007AFF' },
+  { value: 'en_revision', label: 'En revisión', icon: 'eye-outline',              color: '#AF52DE' },
+  { value: 'cerrada',     label: 'Completada',  icon: 'checkmark-circle-outline', color: '#34C759' },
 ];
 
 export default function StatusSelector({ value = 'pendiente', onChange = () => {}, disabled = false }) {

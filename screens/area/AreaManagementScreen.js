@@ -12,6 +12,7 @@ import {
   RefreshControl,
   Platform,
 } from 'react-native';
+import { showDialog } from '../../utils/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
@@ -58,18 +59,16 @@ export default function AreaManagementScreen({ navigation }) {
   };
 
   const handleDeleteArea = async (area) => {
-    const confirmDelete = Platform.OS === 'web'
-      ? window.confirm(`¿Seguro que deseas eliminar "${area.nombre}"?\n\nEsto solo funcionará si no tiene tareas activas.`)
-      : await new Promise((resolve) => {
-          Alert.alert(
-            'Eliminar Área',
-            `¿Seguro que deseas eliminar "${area.nombre}"?\n\nEsto solo funcionará si no tiene tareas activas.`,
-            [
-              { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' },
-              { text: 'Eliminar', onPress: () => resolve(true), style: 'destructive' },
-            ]
-          );
-        });
+    const confirmDelete = await new Promise((resolve) => {
+      showDialog({
+        title: 'Eliminar área',
+        message: `¿Seguro que deseas eliminar "${area.nombre}"?\n\nEsto solo funcionará si no tiene tareas activas.`,
+        buttons: [
+          { text: 'Cancelar', onPress: () => resolve(false), style: 'cancel' },
+          { text: 'Eliminar', onPress: () => resolve(true), style: 'destructive' },
+        ],
+      });
+    });
 
     if (confirmDelete) {
       const result = await deleteArea(area.id);

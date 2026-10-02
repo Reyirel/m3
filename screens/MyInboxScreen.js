@@ -1408,7 +1408,7 @@ export default function MyInboxScreen({ navigation }) {
         }
         ListEmptyComponent={
           <EmptyState
-            icon="inbox-outline"
+            icon="file-tray-outline"
             title="¡Bandeja vacía!"
             message="No tienes tareas en este momento. ¡Descansa y disfruta! 🎉"
             variant="success"
