@@ -9,7 +9,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import GlassChip from './GlassChip';
 import SearchBar from '../SearchBar';
 import { logoutUser } from '../../services/authFirestore';
-import { getUnreadNotificationsCount } from '../../services/notificationsAdvanced';
+import { subscribeToUnreadCount } from '../../services/notificationsLive';
 
 const FILTERS = [
   { id: 'todas',       label: 'Todas',       icon: 'list'                          },
@@ -53,13 +53,8 @@ export default function HomeHeader({
   const [loggingOut, setLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  useEffect(() => {
-    let cancelled = false;
-    getUnreadNotificationsCount()
-      .then(count => { if (!cancelled) setUnreadCount(count || 0); })
-      .catch(() => {});
-    return () => { cancelled = true; };
-  }, []);
+  // Contador en tiempo real (lo alimenta NotificationWatcher en App.js)
+  useEffect(() => subscribeToUnreadCount(setUnreadCount), []);
 
   const confirmLogout = async () => {
     setLoggingOut(true);
@@ -114,7 +109,7 @@ export default function HomeHeader({
 
           {/* Search inline en desktop */}
           {isWide && (
-            <View style={[styles.searchCard, { flex: 1, marginHorizontal: 24, backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.25)' }]}>
+            <View style={[styles.searchCard, styles.searchCardWide, { backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.25)' }]}>
               <SearchBar ref={searchRef} onSearch={onSearch} placeholder="Buscar tareas..." initialValue={searchText} />
             </View>
           )}
@@ -270,8 +265,11 @@ const styles = StyleSheet.create({
   userBlock: { flex: 1 },
   // En pantalla ancha el bloque mide lo que ocupa su contenido. Con `flex: 0` en web
   // quedaba con ancho cero: el nombre se apilaba letra por letra bajo el buscador.
-  userBlockWide: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto' },
+  // Puede encogerse (el nombre se corta con "…") para dejarle espacio al buscador.
+  userBlockWide: { flexGrow: 0, flexShrink: 1, flexBasis: 'auto', minWidth: 60 },
   userInfoWide: { flexGrow: 0, flexShrink: 1, flexBasis: 'auto', maxWidth: 220 },
+  // El buscador conserva un ancho útil aunque la ventana sea estrecha
+  searchCardWide: { flex: 1, minWidth: 200, marginHorizontal: 16 },
   avatarRow: {
     flexDirection: 'row',
     alignItems: 'center',

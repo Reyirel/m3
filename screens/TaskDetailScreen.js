@@ -48,12 +48,12 @@ import {
 // Importar hooks
 import useTaskPermissions from '../hooks/useTaskPermissions';
 import useTaskOperations from '../hooks/useTaskOperations';
-import { confirmAlert } from '../utils/alert';
+import { confirmAlert, showDialog } from '../utils/alert';
 
 // Importar servicios y utilidades
 import { toMs } from '../utils/dateUtils';
 import { AREAS, getSecretariasForAreas } from '../config/areas';
-import { getAllUsersNames, getTitularesByAreas, isDirectorOfSecretario } from '../services/roles';
+import { getTitularesByAreas, isDirectorOfSecretario, isTitularOfArea } from '../services/roles';
 import { canChangeTaskStatus } from '../services/permissions';
 import { updateTask } from '../services/tasks';
 import { getAssignedEmails } from '../utils/taskHelpers';
@@ -70,6 +70,8 @@ let DateTimePicker;
 if (Platform.OS !== 'web') {
   DateTimePicker = require('@react-native-community/datetimepicker').default;
 }
+
+const normalizeEmail = (email) => (email || '').toLowerCase().trim();
 
 export default function TaskDetailScreen({ route, navigation }) {
   const { theme, isDark } = useTheme();
@@ -119,13 +121,10 @@ export default function TaskDetailScreen({ route, navigation }) {
   // ────────────────────────────────────────────────────────────
   const [availableUsers, setAvailableUsers] = useState([]);
   const [titulares, setTitulares] = useState([]);
-  const [selectedAssignees, setSelectedAssignees] = useState(
-    editingTask?.assignedTo && Array.isArray(editingTask.assignedTo)
-      ? editingTask.assignedTo
-      : editingTask?.assignedTo
-      ? [editingTask.assignedTo]
-      : []
-  );
+  // La tarea se asigna por área: reciben la tarea los responsables de las áreas elegidas,
+  // menos los que el administrador desmarque (guardados aquí por correo).
+  const [excludedEmails, setExcludedEmails] = useState([]);
+  const titularesLoadedRef = useRef(false);
   const [selectedAreas, setSelectedAreas] = useState(
     editingTask?.areas && Array.isArray(editingTask.areas)
       ? editingTask.areas
@@ -241,10 +240,54 @@ export default function TaskDetailScreen({ route, navigation }) {
     if (!selectedAreas.length) { setTitulares([]); return; }
     let cancelled = false;
     getTitularesByAreas(selectedAreas)
-      .then(result => { if (!cancelled) setTitulares(result); })
+      .then(result => {
+        if (cancelled) return;
+        setTitulares(result);
+        // Al abrir una tarea existente, los responsables que no estaban asignados
+        // empiezan desmarcados: editar el título no debe sumar personas a la tarea.
+        if (editingTask && !titularesLoadedRef.current) {
+          const alreadyAssigned = getAssignedEmails(editingTask);
+          setExcludedEmails(
+            result.map(t => normalizeEmail(t.email)).filter(email => email && !alreadyAssigned.includes(email))
+          );
+        }
+        titularesLoadedRef.current = true;
+      })
       .catch(() => {});
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedAreas]);
+
+  // Asignados de una tarea existente que no son titulares de sus áreas (p. ej. delegados)
+  const extraAssignees = useMemo(() => {
+    const titularEmails = new Set(titulares.map(t => normalizeEmail(t.email)));
+    return getAssignedEmails(editingTask)
+      .filter(email => !titularEmails.has(email))
+      .map(email => {
+        const user = availableUsers.find(u => normalizeEmail(u.email) === email);
+        return { id: `extra-${email}`, email, displayName: user?.displayName || email, area: user?.area || '', extra: true };
+      });
+  }, [titulares, editingTask, availableUsers]);
+
+  const responsables = useMemo(
+    () => [...titulares.filter(t => t.email), ...extraAssignees],
+    [titulares, extraAssignees]
+  );
+  const assignees = useMemo(
+    () => responsables.filter(r => !excludedEmails.includes(normalizeEmail(r.email))),
+    [responsables, excludedEmails]
+  );
+  const areasSinResponsable = useMemo(
+    () => selectedAreas.filter(area => !titulares.some(t => isTitularOfArea(t, area))),
+    [selectedAreas, titulares]
+  );
+
+  const toggleResponsable = useCallback((email) => {
+    const key = normalizeEmail(email);
+    setExcludedEmails(current =>
+      current.includes(key) ? current.filter(e => e !== key) : [...current, key]
+    );
+  }, []);
 
   // ────────────────────────────────────────────────────────────
   // AI ANALYSIS (Debounced)
@@ -284,20 +327,14 @@ export default function TaskDetailScreen({ route, navigation }) {
       : title.trim() !== '' || description.trim() !== '';
 
     if (hasChanges) {
-      if (Platform.OS === 'web') {
-        if (window.confirm('¿Descartar cambios?')) {
-          navigation.goBack();
-        }
-      } else {
-        Alert.alert(
-          'Descartar cambios',
-          '¿Deseas salir sin guardar?',
-          [
-            { text: 'Seguir editando', style: 'cancel' },
-            { text: 'Descartar', style: 'destructive', onPress: () => navigation.goBack() },
-          ]
-        );
-      }
+      showDialog({
+        title: 'Descartar cambios',
+        message: '¿Deseas salir sin guardar?',
+        buttons: [
+          { text: 'Seguir editando', style: 'cancel' },
+          { text: 'Descartar', style: 'destructive', onPress: () => navigation.goBack() },
+        ],
+      });
     } else {
       navigation.goBack();
     }
@@ -397,12 +434,16 @@ export default function TaskDetailScreen({ route, navigation }) {
       showError('La descripción es obligatoria');
       return;
     }
-    if (selectedAssignees.length === 0) {
-      showError('Debes asignar la tarea a al menos una persona');
-      return;
-    }
     if (selectedAreas.length === 0) {
       showError('Debes seleccionar al menos una área');
+      return;
+    }
+    if (assignees.length === 0) {
+      showError(
+        responsables.length === 0
+          ? 'Las áreas elegidas no tienen responsable con cuenta activa: nadie recibiría la tarea'
+          : 'Marca al menos a un responsable para que reciba la tarea'
+      );
       return;
     }
 
@@ -413,7 +454,7 @@ export default function TaskDetailScreen({ route, navigation }) {
       priority,
       status,
       dueAt,
-      selectedAssignees,
+      selectedAssignees: assignees.map(a => ({ email: normalizeEmail(a.email) })),
       selectedAreas,
       isRecurring,
       recurrencePattern,
@@ -544,29 +585,61 @@ export default function TaskDetailScreen({ route, navigation }) {
               />
             )}
 
-            {/* RESPONSABLES POR ÁREA */}
-            {permissions.canEdit && titulares.length > 0 && (
+            {/* RESPONSABLES POR ÁREA — son quienes reciben la tarea.
+                No hay selector de personas aparte: la tarea se asigna por área y aquí
+                solo se desmarca a quien no deba recibirla. */}
+            {permissions.canEdit && responsables.length > 0 && (
               <View style={[styles.titularesCard, { backgroundColor: theme.primary + '0D', borderColor: theme.primary + '30' }]}>
                 <View style={styles.infoCardHeader}>
                   <Ionicons name="people-circle-outline" size={16} color={theme.primary} />
                   <Text style={[styles.infoCardTitle, { color: theme.primary }]}>
-                    Responsables de {selectedAreas.length > 1 ? 'las áreas' : 'esta área'}
+                    Se asignará a ({assignees.length} de {responsables.length})
                   </Text>
                 </View>
-                {titulares.map(t => (
-                  <View key={t.id} style={styles.titularRow}>
-                    <View style={[styles.titularDot, { backgroundColor: t.role === 'secretario' ? theme.primary : theme.info || '#007AFF' }]} />
-                    <View style={{ flex: 1 }}>
-                      <Text style={[styles.titularName, { color: theme.text }]}>
-                        {t.displayName || t.email || t.id}
-                      </Text>
-                      <Text style={[styles.titularMeta, { color: theme.textSecondary }]}>
-                        {t.role === 'secretario' ? 'Secretario/a' : 'Director/a'}
-                        {(t.area || (t.areasPermitidas || [])[0]) ? ` · ${(t.area || (t.areasPermitidas || [])[0]).replace(/^(Secretaría|Dirección)\s+(de\s+|del\s+|General\s+)?/i, '')}` : ''}
-                      </Text>
-                    </View>
-                  </View>
-                ))}
+                {responsables.map(t => {
+                  const included = !excludedEmails.includes(normalizeEmail(t.email));
+                  return (
+                    <TouchableOpacity
+                      key={t.id}
+                      style={styles.titularRow}
+                      onPress={() => toggleResponsable(t.email)}
+                      activeOpacity={0.7}
+                      accessibilityRole="checkbox"
+                      accessibilityState={{ checked: included }}
+                      accessibilityLabel={`${t.displayName || t.email}: ${included ? 'recibe la tarea' : 'no recibe la tarea'}`}
+                    >
+                      <Ionicons
+                        name={included ? 'checkbox' : 'square-outline'}
+                        size={20}
+                        color={included ? theme.primary : theme.textSecondary}
+                      />
+                      <View style={{ flex: 1, opacity: included ? 1 : 0.5 }}>
+                        <Text style={[styles.titularName, { color: theme.text }]}>
+                          {t.displayName || t.email || t.id}
+                        </Text>
+                        <Text style={[styles.titularMeta, { color: theme.textSecondary }]}>
+                          {t.extra ? 'Asignado adicional' : (t.role === 'secretario' ? 'Secretario/a' : 'Director/a')}
+                          {(t.area || (t.areasPermitidas || [])[0]) ? ` · ${(t.area || (t.areasPermitidas || [])[0]).replace(/^(Secretaría|Dirección)\s+(de\s+|del\s+|General\s+)?/i, '')}` : ''}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
+
+            {/* ÁREAS SIN RESPONSABLE: nadie recibiría la tarea por esa área */}
+            {permissions.canEdit && areasSinResponsable.length > 0 && (
+              <View style={[styles.infoCard, { backgroundColor: '#FF95000D', borderColor: '#FF950040' }]}>
+                <Ionicons name="warning-outline" size={16} color="#FF9500" />
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.infoCardTitle, { color: '#B36B00' }]}>
+                    {areasSinResponsable.length === 1 ? 'Área sin responsable' : 'Áreas sin responsable'}
+                  </Text>
+                  <Text style={[styles.infoCardDesc, { color: theme.textSecondary }]}>
+                    {areasSinResponsable.join(', ')} no {areasSinResponsable.length === 1 ? 'tiene' : 'tienen'} una cuenta activa asignada, así que nadie recibirá la tarea por {areasSinResponsable.length === 1 ? 'esa área' : 'esas áreas'}.
+                  </Text>
+                </View>
               </View>
             )}
 
@@ -581,15 +654,6 @@ export default function TaskDetailScreen({ route, navigation }) {
                   </Text>
                 </View>
               </View>
-            )}
-
-            {/* ENHANCED SELECTORS - ASSIGNEES */}
-            {permissions.canEdit && (
-              <AssigneeSelector
-                value={selectedAssignees}
-                onChange={setSelectedAssignees}
-                availableUsers={availableUsers}
-              />
             )}
 
             {/* ENHANCED SELECTORS - DATE */}

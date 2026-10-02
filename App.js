@@ -78,6 +78,8 @@ import { initConnectionListener, clearOfflineData } from './services/offlineSync
 import OfflineIndicator from './components/OfflineIndicator';
 import OfflineSyncIndicator from './components/OfflineSyncIndicator';
 import OfflineBanner from './components/OfflineBanner';
+import DialogHost from './components/DialogHost';
+import NotificationWatcher from './components/NotificationWatcher';
 import ErrorBoundary from './components/ErrorBoundary';
 import ImprovedErrorBoundary from './components/ImprovedErrorBoundary';
 import { startAutoCacheCleanup, stopAutoCacheCleanup } from './utils/cacheManager';
@@ -544,6 +546,8 @@ export default function App() {
         <NotificationProvider>
         <TasksProvider key={forceUpdate}>
         <OfflineBanner />
+        {/* Campana en tiempo real y aviso al llegar una notificación */}
+        <NotificationWatcher />
         <NavigationContainer ref={navigationRef} key={`navigation-${forceUpdate}`}>
           <Stack.Navigator
             screenOptions={{
@@ -776,6 +780,8 @@ export default function App() {
         </TasksProvider>
         </NotificationProvider>
         <Toast />
+        {/* Confirmaciones y avisos con el diseño de la app (utils/alert.js) */}
+        <DialogHost />
         {/* Vercel Analytics - Solo en web */}
         {Platform.OS === 'web' && Analytics && <Analytics />}
         {Platform.OS === 'web' && SpeedInsights && <SpeedInsights />}

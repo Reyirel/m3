@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -81,8 +81,10 @@ export default function DesktopSidebar({
         </TouchableOpacity>
       </LinearGradient>
 
-      {/* ─── Navegación principal ─── */}
-      <View style={styles.nav}>
+      {/* ─── Navegación principal ───
+          Desplazable: en ventanas bajas las últimas opciones (Dashboard, Admin)
+          quedaban recortadas y no había forma de llegar a ellas. */}
+      <ScrollView style={styles.navScroll} contentContainerStyle={styles.nav} showsVerticalScrollIndicator={false}>
         {routes.map((route) => {
           const meta = ROUTE_META[route.name];
           if (!meta) return null;
@@ -132,7 +134,7 @@ export default function DesktopSidebar({
             </TouchableOpacity>
           );
         })}
-      </View>
+      </ScrollView>
 
       {/* ─── Acciones del fondo ─── */}
       <View style={[styles.bottom, {
@@ -215,12 +217,14 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.60)',
     letterSpacing: 1,
   },
-  nav: {
+  navScroll: {
     flex: 1,
+  },
+  nav: {
     paddingHorizontal: 10,
     paddingTop: 12,
+    paddingBottom: 8,
     gap: 2,
-    overflow: 'hidden',
   },
   navItem: {
     flexDirection: 'row',

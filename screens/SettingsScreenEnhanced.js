@@ -29,6 +29,7 @@ import { useTasks } from '../contexts/TasksContext';
 import { hapticMedium } from '../utils/haptics';
 import { confirmAlert, infoAlert } from '../utils/alert';
 import { logoutUser } from '../services/authFirestore';
+import { requestBrowserNotificationPermission } from '../services/notificationsLive';
 import { useResponsive } from '../utils/responsive';
 
 const SettingsScreenEnhanced = ({ navigation, onLogout }) => {
@@ -73,6 +74,9 @@ const SettingsScreenEnhanced = ({ navigation, onLogout }) => {
           onToggle: (value) => {
             hapticMedium();
             setNotificationsEnabled(value);
+            // Web: al activarlas se pide permiso al navegador para avisar cuando
+            // la pestaña está en segundo plano
+            if (value) requestBrowserNotificationPermission();
           },
         },
         {

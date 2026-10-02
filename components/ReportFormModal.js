@@ -23,6 +23,7 @@ import { getCurrentSession } from '../services/authFirestore';
 import { savePendingReport } from '../services/offlineReportsService';
 import { useNotification } from '../contexts/NotificationContext';
 import { prepareImage } from '../utils/imageData';
+import { showDialog } from '../utils/alert';
 import WebSafeBlur from './WebSafeBlur';
 import { GlassmorphicButton } from './index';
 
@@ -48,20 +49,14 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
 
   const handleClose = () => {
     if (hasUnsavedChanges && !loading) {
-      if (Platform.OS === 'web') {
-        if (window.confirm('¿Descartar cambios? Se perderá el reporte no guardado.')) {
-          onClose();
-        }
-      } else {
-        Alert.alert(
-          'Descartar cambios',
-          '¿Deseas cerrar sin guardar? Se perderá el reporte no guardado.',
-          [
-            { text: 'Seguir editando', style: 'cancel' },
-            { text: 'Descartar', style: 'destructive', onPress: onClose },
-          ]
-        );
-      }
+      showDialog({
+        title: 'Descartar cambios',
+        message: '¿Deseas cerrar sin guardar? Se perderá el reporte no guardado.',
+        buttons: [
+          { text: 'Seguir editando', style: 'cancel' },
+          { text: 'Descartar', style: 'destructive', onPress: onClose },
+        ],
+      });
     } else {
       onClose();
     }

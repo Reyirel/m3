@@ -139,7 +139,7 @@ export default function AreaSelectorModal({
                     ]}
                     numberOfLines={2}
                   >
-                    {area.replace(/^Secretaría (de |del |General )?/i, '').replace(/^Dirección (de |del )?/i, '')}
+                    {area.replace(/^Secretaría (de |del )?/i, '').replace(/^Dirección (de |del )?/i, '')}
                   </Text>
                 </View>
               </TouchableOpacity>
@@ -238,9 +238,9 @@ export default function AreaSelectorModal({
                     style={[styles.selectedPill, { backgroundColor: theme.primary }]}
                   >
                     <Text style={styles.selectedPillText} numberOfLines={1}>
-                      {area.replace(/^Secretaría (de |del |General )?/i, '').replace(/^Dirección (de |del )?/i, '')}
+                      {area.replace(/^Secretaría (de |del )?/i, '').replace(/^Dirección (de |del )?/i, '')}
                     </Text>
-                    <Ionicons name="close-small" size={18} color="#FFFFFF" style={{ marginLeft: 4 }} />
+                    <Ionicons name="close" size={14} color="#FFFFFF" style={{ marginLeft: 4 }} />
                   </TouchableOpacity>
                 ))}
               </ScrollView>

@@ -10,15 +10,17 @@ import {
   RefreshControl,
   FlatList,
   Platform,
-  Alert,
+  ScrollView,
   Pressable,
   Animated,
 } from 'react-native';
+import { confirmAlert } from '../utils/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { toMs } from '../utils/dateUtils';
-import { getMyNotifications, markNotificationAsRead, deleteNotification } from '../services/notificationsAdvanced';
+import { subscribeToMyNotifications, markNotificationsRead, deleteNotifications } from '../services/notificationsLive';
+import { useTasks } from '../contexts/TasksContext';
 import { hapticSuccess, hapticLight } from '../utils/haptics';
 import ShimmerEffect from '../components/ShimmerEffect';
 import { getSwipeable } from '../utils/platformComponents';
@@ -26,6 +28,32 @@ const Swipeable = getSwipeable();
 import { useNotification } from '../contexts/NotificationContext';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
+
+// Filtros de la lista. `match` decide qué notificaciones entran en cada uno.
+const FILTERS = [
+  { id: 'all',      label: 'Todas',     match: () => true },
+  { id: 'unread',   label: 'No leídas', match: (n) => !n.read },
+  { id: 'tasks',    label: 'Tareas',    match: (n) => (n.type || '').includes('task') },
+  { id: 'reports',  label: 'Reportes',  match: (n) => n.type === 'new_report' },
+  { id: 'messages', label: 'Mensajes',  match: (n) => n.type === 'new_message' },
+];
+
+// Los títulos guardados empiezan con un emoji ("📋 Nuevo Reporte"); la tarjeta ya
+// muestra su propio icono, así que se quita para no repetirlo.
+const cleanTitle = (title) => (title || 'Notificación').replace(/^[^\p{L}\p{N}¡¿]+/u, '').trim() || 'Notificación';
+
+const startOfDay = (date) => new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime();
+
+// Encabezado de grupo según la antigüedad de la notificación
+const getDayGroup = (timestamp) => {
+  const ms = toMs(timestamp);
+  if (!ms) return 'Anteriores';
+  const today = startOfDay(new Date());
+  if (ms >= today) return 'Hoy';
+  if (ms >= today - 86400000) return 'Ayer';
+  if (ms >= today - 6 * 86400000) return 'Esta semana';
+  return 'Anteriores';
+};
 
 const NotificationCard = React.memo(({ item, onPress, onDelete, theme, isDark, getColor, getIcon }) => (
   <View
@@ -41,7 +69,7 @@ const NotificationCard = React.memo(({ item, onPress, onDelete, theme, isDark, g
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={item.title}
+      accessibilityLabel={cleanTitle(item.title)}
       accessibilityHint={item.read ? 'Ver detalles' : 'Marcar como leída y ver detalles'}
       style={({ pressed }) => [cardStyles.notificationTouchable, pressed && { opacity: 0.7 }]}
     >
@@ -50,9 +78,11 @@ const NotificationCard = React.memo(({ item, onPress, onDelete, theme, isDark, g
       </View>
       <View style={cardStyles.notificationContent}>
         <Text style={[cardStyles.notificationTitle, { color: theme.text, fontWeight: item.read ? '600' : '700' }]}>
-          {item.title}
+          {cleanTitle(item.title)}
         </Text>
-        <Text style={[cardStyles.notificationBody, { color: theme.textSecondary }]}>{item.body || item.message}</Text>
+        <Text style={[cardStyles.notificationBody, { color: theme.textSecondary }]} numberOfLines={3}>
+          {item.body || item.message}
+        </Text>
         <Text style={[cardStyles.notificationTime, { color: theme.textTertiary }]}>{formatTime(item.createdAt)}</Text>
       </View>
       {!item.read && <View style={[cardStyles.unreadBadge, { backgroundColor: getColor(item.type) }]} />}
@@ -74,143 +104,156 @@ const NotificationCard = React.memo(({ item, onPress, onDelete, theme, isDark, g
 export default function NotificationsScreen({ navigation }) {
   const { theme, isDark } = useTheme();
   const { isDesktop } = useResponsive();
-  const { showError, showSuccess } = useNotification();
+  const { showError, showSuccess, showInfo } = useNotification();
+  const { currentUser, tasks } = useTasks();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
-  const [filter, setFilter] = useState('all'); // all, unread, tasks, areas
+  const [filter, setFilter] = useState('all');
+  // Cambia para volver a suscribirse (botón Reintentar)
+  const [reloadKey, setReloadKey] = useState(0);
 
+  const userId = currentUser?.userId;
+
+  // Lista en tiempo real: las notificaciones nuevas aparecen sin recargar la pantalla
   useEffect(() => {
-    loadNotifications();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (!userId) return undefined;
+    setError(false);
+    setLoading(true);
+    return subscribeToMyNotifications(
+      userId,
+      (data) => {
+        setNotifications(data);
+        setLoading(false);
+        setRefreshing(false);
+      },
+      (err) => {
+        if (__DEV__) console.error('Error cargando notificaciones:', err);
+        setError(true);
+        setLoading(false);
+        setRefreshing(false);
+      }
+    );
+  }, [userId, reloadKey]);
+
+  const retry = useCallback(() => setReloadKey(key => key + 1), []);
+
+  const onRefresh = useCallback(() => {
+    // La lista ya es en tiempo real; el gesto solo confirma visualmente
+    setRefreshing(true);
+    setTimeout(() => setRefreshing(false), 600);
   }, []);
 
-  const loadNotifications = async () => {
-    try {
-      setError(false);
-      setLoading(true);
-      const data = await getMyNotifications(100);
-      setNotifications(data);
-    } catch (err) {
-      if (__DEV__) console.error('Error cargando notificaciones:', err);
-      setError(true);
-      showError('Error al cargar notificaciones');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+  const readCount = notifications.length - unreadCount;
 
   const handleMarkAllAsRead = useCallback(async () => {
-    const unread = notifications.filter((n) => !n.read);
-    if (unread.length === 0) return;
+    const unreadIds = notifications.filter((n) => !n.read).map((n) => n.id);
+    if (unreadIds.length === 0) return;
     hapticSuccess();
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     try {
-      await Promise.all(unread.map((n) => markNotificationAsRead(n.id)));
-      showSuccess(`${unread.length} notificaciones marcadas como leídas`);
+      await markNotificationsRead(unreadIds);
+      showSuccess(`${unreadIds.length} ${unreadIds.length === 1 ? 'notificación marcada como leída' : 'notificaciones marcadas como leídas'}`);
     } catch (err) {
       if (__DEV__) console.error('Error marcando todas como leídas:', err);
-      await loadNotifications();
-      showError('Error al marcar como leídas');
+      showError('No se pudieron marcar como leídas');
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [notifications]);
+  }, [notifications, showSuccess, showError]);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    loadNotifications();
-  };
+  const handleDeleteRead = useCallback(() => {
+    const readIds = notifications.filter((n) => n.read).map((n) => n.id);
+    if (readIds.length === 0) return;
+    confirmAlert(
+      'Eliminar leídas',
+      `Se eliminarán ${readIds.length} ${readIds.length === 1 ? 'notificación ya leída' : 'notificaciones ya leídas'}. Las no leídas se conservan.`,
+      async () => {
+        try {
+          await deleteNotifications(readIds);
+          showSuccess('Notificaciones leídas eliminadas');
+        } catch (err) {
+          if (__DEV__) console.error('Error eliminando leídas:', err);
+          showError('No se pudieron eliminar');
+        }
+      },
+      'Eliminar'
+    );
+  }, [notifications, showSuccess, showError]);
+
+  // Eliminar una sola: sin diálogo de confirmación, es una acción menor y frecuente
+  const handleDeleteNotification = useCallback(async (notificationId) => {
+    hapticLight();
+    try {
+      await deleteNotifications([notificationId]);
+    } catch (err) {
+      if (__DEV__) console.error('Error eliminando notificación:', err);
+      showError('No se pudo eliminar la notificación');
+    }
+  }, [showError]);
 
   const handleNotificationPress = useCallback(async (notification) => {
     hapticLight();
-    // Marcar como leída
     if (!notification.read) {
-      try {
-        await markNotificationAsRead(notification.id);
-        setNotifications((prev) =>
-          prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
-        );
-      } catch (error) {
-        if (__DEV__) console.error('Error marcando como leída:', error);
-      }
+      markNotificationsRead([notification.id]).catch((err) => {
+        if (__DEV__) console.error('Error marcando como leída:', err);
+      });
     }
 
-    // Navegar según tipo
-    if (notification.type === 'new_report' && notification.taskId) {
-      navigation.navigate('TaskReportsAndActivity', { 
-        taskId: notification.taskId,
-        taskTitle: 'Reporte'
+    const { type, taskId } = notification;
+    // La tarea está en `tasks` solo si existe y el usuario puede verla
+    const task = taskId ? tasks.find((t) => t.id === taskId) : null;
+
+    if (type === 'new_report' && taskId) {
+      // Los reportes se pueden consultar aunque la tarea ya no esté en la lista
+      navigation.navigate('TaskReportsAndActivity', {
+        taskId,
+        taskTitle: task?.title || notification.taskTitle || 'Reporte',
       });
-    } else if (notification.taskId && notification.type === 'new_message') {
-      navigation.navigate('TaskChat', {
-        taskId: notification.taskId,
-        taskTitle: notification.taskTitle || 'Chat de tarea',
-      });
-    } else if (notification.taskId && notification.type === 'task_assigned') {
-      navigation.navigate('TaskProgress', { taskId: notification.taskId });
-    } else if (notification.areaId && notification.type === 'area_created') {
+      return;
+    }
+
+    if ((type === 'new_message' || (type || '').includes('task')) && taskId) {
+      if (!task) {
+        showInfo('Esa tarea ya no está disponible');
+        return;
+      }
+      if (type === 'new_message') {
+        navigation.navigate('TaskChat', { taskId, taskTitle: task.title || 'Chat de tarea' });
+      } else {
+        navigation.navigate('TaskDetail', { task });
+      }
+      return;
+    }
+
+    if (notification.areaId && type === 'area_created') {
       navigation.navigate('AreaManagement');
     }
-  }, [navigation]);
+  }, [navigation, tasks, showInfo]);
 
-  const unreadCount = useMemo(() => notifications.filter((n) => !n.read).length, [notifications]);
+  const filterCounts = useMemo(
+    () => Object.fromEntries(FILTERS.map((f) => [f.id, notifications.filter(f.match).length])),
+    [notifications]
+  );
 
   const filteredNotifications = useMemo(() => {
-    switch (filter) {
-      case 'unread':
-        return notifications.filter((n) => !n.read);
-      case 'tasks':
-        return notifications.filter((n) => n.type.includes('task'));
-      case 'areas':
-        return notifications.filter((n) => n.type.includes('area'));
-      default:
-        return notifications;
-    }
+    const active = FILTERS.find((f) => f.id === filter) || FILTERS[0];
+    return notifications.filter(active.match);
   }, [notifications, filter]);
 
-  const handleDeleteNotification = useCallback(async (notificationId, notificationTitle) => {
-    // En web, Alert.alert no funciona - usar confirm nativo
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm(`¿Deseas eliminar "${notificationTitle}"?`);
-      if (confirmed) {
-        try {
-          await deleteNotification(notificationId);
-          await loadNotifications();
-          showSuccess('Notificación eliminada');
-        } catch (error) {
-          if (__DEV__) console.error('Error eliminando notificación:', error);
-          showError(`Error: ${error.message || 'No se pudo eliminar'}`);
-        }
+  // Lista con encabezados por día ("Hoy", "Ayer", …)
+  const listItems = useMemo(() => {
+    const items = [];
+    let lastGroup = null;
+    filteredNotifications.forEach((notification) => {
+      const group = getDayGroup(notification.createdAt);
+      if (group !== lastGroup) {
+        items.push({ id: `header-${group}`, _header: group });
+        lastGroup = group;
       }
-    } else {
-      // En móvil, usar Alert nativo
-      Alert.alert(
-        'Eliminar notificación',
-        `¿Deseas eliminar "${notificationTitle}"?`,
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          {
-            text: 'Eliminar',
-            onPress: async () => {
-              try {
-                await deleteNotification(notificationId);
-                await loadNotifications();
-                showSuccess('Notificación eliminada');
-              } catch (error) {
-                if (__DEV__) console.error('Error eliminando notificación:', error);
-                showError(`Error: ${error.message || 'No se pudo eliminar'}`);
-              }
-            },
-            style: 'destructive',
-          },
-        ],
-        { cancelable: false }
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [showSuccess, showError]);
+      items.push(notification);
+    });
+    return items;
+  }, [filteredNotifications]);
 
   const getNotificationIcon = (type) => {
     switch (type) {
@@ -244,6 +287,7 @@ export default function NotificationsScreen({ navigation }) {
       case 'area_chief_assigned':
         return theme.secondary;
       case 'new_report':
+      case 'new_message':
         return theme.info;
       default:
         return theme.primary;
@@ -259,7 +303,7 @@ export default function NotificationsScreen({ navigation }) {
     return (
       <Animated.View style={{ transform: [{ translateX: trans }], justifyContent: 'center' }}>
         <TouchableOpacity
-          onPress={() => handleDeleteNotification(item.id, item.title)}
+          onPress={() => handleDeleteNotification(item.id)}
           style={{
             backgroundColor: theme.error,
             justifyContent: 'center',
@@ -274,14 +318,18 @@ export default function NotificationsScreen({ navigation }) {
         </TouchableOpacity>
       </Animated.View>
     );
-  }, [handleDeleteNotification]);
+  }, [handleDeleteNotification, theme.error]);
 
   const renderNotification = useCallback(({ item }) => {
+    if (item._header) {
+      return <Text style={[styles.groupHeader, { color: theme.textSecondary }]}>{item._header}</Text>;
+    }
+
     const card = (
       <NotificationCard
         item={item}
         onPress={() => handleNotificationPress(item)}
-        onDelete={() => handleDeleteNotification(item.id, item.title)}
+        onDelete={() => handleDeleteNotification(item.id)}
         theme={theme}
         isDark={isDark}
         getColor={getNotificationColor}
@@ -304,25 +352,93 @@ export default function NotificationsScreen({ navigation }) {
     );
   }, [handleNotificationPress, handleDeleteNotification, getNotificationColor, theme, isDark, renderNotifSwipeActions]);
 
-  if (loading) {
-    return (
-      <View style={[styles.container, { backgroundColor: theme.background, paddingHorizontal: 16, paddingTop: 60 }]}>
-        {[...Array(6)].map((_, i) => (
-          <View key={i} style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <ShimmerEffect width={44} height={44} borderRadius={22} />
-            <View style={{ flex: 1, gap: 8 }}>
-              <ShimmerEffect width="70%" height={14} borderRadius={6} />
-              <ShimmerEffect width="45%" height={12} borderRadius={6} />
+  const headerButton = (icon, label, onPress, size = 20) => (
+    <TouchableOpacity
+      style={[styles.closeButton, Platform.OS === 'web' && { cursor: 'pointer' }]}
+      onPress={onPress}
+      accessibilityLabel={label}
+      accessibilityRole="button"
+    >
+      <Ionicons name={icon} size={size} color="#FFFFFF" />
+    </TouchableOpacity>
+  );
+
+  const renderBody = () => {
+    if (loading) {
+      return (
+        <View style={{ paddingHorizontal: 16, paddingTop: 16 }}>
+          {[...Array(6)].map((_, i) => (
+            <View key={i} style={{ marginBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <ShimmerEffect width={44} height={44} borderRadius={22} />
+              <View style={{ flex: 1, gap: 8 }}>
+                <ShimmerEffect width="70%" height={14} borderRadius={6} />
+                <ShimmerEffect width="45%" height={12} borderRadius={6} />
+              </View>
             </View>
+          ))}
+        </View>
+      );
+    }
+
+    if (error) {
+      return (
+        <View style={styles.emptyContainer}>
+          <View style={[styles.emptyIconWrapper, { backgroundColor: theme.errorAlpha }]}>
+            <Ionicons name="cloud-offline-outline" size={48} color={theme.error} />
           </View>
-        ))}
-      </View>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>Error de conexión</Text>
+          <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>No se pudieron cargar las notificaciones.</Text>
+          <TouchableOpacity
+            style={[styles.retryButton, { backgroundColor: theme.primary }]}
+            onPress={retry}
+            accessibilityLabel="Reintentar"
+            accessibilityRole="button"
+          >
+            <Ionicons name="refresh" size={16} color="#fff" style={{ marginRight: 6 }} />
+            <Text style={styles.retryButtonText}>Reintentar</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    if (filteredNotifications.length === 0) {
+      const emptyText = {
+        all: 'Las notificaciones aparecerán aquí cuando tengas actividad.',
+        unread: 'Estás al día, todo leído.',
+        tasks: 'No hay notificaciones de tareas.',
+        reports: 'No hay notificaciones de reportes.',
+        messages: 'No hay notificaciones de mensajes.',
+      }[filter];
+      return (
+        <View style={styles.emptyContainer}>
+          <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+            <Ionicons name="notifications-off-outline" size={48} color={theme.textMuted} />
+          </View>
+          <Text style={[styles.emptyTitle, { color: theme.text }]}>
+            {filter === 'all' ? 'Sin notificaciones' : 'Sin notificaciones aquí'}
+          </Text>
+          <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>{emptyText}</Text>
+        </View>
+      );
+    }
+
+    return (
+      <FlatList
+        data={listItems}
+        renderItem={renderNotification}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={styles.listContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        windowSize={5}
+        maxToRenderPerBatch={8}
+        initialNumToRender={10}
+      />
     );
-  }
+  };
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
-      
+
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       {/* Header */}
       <LinearGradient
@@ -332,121 +448,60 @@ export default function NotificationsScreen({ navigation }) {
         style={[styles.header, { shadowColor: theme.primary }]}
       >
         <View style={styles.headerContent}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.title}>Notificaciones</Text>
             <Text style={styles.subtitle}>
-              {filteredNotifications.length} notificacion{filteredNotifications.length !== 1 ? 'es' : ''}
+              {notifications.length} {notifications.length === 1 ? 'notificación' : 'notificaciones'}
               {unreadCount > 0 ? ` · ${unreadCount} sin leer` : ''}
             </Text>
           </View>
           <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            {unreadCount > 0 && (
-              <TouchableOpacity
-                style={[styles.closeButton, { backgroundColor: 'rgba(255,255,255,0.15)' }, Platform.OS === 'web' && { cursor: 'pointer' }]}
-                onPress={handleMarkAllAsRead}
-                accessibilityLabel="Marcar todas como leídas"
-                accessibilityRole="button"
-              >
-                <Ionicons name="checkmark-done" size={20} color="#FFFFFF" />
-              </TouchableOpacity>
-            )}
-            <TouchableOpacity style={[styles.closeButton, Platform.OS === 'web' && { cursor: 'pointer' }]} onPress={() => navigation.goBack()} accessibilityLabel="Cerrar notificaciones" accessibilityRole="button">
-              <Ionicons name="close" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
+            {unreadCount > 0 && headerButton('checkmark-done', 'Marcar todas como leídas', handleMarkAllAsRead)}
+            {readCount > 0 && headerButton('trash-outline', 'Eliminar las notificaciones leídas', handleDeleteRead, 18)}
+            {headerButton('close', 'Cerrar notificaciones', () => navigation.goBack(), 24)}
           </View>
         </View>
       </LinearGradient>
 
       {/* Filtros */}
-      <View style={styles.filterContainer}>
-        {['all', 'unread', 'tasks', 'areas'].map((f) => (
-          <TouchableOpacity
-            key={f}
-            onPress={() => setFilter(f)}
-            accessibilityRole="button"
-            accessibilityState={{ selected: filter === f }}
-            accessibilityLabel={f === 'all' ? 'Todas' : f === 'unread' ? 'No leídas' : f === 'tasks' ? 'Tareas' : 'Áreas'}
-            style={[
-              styles.filterButton,
-              filter === f
-                ? { backgroundColor: theme.primary, borderColor: theme.primary }
-                : { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' },
-              Platform.OS === 'web' && { cursor: 'pointer' },
-            ]}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <Text
-                style={[
-                  styles.filterLabel,
-                  filter === f && { color: '#FFFFFF' },
-                  { color: filter === f ? '#FFFFFF' : theme.text },
-                ]}
-              >
-                {f === 'all'
-                  ? 'Todas'
-                  : f === 'unread'
-                  ? 'No leídas'
-                  : f === 'tasks'
-                  ? 'Tareas'
-                  : 'Áreas'}
-              </Text>
-              {f === 'unread' && unreadCount > 0 && (
-                <View style={[styles.unreadBadgeFilter, { backgroundColor: filter === 'unread' ? 'rgba(255,255,255,0.3)' : theme.primary }]}>
-                  <Text style={styles.unreadBadgeFilterText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.filterScroll}
+        contentContainerStyle={styles.filterContainer}
+      >
+        {FILTERS.map((f) => {
+          const active = filter === f.id;
+          const count = filterCounts[f.id] || 0;
+          return (
+            <TouchableOpacity
+              key={f.id}
+              onPress={() => setFilter(f.id)}
+              accessibilityRole="button"
+              accessibilityState={{ selected: active }}
+              accessibilityLabel={`${f.label}, ${count}`}
+              style={[
+                styles.filterButton,
+                active
+                  ? { backgroundColor: theme.primary, borderColor: theme.primary }
+                  : { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' },
+                Platform.OS === 'web' && { cursor: 'pointer' },
+              ]}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Text style={[styles.filterLabel, { color: active ? '#FFFFFF' : theme.text }]}>{f.label}</Text>
+                {f.id !== 'all' && count > 0 && (
+                  <View style={[styles.unreadBadgeFilter, { backgroundColor: active ? 'rgba(255,255,255,0.3)' : (f.id === 'unread' ? theme.primary : theme.textSecondary) }]}>
+                    <Text style={styles.unreadBadgeFilterText}>{count > 99 ? '99+' : count}</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
 
-      {/* Lista de notificaciones */}
-      {error ? (
-        <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIconWrapper, { backgroundColor: theme.errorAlpha }]}>
-            <Ionicons name="cloud-offline-outline" size={48} color={theme.error} />
-          </View>
-          <Text style={[styles.emptyTitle, { color: theme.text }]}>Error de conexión</Text>
-          <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>No se pudieron cargar las notificaciones.</Text>
-          <TouchableOpacity
-            style={[styles.retryButton, { backgroundColor: theme.primary }]}
-            onPress={loadNotifications}
-            accessibilityLabel="Reintentar"
-            accessibilityRole="button"
-          >
-            <Ionicons name="refresh" size={16} color="#fff" style={{ marginRight: 6 }} />
-            <Text style={styles.retryButtonText}>Reintentar</Text>
-          </TouchableOpacity>
-        </View>
-      ) : filteredNotifications.length > 0 ? (
-        <FlatList
-          data={filteredNotifications}
-          renderItem={renderNotification}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.listContent}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
-          scrollEnabled={true}
-          windowSize={5}
-          maxToRenderPerBatch={8}
-          initialNumToRender={10}
-          removeClippedSubviews={true}
-        />
-      ) : (
-        <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
-            <Ionicons name="notifications-off-outline" size={48} color={theme.textMuted} />
-          </View>
-          <Text style={[styles.emptyTitle, { color: theme.text }]}>
-            {filter === 'all' ? 'Sin notificaciones' : 'Sin notificaciones aquí'}
-          </Text>
-          <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
-            {filter === 'unread' ? 'Estás al día, todo leído.' :
-             filter === 'tasks' ? 'No hay notificaciones de tareas.' :
-             filter === 'areas' ? 'No hay notificaciones de áreas.' :
-             'Las notificaciones aparecerán aquí cuando tengas actividad.'}
-          </Text>
-        </View>
-      )}
+      {renderBody()}
 
       </View>
     </View>
@@ -454,22 +509,23 @@ export default function NotificationsScreen({ navigation }) {
 }
 
 const formatTime = (timestamp) => {
-  if (!timestamp) return '';
+  const ms = toMs(timestamp);
+  if (!ms) return '';
 
-  const date = new Date(toMs(timestamp));
-  const now = new Date();
-  const diff = now - date;
+  const date = new Date(ms);
+  const diff = Date.now() - ms;
 
   const minutes = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
   if (minutes < 1) return 'Justo ahora';
-  if (minutes < 60) return `hace ${minutes}m`;
-  if (hours < 24) return `hace ${hours}h`;
-  if (days < 7) return `hace ${days}d`;
+  if (minutes < 60) return `hace ${minutes} min`;
+  if (hours < 24) return `hace ${hours} h`;
+  if (days < 7) return `hace ${days} ${days === 1 ? 'día' : 'días'}`;
 
-  return date.toLocaleDateString();
+  // Fecha en formato local (día/mes/año), no el del navegador
+  return date.toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 const styles = StyleSheet.create({
@@ -524,12 +580,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.20)',
   },
+  // La fila de filtros se desplaza en horizontal: flexGrow 0 evita que ocupe toda la pantalla
+  filterScroll: {
+    flexGrow: 0,
+    // Sin esto la fila se encoge y los filtros quedan recortados cuando la lista es larga
+    flexShrink: 0,
+  },
   filterContainer: {
     paddingHorizontal: 16,
     paddingVertical: 12,
     flexDirection: 'row',
     gap: 8,
-    flexWrap: 'wrap',
+  },
+  groupHeader: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.4,
+    textTransform: 'uppercase',
+    marginTop: 6,
+    marginLeft: 4,
   },
   filterButton: {
     paddingHorizontal: 14,

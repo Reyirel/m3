@@ -14,6 +14,7 @@ import {
   Alert,
   Platform,
 } from 'react-native';
+import { confirmAlert } from '../utils/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
@@ -136,21 +137,12 @@ const MyAreaReportsScreen = ({ navigation }) => {
       }
     };
 
-    if (Platform.OS === 'web') {
-      const confirmed = window.confirm('¿Estás seguro de que deseas eliminar este reporte?');
-      if (confirmed) {
-        await doDelete();
-      }
-    } else {
-      Alert.alert(
-        '🗑️ Eliminar Reporte',
-        '¿Estás seguro de que deseas eliminar este reporte? Esta acción no se puede deshacer.',
-        [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Eliminar', style: 'destructive', onPress: doDelete }
-        ]
-      );
-    }
+    confirmAlert(
+      'Eliminar reporte',
+      '¿Estás seguro de que deseas eliminar este reporte? Esta acción no se puede deshacer.',
+      doDelete,
+      'Eliminar'
+    );
   }, [showSuccess, showError]);
 
   const renderStars = (rating, interactive = false, onRate = null) => {

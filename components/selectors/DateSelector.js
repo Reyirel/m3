@@ -1,9 +1,11 @@
 /**
  * DateSelector.js
- * Dos filas compactas (Fecha + Hora) que abren el picker nativo
+ * Dos filas compactas (Fecha + Hora) que abren el selector del dispositivo:
+ *   - iOS / Android: DateTimePicker nativo
+ *   - Web: el selector de fecha y hora del propio navegador
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -13,6 +15,26 @@ const fmt = (date, mode) => {
   if (!date) return '—';
   if (mode === 'date') return new Date(date).toLocaleDateString('es-MX', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
   return new Date(date).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+};
+
+const pad = (n) => String(n).padStart(2, '0');
+// Valores en hora local con el formato que usan <input type="date"> y <input type="time">
+const toDateInput = (date) => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+const toTimeInput = (date) => `${pad(date.getHours())}:${pad(date.getMinutes())}`;
+
+// El input del navegador queda encima de la fila, invisible: el clic lo recibe él
+// y el navegador abre su propio selector.
+const webInputStyle = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100%',
+  opacity: 0,
+  cursor: 'pointer',
+  border: 0,
+  padding: 0,
+  margin: 0,
 };
 
 export default function DateSelector({
@@ -26,9 +48,25 @@ export default function DateSelector({
   const { theme, isDark } = useTheme();
   const [pickerMode, setPickerMode] = useState(null); // 'date' | 'time' | null
   const [temp, setTemp]             = useState(new Date(value || Date.now()));
+  const dateInputRef = useRef(null);
+  const timeInputRef = useRef(null);
+
+  const isWeb = Platform.OS === 'web';
+  const current = new Date(value || Date.now());
 
   const openPicker = (mode) => {
     if (disabled) return;
+    if (isWeb) {
+      // Abrir el selector del navegador (showPicker); en navegadores antiguos basta el foco
+      const input = mode === 'date' ? dateInputRef.current : timeInputRef.current;
+      try {
+        if (input?.showPicker) input.showPicker();
+        else input?.focus();
+      } catch (_e) {
+        input?.focus();
+      }
+      return;
+    }
     setTemp(new Date(value || Date.now()));
     setPickerMode(mode);
   };
@@ -44,6 +82,36 @@ export default function DateSelector({
     }
     setTemp(next);
     if (Platform.OS === 'android') onChange(next);
+  };
+
+  // Web: el input entrega "AAAA-MM-DD" o "HH:MM"; se conserva la otra mitad de la fecha
+  const handleWebChange = (mode, text) => {
+    if (!text) return;
+    const next = new Date(value || Date.now());
+    if (mode === 'date') {
+      const [year, month, day] = text.split('-').map(Number);
+      if (!year || !month || !day) return;
+      next.setFullYear(year, month - 1, day);
+    } else {
+      const [hours, minutes] = text.split(':').map(Number);
+      if (Number.isNaN(hours) || Number.isNaN(minutes)) return;
+      next.setHours(hours, minutes, 0, 0);
+    }
+    onChange(next);
+  };
+
+  const renderWebInput = (mode) => {
+    if (!isWeb || disabled) return null;
+    return React.createElement('input', {
+      ref: mode === 'date' ? dateInputRef : timeInputRef,
+      type: mode,
+      value: mode === 'date' ? toDateInput(current) : toTimeInput(current),
+      min: mode === 'date' && minimumDate ? toDateInput(new Date(minimumDate)) : undefined,
+      onChange: (e) => handleWebChange(mode, e.target.value),
+      onClick: () => openPicker(mode),
+      'aria-label': mode === 'date' ? 'Fecha de vencimiento' : 'Hora de vencimiento',
+      style: webInputStyle,
+    });
   };
 
   const confirm = () => { onChange(temp); setPickerMode(null); };
@@ -81,6 +149,7 @@ export default function DateSelector({
             <Text style={[styles.rowValue, { color: theme.text }]}>{fmt(value, 'date')}</Text>
           </View>
           {!disabled && <Ionicons name="chevron-forward" size={16} color={isDark ? 'rgba(235,235,245,0.30)' : 'rgba(60,60,67,0.30)'} />}
+          {renderWebInput('date')}
         </TouchableOpacity>
 
         {/* Hora */}
@@ -94,6 +163,7 @@ export default function DateSelector({
               <Text style={[styles.rowValue, { color: theme.text }]}>{fmt(value, 'time')}</Text>
             </View>
             {!disabled && <Ionicons name="chevron-forward" size={16} color={isDark ? 'rgba(235,235,245,0.30)' : 'rgba(60,60,67,0.30)'} />}
+            {renderWebInput('time')}
           </TouchableOpacity>
         )}
 
@@ -161,6 +231,8 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     paddingHorizontal: 14, paddingVertical: 13, borderRadius: 14, borderWidth: 1.5,
+    // Necesario para que el input del navegador (web) quede contenido en la fila
+    position: 'relative',
   },
   iconWrap: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
   rowLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.2 },
