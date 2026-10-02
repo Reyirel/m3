@@ -62,8 +62,9 @@ function buildFeed(messages, currentUserId, currentUser) {
 export default function TaskChatScreen({ route, navigation }) {
   const { theme, isDark } = useTheme();
   const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
-  const { currentUser: ctxUser } = useTasks();
+  const { currentUser: ctxUser, tasks: ctxTasks } = useTasks();
   const { taskId, taskTitle } = route.params;
+  const isTaskLoaded = ctxTasks.some(t => t.id === taskId);
 
   const [messages, setMessages]             = useState([]);
   const [text, setText]                     = useState('');
@@ -79,20 +80,33 @@ export default function TaskChatScreen({ route, navigation }) {
   // ── access check ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!ctxUser) return;
+    const { role } = ctxUser;
+    const allowedRole = role === 'admin' || role === 'director' || role === 'secretario';
+
+    // La tarea ya está en la lista en memoria (que también funciona sin conexión):
+    // no hace falta leerla de Firestore, lectura que sin red deja el chat bloqueado
+    const loadedTask = ctxTasks.find(t => t.id === taskId);
+    if (loadedTask) {
+      setTaskData(loadedTask);
+      setHasAccess(allowedRole);
+      return;
+    }
+
     (async () => {
       try {
         const taskDoc = await getDoc(doc(db, 'tasks', taskId));
         if (taskDoc.exists()) {
           setTaskData(taskDoc.data());
-          const { role } = ctxUser;
-          setHasAccess(role === 'admin' || role === 'director' || role === 'secretario');
+          setHasAccess(allowedRole);
         }
       } catch (e) {
         if (__DEV__) console.error('[TaskChat] access check:', e);
         setHasAccess(false);
       }
     })();
-  }, [ctxUser, taskId]);
+    // ctxTasks cambia con cada actualización de la lista; basta saber si la tarea ya cargó
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ctxUser, taskId, isTaskLoaded]);
 
   // ── realtime messages ─────────────────────────────────────────────────────
   useEffect(() => {

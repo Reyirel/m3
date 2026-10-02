@@ -248,6 +248,10 @@ export const logoutUser = async () => {
   }
 };
 
+// Cada cuánto se vuelve a leer el usuario desde Firestore para refrescar la sesión
+const SESSION_REFRESH_INTERVAL_MS = 60 * 1000;
+let lastSessionRefresh = 0;
+
 // Obtener sesión actual
 export const getCurrentSession = async () => {
   try {
@@ -258,8 +262,23 @@ export const getCurrentSession = async () => {
       session.email = normalizeEmailForAuth(session.email);
       await AsyncStorage.setItem('userSession', JSON.stringify(session));
 
+      // Sin conexión, o si se refrescó hace poco, se usa la sesión guardada.
+      // Esta función se llama en casi cada operación: consultar Firestore cada vez
+      // deja la app esperando cuando no hay red y multiplica las lecturas cuando sí hay.
+      let isOnline = true;
+      try {
+        const { getConnectionState } = await import('./offlineSync');
+        isOnline = getConnectionState();
+      } catch (_e) {
+        // Sin el estado de conexión se intenta el refresh normal
+      }
+      if (!isOnline || Date.now() - lastSessionRefresh < SESSION_REFRESH_INTERVAL_MS) {
+        return { success: true, session };
+      }
+
       // Refrescar datos del usuario desde Firebase para obtener campos actualizados
       try {
+        lastSessionRefresh = Date.now();
         const usersRef = collection(db, 'users');
         const q = query(usersRef, where('email', '==', session.email));
         const querySnapshot = await getDocs(q);

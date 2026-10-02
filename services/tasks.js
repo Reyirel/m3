@@ -37,6 +37,7 @@ import {
   cacheTasksLocally,
   getCachedTasks,
   getConnectionState,
+  getPendingOperations,
   queueOperation,
   subscribeToCacheChanges,
   isPermanentError,
@@ -102,6 +103,51 @@ async function waitForSession(maxRetries = 30, initialDelay = 100) {
 }
 
 /**
+ * Aplica sobre la lista de tareas los cambios hechos sin conexión que siguen en la cola,
+ * para que la pantalla los muestre antes de que lleguen al servidor.
+ * @param {Array} tasks - Tareas (del servidor o de la copia guardada)
+ * @param {Array} pendingOps - Operaciones pendientes de offlineSync
+ * @returns {Array} Tareas con los cambios pendientes aplicados (pendingSync: true)
+ */
+export function applyPendingOperations(tasks, pendingOps) {
+  if (!pendingOps || pendingOps.length === 0) return tasks;
+
+  const opsByTask = new Map();
+  [...pendingOps]
+    .sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+    .forEach(op => {
+      if (!op.taskId) return;
+      if (!opsByTask.has(op.taskId)) opsByTask.set(op.taskId, []);
+      opsByTask.get(op.taskId).push(op);
+    });
+  if (opsByTask.size === 0) return tasks;
+
+  return tasks
+    .map(task => {
+      const ops = opsByTask.get(task.id);
+      if (!ops) return task;
+
+      let updated = { ...task, pendingSync: true };
+      ops.forEach(op => {
+        if (op.type === OPERATION_TYPES.UPDATE) {
+          updated = { ...updated, ...op.data };
+        } else if (op.type === OPERATION_TYPES.DELETE) {
+          updated.deleted = true;
+        } else if (op.type === OPERATION_TYPES.CONFIRM) {
+          const email = (op.data?.email || '').toLowerCase().trim();
+          const completedBy = updated.completedBy || [];
+          if (email && !completedBy.some(c => (c.email || '').toLowerCase().trim() === email)) {
+            updated.completedBy = [...completedBy, { ...op.data, email, completedAt: op.timestamp, pendingSync: true }];
+          }
+        }
+      });
+      updated.status = normalizeStatus(updated.status);
+      return updated;
+    })
+    .filter(task => !task.deleted);
+}
+
+/**
  * Suscribirse a cambios en tiempo real de las tareas del usuario autenticado
  * SIMPLE VERSION: Solo Firestore, sin caché
  */
@@ -147,29 +193,59 @@ export async function subscribeToTasks(callback) {
 
     let isSubscribed = true;
     let serverTasks = [];
+    // true cuando Firestore ya entregó datos (del servidor o de su propio cache)
+    let hasServerData = false;
     // Resultado de cada consulta (id → tarea); se combinan sin duplicados
     const queryResults = taskQueries.map(() => new Map());
 
-    // Emitir las tareas del servidor junto con las creadas sin conexión que aún no se sincronizan
-    const emit = async () => {
-      const cached = await getCachedTasks(userEmail);
+    const isTempTask = (t) => t.isOffline && String(t.id).startsWith('temp_');
+
+    // Emitir las tareas con los cambios hechos sin conexión que aún no se sincronizan:
+    //   - tareas creadas sin conexión (temporales)
+    //   - cambios pendientes en la cola (estado, confirmaciones, papelera)
+    // Si Firestore aún no entrega nada (app abierta sin red), se usa la última copia guardada.
+    const emit = async ({ skipIfEmpty = false } = {}) => {
+      const [cached, pendingOps] = await Promise.all([getCachedTasks(userEmail), getPendingOperations()]);
       if (!isSubscribed) return;
-      const pendingOffline = cached
-        .filter(t => t.isOffline && String(t.id).startsWith('temp_'))
+      const tempTasks = cached
+        .filter(isTempTask)
         .map(t => ({
           ...t,
           assignedTo: Array.isArray(t.assignedTo) ? t.assignedTo : t.assignedTo ? [t.assignedTo] : [],
           status: normalizeStatus(t.status),
           isDueOverdue: false,
         }));
-      callback(pendingOffline.length > 0 ? [...pendingOffline, ...serverTasks] : serverTasks);
+      const baseTasks = hasServerData
+        ? serverTasks
+        : filterVisibleTasks(cached.filter(t => !isTempTask(t)), session);
+      const tasks = [...tempTasks, ...applyPendingOperations(baseTasks, pendingOps)];
+      if (skipIfEmpty && tasks.length === 0) return;
+      callback(tasks);
     };
-    const unsubscribeCache = subscribeToCacheChanges(emit);
+    const unsubscribeCache = subscribeToCacheChanges(() => emit());
+
+    // Guardar la lista del servidor en el dispositivo para poder verla sin conexión
+    const persistServerTasks = async () => {
+      try {
+        const cached = await getCachedTasks(userEmail);
+        await cacheTasksLocally([...cached.filter(isTempTask), ...serverTasks], userEmail, { silent: true });
+      } catch (e) {
+        log('⚠️ Error guardando copia local de tareas:', e.message);
+      }
+    };
+
+    // Mostrar de inmediato la última copia guardada mientras responde Firestore
+    emit({ skipIfEmpty: true });
 
     const unsubscribeListeners = taskQueries.map((tasksQuery, queryIndex) => onSnapshot(
       tasksQuery,
       (snapshot) => {
         if (!isSubscribed) return;
+
+        // Sin red y sin cache de Firestore (app nativa recién abierta) llega un resultado
+        // vacío "desde cache": no es que no haya tareas, se conserva la copia guardada.
+        if (snapshot.metadata?.fromCache && snapshot.empty && !hasServerData) return;
+        hasServerData = true;
 
         const now = Date.now();
         const tasks = snapshot.docs.map(doc => {
@@ -195,7 +271,7 @@ export async function subscribeToTasks(callback) {
             isDueOverdue: dueAt < now && !closedStatuses.includes(status),
           };
         });
-        
+
         queryResults[queryIndex] = new Map(tasks.map(task => [task.id, task]));
         const merged = new Map();
         queryResults.forEach(result => result.forEach((task, id) => merged.set(id, task)));
@@ -207,12 +283,13 @@ export async function subscribeToTasks(callback) {
         logger.debug('TasksService', `Loaded ${filteredTasks.length} tasks`);
         serverTasks = filteredTasks;
         emit();
+        if (!snapshot.metadata?.fromCache) persistServerTasks();
       },
       (error) => {
         logger.error('TasksService', 'Snapshot listener error', error);
-        // Una consulta que falla no debe ocultar los resultados de la otra
+        // Una consulta que falla no debe ocultar los resultados de la otra ni la copia guardada
         queryResults[queryIndex] = new Map();
-        if (queryResults.every(result => result.size === 0)) callback([]);
+        emit();
       }
     ));
 
@@ -419,13 +496,18 @@ export async function updateTask(taskId, updates) {
         if (sessionResult.success && sessionResult.session) {
           const userEmail = sessionResult.session.email;
           const _userName = sessionResult.session.displayName || userEmail;
-          
+
           // Obtener la tarea actual para ver los asignados
-          const taskRef = doc(db, COLLECTION_NAME, taskId);
-          const taskSnap = await getDoc(taskRef);
-          
-          if (taskSnap.exists()) {
-            const taskData = taskSnap.data();
+          // (sin conexión, de la copia guardada: leer de Firestore se quedaría esperando)
+          let taskData = null;
+          if (getConnectionState()) {
+            const taskSnap = await getDoc(doc(db, COLLECTION_NAME, taskId));
+            taskData = taskSnap.exists() ? taskSnap.data() : null;
+          } else {
+            taskData = (await getCachedTasks(userEmail)).find(t => t.id === taskId) || null;
+          }
+
+          if (taskData) {
             const assignedTo = taskData.assignedTo || [];
             const existingCompletedBy = taskData.completedBy || [];
             

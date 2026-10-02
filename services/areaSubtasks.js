@@ -5,6 +5,7 @@
 import { collection, doc, getDoc, updateDoc, query, where, getDocs, Timestamp, writeBatch, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { normalizeStatus } from '../utils/taskHelpers';
+import { getSecretariasForAreas } from '../config/areas';
 
 /**
  * Crear subtareas automáticas para cada área asignada
@@ -43,18 +44,23 @@ export const createAreaSubtasks = async (parentTask, parentTaskId) => {
         priority: parentTask.priority || 'media',
         area: area,
         areas: [area],
+        // Secretaría que puede ver la subtarea (visibilidad del secretario)
+        secretarias: getSecretariasForAreas([area]),
         parentTaskId: parentTaskId,
         parentTaskTitle: parentTask.title,
         isSubtask: true,
         isAreaSubtask: true, // Marca especial para subtareas de coordinación
         assignedTo: areaAssignees,
         assignedToNames: areaAssigneeNames,
+        assignments: [],
         createdBy: parentTask.createdBy,
         createdByName: parentTask.createdByName,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
-        dueDate: parentTask.dueDate,
+        dueAt: parentTask.dueAt || null,
         tags: parentTask.tags || [],
+        isCoordinationTask: false,
+        progressPercentage: 0,
       };
       
       const subtaskRef = doc(tasksRef);

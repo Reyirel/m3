@@ -58,8 +58,10 @@ export default function ReadOnlyTaskModal({
         email: currentUser.email,
         displayName: currentUser.displayName || currentUser.email,
         area: currentUser.area || '',
-      });
-      if (result.allCompleted) {
+      }, { task });
+      if (result.queued) {
+        showSuccess('Avance guardado sin conexión. Se enviará al recuperar la señal.');
+      } else if (result.allCompleted) {
         showSuccess('¡Avance confirmado! Todos los asignados han completado su parte.');
       } else {
         showSuccess(`Avance confirmado (${result.completedCount}/${result.totalAssigned} completados)`);

@@ -35,6 +35,13 @@ import { getCurrentSession } from './authFirestore';
 import { toMs } from '../utils/dateUtils';
 import { ValidationRules, Validator } from '../utils/ValidationRules';
 import { getSecretariasForAreas } from '../config/areas';
+import {
+  getConnectionState,
+  queueOperation,
+  getCachedTasks,
+  cacheTasksLocally,
+  OPERATION_TYPES,
+} from './offlineSync';
 
 const TASKS_COLLECTION = 'tasks';
 const VALID_STATUSES = ['pendiente', 'en_proceso', 'en_revision', 'cerrada'];
@@ -200,12 +207,32 @@ async function normalizeTaskData(inputData, currentUser) {
 // ============================================
 
 /**
+ * Versión de los datos que se puede guardar en el dispositivo (cola sin conexión):
+ * las fechas van en milisegundos porque los valores especiales de Firestore
+ * (serverTimestamp, Timestamp) no sobreviven a guardarse como texto.
+ * La cola las convierte de nuevo al sincronizar.
+ */
+function toOfflineData(data, formData) {
+  const now = Date.now();
+  const offlineData = { ...data, updatedAt: now, dueAt: formData.dueAt ? toMs(formData.dueAt) : null };
+  if ('createdAt' in offlineData) offlineData.createdAt = now;
+  return offlineData;
+}
+
+/**
  * Obtener mapa de email -> { name, active, secretaria } de todos los usuarios
  */
 async function getUsersMap() {
   try {
     const usersRef = collection(db, 'users');
-    const snapshot = await getDocs(usersRef);
+    // Sin conexión la lectura puede quedarse esperando: se da un margen corto y se sigue
+    // sin la lista (los nombres quedan como correo y no se valida que el usuario esté activo)
+    const snapshot = getConnectionState()
+      ? await getDocs(usersRef)
+      : await Promise.race([
+          getDocs(usersRef),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Sin conexión')), 3000)),
+        ]);
     const map = {};
 
     snapshot.forEach((doc) => {
@@ -347,6 +374,23 @@ export const TaskCreator = {
       const { fields, initial } = await normalizeTaskData(formData, currentUser);
       const normalizedData = { ...fields, ...initial };
 
+      // SIN CONEXIÓN: la tarea se guarda en el dispositivo y en la cola. Al reconectar,
+      // la cola la crea en el servidor junto con sus subtareas por área y avisa a los asignados.
+      // (Escribir directo en Firestore sin red deja la pantalla esperando indefinidamente.)
+      if (!getConnectionState()) {
+        const tempId = `temp_${Date.now()}_${Math.random().toString(36).slice(2, 11)}`;
+        const offlineData = toOfflineData(normalizedData, formData);
+        const cached = await getCachedTasks(currentUser.email);
+        cached.unshift({ ...offlineData, id: tempId, isOffline: true });
+        await cacheTasksLocally(cached, currentUser.email);
+        await queueOperation(OPERATION_TYPES.CREATE, offlineData, tempId, currentUser.email);
+        return {
+          success: true,
+          taskId: tempId,
+          offline: true,
+        };
+      }
+
       // 4. CREAR EN BD (con subtareas si es multi-área)
       const batch = writeBatch(db);
       const tasksRef = collection(db, TASKS_COLLECTION);
@@ -410,15 +454,28 @@ export const TaskCreator = {
 
       const currentUser = sessionResult.session;
 
+      const isOffline = !getConnectionState();
       const taskRef = doc(db, TASKS_COLLECTION, taskId);
-      const taskSnap = await getDoc(taskRef);
-      if (!taskSnap.exists()) {
-        return {
-          success: false,
-          error: 'La tarea ya no existe',
-        };
+      let existing;
+      if (isOffline) {
+        // Sin conexión se parte de la copia guardada en el dispositivo
+        existing = (await getCachedTasks(currentUser.email)).find((task) => task.id === taskId);
+        if (!existing) {
+          return {
+            success: false,
+            error: 'Sin conexión: esta tarea no está disponible en el dispositivo para editarla',
+          };
+        }
+      } else {
+        const taskSnap = await getDoc(taskRef);
+        if (!taskSnap.exists()) {
+          return {
+            success: false,
+            error: 'La tarea ya no existe',
+          };
+        }
+        existing = taskSnap.data();
       }
-      const existing = taskSnap.data();
 
       // 3. NORMALIZAR — solo los campos del formulario. El avance, la coordinación
       // entre áreas y los datos de creación se conservan como están.
@@ -440,6 +497,20 @@ export const TaskCreator = {
         normalizedData.completedBy = existing.completedBy.filter((confirmation) =>
           fields.assignedTo.includes((confirmation.email || '').toLowerCase().trim())
         );
+      }
+
+      // SIN CONEXIÓN: el cambio va a la cola y se aplica al reconectar
+      if (isOffline) {
+        await queueOperation(
+          OPERATION_TYPES.UPDATE,
+          toOfflineData(normalizedData, formData),
+          taskId,
+          currentUser.email
+        );
+        return {
+          success: true,
+          offline: true,
+        };
       }
 
       // 4. ACTUALIZAR EN BD
@@ -475,6 +546,23 @@ export const TaskCreator = {
         return {
           success: false,
           error: 'Solo el administrador puede eliminar tareas',
+        };
+      }
+
+      // SIN CONEXIÓN: la tarea y sus subtareas (según la copia del dispositivo) van a la cola
+      if (!getConnectionState()) {
+        const email = sessionResult.session.email || '';
+        const offlineTrash = { deleted: true, deletedBy: email, deletedAt: Date.now() };
+        const cached = await getCachedTasks(email);
+        const ids = [taskId, ...cached.filter((task) => task.parentTaskId === taskId).map((task) => task.id)];
+        for (const id of ids) {
+          if (!String(id).startsWith('temp_')) {
+            await queueOperation(OPERATION_TYPES.UPDATE, offlineTrash, id, email);
+          }
+        }
+        return {
+          success: true,
+          offline: true,
         };
       }
 

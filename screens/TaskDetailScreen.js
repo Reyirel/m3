@@ -340,8 +340,6 @@ export default function TaskDetailScreen({ route, navigation }) {
       return;
     }
     try {
-      const { doc, updateDoc } = await import('firebase/firestore');
-      const { db } = await import('../firebase');
       const directorEmail = (director.email || '').toLowerCase().trim();
       const directorName = director.displayName || director.name || directorEmail;
       const currentAssigned = getAssignedEmails(liveTask);
@@ -378,7 +376,8 @@ export default function TaskDetailScreen({ route, navigation }) {
         updates.status = 'en_proceso';
       }
 
-      await updateDoc(doc(db, 'tasks', liveTask.id), updates);
+      // updateTask funciona también sin conexión: guarda el cambio en la cola
+      await updateTask(liveTask.id, updates);
       showSuccess(`Tarea delegada a ${directorName}`);
       setShowDelegateModal(false);
     } catch {

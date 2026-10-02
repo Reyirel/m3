@@ -7,8 +7,17 @@ import { toMs } from '../utils/dateUtils';
 import { normalizeStatus, getAssignedEmails, getConfirmedEmails } from '../utils/taskHelpers';
 import { db } from '../firebase';
 import { updateParentTaskProgress } from './areaSubtasks';
+import { getConnectionState, queueOperation, OPERATION_TYPES } from './offlineSync';
 
 const normalizeEmail = (email) => (email || '').toLowerCase().trim();
+
+// Error de regla de negocio: reintentar no lo arregla, así que la cola sin conexión
+// lo descarta en vez de reintentarlo (ver isPermanentError en offlineSync.js)
+const preconditionError = (message) => {
+  const error = new Error(message);
+  error.code = 'failed-precondition';
+  return error;
+};
 
 /**
  * Estructura de confirmación:
@@ -24,12 +33,39 @@ const normalizeEmail = (email) => (email || '').toLowerCase().trim();
  * Marcar la parte de un usuario como completada
  * @param {string} taskId - ID de la tarea
  * @param {object} user - Usuario que confirma {email, displayName, area}
- * @returns {Promise<{success: boolean, allCompleted: boolean, completedCount: number, totalAssigned: number}>}
+ * @param {object} [options]
+ * @param {object} [options.task] - Tarea como se ve en pantalla (para el conteo cuando no hay conexión)
+ * @param {boolean} [options.fromQueue] - true cuando la ejecuta la cola al recuperar la conexión
+ * @returns {Promise<{success: boolean, allCompleted: boolean, completedCount: number, totalAssigned: number, queued?: boolean}>}
  */
-export const confirmTaskCompletion = async (taskId, user) => {
+export const confirmTaskCompletion = async (taskId, user, { task: localTask = null, fromQueue = false } = {}) => {
   try {
     const taskRef = doc(db, 'tasks', taskId);
     const userEmail = normalizeEmail(user.email);
+
+    // Sin conexión: una transacción no puede ejecutarse. La confirmación se guarda en la
+    // cola y se aplica al reconectar; mientras tanto la lista la muestra como pendiente.
+    if (!fromQueue && !getConnectionState()) {
+      const assignedTo = getAssignedEmails(localTask);
+      if (localTask && !assignedTo.includes(userEmail)) {
+        throw preconditionError('No estás asignado a esta tarea');
+      }
+      await queueOperation(
+        OPERATION_TYPES.CONFIRM,
+        { email: userEmail, displayName: user.displayName || user.email, area: user.area || '' },
+        taskId,
+        userEmail
+      );
+      const confirmed = getConfirmedEmails(localTask?.completedBy, assignedTo);
+      confirmed.add(userEmail);
+      return {
+        success: true,
+        queued: true,
+        allCompleted: false,
+        completedCount: confirmed.size,
+        totalAssigned: assignedTo.length
+      };
+    }
 
     // Transacción: si dos asignados confirman al mismo tiempo, ninguna confirmación
     // se pierde y el paso a revisión se calcula con el estado real de la tarea.
@@ -37,7 +73,7 @@ export const confirmTaskCompletion = async (taskId, user) => {
       const taskSnap = await transaction.get(taskRef);
 
       if (!taskSnap.exists()) {
-        throw new Error('Tarea no encontrada');
+        throw preconditionError('Tarea no encontrada');
       }
 
       const task = taskSnap.data();
@@ -46,16 +82,16 @@ export const confirmTaskCompletion = async (taskId, user) => {
 
       // Verificar que el usuario está asignado
       if (!assignedTo.includes(userEmail)) {
-        throw new Error('No estás asignado a esta tarea');
+        throw preconditionError('No estás asignado a esta tarea');
       }
 
       if (normalizeStatus(task.status) === 'cerrada') {
-        throw new Error('La tarea ya fue finalizada');
+        throw preconditionError('La tarea ya fue finalizada');
       }
 
       // Verificar si ya confirmó
       if (completedBy.some(c => normalizeEmail(c.email) === userEmail)) {
-        throw new Error('Ya confirmaste tu parte de esta tarea');
+        throw preconditionError('Ya confirmaste tu parte de esta tarea');
       }
 
       const confirmation = {

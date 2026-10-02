@@ -56,6 +56,12 @@ export const subscribeToCacheChanges = (callback) => {
   };
 };
 
+const notifyCacheListeners = () => {
+  cacheListeners.forEach(listener => {
+    try { listener(); } catch (_e) { /* silent */ }
+  });
+};
+
 // Inicializar listener de conexión
 export const initConnectionListener = () => {
   let firstEvent = true;
@@ -95,16 +101,15 @@ export const getConnectionState = () => isOnline;
 
 // Guardar tareas en cache local
 // userEmail opcional: si se pasa, usa clave por usuario para evitar contaminación entre sesiones
-export const cacheTasksLocally = async (tasks, userEmail) => {
+// silent: no avisa a los listeners (para guardar la lista que ya se está mostrando)
+export const cacheTasksLocally = async (tasks, userEmail, { silent = false } = {}) => {
   try {
     const key = userEmail
       ? `${OFFLINE_TASKS_KEY}_${userEmail.toLowerCase().replace(/[^a-z0-9]/g, '_')}`
       : OFFLINE_TASKS_KEY;
     await AsyncStorage.setItem(key, JSON.stringify(tasks));
     await AsyncStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
-    cacheListeners.forEach(listener => {
-      try { listener(); } catch (_e) { /* silent */ }
-    });
+    if (!silent) notifyCacheListeners();
   } catch (error) {
     if (__DEV__) console.error('Error guardando cache:', error);
   }
@@ -162,7 +167,9 @@ export const clearUserTaskCache = async (userEmail) => {
 export const OPERATION_TYPES = {
   CREATE: 'CREATE',
   UPDATE: 'UPDATE',
-  DELETE: 'DELETE'
+  DELETE: 'DELETE',
+  // Confirmar "mi parte" de una tarea con varios asignados
+  CONFIRM: 'CONFIRM'
 };
 
 // Agregar operación a la cola
@@ -182,13 +189,16 @@ export const queueOperation = async (type, data, taskId = null, userEmail = null
     
     // Si es UPDATE o DELETE y ya hay operaciones pendientes para esta tarea
     if (taskId && (type === OPERATION_TYPES.UPDATE || type === OPERATION_TYPES.DELETE)) {
-      // Eliminar operaciones anteriores de UPDATE para la misma tarea (mantener solo la última)
+      // Varios UPDATE de la misma tarea se combinan en uno: los campos del más reciente
+      // ganan, pero los que solo cambió un UPDATE anterior no se pierden
       const filtered = pendingOps.filter(op => {
         if (op.taskId === taskId) {
           // Si la nueva operación es DELETE, eliminar todas las anteriores
           if (type === OPERATION_TYPES.DELETE) return false;
-          // Si es UPDATE, eliminar solo otros UPDATE
-          if (type === OPERATION_TYPES.UPDATE && op.type === OPERATION_TYPES.UPDATE) return false;
+          if (type === OPERATION_TYPES.UPDATE && op.type === OPERATION_TYPES.UPDATE) {
+            operation.data = { ...op.data, ...operation.data };
+            return false;
+          }
         }
         return true;
       });
@@ -201,6 +211,8 @@ export const queueOperation = async (type, data, taskId = null, userEmail = null
     
     log('📥 Operación encolada:', type, taskId || 'nueva tarea');
     notifySyncListeners(isSyncing);
+    // La lista de tareas muestra los cambios pendientes: avisar para que se actualice
+    notifyCacheListeners();
     return operation.id;
   } catch (error) {
     if (__DEV__) console.error('Error encolando operación:', error);
@@ -310,6 +322,9 @@ export const syncPendingOperations = async () => {
           case OPERATION_TYPES.DELETE:
             await syncDeleteOperation(op);
             break;
+          case OPERATION_TYPES.CONFIRM:
+            await syncConfirmOperation(op);
+            break;
         }
 
         await removeOperation(op.id);
@@ -345,6 +360,7 @@ export const syncPendingOperations = async () => {
   // Notificar a los listeners
   connectionListeners.forEach(listener => listener(isOnline));
   notifySyncListeners(false);
+  notifyCacheListeners();
 
   return { success: errors === 0, synced, discarded, pending: remaining };
 };
@@ -373,7 +389,28 @@ const syncCreateOperation = async (op) => {
   delete taskData.tempId;
   
   const docRef = await addDoc(tasksRef, taskData);
-  
+
+  // Lo que al crear con conexión se hace en el momento: subtareas por área y aviso a los asignados.
+  // Si falla no se reintenta la operación completa (duplicaría la tarea ya creada).
+  try {
+    if (Array.isArray(taskData.areas) && taskData.areas.length > 1) {
+      const { createAreaSubtasks } = await import('./areaSubtasks');
+      await createAreaSubtasks(taskData, docRef.id);
+    }
+    if (Array.isArray(taskData.assignedTo) && taskData.assignedTo.length > 0) {
+      const { notifyAssignment } = await import('./notifications');
+      await notifyAssignment({
+        id: docRef.id,
+        title: taskData.title,
+        dueAt: op.data.dueAt,
+        assignedTo: taskData.assignedTo,
+        priority: taskData.priority,
+      });
+    }
+  } catch (postCreateError) {
+    if (__DEV__) console.error('Error en pasos posteriores a crear la tarea:', postCreateError);
+  }
+
   // 🧹 Actualizar caché local: reemplazar tarea temporal con la tarea sincronizada
   try {
     const cached = await getCachedTasks(op.userEmail);
@@ -479,6 +516,14 @@ const syncDeleteOperation = async (op) => {
   await updateDoc(taskRef, { deleted: true, deletedBy: op.userEmail || '', deletedAt: Timestamp.now() });
 };
 
+// Sincronizar operación CONFIRM: la confirmación se aplica en una transacción contra
+// el estado actual de la tarea, así no pisa las confirmaciones que hicieron otros mientras tanto
+const syncConfirmOperation = async (op) => {
+  if (!op.taskId || op.taskId.startsWith('temp_')) return;
+  const { confirmTaskCompletion } = await import('./taskConfirmations');
+  await confirmTaskCompletion(op.taskId, op.data, { fromQueue: true });
+};
+
 // ============ OPERACIONES OFFLINE-FIRST ============
 
 // Crear tarea (offline-first)
@@ -562,11 +607,12 @@ export const clearOfflineData = async () => {
     // Obtener todas las claves de AsyncStorage
     const allKeys = await AsyncStorage.getAllKeys();
     
-    // Filtrar las claves que pertenecen al cache de tareas (global y por usuario)
-    const keysToRemove = allKeys.filter(key => 
-      key === OFFLINE_TASKS_KEY || 
+    // Filtrar las claves que pertenecen al cache de tareas (global y por usuario).
+    // La cola de operaciones pendientes NO se borra: son cambios hechos sin conexión
+    // que todavía no llegan al servidor, y cerrar o iniciar sesión no debe perderlos.
+    const keysToRemove = allKeys.filter(key =>
+      key === OFFLINE_TASKS_KEY ||
       key.startsWith(OFFLINE_TASKS_KEY + '_') ||
-      key === PENDING_OPERATIONS_KEY ||
       key === LAST_SYNC_KEY
     );
     
