@@ -80,6 +80,7 @@ import OfflineSyncIndicator from './components/OfflineSyncIndicator';
 import OfflineBanner from './components/OfflineBanner';
 import DialogHost from './components/DialogHost';
 import NotificationWatcher from './components/NotificationWatcher';
+import AnimatedSplash from './components/AnimatedSplash';
 import ErrorBoundary from './components/ErrorBoundary';
 import ImprovedErrorBoundary from './components/ImprovedErrorBoundary';
 import { startAutoCacheCleanup, stopAutoCacheCleanup } from './utils/cacheManager';
@@ -430,6 +431,8 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [initialSession, setInitialSession] = useState(null);
   const [forceUpdate, setForceUpdate] = useState(0);
+  // Pantalla de inicio animada: solo al abrir la app, no al cerrar o iniciar sesión
+  const [splashVisible, setSplashVisible] = useState(true);
   const navigationRef = useRef(null);
   
   // Función de logout que maneja todo el proceso
@@ -523,16 +526,11 @@ export default function App() {
     };
   }, []);
   
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#8B0000" />
-        <Text style={styles.loadingText}>Cargando...</Text>
-      </View>
-    );
-  }
-  
+  // La app se dibuja debajo de la pantalla de inicio animada, que se desvanece
+  // cuando la sesión ya se restauró (isLoading === false).
   return (
+    <View style={{ flex: 1 }}>
+    {!isLoading && (
     <ImprovedErrorBoundary navigation={navigationRef}>
       <ErrorBoundary>
         <ThemeProvider>
@@ -790,6 +788,11 @@ export default function App() {
         </ThemeProvider>
       </ErrorBoundary>
     </ImprovedErrorBoundary>
+    )}
+    {splashVisible && (
+      <AnimatedSplash ready={!isLoading} onFinish={() => setSplashVisible(false)} />
+    )}
+    </View>
   );
 }
 
