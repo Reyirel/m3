@@ -52,7 +52,7 @@ const SettingsScreenEnhanced = ({ navigation, onLogout }) => {
   const settingGroups = [
     {
       title: 'Apariencia',
-      icon: 'palette-outline',
+      icon: 'color-palette-outline',
       items: [
         {
           label: 'Modo oscuro',
