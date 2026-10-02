@@ -144,9 +144,9 @@ export const loginUser = async (email, password) => {
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) {
-      return { success: false, error: 'Usuario no encontrado' };
+      return { success: false, error: 'Usuario no encontrado', code: 'user-not-found' };
     }
-    
+
     const userDoc = querySnapshot.docs[0];
     const userData = userDoc.data();
     
@@ -182,14 +182,14 @@ export const loginUser = async (email, password) => {
     }
 
     if (!passwordValid) {
-      return { success: false, error: 'Contraseña incorrecta' };
+      return { success: false, error: 'Contraseña incorrecta', code: 'wrong-password' };
     }
-    
+
     // Verificar si está activo
     if (userData.active === false) {
-      return { success: false, error: 'Usuario desactivado' };
+      return { success: false, error: 'Usuario desactivado', code: 'user-disabled' };
     }
-    
+
     const session = await saveSession(userDoc.id, userData);
 
     return { success: true, user: session };
@@ -197,9 +197,16 @@ export const loginUser = async (email, password) => {
     // Con las reglas seguras activas, la colección users no se puede leer sin sesión:
     // un login fallido en Firebase Auth termina aquí
     if (error?.code === 'permission-denied') {
-      return { success: false, error: 'Credenciales incorrectas' };
+      return { success: false, error: 'Credenciales incorrectas', code: 'wrong-password' };
     }
-    return { success: false, error: error.message };
+    // Cualquier otro error (sin conexión, fallo del dispositivo) NO es una contraseña
+    // equivocada: la pantalla de inicio no debe contarlo como intento fallido
+    return {
+      success: false,
+      error: 'No se pudo iniciar sesión. Revisa tu conexión e intenta de nuevo.',
+      code: 'unavailable',
+      detail: error?.message,
+    };
   }
 };
 
@@ -315,11 +322,14 @@ export const getCurrentSession = async () => {
     }
     return { success: false, error: 'No hay sesión activa' };
   } catch (error) {
-    // Si hay un error al parsear o leer, limpiamos la sesión corrupta
-    try {
-      await AsyncStorage.removeItem('userSession');
-    } catch (_cleanupError) {
-      // Error silencioso
+    // Solo una sesión ilegible (datos corruptos) se borra. Un fallo pasajero del
+    // dispositivo no debe cerrar la sesión y obligar a iniciar de nuevo.
+    if (error instanceof SyntaxError) {
+      try {
+        await AsyncStorage.removeItem('userSession');
+      } catch (_cleanupError) {
+        // Error silencioso
+      }
     }
     return { success: false, error: error.message };
   }
