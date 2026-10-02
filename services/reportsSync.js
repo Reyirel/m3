@@ -9,6 +9,7 @@ import {
   markReportAsSynced,
   markReportAsFailed,
   retryFailedReports,
+  updatePendingReport,
 } from './offlineReportsService';
 
 /**
@@ -24,54 +25,48 @@ export const syncPendingReport = async (pendingReport) => {
 
     const userId = session.session.userId;
 
-    // 1. Crear reporte en Firestore
-    const cloudReportId = await createTaskReport(pendingReport.taskId, userId, {
-      title: pendingReport.title,
-      description: pendingReport.description,
-      rating: pendingReport.rating || null,
-      ratingComment: pendingReport.ratingComment || '',
-      images: [],
-    });
+    // 1. Crear reporte en Firestore — solo si no se creó en un intento anterior.
+    // El ID se guarda de inmediato: si luego falla una foto, el reintento NO crea
+    // un segundo reporte, solo sube lo que falta.
+    let cloudReportId = pendingReport.cloudId;
+    if (!cloudReportId) {
+      cloudReportId = await createTaskReport(pendingReport.taskId, userId, {
+        title: pendingReport.title,
+        description: pendingReport.description,
+        rating: pendingReport.rating || null,
+        ratingComment: pendingReport.ratingComment || '',
+        images: [],
+      });
+      await updatePendingReport(pendingReport.id, { cloudId: cloudReportId });
+    }
 
-
-    // 2. Subir imágenes si existen
-    if (pendingReport.images && pendingReport.images.length > 0) {
-      
-      for (let idx = 0; idx < pendingReport.images.length; idx++) {
-        const imageUri = pendingReport.images[idx];
-        try {
-          // Convertir a base64
-          let base64Data = null;
-          try {
-            const response = await fetch(imageUri);
-            const blob = await response.blob();
-            base64Data = await new Promise((resolve) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result);
-              reader.readAsDataURL(blob);
-            });
-          } catch (convError) {
-            if (__DEV__) console.warn('⚠️ No se pudo convertir imagen a base64:', convError);
-          }
-
-          // Subir
-          await uploadReportImage(pendingReport.taskId, cloudReportId, {
-            uri: imageUri,
-            base64: base64Data ? base64Data.split(',')[1] : null,
-            dataUrl: base64Data,
-            uploadedBy: userId,
-          });
-
-        } catch (imgError) {
-          if (__DEV__) console.error(`⚠️ Error en imagen ${idx + 1}:`, imgError);
-          // Continuar con las siguientes imágenes
-        }
+    // 2. Subir imágenes; las que fallen se quedan en el reporte pendiente para reintentar
+    const images = pendingReport.images || [];
+    const remaining = [];
+    for (let idx = 0; idx < images.length; idx++) {
+      const image = images[idx];
+      // Las fotos se guardan como data URL; versiones anteriores guardaban solo la URI
+      const isDataUrl = typeof image === 'string' && image.startsWith('data:');
+      try {
+        await uploadReportImage(pendingReport.taskId, cloudReportId, {
+          uri: isDataUrl ? null : image,
+          dataUrl: isDataUrl ? image : null,
+          uploadedBy: userId,
+        });
+      } catch (imgError) {
+        if (__DEV__) console.error(`⚠️ Error en imagen ${idx + 1}:`, imgError);
+        remaining.push(image);
       }
+    }
+
+    if (remaining.length > 0) {
+      await updatePendingReport(pendingReport.id, { images: remaining, imageCount: remaining.length });
+      throw new Error(`${remaining.length} foto(s) no se pudieron subir`);
     }
 
     // 3. Marcar como sincronizado
     await markReportAsSynced(pendingReport.id);
-    
+
     return {
       success: true,
       localId: pendingReport.id,
@@ -91,6 +86,8 @@ export const syncPendingReport = async (pendingReport) => {
  */
 export const syncAllPendingReports = async (onProgress = null) => {
   try {
+    // Los reportes que fallaron antes vuelven a la lista de pendientes (hasta su máximo de reintentos)
+    await retryFailedReports();
     const pending = await getPendingReports();
     
     if (pending.length === 0) {

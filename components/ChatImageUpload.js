@@ -9,6 +9,11 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
+import { getConnectionState } from '../services/offlineSync';
+import { uriToDataUrl } from '../utils/imageData';
+
+// Una foto dentro del mensaje no puede acercarse al límite de 1 MB por documento de Firestore
+const MAX_EMBEDDED_IMAGE_CHARS = 700 * 1024;
 
 export default function ChatImageUpload({ onImageCapture = () => {}, disabled = false }) {
   const [selectedImage, setSelectedImage]           = useState(null);
@@ -95,13 +100,7 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
     setUploadProgress(0);
 
     try {
-      if (!storage) {
-        Alert.alert('No disponible', 'El almacenamiento de imágenes no está configurado.');
-        return;
-      }
-
       const filename = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.jpg`;
-      const storageRef = ref(storage, `chat-images/${filename}`);
       setUploadProgress(20);
 
       // Obtener blob
@@ -120,14 +119,33 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
         return;
       }
 
-      setUploadProgress(50);
-      await uploadBytes(storageRef, blob);
-      setUploadProgress(85);
+      // Con conexión, la foto se sube a Storage. Sin conexión no se intenta: la subida
+      // se quedaría reintentando varios minutos con la pantalla bloqueada.
+      let imageUrl = null;
+      if (storage && getConnectionState()) {
+        try {
+          const storageRef = ref(storage, `chat-images/${filename}`);
+          setUploadProgress(50);
+          await uploadBytes(storageRef, blob);
+          setUploadProgress(85);
+          imageUrl = await getDownloadURL(storageRef);
+        } catch (storageError) {
+          if (__DEV__) console.error('[ChatImageUpload] storage error:', storageError);
+        }
+      }
 
-      const downloadURL = await getDownloadURL(storageRef);
+      // Sin conexión, o si Storage la rechazó: la foto (ya reducida) viaja dentro del
+      // mensaje, que sí se guarda en el dispositivo y sale al recuperar la señal
+      if (!imageUrl) {
+        const dataUrl = await uriToDataUrl(selectedImage.uri);
+        if (!dataUrl || dataUrl.length > MAX_EMBEDDED_IMAGE_CHARS) {
+          throw new Error('No se pudo enviar la foto. Intenta de nuevo con conexión o con una imagen más pequeña.');
+        }
+        imageUrl = dataUrl;
+      }
       setUploadProgress(100);
 
-      onImageCapture({ uri: downloadURL, name: filename, type: 'image' });
+      onImageCapture({ uri: imageUrl, name: filename, type: 'image' });
       setSelectedImage(null);
       setPreviewVisible(false);
       setUploadProgress(0);

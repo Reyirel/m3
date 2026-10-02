@@ -73,7 +73,10 @@ service cloud.firestore {
           'assignedTo', 'assignedToNames', 'assignments', 'secretarias',
           'delegatedTo', 'delegatedBy', 'delegatedAt',
           'progress', 'progressPercentage', 'notificationId',
-          'subtasksCompleted', 'coordinationProgress', 'allAreasCompletedAt'
+          'subtasksCompleted', 'coordinationProgress', 'allAreasCompletedAt',
+          // Chat y reportes de la tarea
+          'lastMessageAt', 'lastMessageBy', 'lastMessageByEmail',
+          'reports', 'lastReportDate', 'qualityRating', 'ratedAt'
         ])
         && (request.resource.data.get('status', '') != 'cerrada' || resource.data.get('status', '') == 'cerrada');
     }

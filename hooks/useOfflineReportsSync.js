@@ -21,6 +21,7 @@ export const useOfflineReportsSync = () => {
   const [lastSyncTime, setLastSyncTime] = useState(null);
   const [syncError, setSyncError] = useState(null);
   const syncingRef = useRef(false);
+  const connectedRef = useRef(true);
 
   // Cargar estadísticas iniciales
   useEffect(() => {
@@ -93,22 +94,31 @@ export const useOfflineReportsSync = () => {
 
   // Monitorear conexión
   useEffect(() => {
+    // El estado anterior se guarda en un ref: dentro de este efecto (que corre una sola vez)
+    // la variable de estado siempre valdría su valor inicial y nunca detectaría la reconexión
     const unsubscribe = NetInfo.addEventListener(state => {
-      const wasConnected = isConnected;
+      const wasConnected = connectedRef.current;
       const nowConnected = state.isConnected === true;
 
+      connectedRef.current = nowConnected;
       setIsConnected(nowConnected);
 
       // Si recuperó conexión, sincronizar
       if (!wasConnected && nowConnected) {
-        console.log('🌐 Conexión recuperada, sincronizando reportes pendientes...');
-        performSync();
+        performSync().catch(() => {});
       }
     });
 
-    // También sincronizar al cargar
-    NetInfo.fetch().then(state => {
-      setIsConnected(state.isConnected === true);
+    // Al abrir la app con conexión, enviar lo que haya quedado pendiente de sesiones anteriores
+    NetInfo.fetch().then(async state => {
+      const connected = state.isConnected === true;
+      connectedRef.current = connected;
+      setIsConnected(connected);
+      if (!connected) return;
+      const stats = await getSyncStats();
+      if (stats.totalPending > 0 || stats.totalFailed > 0) {
+        performSync().catch(() => {});
+      }
     });
 
     return () => unsubscribe();

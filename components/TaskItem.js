@@ -16,6 +16,7 @@ import ProgressBar from './ProgressBar';
 import { subscribeToTaskProgress } from '../services/taskProgress';
 import { toMs } from '../utils/dateUtils';
 import { useTasks } from '../contexts/TasksContext';
+import { useChatUnread } from '../hooks/useChatUnread';
 import { predictDelayRisk, riskLevelDisplay } from '../utils/aiFeatures';
 
 const Swipeable = getSwipeable();
@@ -39,6 +40,8 @@ const TaskItem = memo(function TaskItem({
   const { theme, isDark } = useTheme();
   const { width: screenWidth } = useResponsive();
   const { tasks: allTasks } = useTasks();
+  // Mensajes sin leer para ESTE usuario (no un indicador único por tarea)
+  const hasUnreadChat = useChatUnread(task);
   const isSmallDevice = screenWidth < 400;
   const [now, setNow] = useState(Date.now());
   const [showContextMenu, setShowContextMenu] = useState(false);
@@ -532,14 +535,14 @@ const TaskItem = memo(function TaskItem({
                 {onChat && (
                   <TouchableOpacity
                     onPress={() => { hapticLight(); onChat(task); }}
-                    style={[styles.chatButton, task.hasUnreadMessages && { backgroundColor: theme.info + '22', borderColor: theme.info + '60' }]}
+                    style={[styles.chatButton, hasUnreadChat && { backgroundColor: theme.info + '22', borderColor: theme.info + '60' }]}
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                     activeOpacity={0.7}
                     accessibilityLabel="Abrir chat"
                     accessibilityRole="button"
                   >
-                    <Ionicons name="chatbubble-outline" size={isSmallDevice ? 16 : 18} color={task.hasUnreadMessages ? theme.info : theme.textSecondary} />
-                    {task.hasUnreadMessages && (
+                    <Ionicons name="chatbubble-outline" size={isSmallDevice ? 16 : 18} color={hasUnreadChat ? theme.info : theme.textSecondary} />
+                    {hasUnreadChat && (
                       <View style={[styles.chatUnreadDot, { backgroundColor: theme.info }]} />
                     )}
                   </TouchableOpacity>

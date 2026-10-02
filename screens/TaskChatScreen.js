@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, TextInput, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, Alert,
+  StyleSheet, KeyboardAvoidingView, Platform,
   Image, Modal, Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -12,11 +12,11 @@ import {
   doc, getDoc, updateDoc,
 } from 'firebase/firestore';
 import { db, getServerTimestamp } from '../firebase';
-import { notifyNewComment } from '../services/fcm';
-import { notifyNewChatMessage } from '../services/emailNotifications';
+import { notifyChatParticipants, markChatRead } from '../services/chatService';
 import ChatImageUpload from '../components/ChatImageUpload';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
+import { useNotification } from '../contexts/NotificationContext';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const BUBBLE_MAX = SCREEN_W * 0.72;
@@ -63,6 +63,7 @@ export default function TaskChatScreen({ route, navigation }) {
   const { theme, isDark } = useTheme();
   const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
   const { currentUser: ctxUser, tasks: ctxTasks } = useTasks();
+  const { showError } = useNotification();
   const { taskId, taskTitle } = route.params;
   const isTaskLoaded = ctxTasks.some(t => t.id === taskId);
 
@@ -70,7 +71,7 @@ export default function TaskChatScreen({ route, navigation }) {
   const [text, setText]                     = useState('');
   const [hasAccess, setHasAccess]           = useState(false);
   const [taskData, setTaskData]             = useState(null);
-  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isUploadingImage] = useState(false);
   const [selectedImageUrl, setSelectedImageUrl] = useState(null);
 
   const currentUser   = ctxUser?.displayName || ctxUser?.email || 'Usuario';
@@ -112,77 +113,73 @@ export default function TaskChatScreen({ route, navigation }) {
   useEffect(() => {
     if (!hasAccess) return;
     const q = query(collection(db, 'tasks', taskId, 'messages'), orderBy('createdAt', 'asc'));
-    return onSnapshot(q, snap => {
-      setMessages(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    // includeMetadataChanges: avisa también cuando un mensaje pasa de "enviando" a "enviado"
+    return onSnapshot(q, { includeMetadataChanges: true }, snap => {
+      setMessages(snap.docs.map(d => ({
+        id: d.id,
+        // 'estimate': un mensaje aún sin confirmar muestra la hora local en vez de quedar sin hora
+        ...d.data({ serverTimestamps: 'estimate' }),
+        _pending: d.metadata.hasPendingWrites,
+      })));
     }, err => {
       if (__DEV__) console.error('[TaskChat] snapshot:', err);
     });
   }, [taskId, hasAccess]);
 
+  // Con el chat abierto, todo lo que llega cuenta como leído
+  useEffect(() => {
+    if (hasAccess) markChatRead(taskId, ctxUser?.email);
+  }, [hasAccess, taskId, ctxUser?.email, messages.length]);
+
+  // Guardar un mensaje. No se espera la confirmación del servidor: el mensaje aparece de
+  // inmediato con el reloj de "enviando" y, si no hay conexión, sale solo al recuperarla.
+  const postMessage = (message, preview) => {
+    const author = currentUser || 'Usuario';
+    addDoc(collection(db, 'tasks', taskId, 'messages'), {
+      ...message,
+      author,
+      authorId: currentUserId,
+      authorEmail: ctxUser?.email || '',
+      createdAt: getServerTimestamp(),
+    }).catch(e => {
+      if (__DEV__) console.error('[TaskChat] send:', e);
+      showError(`No se pudo enviar el mensaje: ${e.message}`);
+    });
+
+    updateDoc(doc(db, 'tasks', taskId), {
+      lastMessageAt: getServerTimestamp(),
+      lastMessageBy: author,
+      lastMessageByEmail: ctxUser?.email || '',
+    }).catch(() => {});
+
+    notifyChatParticipants(
+      { ...(taskData || {}), id: taskId, title: taskTitle || taskData?.title },
+      { userId: currentUserId, email: ctxUser?.email, name: author },
+      preview,
+    );
+
+    setTimeout(() => flatRef.current?.scrollToEnd?.({ animated: true }), 150);
+  };
+
   // ── send text ─────────────────────────────────────────────────────────────
-  const send = async () => {
+  const send = () => {
     if (!text.trim() || !hasAccess) return;
     const body = text.trim();
     setText('');
-    try {
-      await addDoc(collection(db, 'tasks', taskId, 'messages'), {
-        type: 'text',
-        text: body,
-        author:   currentUser || 'Usuario',
-        authorId: currentUserId,
-        createdAt: getServerTimestamp(),
-      });
-      try {
-        await updateDoc(doc(db, 'tasks', taskId), {
-          lastMessageAt: getServerTimestamp(),
-          lastMessageBy: currentUser || 'Usuario',
-          hasUnreadMessages: true,
-        });
-      } catch {}
-      try {
-        await notifyNewComment(taskId, currentUser || 'Usuario', body);
-        if (taskData?.assignedTo && taskData.assignedTo !== currentUserId) {
-          await notifyNewChatMessage(
-            { id: taskId, title: taskTitle || taskData.title },
-            { author: currentUser, text: body },
-            taskData.assignedTo,
-          );
-        }
-      } catch {}
-      setTimeout(() => flatRef.current?.scrollToEnd?.({ animated: true }), 150);
-    } catch (e) {
-      if (__DEV__) console.error('[TaskChat] send:', e);
-      Alert.alert('Error', `No se pudo enviar el mensaje: ${e.message}`);
-    }
+    postMessage({ type: 'text', text: body }, body);
   };
 
   // ── send image ────────────────────────────────────────────────────────────
-  const handleImageCapture = async (imageData) => {
+  const handleImageCapture = (imageData) => {
     if (!hasAccess) return;
-    setIsUploadingImage(true);
-    try {
-      await addDoc(collection(db, 'tasks', taskId, 'messages'), {
-        type: 'image',
-        imageUrl:  imageData.uri,
-        imageName: imageData.name,
-        author:    currentUser || 'Usuario',
-        authorId:  currentUserId,
-        createdAt: getServerTimestamp(),
-      });
-      try {
-        await updateDoc(doc(db, 'tasks', taskId), {
-          lastMessageAt: getServerTimestamp(),
-          lastMessageBy: currentUser || 'Usuario',
-          hasUnreadMessages: true,
-        });
-      } catch {}
-      try { await notifyNewComment(taskId, currentUser || 'Usuario', '[Imagen enviada]'); } catch {}
-      setTimeout(() => flatRef.current?.scrollToEnd?.({ animated: true }), 150);
-    } catch (e) {
-      if (__DEV__) console.error('[TaskChat] image:', e);
-      Alert.alert('Error', `No se pudo enviar la imagen: ${e.message}`);
-    } finally {
-      setIsUploadingImage(false);
+    postMessage({ type: 'image', imageUrl: imageData.uri, imageName: imageData.name }, '📷 Foto');
+  };
+
+  // En web, Enter envía y Shift+Enter hace salto de línea
+  const handleKeyPress = (e) => {
+    if (Platform.OS === 'web' && e.nativeEvent.key === 'Enter' && !e.nativeEvent.shiftKey) {
+      e.preventDefault?.();
+      send();
     }
   };
 
@@ -259,6 +256,17 @@ export default function TaskChatScreen({ route, navigation }) {
             isMine ? { color: 'rgba(255,255,255,0.65)' } : { color: theme.textTertiary },
           ]}>
             {timeStr}
+            {/* Mis mensajes: reloj mientras no llega al servidor, palomita cuando ya llegó */}
+            {isMine && (
+              <Text accessibilityLabel={item._pending ? 'Enviando' : 'Enviado'}>
+                {'  '}
+                <Ionicons
+                  name={item._pending ? 'time-outline' : 'checkmark'}
+                  size={11}
+                  color="rgba(255,255,255,0.75)"
+                />
+              </Text>
+            )}
           </Text>
         </View>
       </View>
@@ -357,7 +365,7 @@ export default function TaskChatScreen({ route, navigation }) {
               accessibilityLabel="Escribe un mensaje"
               accessibilityRole="text"
               editable={!isUploadingImage}
-              onSubmitEditing={Platform.OS === 'web' ? send : undefined}
+              onKeyPress={handleKeyPress}
             />
 
             <TouchableOpacity

@@ -15,38 +15,41 @@ import {
 } from '../firebase';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toMs } from '../utils/dateUtils';
+import { uriToDataUrl, dataUrlToBlob } from '../utils/imageData';
+import { canUserSeeTask } from '../utils/taskVisibility';
 
 const storage = getStorage();
 
 /**
- * Notificar a los admins y secretarios sobre un nuevo reporte
+ * Notificar a los admins y a los secretarios que pueden ver la tarea sobre un nuevo reporte.
+ * No bloquea ni hace fallar el envío del reporte.
  */
-const notifyAdminsOfNewReport = async (taskId, reportId, reportTitle, createdByName, reportArea = '') => {
+const notifyAdminsOfNewReport = async (taskId, reportId, reportTitle, createdByName, taskData = {}, senderEmail = '') => {
   try {
-    // Obtener info de la tarea
-    const taskDoc = await getDoc(doc(db, 'tasks', taskId));
-    const taskData = taskDoc.exists() ? taskDoc.data() : {};
     const taskTitle = taskData.title || 'Tarea sin título';
-    const taskArea = taskData.area || reportArea;
+    const taskArea = taskData.area || '';
+    const sender = (senderEmail || '').toLowerCase().trim();
 
-    // Obtener todos los admins
-    const adminsQuery = query(collection(db, 'users'), where('role', '==', 'admin'));
-    const adminsSnapshot = await getDocs(adminsQuery);
+    const usersSnapshot = await getDocs(collection(db, 'users'));
 
-    // Obtener secretarios del área correspondiente
-    const secretariosQuery = query(collection(db, 'users'), where('role', '==', 'secretario'));
-    const secretariosSnapshot = await getDocs(secretariosQuery);
-
-    // Crear notificación para cada admin
     const notifications = [];
-    adminsSnapshot.forEach((adminDoc) => {
-      const adminData = adminDoc.data();
+    usersSnapshot.forEach((userDoc) => {
+      const user = userDoc.data();
+      const email = (user.email || '').toLowerCase().trim();
+      // Cuentas desactivadas y el propio autor no reciben aviso
+      if (user.active === false || !email || email === sender) return;
+
+      const isAdmin = user.role === 'admin';
+      // Mismo criterio de visibilidad que la lista de tareas (utils/taskVisibility.js)
+      const isSecretarioOfTask = user.role === 'secretario' && canUserSeeTask(taskData, user);
+      if (!isAdmin && !isSecretarioOfTask) return;
+
       notifications.push({
-        userId: adminDoc.id,
-        userEmail: adminData.email,
+        userId: userDoc.id,
+        userEmail: email,
         type: 'new_report',
-        title: '📋 Nuevo Reporte',
-        body: `${createdByName} envió un reporte: "${reportTitle}" para la tarea "${taskTitle}" (${taskArea})`,
+        title: isAdmin ? '📋 Nuevo Reporte' : '📋 Nuevo Reporte en tu Área',
+        body: `${createdByName} envió un reporte: "${reportTitle}" para la tarea "${taskTitle}"${taskArea ? ` (${taskArea})` : ''}`,
         taskId,
         reportId,
         area: taskArea,
@@ -55,33 +58,7 @@ const notifyAdminsOfNewReport = async (taskId, reportId, reportTitle, createdByN
       });
     });
 
-    // Notificar a secretarios si el reporte viene de su área
-    secretariosSnapshot.forEach((secDoc) => {
-      const secData = secDoc.data();
-      const secAreasPermitidas = secData.areasPermitidas || [secData.area];
-      
-      // Si la tarea pertenece a una de las áreas del secretario (case-insensitive)
-      if (secAreasPermitidas.some(a => a?.toLowerCase().trim() === taskArea?.toLowerCase().trim())) {
-        notifications.push({
-          userId: secDoc.id,
-          userEmail: secData.email,
-          type: 'new_report',
-          title: '📋 Nuevo Reporte en tu Área',
-          body: `${createdByName} envió un reporte: "${reportTitle}" para la tarea "${taskTitle}"`,
-          taskId,
-          reportId,
-          area: taskArea,
-          read: false,
-          createdAt: serverTimestamp(),
-        });
-      }
-    });
-
-    // Guardar todas las notificaciones
-    for (const notification of notifications) {
-      await addDoc(collection(db, 'notifications'), notification);
-    }
-
+    await Promise.all(notifications.map((notification) => addDoc(collection(db, 'notifications'), notification)));
   } catch (error) {
     if (__DEV__) console.error('Error notificando a admins:', error);
     // No lanzar error para no interrumpir el flujo del reporte
@@ -100,13 +77,13 @@ export const createTaskReport = async (taskId, userId, reportData) => {
     // Importar getCurrentSession para obtener datos del usuario actual
     const { getCurrentSession } = await import('./authFirestore');
     const sessionResult = await getCurrentSession();
-    
+
     let createdByName = 'Usuario';
     let userEmail = '';
     let userRole = 'director';
     let userArea = '';
     let userSecretaria = '';
-    
+
     if (sessionResult.success && sessionResult.session) {
       createdByName = sessionResult.session.displayName || sessionResult.session.email || 'Usuario';
       userEmail = sessionResult.session.email || '';
@@ -139,6 +116,8 @@ export const createTaskReport = async (taskId, userId, reportData) => {
       createdByArea: userArea,
       createdBySecretaria: userSecretaria,
       area: taskArea, // Área de la tarea
+      // Secretarías que pueden ver el reporte (las mismas que ven la tarea)
+      secretarias: taskData.secretarias || [],
       title: reportData.title,
       description: reportData.description,
       images: reportData.images || [],
@@ -155,20 +134,24 @@ export const createTaskReport = async (taskId, userId, reportData) => {
       report
     );
 
-    // Add report reference to task
-    await updateDoc(doc(db, 'tasks', taskId), {
-      reports: arrayUnion(docRef.id),
-      lastReportDate: serverTimestamp(),
-    });
+    // A partir de aquí el reporte YA existe. Lo que sigue es secundario: si falla, no debe
+    // reportarse como error de envío (el usuario lo reenviaría y quedaría duplicado).
+    try {
+      await updateDoc(doc(db, 'tasks', taskId), {
+        reports: arrayUnion(docRef.id),
+        lastReportDate: serverTimestamp(),
+      });
+    } catch (linkError) {
+      if (__DEV__) console.error('Error enlazando reporte a la tarea:', linkError);
+    }
 
-    // Log activity
-    await logTaskActivity(taskId, userId, 'report_created', {
+    logTaskActivity(taskId, userId, 'report_created', {
       reportId: docRef.id,
       title: report.title,
-    });
+    }).catch(() => {});
 
-    // Notificar a los admins y secretarios
-    await notifyAdminsOfNewReport(taskId, docRef.id, reportData.title, createdByName, taskArea);
+    // Notificar a los admins y secretarios (sin hacer esperar al usuario)
+    notifyAdminsOfNewReport(taskId, docRef.id, reportData.title, createdByName, { ...taskData, area: taskArea }, userEmail);
 
     return docRef.id;
   } catch (error) {
@@ -177,84 +160,71 @@ export const createTaskReport = async (taskId, userId, reportData) => {
   }
 };
 
+// Tamaño máximo de una foto guardada dentro del reporte cuando Storage no está disponible.
+// Un documento de Firestore admite 1 MB en total.
+const MAX_EMBEDDED_IMAGE_CHARS = 350 * 1024;
+
+/**
+ * Sube el archivo a Storage. Intenta primero la carpeta de reportes y, si el proyecto
+ * no la permite, la carpeta de imágenes de chat (la que hoy acepta escrituras).
+ * @returns {Promise<string|null>} URL de descarga, o null si Storage no aceptó el archivo
+ */
+const uploadToStorage = async (blob, taskId, reportId, fileName) => {
+  const paths = [
+    `task_reports/${taskId}/${reportId}/${fileName}`,
+    `chat-images/reporte_${reportId}_${fileName}`,
+  ];
+  for (const storagePath of paths) {
+    try {
+      const storageRef = ref(storage, storagePath);
+      await uploadBytes(storageRef, blob);
+      return await getDownloadURL(storageRef);
+    } catch (storageError) {
+      if (__DEV__) console.warn(`⚠️ Storage rechazó ${storagePath}:`, storageError.code || storageError.message);
+    }
+  }
+  return null;
+};
+
 /**
  * Upload image for task report
  * @param {string} taskId - Task ID
  * @param {string} reportId - Report ID
- * @param {Object} imageData - Image data with uri
+ * @param {Object} imageData - { uri, dataUrl, base64, blob, uploadedBy }
  * @returns {Promise<string>} Download URL
  */
 export const uploadReportImage = async (taskId, reportId, imageData) => {
   try {
     const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
-    const storagePath = `task_reports/${taskId}/${reportId}/${fileName}`;
-    const storageRef = ref(storage, storagePath);
 
-    // Convert various formats to blob
-    let blob = imageData.blob;
-    let dataUrl = imageData.dataUrl || null;  // Usar el dataUrl que viene como parámetro
-    
-    // Si no hay blob, convertir de uri o base64
-    if (!blob) {
-      if (imageData.base64) {
-        // Convertir base64 a blob
-        dataUrl = dataUrl || `data:image/jpeg;base64,${imageData.base64}`;
-        try {
-          const bstr = atob(imageData.base64);
-          const n = bstr.length;
-          const u8arr = new Uint8Array(n);
-          for (let i = 0; i < n; i++) {
-            u8arr[i] = bstr.charCodeAt(i);
-          }
-          blob = new Blob([u8arr], { type: 'image/jpeg' });
-        } catch (decodeError) {
-          if (__DEV__) console.warn('⚠️ Could not decode base64:', decodeError);
-        }
-      } else if (imageData.uri && !dataUrl) {
-        // Convertir URI de imagen (expo-image-picker) a blob
-        try {
-          const response = await fetch(imageData.uri);
-          blob = await response.blob();
-          
-          // También crear dataUrl como fallback
-          const reader = new FileReader();
-          dataUrl = await new Promise((resolve) => {
-            reader.onloadend = () => resolve(reader.result);
-            reader.readAsDataURL(blob);
-          });
-        } catch (fetchError) {
-          if (__DEV__) console.warn('⚠️ Could not fetch URI:', fetchError);
-        }
-      }
+    let dataUrl = imageData.dataUrl
+      || (imageData.base64 ? `data:image/jpeg;base64,${imageData.base64}` : null);
+    if (!dataUrl && imageData.uri) {
+      dataUrl = await uriToDataUrl(imageData.uri);
     }
+    const blob = imageData.blob || (dataUrl ? dataUrlToBlob(dataUrl) : null);
 
-    let downloadURL = null;
-    
-    // Intentar subir a Storage
-    if (blob) {
-      try {
-        await uploadBytes(storageRef, blob);
-        downloadURL = await getDownloadURL(storageRef);
-      } catch (storageError) {
-        if (__DEV__) console.warn('⚠️ Storage upload failed:', storageError.message);
-      }
-    }
+    let downloadURL = blob ? await uploadToStorage(blob, taskId, reportId, fileName) : null;
 
-    // Si Storage falló, usar dataUrl como fallback (imágen embebida)
+    // Si Storage no aceptó el archivo, la foto se guarda dentro del propio reporte
     if (!downloadURL && dataUrl) {
+      if (dataUrl.length > MAX_EMBEDDED_IMAGE_CHARS) {
+        throw new Error('La foto es demasiado grande para enviarse. Intenta con otra o tómala de nuevo.');
+      }
       downloadURL = dataUrl;
     }
 
     if (!downloadURL) {
-      throw new Error('No valid image data could be processed - no Storage or dataUrl available');
+      throw new Error('No se pudo leer la foto seleccionada');
     }
 
     // Update report with image URL
+    // (dentro de arrayUnion no se permite serverTimestamp(): se usa la hora del dispositivo)
     await updateDoc(doc(db, 'task_reports', reportId), {
       images: arrayUnion({
         url: downloadURL,
-        uploadedAt: serverTimestamp(),
-        uploadedBy: imageData.uploadedBy,
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: imageData.uploadedBy || null,
       }),
       updatedAt: serverTimestamp(),
     });
