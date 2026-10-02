@@ -26,7 +26,7 @@ import { useTasks } from '../contexts/TasksContext';
 import { useResponsive } from '../utils/responsive';
 import { useAccessibility } from '../hooks/useAccessibility';
 
-import { deleteTask as deleteTaskFirebase, updateTask, createTask } from '../services/tasks';
+import { deleteTask as deleteTaskFirebase, updateTask, restoreTask } from '../services/tasks';
 import { hapticLight, hapticMedium, hapticHeavy } from '../utils/haptics';
 import { canChangeTaskStatus, canDeleteTask } from '../services/permissions';
 import { toMs } from '../utils/dateUtils';
@@ -153,8 +153,8 @@ export default function HomeScreen({ navigation, onLogout }) {
         try {
           deleteManager.cancelDelete(taskId);
           deletingTasksRef.current.delete(taskId);
-          const { id: _id, ...taskWithoutId } = taskToDelete;
-          await createTask(taskWithoutId);
+          // La tarea está en la papelera: se restaura la misma (conserva chat y subtareas)
+          await restoreTask(taskId);
           showInfo('Tarea restaurada');
         } catch { showError('Error al restaurar'); }
         finally { setIsUndoing(false); }

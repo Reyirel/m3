@@ -61,6 +61,7 @@ jest.mock('../utils/taskHelpers', () => ({
 jest.mock('../config/areas', () => ({
   getDireccionesBySecretaria: jest.fn(() => []),
   resolveAreaName: jest.fn(a => a || ''),
+  getSecretariasForAreas: jest.fn(() => []),
 }));
 jest.mock('firebase/firestore', () => ({
   collection: jest.fn(),

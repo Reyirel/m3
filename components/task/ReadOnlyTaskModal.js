@@ -40,13 +40,15 @@ export default function ReadOnlyTaskModal({
   if (!task) return null;
 
   const userEmail = (currentUser?.email || '').toLowerCase().trim();
-  const isDirector = currentUser?.role === 'director';
+  // Confirma su parte cualquier asignado que no sea admin (director o secretario):
+  // si un secretario asignado no pudiera confirmar, la tarea nunca llegaría a revisión
+  const canConfirmRole = ['director', 'secretario'].includes(currentUser?.role);
   // isTaskAssignedToUser handles both string and array assignedTo safely
   const isAssignedToMe = currentUser ? isTaskAssignedToUser(task, userEmail) : false;
   const alreadyConfirmed = (task.completedBy || []).some(
     c => (c.email || '').toLowerCase().trim() === userEmail
   );
-  const canConfirm = isDirector && isAssignedToMe && !alreadyConfirmed &&
+  const canConfirm = canConfirmRole && isAssignedToMe && !alreadyConfirmed &&
     ['en_proceso', 'en_revision'].includes(task.status);
 
   const handleConfirmProgress = async () => {

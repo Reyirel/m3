@@ -54,6 +54,43 @@ export function isTaskAssignedToUser(task, userEmail) {
 }
 
 /**
+ * Correos asignados a la tarea, normalizados y sin repetir
+ * (assignedTo puede ser string en datos antiguos)
+ * @param {Object} task
+ * @returns {Array<string>}
+ */
+export function getAssignedEmails(task) {
+  const raw = task?.assignedTo;
+  const list = Array.isArray(raw) ? raw : raw ? [raw] : [];
+  return [...new Set(list.map(email => (email || '').toLowerCase().trim()).filter(Boolean))];
+}
+
+/**
+ * Correos que ya confirmaron su parte Y siguen asignados a la tarea.
+ * La confirmación de alguien que ya no está asignado no cuenta.
+ * @param {Array} completedBy - Confirmaciones [{ email, ... }]
+ * @param {Array<string>} assignedEmails - Resultado de getAssignedEmails
+ * @returns {Set<string>}
+ */
+export function getConfirmedEmails(completedBy, assignedEmails) {
+  return new Set(
+    (completedBy || [])
+      .map(c => (c?.email || '').toLowerCase().trim())
+      .filter(email => assignedEmails.includes(email))
+  );
+}
+
+/**
+ * ¿Confirmaron su parte todos los asignados actuales?
+ * @param {Object} task - Tarea con assignedTo y completedBy
+ * @returns {boolean}
+ */
+export function haveAllAssigneesConfirmed(task) {
+  const assigned = getAssignedEmails(task);
+  return assigned.length > 0 && getConfirmedEmails(task?.completedBy, assigned).size === assigned.length;
+}
+
+/**
  * Get task area, handling both singular (area) and plural (areas) field formats
  * Returns the first area if multiple are present
  * @param {Object} task - Task object

@@ -22,6 +22,7 @@ import {
   collection,
   updateDoc,
   doc,
+  getDoc,
   getDocs,
   query,
   where,
@@ -33,8 +34,10 @@ import { db } from '../firebase';
 import { getCurrentSession } from './authFirestore';
 import { toMs } from '../utils/dateUtils';
 import { ValidationRules, Validator } from '../utils/ValidationRules';
+import { getSecretariasForAreas } from '../config/areas';
 
 const TASKS_COLLECTION = 'tasks';
+const VALID_STATUSES = ['pendiente', 'en_proceso', 'en_revision', 'cerrada'];
 
 // ============================================
 // VALIDATION LAYER
@@ -47,13 +50,18 @@ const TASKS_COLLECTION = 'tasks';
  * Validate task data using centralized ValidationRules
  * Replaces local validation logic
  */
-function validateTaskData(data) {
+function validateTaskData(data, { isUpdate = false } = {}) {
   const validator = new Validator();
 
   // Apply rules using centralized ValidationRules
   validator.applyRule(ValidationRules.taskTitle, data.title);
   validator.applyRule(ValidationRules.taskDescription, data.description);
-  
+  // Misma regla que el formulario (useTaskOperations): la descripción es obligatoria
+  validator.check(
+    typeof data.description === 'string' && data.description.trim().length >= 10,
+    'La descripción debe tener al menos 10 caracteres'
+  );
+
   // Assignees
   const assignees = Array.isArray(data.assignedEmails)
     ? data.assignedEmails
@@ -74,6 +82,16 @@ function validateTaskData(data) {
   validator.applyRule(ValidationRules.dueDate, data.dueAt);
   validator.applyRule(ValidationRules.estimatedHours, data.estimatedHours);
 
+  if (data.status !== undefined && data.status !== null) {
+    validator.check(VALID_STATUSES.includes(data.status), `Estado inválido: ${data.status}`);
+  }
+
+  // Al crear, la fecha límite no puede ser de un día anterior a hoy
+  if (!isUpdate && data.dueAt) {
+    const startOfToday = new Date().setHours(0, 0, 0, 0);
+    validator.check(toMs(data.dueAt) >= startOfToday, 'La fecha límite no puede ser anterior a hoy');
+  }
+
   return {
     valid: validator.isValid(),
     errors: validator.getErrors(),
@@ -85,20 +103,33 @@ function validateTaskData(data) {
 // ============================================
 
 /**
- * Normalizar y transformar datos de formulario a schema de BD
+ * Normalizar y transformar datos de formulario a schema de BD.
+ * Devuelve dos grupos de campos:
+ *   fields  → lo que el formulario define (se guarda al crear y al editar)
+ *   initial → estado inicial de una tarea nueva (NO se reescribe al editar,
+ *             para no perder confirmaciones, avance ni coordinación entre áreas)
  */
 async function normalizeTaskData(inputData, currentUser) {
-  // Obtener nombres de usuarios
   const usersMap = await getUsersMap();
 
-  // Normalizar emails
-  const assignedEmails = (inputData.assignedEmails || [])
-    .map((e) => e?.toLowerCase?.().trim?.())
-    .filter((e) => e && e.includes('@'));
+  // Normalizar emails (acepta assignedEmails del formulario o assignedTo de una tarea existente)
+  const rawAssignees = inputData.assignedEmails || inputData.assignedTo || [];
+  const assignedEmails = [...new Set(
+    (Array.isArray(rawAssignees) ? rawAssignees : [rawAssignees])
+      .map((e) => e?.toLowerCase?.().trim?.())
+      .filter((e) => e && e.includes('@'))
+  )];
 
-  const assignedNames = assignedEmails.map(
-    (email) => usersMap[email] || email
-  );
+  // Los asignados deben ser usuarios activos (si no se pudo leer la lista, no se bloquea)
+  if (Object.keys(usersMap).length > 0) {
+    assignedEmails.forEach((email) => {
+      const user = usersMap[email];
+      if (!user) throw new Error(`El usuario ${email} no existe`);
+      if (!user.active) throw new Error(`${user.name} tiene la cuenta desactivada y no puede recibir tareas`);
+    });
+  }
+
+  const assignedNames = assignedEmails.map((email) => usersMap[email]?.name || email);
 
   // Normalizar áreas
   const areas = Array.isArray(inputData.areas)
@@ -107,40 +138,49 @@ async function normalizeTaskData(inputData, currentUser) {
     ? [inputData.area]
     : [];
 
-  // Construir array de asignaciones
-  const assignments = assignedEmails.map((email, idx) => ({
-    email,
-    name: assignedNames[idx] || email,
-    status: 'pendiente',
-    completedAt: null,
-  }));
+  // Secretarías que pueden ver la tarea: las de sus áreas y las de sus asignados
+  const secretarias = [...new Set([
+    ...getSecretariasForAreas(areas),
+    ...assignedEmails.map((email) => usersMap[email]?.secretaria).filter(Boolean),
+  ])];
 
   // Normalizar fecha (convertir a Timestamp si es necesario)
   const dueAt = inputData.dueAt ? Timestamp.fromMillis(toMs(inputData.dueAt)) : null;
 
-  return {
+  const fields = {
     title: inputData.title.trim(),
     description: (inputData.description || '').trim(),
     priority: inputData.priority || 'media',
     areas,
     area: areas[0] || null, // Backward compat: primera área
+    secretarias,
 
     // ASIGNACIONES NORMALIZADAS (siempre array)
     assignedTo: assignedEmails, // Array de emails
     assignedToNames: assignedNames,
-    assignments, // Array con estructura completa
 
-    // METADATOS
-    status: inputData.status || 'pendiente',
-    createdBy: currentUser.userId,
-    createdByName: currentUser.displayName,
-    createdAt: serverTimestamp(),
     updatedAt: serverTimestamp(),
     dueAt,
     tags: inputData.tags || [],
     estimatedHours: inputData.estimatedHours || null,
     isRecurring: inputData.isRecurring || false,
     recurrencePattern: inputData.recurrencePattern || null,
+  };
+
+  const initial = {
+    // Array con estructura completa
+    assignments: assignedEmails.map((email, idx) => ({
+      email,
+      name: assignedNames[idx] || email,
+      status: 'pendiente',
+      completedAt: null,
+    })),
+
+    // METADATOS
+    status: inputData.status || 'pendiente',
+    createdBy: currentUser.userId,
+    createdByName: currentUser.displayName,
+    createdAt: serverTimestamp(),
 
     // COORDINACIÓN (inicialmente falso)
     isCoordinationTask: false,
@@ -151,6 +191,8 @@ async function normalizeTaskData(inputData, currentUser) {
     // PROGRESO
     progressPercentage: 0,
   };
+
+  return { fields, initial };
 }
 
 // ============================================
@@ -158,7 +200,7 @@ async function normalizeTaskData(inputData, currentUser) {
 // ============================================
 
 /**
- * Obtener mapa de emails -> nombres de todos los usuarios
+ * Obtener mapa de email -> { name, active, secretaria } de todos los usuarios
  */
 async function getUsersMap() {
   try {
@@ -169,7 +211,11 @@ async function getUsersMap() {
     snapshot.forEach((doc) => {
       const user = doc.data();
       if (user.email) {
-        map[user.email.toLowerCase()] = user.displayName || user.email;
+        map[user.email.toLowerCase().trim()] = {
+          name: user.displayName || user.email,
+          active: user.active !== false,
+          secretaria: getSecretariasForAreas([user.secretaria || user.area || user.department])[0] || null,
+        };
       }
     });
 
@@ -200,6 +246,7 @@ async function createAreaSubtasks(parentTaskId, parentTask, batch) {
       status: 'pendiente',
       area,
       areas: [area],
+      secretarias: getSecretariasForAreas([area]),
 
       // RELACIÓN
       parentTaskId,
@@ -297,7 +344,8 @@ export const TaskCreator = {
       const currentUser = sessionResult.session;
 
       // 3. NORMALIZAR
-      const normalizedData = await normalizeTaskData(formData, currentUser);
+      const { fields, initial } = await normalizeTaskData(formData, currentUser);
+      const normalizedData = { ...fields, ...initial };
 
       // 4. CREAR EN BD (con subtareas si es multi-área)
       const batch = writeBatch(db);
@@ -342,7 +390,7 @@ export const TaskCreator = {
       const validation = validateTaskData({
         ...formData,
         assignedEmails: formData.assignedEmails || formData.assignedTo,
-      });
+      }, { isUpdate: true });
 
       if (!validation.valid) {
         return {
@@ -362,16 +410,39 @@ export const TaskCreator = {
 
       const currentUser = sessionResult.session;
 
-      // 3. NORMALIZAR
-      const normalizedData = await normalizeTaskData(formData, currentUser);
+      const taskRef = doc(db, TASKS_COLLECTION, taskId);
+      const taskSnap = await getDoc(taskRef);
+      if (!taskSnap.exists()) {
+        return {
+          success: false,
+          error: 'La tarea ya no existe',
+        };
+      }
+      const existing = taskSnap.data();
 
-      // Remover campos que no deben actualizarse
-      delete normalizedData.createdAt;
-      delete normalizedData.createdBy;
-      delete normalizedData.createdByName;
+      // 3. NORMALIZAR — solo los campos del formulario. El avance, la coordinación
+      // entre áreas y los datos de creación se conservan como están.
+      const { fields, initial } = await normalizeTaskData(formData, currentUser);
+      const normalizedData = { ...fields };
+
+      if (formData.status) {
+        normalizedData.status = formData.status;
+      }
+
+      // Conservar el estado de quienes siguen asignados; solo los nuevos empiezan en pendiente
+      const previousAssignments = Array.isArray(existing.assignments) ? existing.assignments : [];
+      normalizedData.assignments = initial.assignments.map(
+        (assignment) => previousAssignments.find((prev) => prev.email === assignment.email) || assignment
+      );
+
+      // Quitar las confirmaciones de quienes ya no están asignados
+      if (Array.isArray(existing.completedBy)) {
+        normalizedData.completedBy = existing.completedBy.filter((confirmation) =>
+          fields.assignedTo.includes((confirmation.email || '').toLowerCase().trim())
+        );
+      }
 
       // 4. ACTUALIZAR EN BD
-      const taskRef = doc(db, TASKS_COLLECTION, taskId);
       await updateDoc(taskRef, normalizedData);
 
       // 5. NOTIFICAR SI CAMBIARON ASIGNADOS
@@ -392,27 +463,40 @@ export const TaskCreator = {
   },
 
   /**
-   * ELIMINAR tarea
+   * ELIMINAR tarea: la manda a la papelera junto con sus subtareas de área.
+   * No borra documentos (deleted: true), para que un borrado por error se pueda deshacer.
    * @param {string} taskId
    * @returns {Promise<{success: boolean, error?: string}>}
    */
   async delete(taskId) {
     try {
-      // Eliminar tarea y sus subtareas (cascade delete)
+      const sessionResult = await getCurrentSession();
+      if (!sessionResult.success || sessionResult.session.role !== 'admin') {
+        return {
+          success: false,
+          error: 'Solo el administrador puede eliminar tareas',
+        };
+      }
+
       const batch = writeBatch(db);
+      const trashFields = {
+        deleted: true,
+        deletedBy: sessionResult.session.email || '',
+        deletedAt: serverTimestamp(),
+      };
 
-      // 1. Eliminar tarea principal
+      // 1. Tarea principal
       const taskRef = doc(db, TASKS_COLLECTION, taskId);
-      batch.delete(taskRef);
+      batch.update(taskRef, trashFields);
 
-      // 2. Eliminar subtareas asociadas
+      // 2. Subtareas asociadas
       const subtasksQuery = query(
         collection(db, TASKS_COLLECTION),
         where('parentTaskId', '==', taskId)
       );
       const subtasksSnapshot = await getDocs(subtasksQuery);
       subtasksSnapshot.forEach((subtaskDoc) => {
-        batch.delete(subtaskDoc.ref);
+        batch.update(subtaskDoc.ref, trashFields);
       });
 
       await batch.commit();

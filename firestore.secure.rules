@@ -42,14 +42,52 @@ service cloud.firestore {
                  .hasAny(['role', 'active', 'email', 'area', 'department', 'direcciones', 'areasPermitidas']));
     }
 
-    // TAREAS — solo el admin borra
-    match /tasks/{taskId} {
-      allow read, create, update: if isActive();
-      allow delete: if isAdmin();
+    // TAREAS — visibilidad por rol (misma regla que utils/taskVisibility.js):
+    //   admin      → todas
+    //   director   → solo las asignadas a su correo
+    //   secretario → las asignadas a su correo y las de su secretaría
+    //
+    // `secretarias` lo calcula la app al guardar la tarea (áreas + asignados) con
+    // nombres canónicos de config/areas.js. Para que un secretario las vea, el campo
+    // `area` de su usuario debe ser ese mismo nombre canónico.
+    //
+    // Las consultas de la app coinciden con estas reglas:
+    //   where('assignedTo', 'array-contains', <correo>)
+    //   where('secretarias', 'array-contains', <secretaría>)
+    function myEmail() {
+      return request.auth.token.email;
+    }
 
-      // Subtareas, mensajes de chat y demás subcolecciones
+    function canSeeTask(task) {
+      return isAdmin()
+        || (isActive() && myEmail() in task.get('assignedTo', []))
+        || (isActive() && me().role == 'secretario' && me().area in task.get('secretarias', []));
+    }
+
+    // Secretarios y directores solo cambian estado, confirmaciones, delegación y avance.
+    // No pueden editar el contenido, mandar a la papelera ni finalizar la tarea.
+    function isAllowedTaskUpdate() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status', 'updatedAt', 'updatedBy',
+          'completedBy', 'allCompletedAt',
+          'assignedTo', 'assignedToNames', 'assignments', 'secretarias',
+          'delegatedTo', 'delegatedBy', 'delegatedAt',
+          'progress', 'progressPercentage', 'notificationId',
+          'subtasksCompleted', 'coordinationProgress', 'allAreasCompletedAt'
+        ])
+        && (request.resource.data.get('status', '') != 'cerrada' || resource.data.get('status', '') == 'cerrada');
+    }
+
+    match /tasks/{taskId} {
+      allow read: if canSeeTask(resource.data);
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (canSeeTask(resource.data) && isAllowedTaskUpdate());
+      // Nadie borra tareas: "eliminar" las manda a la papelera (deleted: true)
+      allow delete: if false;
+
+      // Subtareas, mensajes de chat y demás subcolecciones: quien puede ver la tarea
       match /{subcollection}/{docId} {
-        allow read, create, update: if isActive();
+        allow read, create, update: if canSeeTask(get(/databases/$(database)/documents/tasks/$(taskId)).data);
         allow delete: if isAdmin();
       }
     }

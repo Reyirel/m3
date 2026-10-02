@@ -16,6 +16,7 @@ import { cancelNotification } from '../services/notifications';
 import { hapticMedium, hapticLight } from '../utils/haptics';
 import { useNotification } from '../contexts/NotificationContext';
 import { isTaskAssignedToUser } from '../utils/taskHelpers';
+import { canChangeTaskStatus } from '../services/permissions';
 import { deleteManager } from '../utils/deleteManager';
 import { confirmTaskCompletion, hasUserConfirmed } from '../services/taskConfirmations';
 import { useTheme } from '../contexts/ThemeContext';
@@ -611,10 +612,17 @@ export default function MyInboxScreen({ navigation }) {
   };
 
   const changeStatus = async (taskId, newStatus) => {
+    // Misma regla que en Inicio y Kanban: cada rol solo puede hacer sus transiciones
+    const task = tasks.find(t => t.id === taskId);
+    const perm = canChangeTaskStatus(currentUser, task || { id: taskId }, newStatus);
+    if (!perm.canChange) {
+      showWarning(perm.reason || 'No tienes permisos para cambiar el estado');
+      return;
+    }
     try {
       await updateTask(taskId, { status: newStatus });
     } catch (e) {
-      showError('No se pudo actualizar la tarea');
+      showError(e?.code === 'permission-denied' ? e.message : 'No se pudo actualizar la tarea');
     }
   };
 

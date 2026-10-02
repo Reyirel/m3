@@ -6,15 +6,16 @@ const _isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV =
 const log = _isDev ? console.log : () => {};
 import logger from './Logger';
 import { toMs } from '../utils/dateUtils';
-import { isTaskAssignedToUser, normalizeStatus } from '../utils/taskHelpers';
-import { getDireccionesBySecretaria, resolveAreaName } from '../config/areas';
+import { normalizeStatus } from '../utils/taskHelpers';
+import { filterVisibleTasks, getUserSecretaria, getTaskAreas } from '../utils/taskVisibility';
+import { getSecretariasForAreas } from '../config/areas';
+import { updateParentTaskProgress } from './areaSubtasks';
 
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  doc,
   onSnapshot, 
   query, 
   orderBy,
@@ -123,58 +124,31 @@ export async function subscribeToTasks(callback) {
     const userEmail = session.email;
     logger.debug('TasksService', 'Task subscription setup', { userRole, userEmail });
 
-    // Construir lista de áreas permitidas
-    const secAreaCanonical = resolveAreaName(session.area || '');
-    const oficiales = getDireccionesBySecretaria(secAreaCanonical);
-    const userDirecciones = session.direcciones || [];
-    const allowedAreas = new Set(
-      [secAreaCanonical, ...oficiales, ...userDirecciones]
-        .filter(Boolean)
-        .map(a => a.toLowerCase().trim())
-    );
-
-    // Función para filtrar tareas según rol
-    const filterTasksByRole = (tasks) => {
-      if (userRole === 'admin') {
-        return tasks; // Admin ve todas
-      }
-
-      if (userRole === 'secretario') {
-        return tasks.filter(task => {
-          if (isTaskAssignedToUser(task, userEmail)) return true;
-          // Tareas delegadas por este secretario
-          if ((task.delegatedBy || '').toLowerCase().trim() === userEmail) return true;
-          if ((task.createdBy || '').toLowerCase().trim() === userEmail) return true;
-          const taskArea = (task.area || (Array.isArray(task.areas) ? task.areas[0] : '') || '').toLowerCase().trim();
-          return taskArea && allowedAreas.has(taskArea);
-        });
-      }
-
-      if (userRole === 'director') {
-        return tasks.filter(task => isTaskAssignedToUser(task, userEmail));
-      }
-
-      return [];
-    };
-
-    // Crear query y suscribirse
-    let tasksQuery;
-    if (userRole === 'director') {
-      // Sin orderBy para evitar requerir índice compuesto — se ordena client-side
-      tasksQuery = query(
-        collection(db, COLLECTION_NAME),
-        where('assignedTo', 'array-contains', userEmail)
-      );
+    // Cada rol descarga solo lo que puede ver (misma regla que firestore.secure.rules):
+    //   admin      → todas
+    //   director   → las asignadas a su correo
+    //   secretario → las asignadas a su correo + las de su secretaría (campo `secretarias`)
+    // Sin orderBy en las consultas filtradas para no requerir índice compuesto.
+    const tasksRef = collection(db, COLLECTION_NAME);
+    const assignedQuery = query(tasksRef, where('assignedTo', 'array-contains', userEmail));
+    let taskQueries;
+    if (userRole === 'admin') {
+      taskQueries = [query(tasksRef, orderBy('createdAt', 'desc'))];
+    } else if (userRole === 'secretario') {
+      const secretaria = getUserSecretaria(session);
+      taskQueries = secretaria
+        ? [assignedQuery, query(tasksRef, where('secretarias', 'array-contains', secretaria))]
+        : [assignedQuery];
+    } else if (userRole === 'director') {
+      taskQueries = [assignedQuery];
     } else {
-      // Admin y secretario: descargan todas las tareas (filtran client-side por área)
-      tasksQuery = query(
-        collection(db, COLLECTION_NAME),
-        orderBy('createdAt', 'desc')
-      );
+      taskQueries = [];
     }
 
     let isSubscribed = true;
     let serverTasks = [];
+    // Resultado de cada consulta (id → tarea); se combinan sin duplicados
+    const queryResults = taskQueries.map(() => new Map());
 
     // Emitir las tareas del servidor junto con las creadas sin conexión que aún no se sincronizan
     const emit = async () => {
@@ -192,11 +166,11 @@ export async function subscribeToTasks(callback) {
     };
     const unsubscribeCache = subscribeToCacheChanges(emit);
 
-    const unsubscribeListener = onSnapshot(
+    const unsubscribeListeners = taskQueries.map((tasksQuery, queryIndex) => onSnapshot(
       tasksQuery,
       (snapshot) => {
         if (!isSubscribed) return;
-        
+
         const now = Date.now();
         const tasks = snapshot.docs.map(doc => {
           const data = doc.data();
@@ -222,8 +196,13 @@ export async function subscribeToTasks(callback) {
           };
         });
         
-        const filteredTasks = filterTasksByRole(tasks);
-        // Ordenar por createdAt descendente (necesario cuando director no usa orderBy en query)
+        queryResults[queryIndex] = new Map(tasks.map(task => [task.id, task]));
+        const merged = new Map();
+        queryResults.forEach(result => result.forEach((task, id) => merged.set(id, task)));
+
+        // Segundo filtro en el cliente: descarta la papelera y cualquier tarea fuera del ámbito del rol
+        const filteredTasks = filterVisibleTasks([...merged.values()], session);
+        // Ordenar por createdAt descendente (las consultas filtradas no usan orderBy)
         filteredTasks.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
         logger.debug('TasksService', `Loaded ${filteredTasks.length} tasks`);
         serverTasks = filteredTasks;
@@ -231,9 +210,13 @@ export async function subscribeToTasks(callback) {
       },
       (error) => {
         logger.error('TasksService', 'Snapshot listener error', error);
-        callback([]);
+        // Una consulta que falla no debe ocultar los resultados de la otra
+        queryResults[queryIndex] = new Map();
+        if (queryResults.every(result => result.size === 0)) callback([]);
       }
-    );
+    ));
+
+    if (taskQueries.length === 0) callback([]);
 
     // Retornar función de cleanup
     return () => {
@@ -241,9 +224,7 @@ export async function subscribeToTasks(callback) {
       _activeSubscriptions--;
       logger.debug('TasksService', 'Task subscription cleanup');
       unsubscribeCache();
-      if (unsubscribeListener) {
-        unsubscribeListener();
-      }
+      unsubscribeListeners.forEach(unsubscribe => unsubscribe && unsubscribe());
     };
   } catch (error) {
     logger.error('TasksService', 'Critical error in subscribeToTasks', error);
@@ -290,6 +271,10 @@ export async function createTask(task) {
       createdBy: currentUserEmail || currentUserUID,
       createdByName: currentUserName,
       department: task.department || '',
+      // Secretarías que pueden ver la tarea (visibilidad del secretario)
+      secretarias: Array.isArray(task.secretarias) && task.secretarias.length > 0
+        ? task.secretarias
+        : getSecretariasForAreas(getTaskAreas(task)),
       createdAt: Date.now(),
       updatedAt: Date.now(),
       dueAt: task.dueAt != null ? task.dueAt : Date.now(),
@@ -413,6 +398,19 @@ export async function createTask(task) {
  */
 export async function updateTask(taskId, updates) {
   let cacheUserEmail;
+
+  // Solo el administrador puede finalizar una tarea. Se valida aquí, y no solo en
+  // cada pantalla, para que ningún botón pueda saltarse la regla.
+  if (updates.status && normalizeStatus(updates.status) === 'cerrada') {
+    const sessionResult = await getCurrentSession();
+    const role = sessionResult.success ? sessionResult.session?.role : null;
+    if (role !== 'admin') {
+      const error = new Error('Solo el administrador puede finalizar tareas');
+      error.code = 'permission-denied';
+      throw error;
+    }
+  }
+
   try {
     // Si el status cambia a "cerrada", añadir completedBy automáticamente
     if (updates.status === 'cerrada') {
@@ -437,10 +435,12 @@ export async function updateTask(taskId, updates) {
             assignedTo.forEach(email => {
               // Solo añadir si no existe ya
               if (!newCompletedBy.some(c => c.email?.toLowerCase() === email.toLowerCase())) {
+                // auto: el cierre lo hizo el administrador, no una confirmación del asignado
                 newCompletedBy.push({
                   email: email,
                   completedAt: Timestamp.now(),
-                  displayName: email
+                  displayName: email,
+                  auto: true
                 });
               }
             });
@@ -494,6 +494,11 @@ export async function updateTask(taskId, updates) {
       }
 
       await updateDoc(taskRef, updateData);
+
+      // Si es la subtarea de un área, reflejar el cambio en el avance de la tarea principal
+      if (updates.status) {
+        refreshParentProgress(taskRef).catch(e => log('⚠️ Error actualizando avance de la tarea principal:', e.message));
+      }
     } else {
       // MODO OFFLINE: Encolar para sincronización
       log('📴 Actualizando tarea offline');
@@ -510,58 +515,22 @@ export async function updateTask(taskId, updates) {
 }
 
 /**
- * DIAGNÓSTICO: Función para verificar el estado completo de un documento
- * @param {string} taskId 
+ * Si la tarea es la subtarea de un área, recalcula el avance de la tarea principal
  */
-export async function diagnoseTaskDelete(taskId) {
-  try {
-    const taskRef = doc(db, COLLECTION_NAME, taskId);
-    
-    const docBefore = await getDoc(taskRef);
-    
-    const deleteStart = Date.now();
-    await deleteDoc(taskRef);
-    const deleteDuration = Date.now() - deleteStart;
-    
-    await new Promise(resolve => setTimeout(resolve, 300));
-    
-    const docAfter = await getDoc(taskRef);
-    
-    if (docAfter.exists()) {
-      return {
-        success: false,
-        message: 'Documento NO fue eliminado de Firestore',
-        details: {
-          beforeDelete: docBefore.exists(),
-          afterDelete: docAfter.exists(),
-          deleteDuration: deleteDuration
-        }
-      };
-    } else {
-      return {
-        success: true,
-        message: 'Documento eliminado correctamente',
-        details: {
-          beforeDelete: docBefore.exists(),
-          afterDelete: docAfter.exists(),
-          deleteDuration: deleteDuration
-        }
-      };
-    }
-    
-  } catch (error) {
-    return {
-      success: false,
-      message: 'Error durante diagnóstico',
-      error: error.message,
-      errorCode: error?.code
-    };
+async function refreshParentProgress(taskRef) {
+  const snap = await getDoc(taskRef);
+  if (!snap.exists()) return;
+  const { parentTaskId, isAreaSubtask } = snap.data();
+  if (parentTaskId && isAreaSubtask) {
+    await updateParentTaskProgress(parentTaskId);
   }
 }
 
 /**
- * Eliminar una tarea
- * OFFLINE-FIRST: Elimina localmente y sincroniza cuando hay conexión
+ * Eliminar una tarea: la manda a la papelera (deleted: true), NO borra el documento.
+ * Así un borrado por error se puede deshacer con restoreTask y no se pierden
+ * la descripción, el chat ni las subtareas.
+ * OFFLINE-FIRST: la quita del cache local y sincroniza cuando hay conexión
  * @param {string} taskId - ID de la tarea a eliminar
  * @returns {Promise<void>}
  */
@@ -570,12 +539,23 @@ export async function deleteTask(taskId) {
     throw new Error('taskId es requerido para eliminar');
   }
 
-  // Obtener email del usuario para usar cache por usuario
   let cacheUserEmail;
+  let role = null;
   try {
     const sess = await getCurrentSession();
     cacheUserEmail = sess.success ? sess.session?.email : undefined;
+    role = sess.success ? sess.session?.role : null;
   } catch (_) {}
+
+  // Las tareas temporales (creadas sin conexión) solo viven en el cache local
+  const isTemp = taskId.startsWith('temp_');
+  if (!isTemp && role !== 'admin') {
+    const error = new Error('Solo el administrador puede eliminar tareas');
+    error.code = 'permission-denied';
+    throw error;
+  }
+
+  const trashFields = { deleted: true, deletedBy: cacheUserEmail || '' };
 
   try {
     // Eliminar del cache local primero
@@ -583,21 +563,18 @@ export async function deleteTask(taskId) {
     const filtered = cached.filter(t => t.id !== taskId);
     await cacheTasksLocally(filtered, cacheUserEmail);
 
-    // Si es una tarea temporal, solo eliminar del cache
-    if (taskId.startsWith('temp_')) {
+    if (isTemp) {
       log('📴 Tarea temporal eliminada del cache');
       return;
     }
 
-    // Si hay conexión, eliminar de Firebase
     if (getConnectionState()) {
       const taskRef = doc(db, COLLECTION_NAME, taskId);
-      await deleteDoc(taskRef);
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await updateDoc(taskRef, { ...trashFields, deletedAt: serverTimestamp() });
     } else {
       // MODO OFFLINE: Encolar para sincronización
       log('📴 Eliminación encolada para sincronización');
-      await queueOperation(OPERATION_TYPES.DELETE, {}, taskId, cacheUserEmail);
+      await queueOperation(OPERATION_TYPES.UPDATE, { ...trashFields, deletedAt: Date.now() }, taskId, cacheUserEmail);
     }
     return;
 
@@ -607,8 +584,25 @@ export async function deleteTask(taskId) {
 
     // Si falla Firebase por un error transitorio, encolar para después
     log('⚠️ Error eliminando, encolando para después:', error.message);
-    await queueOperation(OPERATION_TYPES.DELETE, {}, taskId, cacheUserEmail);
+    await queueOperation(OPERATION_TYPES.UPDATE, { ...trashFields, deletedAt: Date.now() }, taskId, cacheUserEmail);
   }
+}
+
+/**
+ * Restaurar una tarea de la papelera
+ * @param {string} taskId - ID de la tarea a restaurar
+ * @returns {Promise<void>}
+ */
+export async function restoreTask(taskId) {
+  if (!taskId) {
+    throw new Error('taskId es requerido para restaurar');
+  }
+  await updateDoc(doc(db, COLLECTION_NAME, taskId), {
+    deleted: false,
+    deletedAt: null,
+    deletedBy: null,
+    updatedAt: serverTimestamp()
+  });
 }
 
 /**
@@ -648,7 +642,7 @@ export async function getOverallTaskMetrics() {
     }
 
     const session = sessionResult.session;
-    const metricsResult = await getGeneralMetrics(session.userId, session.role);
+    const metricsResult = await getGeneralMetrics(session.userId, session.role, session);
     
     if (metricsResult.success) {
       return metricsResult.metrics;

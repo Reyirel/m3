@@ -5,7 +5,7 @@ const log = __DEV__ ? console.log : () => {};
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-import { collection, addDoc, updateDoc, deleteDoc, doc, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, updateDoc, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 
 const OFFLINE_TASKS_KEY = '@offline_tasks';
@@ -475,7 +475,8 @@ const syncDeleteOperation = async (op) => {
     return; // Ya está eliminado, no hay error
   }
   
-  await deleteDoc(taskRef);
+  // Papelera: la tarea no se borra, se marca (ver deleteTask en services/tasks.js)
+  await updateDoc(taskRef, { deleted: true, deletedBy: op.userEmail || '', deletedAt: Timestamp.now() });
 };
 
 // ============ OPERACIONES OFFLINE-FIRST ============

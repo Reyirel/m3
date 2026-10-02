@@ -4,6 +4,7 @@
 
 import { collection, doc, getDoc, updateDoc, query, where, getDocs, Timestamp, writeBatch, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
+import { normalizeStatus } from '../utils/taskHelpers';
 
 /**
  * Crear subtareas automáticas para cada área asignada
@@ -119,8 +120,14 @@ export const subscribeToAreaSubtasks = (parentTaskId, callback) => {
   );
   
   return onSnapshot(q, (snapshot) => {
-    const subtasks = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const subtasks = snapshot.docs
+      .map(doc => ({ id: doc.id, ...doc.data() }))
+      .filter(subtask => !subtask.deleted);
     callback(subtasks);
+  }, (error) => {
+    // Sin permiso para ver las subtareas de otras áreas: no se muestra el avance
+    if (__DEV__) console.warn('Error en suscripción de subtareas por área:', error.message);
+    callback([]);
   });
 };
 
@@ -130,12 +137,14 @@ export const subscribeToAreaSubtasks = (parentTaskId, callback) => {
  */
 export const updateParentTaskProgress = async (parentTaskId) => {
   try {
-    const subtasks = await getAreaSubtasks(parentTaskId);
-    
+    const subtasks = (await getAreaSubtasks(parentTaskId)).filter(st => !st.deleted);
+
     if (subtasks.length === 0) return;
-    
-    const completedSubtasks = subtasks.filter(st => 
-      st.status === 'completada' || st.status === 'en_revision'
+
+    // Un área terminó cuando su subtarea está en revisión o cerrada
+    // ('completada' es la variante histórica de 'cerrada')
+    const completedSubtasks = subtasks.filter(st =>
+      ['en_revision', 'cerrada'].includes(normalizeStatus(st.status))
     );
     
     const progress = Math.round((completedSubtasks.length / subtasks.length) * 100);
@@ -147,10 +156,14 @@ export const updateParentTaskProgress = async (parentTaskId) => {
       updatedAt: Timestamp.now()
     };
     
-    // Si todas las subtareas están completas, marcar la padre como en_revision
+    // Si todas las áreas terminaron, la tarea principal pasa a revisión del administrador
+    // (sin tocarla si el administrador ya la cerró)
     if (allCompleted) {
-      updateData.status = 'en_revision';
-      updateData.allAreasCompletedAt = Timestamp.now();
+      const parentSnap = await getDoc(doc(db, 'tasks', parentTaskId));
+      if (parentSnap.exists() && normalizeStatus(parentSnap.data().status) !== 'cerrada') {
+        updateData.status = 'en_revision';
+        updateData.allAreasCompletedAt = Timestamp.now();
+      }
     }
     
     await updateDoc(doc(db, 'tasks', parentTaskId), updateData);
@@ -182,7 +195,7 @@ export const getAreaProgressSummary = async (parentTaskId) => {
       status: st.status,
       statusLabel: getStatusLabel(st.status),
       assignees: st.assignedToNames || st.assignedTo || [],
-      isCompleted: st.status === 'completada' || st.status === 'en_revision',
+      isCompleted: ['en_revision', 'cerrada'].includes(normalizeStatus(st.status)),
       updatedAt: st.updatedAt
     }));
   } catch (error) {

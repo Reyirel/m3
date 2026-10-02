@@ -172,6 +172,20 @@ export const resolveAreaName = (name) => {
   return AREA_ALIASES[name] || name;
 };
 
+// Secretarías a las que pertenece una lista de áreas (nombres canónicos, sin repetir).
+// Un área sin secretaría (SMDIF, CAPASMIH, Asamblea) se representa a sí misma.
+// Se guarda en cada tarea (campo `secretarias`) para filtrar la visibilidad del secretario.
+export const getSecretariasForAreas = (areas) => {
+  const list = Array.isArray(areas) ? areas : areas ? [areas] : [];
+  const result = new Set();
+  list.forEach((area) => {
+    const resolved = resolveAreaName((area || '').trim());
+    if (!resolved) return;
+    result.add(getSecretariaByDireccion(resolved) || resolved);
+  });
+  return [...result];
+};
+
 export const DIRECCIONES = [
   // Despacho de la Presidencia
   'Dirección de Audiencias y Atención Ciudadana',

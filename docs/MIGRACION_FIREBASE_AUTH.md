@@ -98,8 +98,35 @@ Borra `password` y `tempPassword` de los documentos ya migrados.
 
 ## Qué revisar después de activar las reglas
 
-`firestore.secure.rules` exige usuario activo para todo, reserva al admin el
-borrado de tareas y la gestión de usuarios y áreas, y deja el historial, las
-firmas y la auditoría como solo-agregar. Cualquier colección no listada queda
-denegada: si una pantalla falla con "Missing or insufficient permissions", falta
-declarar su colección.
+`firestore.secure.rules` exige usuario activo para todo, reserva al admin la
+gestión de usuarios y áreas, y deja el historial, las firmas y la auditoría como
+solo-agregar. Cualquier colección no listada queda denegada: si una pantalla
+falla con "Missing or insufficient permissions", falta declarar su colección.
+
+### Visibilidad de tareas
+
+Las reglas aplican en el servidor lo mismo que `utils/taskVisibility.js` en la app:
+
+- **Admin**: ve y modifica todas las tareas.
+- **Director**: solo las que tienen su correo en `assignedTo`.
+- **Secretario**: las asignadas a su correo y las que tienen su secretaría en
+  `secretarias`. Ese campo lo calcula la app al guardar (áreas de la tarea más la
+  secretaría de cada asignado).
+- Secretarios y directores solo pueden cambiar estado, confirmaciones, delegación
+  y avance; no pueden finalizar ni editar el contenido.
+- Nadie borra tareas: "eliminar" las marca con `deleted: true` (papelera).
+
+Estas reglas no se han probado con el emulador. Antes de desplegarlas, revisa:
+
+1. **Área canónica en `users`**: la regla compara `area` del secretario con
+   `secretarias` de la tarea. El usuario de Seguridad Pública tiene
+   `Secretaría de Seguridad Pública`; debe decir el nombre completo de
+   `config/areas.js`.
+2. **Tareas anteriores sin `secretarias`**: los secretarios no las verán hasta
+   rellenar el campo (los directores y el admin sí).
+3. **Avance entre áreas**: un director que no está asignado a la tarea principal
+   no puede leer las subtareas de las otras áreas, así que el avance de la tarea
+   principal solo se recalcula cuando el cambio lo hace el admin, el secretario o
+   un asignado a la principal. Lo correcto a futuro es moverlo a una Cloud Function.
+4. Pantallas que consultan `tasks` sin filtro (analíticas, reportes, alertas por
+   área): están pensadas para el admin; con otro rol devolverán error de permisos.

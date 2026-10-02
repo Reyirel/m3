@@ -5,6 +5,7 @@ import { db } from '../firebase';
 import { toMs, diffMs } from '../utils/dateUtils';
 import { isInProgress } from '../utils/taskStatus';
 import { isTaskAssignedToUser, getTaskArea } from '../utils/taskHelpers';
+import { filterVisibleTasks, getUserSecretaria } from '../utils/taskVisibility';
 
 // ✅ OPTIMIZACIÓN: Cache simple con TTL
 const analyticsCache = new Map();
@@ -29,30 +30,34 @@ function setCachedData(key, data) {
 /**
  * Obtener métricas generales
  */
-export const getGeneralMetrics = async (userId, userRole) => {
+export const getGeneralMetrics = async (userId, userRole, user = null) => {
   try {
     // ✅ OPTIMIZACIÓN: Verificar cache primero
     const cacheKey = `metrics_${userId}_${userRole}`;
     const cached = getCachedData(cacheKey);
     if (cached) return cached;
 
-    let tasksQuery;
-    
-    // Admin, Secretario y Director ven tareas según su ámbito
-    if (['admin', 'secretario', 'director'].includes(userRole)) {
+    // Cada rol calcula sus métricas solo con las tareas que puede ver
+    // (misma regla que la lista de tareas: utils/taskVisibility.js)
+    const scope = { ...(user || {}), role: userRole };
+    const tasksRef = collection(db, 'tasks');
+    const email = (scope.email || '').toLowerCase().trim();
+    const queries = [];
+    if (userRole === 'admin') {
       // ✅ OPTIMIZACIÓN: Agregar limit para no cargar todo
-      tasksQuery = query(collection(db, 'tasks'), limit(500));
-    } else {
-      // ✅ OPTIMIZACIÓN: For non-admins, use where clause para filtrar en Firestore
-      tasksQuery = query(
-        collection(db, 'tasks'),
-        where('assignedTo', 'array-contains', userId),
-        limit(200)
-      );
+      queries.push(query(tasksRef, limit(500)));
+    } else if (email) {
+      queries.push(query(tasksRef, where('assignedTo', 'array-contains', email), limit(200)));
+      const secretaria = userRole === 'secretario' ? getUserSecretaria(scope) : '';
+      if (secretaria) {
+        queries.push(query(tasksRef, where('secretarias', 'array-contains', secretaria), limit(500)));
+      }
     }
 
-    const querySnapshot = await getDocs(tasksQuery);
-    let tasks = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    const snapshots = await Promise.all(queries.map(q => getDocs(q)));
+    const byId = new Map();
+    snapshots.forEach(snapshot => snapshot.docs.forEach(doc => byId.set(doc.id, { id: doc.id, ...doc.data() })));
+    let tasks = filterVisibleTasks([...byId.values()], scope);
 
     const now = Date.now();
     const today = new Date().setHours(0, 0, 0, 0);
