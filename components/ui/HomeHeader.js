@@ -89,7 +89,7 @@ export default function HomeHeader({
         <View style={[styles.headerRow, isWide && { alignItems: 'center', flex: 1 }]}>
           {/* Avatar + info — navega a perfil */}
           <TouchableOpacity
-            style={[styles.userBlock, isWide && { flex: 0 }]}
+            style={[styles.userBlock, isWide && styles.userBlockWide]}
             onPress={onProfilePress}
             activeOpacity={onProfilePress ? 0.75 : 1}
             accessibilityLabel="Ver perfil"
@@ -99,7 +99,7 @@ export default function HomeHeader({
               <View style={[styles.avatarCircle, isWide && { width: 40, height: 40, borderRadius: 20 }]}>
                 <Text style={[styles.avatarText, isWide && { fontSize: 14 }]}>{initials}</Text>
               </View>
-              <View style={styles.userInfo}>
+              <View style={[styles.userInfo, isWide && styles.userInfoWide]}>
                 {!isWide && <Text style={styles.greeting}>{getGreeting()}</Text>}
                 <Text style={[styles.name, isWide && { fontSize: 17, lineHeight: 22 }]} numberOfLines={1}>{userName}</Text>
                 {isWide && <Text style={styles.greeting}>{role}</Text>}
@@ -268,6 +268,10 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   userBlock: { flex: 1 },
+  // En pantalla ancha el bloque mide lo que ocupa su contenido. Con `flex: 0` en web
+  // quedaba con ancho cero: el nombre se apilaba letra por letra bajo el buscador.
+  userBlockWide: { flexGrow: 0, flexShrink: 0, flexBasis: 'auto' },
+  userInfoWide: { flexGrow: 0, flexShrink: 1, flexBasis: 'auto', maxWidth: 220 },
   avatarRow: {
     flexDirection: 'row',
     alignItems: 'center',
