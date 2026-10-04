@@ -402,7 +402,7 @@ export default function AdminScreen({ navigation, onLogout }) {
           {/* Dark mode toggle */}
           <View style={s.infoRow}>
             <Text style={[s.infoLabel, { color: theme.text }]}>Modo Oscuro</Text>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="switch" accessibilityLabel="Modo oscuro" accessibilityState={{ checked: isDark }}
               style={[s.toggle, isDark && { backgroundColor: theme.primary }]}
               onPress={() => { hapticMedium(); toggleTheme(); }}
               activeOpacity={0.8}
@@ -659,30 +659,6 @@ const s = StyleSheet.create({
   wrapper: { flex: 1, width: '100%', alignSelf: 'center' },
 
   // Header
-  header: {
-    paddingTop: Platform.OS === 'ios' ? 52 : 32,
-    paddingBottom: 20,
-    paddingHorizontal: 20,
-    shadowColor: '#9F2241',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 10,
-    overflow: 'hidden',
-  },
-  headerHighlight: {
-    position: 'absolute', top: 0, left: 30, right: 30, height: 1,
-    backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 1,
-  },
-  headerRow:     { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between' },
-  headerGreeting: { fontSize: 13, fontWeight: '500', color: 'rgba(255,255,255,0.65)', letterSpacing: 0.3, marginBottom: 2 },
-  headerTitle:   { fontSize: 32, fontWeight: '800', color: '#FFFFFF', letterSpacing: -1 },
-  logoutBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.22)',
-    justifyContent: 'center', alignItems: 'center',
-  },
 
   // Tab bar
   tabBar: {

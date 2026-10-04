@@ -231,7 +231,7 @@ export default function TaskChatScreen({ route, navigation }) {
           )}
 
           {item.type === 'image' ? (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="imagebutton" accessibilityLabel="Ver imagen"
               onPress={() => setSelectedImageUrl(item.imageUrl)}
               activeOpacity={0.9}
               hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}

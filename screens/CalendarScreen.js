@@ -571,7 +571,7 @@ export default function CalendarScreen({ navigation }) {
         }}
       >
         <WebSafeBlur intensity={Platform.OS === 'ios' ? 50 : 100} style={styles.modalBlurOverlay} tint={isDark ? 'dark' : 'light'}>
-          <TouchableOpacity 
+          <TouchableOpacity accessibilityLabel="Cerrar" 
             style={styles.modalBackdrop} 
             activeOpacity={1} 
             onPress={() => {

@@ -295,7 +295,7 @@ export default function KanbanScreen({ navigation }) {
                 </TouchableOpacity>
 
                 {/* Ordenar por fecha o por prioridad */}
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button" accessibilityLabel={sortBy === 'date' ? 'Ordenar por prioridad' : 'Ordenar por fecha'}
                   onPress={() => {
                     setSortBy(sortBy === 'date' ? 'priority' : 'date');
                     hapticLight();

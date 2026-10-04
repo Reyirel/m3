@@ -412,21 +412,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  header: {
-    paddingTop: 48,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    elevation: 12,
-    overflow: 'hidden',
-  },
-  headerBlur: {
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
   title: {
     fontSize: 28,
     fontWeight: '800',
@@ -435,12 +420,6 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.20)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 4,
-  },
-  subtitle: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.72)',
-    marginTop: 4,
-    fontWeight: '500',
   },
   content: {
     flex: 1,

@@ -351,7 +351,7 @@ export default function OnboardingTour({ userRole, onComplete, forceShow = false
           {/* Dot indicators */}
           <View style={styles.dotsRow}>
             {steps.map((_, i) => (
-              <TouchableOpacity key={i} onPress={() => setCurrentStep(i)}>
+              <TouchableOpacity accessibilityRole="button" accessibilityLabel={`Ir al paso ${i + 1}`} key={i} onPress={() => setCurrentStep(i)}>
                 <View
                   style={[
                     styles.dot,

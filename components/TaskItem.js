@@ -693,29 +693,6 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
     opacity: 0.6,
   },
-  badge: {
-    paddingHorizontal: 9,
-    paddingVertical: 4,
-    borderRadius: 8,
-    fontSize: 11,
-    fontWeight: '800',
-    minWidth: 60,
-    textAlign: 'center',
-    letterSpacing: -0.2
-  },
-  badgeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6
-  },
-  metaRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    marginBottom: 6,
-    alignItems: 'center',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
   meta: { 
     fontSize: 13, 
     fontWeight: '500',
@@ -736,30 +713,6 @@ const styles = StyleSheet.create({
   coordinationText: {
     fontSize: 12,
     fontWeight: '600',
-  },
-  metaSmall: { 
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#999'
-  },
-  priorityRow: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    gap: 12,
-    flexWrap: 'wrap',
-    marginTop: 8,
-  },
-  priorityBadge: { 
-    paddingHorizontal: 6,
-    paddingVertical: 4,
-    borderRadius: 5,
-    minWidth: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  priorityBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
   },
   statusText: { 
     fontSize: 12, 
@@ -787,10 +740,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '500',
     paddingVertical: 3,
-  },
-  progressContainer: {
-    marginTop: 8,
-    paddingHorizontal: 4
   },
   progressSection: {
     marginTop: 12,
@@ -850,14 +799,6 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5
   },
-  unreadBadge: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 4,
-  },
   contentRow: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -865,12 +806,6 @@ const styles = StyleSheet.create({
   },
   taskContent: {
     flex: 1,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginTop: 6,
   },
   actionsRow: {
     flexDirection: 'row',
@@ -942,21 +877,12 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
-  deletingText: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
   deletingTextSmall: {
     fontSize: 12,
     fontWeight: '500',
     color: '#FFFFFF',
     marginTop: 2,
     opacity: 0.9,
-  },
-  actionsColumn: {
-    alignItems: 'flex-end',
-    justifyContent: 'flex-start',
   },
   // Botones de acción rápida
   quickActionsRow: {

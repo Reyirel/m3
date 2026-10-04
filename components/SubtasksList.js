@@ -223,7 +223,7 @@ function SubtasksList({
         style={[styles.subtaskItem, { backgroundColor: isDark ? theme.glass : '#F9F9F9' }, item.status === 'completada' && { backgroundColor: theme.successAlpha, borderLeftColor: theme.success }]}
         onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}
       >
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="checkbox" accessibilityLabel="Subtarea completada" accessibilityState={{ checked: item.status === 'completada' }}
           style={styles.checkbox}
           onPress={() => handleToggleSubtask(item.id, item.status)}
         >
@@ -624,10 +624,6 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: '#DDD',
   },
-  subtaskCompleted: {
-    backgroundColor: '#F0F9FF',
-    borderLeftColor: '#4CAF50',
-  },
 
   checkbox: {
     marginRight: 12,
@@ -707,12 +703,6 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 6,
     gap: 6,
-  },
-  deleteButton: {
-    backgroundColor: '#FF6B6B',
-  },
-  delegateButton: {
-    backgroundColor: '#FF9500',
   },
   actionButtonText: {
     color: '#FFF',

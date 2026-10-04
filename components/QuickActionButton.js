@@ -109,7 +109,7 @@ export default function QuickActionButton({
     <View style={[styles.container, getPositionStyle()]}>
       {/* Overlay cuando está abierto */}
       {isOpen && (
-        <TouchableOpacity
+        <TouchableOpacity accessibilityLabel="Cerrar"
           style={styles.overlay}
           activeOpacity={1}
           onPress={toggleMenu}
@@ -136,7 +136,7 @@ export default function QuickActionButton({
             },
           ]}
         >
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel={action.label}
             onPress={() => handleActionPress(action)}
             style={styles.actionTouchable}
             activeOpacity={0.8}
@@ -177,7 +177,7 @@ export default function QuickActionButton({
           },
         ]}
       >
-        <TouchableOpacity onPress={toggleMenu} activeOpacity={0.9} style={styles.mainTouchable}>
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Acciones rápidas" onPress={toggleMenu} activeOpacity={0.9} style={styles.mainTouchable}>
           <LinearGradient
             colors={[primaryColor, `${primaryColor}DD`]}
             start={{ x: 0, y: 0 }}

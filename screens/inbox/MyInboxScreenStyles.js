@@ -132,43 +132,6 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     borderBottomWidth: 1,
   },
   // Tarjeta usuario y búsqueda unificada
-  userSearchCard: {
-    marginHorizontal: padding,
-    marginTop: -12,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    shadowColor: theme.glassShadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  userRole: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -203,19 +166,6 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   actionsBarLeft: {
     flex: 1,
-  },
-  counterInfo: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 6,
-  },
-  counterNumber: {
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  counterLabel: {
-    fontSize: 13,
-    fontWeight: '500',
   },
   selectionInfo: {
     flexDirection: 'row',
@@ -269,39 +219,6 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     marginLeft: 8,
   },
   // Quick Stats
-  quickStatsContainer: {
-    marginTop: 12,
-    paddingHorizontal: padding,
-  },
-  quickStatsScroll: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingRight: 16,
-  },
-  quickStatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    minWidth: 80,
-  },
-  quickStatOverdue: {
-    backgroundColor: theme.errorAlpha,
-    borderColor: theme.error,
-  },
-  quickStatValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.error,
-  },
-  quickStatLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: theme.errorDark,
-  },
   // Active Filters Chips
   activeFiltersContainer: {
     marginTop: 10,
@@ -337,155 +254,10 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     fontSize: 12,
     fontWeight: '600',
   },
-  messagesButton: {
-    borderRadius: RADIUS.lg,
-    overflow: 'hidden',
-    ...SHADOWS.md
-  },
-  messageBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: theme.error,
-    borderRadius: 12,
-    minWidth: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: theme.card,
-    shadowColor: theme.error,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 5
-  },
-  messageBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.2
-  },
-  addButtonGradient: {
-    width: isDesktop ? 56 : isTablet ? 54 : 60,
-    height: isDesktop ? 56 : isTablet ? 54 : 60,
-    borderRadius: isDesktop ? 28 : isTablet ? 27 : 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4
-  },
-  addButtonText: {
-    color: theme.primary,
-    fontSize: 32,
-    fontWeight: '300',
-    marginTop: -2
-  },
-  userSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: padding,
-    marginTop: isDesktop ? SPACING.xxxl : isTablet ? SPACING.xxl : SPACING.xxl,
-    marginBottom: isDesktop ? SPACING.lg : isTablet ? SPACING.md : SPACING.md,
-    padding: isDesktop ? SPACING.lg : isTablet ? SPACING.md : SPACING.md,
-    borderRadius: RADIUS.lg,
-    borderWidth: 2,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  userIconBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.primary,
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  userInfoContent: {
-    flex: 1,
-  },
-  userLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4
-  },
-  userLabel: {
-    fontSize: isDesktop ? 10 : 11,
-    color: theme.primary,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  currentUserName: {
-    fontSize: isDesktop ? 18 : isTablet ? 17 : 18,
-    fontWeight: '800',
-    marginBottom: 2,
-    flexShrink: 1,
-    letterSpacing: -0.3,
-  },
-  currentUserHint: {
-    fontSize: isDesktop ? 13 : 14,
-    fontWeight: '600',
-    flexShrink: 1,
-    letterSpacing: 0.1
-  },
   listContent: {
     padding: isDesktop ? 20 : isTablet ? 16 : 16,
     paddingTop: isDesktop ? 32 : 24,
     paddingBottom: 80
-  },
-  messagesSection: {
-    marginHorizontal: isDesktop ? 20 : isTablet ? 16 : 16,
-    marginBottom: 20,
-    padding: 16,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: 'rgba(218, 165, 32, 0.5)',
-    backgroundColor: isDark ? 'rgba(218, 165, 32, 0.15)' : 'rgba(218, 165, 32, 0.1)',
-    shadowColor: theme.warning,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 3
-  },
-  messagesSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  messagesSectionTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    color: theme.warning,
-    textShadowColor: 'rgba(0,0,0,0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
   },
   messageCard: {
     padding: 14,
@@ -580,125 +352,13 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   modalScroll: {
     padding: isDesktop ? SPACING.xl : SPACING.lg
   },
-  actionsRow: { 
-    flexDirection: 'row', 
-    flexWrap: isTablet ? 'nowrap' : 'wrap',
-    marginTop: 18,
-    gap: isDesktop ? 14 : isTablet ? 12 : 10,
-    justifyContent: 'space-between'
-  },
-  actionBtn: {
-    flex: isTablet ? 1 : 0.48,
-    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#FFFAF0',
-    paddingVertical: isDesktop ? SPACING.md : isTablet ? 12 : 12,
-    paddingHorizontal: isDesktop ? SPACING.md : isTablet ? SPACING.sm : SPACING.sm,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: isDark ? 'rgba(255,255,255,0.3)' : '#F5DEB3',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    minHeight: isDesktop ? 48 : isTablet ? 44 : 44,
-    marginBottom: isTablet ? 0 : 8,
-    shadowColor: theme.glassShadow,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4
-  },
-  actionBtnPrimary: {
-    backgroundColor: theme.primary,
-    borderColor: theme.primary
-  },
-  actionBtnDanger: {
-    backgroundColor: theme.error,
-    borderColor: theme.error
-  },
-  actionText: {
-    fontSize: isDesktop ? 13 : isTablet ? 12 : 11,
-    fontWeight: '800',
-    color: theme.text,
-    letterSpacing: 0.2,
-    flexShrink: 0,
-    textAlign: 'center',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: isDesktop ? 140 : 120,
-    paddingHorizontal: isDesktop ? 80 : 60
-  },
-  emptyText: {
-    fontSize: isDesktop ? 32 : 30,
-    fontWeight: '900',
-    color: theme.text,
-    marginBottom: 18,
-    letterSpacing: -1,
-    textShadowColor: 'rgba(0,0,0,0.15)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
-  },
-  emptySubtext: {
-    fontSize: isDesktop ? 17 : 16,
-    color: theme.textSecondary,
-    textAlign: 'center',
-    lineHeight: 26,
-    fontWeight: '700',
-    letterSpacing: -0.3
-  },
   // 🔍 ESTILOS DE BÚSQUEDA Y FILTROS
-  filterSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: padding,
-    marginBottom: SPACING.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    gap: SPACING.sm,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1.5,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.glassShadow,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  searchContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.md,
-    gap: SPACING.sm,
-  },
   searchInput: {
     flex: 1,
     paddingVertical: 10,
     fontSize: 16,
     fontWeight: '500',
     color: theme.text,
-  },
-  filterButton: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.md,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  filtersPanel: {
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    gap: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
   },
   filterGroupHeader: {
     flexDirection: 'row',
@@ -798,26 +458,6 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
-  counterSection: {
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  counterText: {
-    fontSize: 12,
-    fontWeight: '600',
-    opacity: 0.7,
-  },
-  deleteSelectedBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: SPACING.md,
-    borderRadius: RADIUS.md,
-    backgroundColor: theme.error,
-  },
   // 🎨 ESTILOS DEL FOOTER DEL MODAL
   modalFooter: {
     flexDirection: 'row',
@@ -858,63 +498,6 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     textTransform: 'uppercase',
   },
   // 🎨 ESTILOS MODAL CONFIRMACIÓN CERRAR
-  confirmModalContent: {
-    width: isDesktop ? 400 : '85%',
-    borderRadius: RADIUS.lg,
-    padding: SPACING.xl,
-    alignItems: 'center',
-  },
-  confirmModalIcon: {
-    marginBottom: SPACING.md,
-  },
-  confirmModalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: SPACING.xs,
-    textAlign: 'center',
-  },
-  confirmModalSubtitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: SPACING.sm,
-    textAlign: 'center',
-  },
-  confirmModalDesc: {
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: SPACING.lg,
-    lineHeight: 18,
-  },
-  confirmModalButtons: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    width: '100%',
-  },
-  confirmModalBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: RADIUS.md,
-    gap: SPACING.xs,
-  },
-  confirmModalBtnCancel: {
-    borderWidth: 1,
-    backgroundColor: 'transparent',
-  },
-  confirmModalBtnConfirm: {
-    backgroundColor: theme.success,
-  },
-  confirmModalBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  confirmModalBtnTextWhite: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
   // 🎨 ESTILOS MODAL AYUDA
   helpModalContent: {
     width: isDesktop ? 420 : '90%',
@@ -972,39 +555,6 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     fontWeight: '700',
   },
   // Estilos para filtros rápidos
-  quickFiltersScroll: {
-    paddingVertical: 8,
-  },
-  quickFiltersContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-    alignItems: 'center',
-  },
-  quickFilterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 6,
-  },
-  quickFilterLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  quickFilterBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  quickFilterBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
   compactToggleBtn: {
     width: 36,
     height: 36,

@@ -121,11 +121,6 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     content: {
       flex: 1,
     },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
     emptyContainer: {
       flex: 1,
       justifyContent: 'center',
@@ -264,9 +259,6 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
       alignItems: 'center',
       borderWidth: 2,
       borderColor: theme.border,
-    },
-    starActive: {
-      backgroundColor: theme.warning,
     },
     // Activity styles
     activityItem: {

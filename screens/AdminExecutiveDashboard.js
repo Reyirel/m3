@@ -834,8 +834,6 @@ export default function AdminExecutiveDashboard({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   contentWrapper: { flex: 1, alignSelf: 'center', width: '100%' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { marginTop: 12, fontSize: 14 },
   
   // Header
   header: { paddingTop: 50, paddingBottom: 28, paddingHorizontal: 20, borderBottomLeftRadius: 32, borderBottomRightRadius: 32, shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.35, shadowRadius: 20, elevation: 12, overflow: 'hidden' },
@@ -872,12 +870,10 @@ const styles = StyleSheet.create({
   section: { borderRadius: 16, padding: 16, marginBottom: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8, flexWrap: 'wrap' },
   sectionTitle: { fontSize: 16, fontWeight: '700', flex: 1 },
-  sectionSubtitle: { fontSize: 12, width: '100%', marginTop: 2 },
   
   // KPIs
   kpiGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 16 },
   kpiCard: { width: '47%', flexGrow: 1, padding: 14, borderRadius: 14, alignItems: 'center' },
-  kpiIcon: { width: 38, height: 38, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 6 },
   kpiValue: { fontSize: 26, fontWeight: '800' },
   kpiLabel: { fontSize: 12, marginTop: 3, textAlign: 'center', fontWeight: '500' },
   
@@ -889,12 +885,6 @@ const styles = StyleSheet.create({
   rateValue: { fontSize: 16, fontWeight: '700' },
   
   // Comparison
-  comparisonRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 32, marginTop: 12 },
-  comparisonItem: { alignItems: 'center' },
-  comparisonLabel: { fontSize: 12, marginTop: 4 },
-  comparisonValue: { fontSize: 32, fontWeight: '800' },
-  comparisonArrow: { width: 1, height: 40, alignSelf: 'center' },
-  statusBadge: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRadius: 10, gap: 6 },
   
   // Chart
   chartContainer: { alignItems: 'center', marginVertical: 10 },
@@ -913,22 +903,16 @@ const styles = StyleSheet.create({
   complianceCard: { flex: 1, padding: 12, borderRadius: 12, alignItems: 'center' },
   complianceValue: { fontSize: 22, fontWeight: '800' },
   complianceLabel: { fontSize: 11, marginTop: 2 },
-  sortButtons: { flexDirection: 'row', alignItems: 'center', marginBottom: 12, gap: 8 },
-  sortLabel: { fontSize: 12 },
-  sortButton: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
-  sortButtonText: { fontSize: 12, fontWeight: '600' },
   
   // Users List
   usersList: { gap: 10 },
   userCard: { flexDirection: 'row', alignItems: 'center', padding: 12, borderRadius: 12, borderLeftWidth: 4, gap: 10 },
-  userRank: { width: 28, alignItems: 'center' },
   rankNumber: { fontSize: 12, fontWeight: '700' },
   userInfo: { flex: 1 },
   userName: { fontSize: 14, fontWeight: '600' },
   userRole: { fontSize: 12, marginTop: 2 },
   userStats: { alignItems: 'flex-end' },
   userRate: { fontSize: 18, fontWeight: '800' },
-  overdueBadge: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, marginTop: 4 },
   overdueText: { fontSize: 11, fontWeight: '600' },
   
   // Secretaria Cards
@@ -937,7 +921,6 @@ const styles = StyleSheet.create({
   secretariaInfo: { flex: 1, marginLeft: 10 },
   secretariaName: { fontSize: 15, fontWeight: '700' },
   secretariaArea: { fontSize: 12, marginTop: 2 },
-  secretariaScore: { alignItems: 'flex-end' },
   scoreValue: { fontSize: 22, fontWeight: '800' },
   secretariaStats: { flexDirection: 'row', justifyContent: 'space-around', marginBottom: 12, paddingVertical: 10, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(0,0,0,0.05)' },
   statItem: { alignItems: 'center' },

@@ -26,9 +26,6 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     } : {})
   },
   // Header con glassmorphism
-  headerGradient: {
-    overflow: 'hidden',
-  },
   headerGradientInner: {
     borderBottomLeftRadius: RADIUS.lg + 4,
     borderBottomRightRadius: RADIUS.lg + 4,
@@ -42,27 +39,6 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     paddingTop: isDesktop ? SPACING.xxxl : 52,
     paddingBottom: SPACING.xl
   },
-  greetingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6
-  },
-  iconBadge: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  greeting: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.85)',
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
-  },
   heading: { 
     fontSize: isDesktop ? 36 : Platform.OS === 'android' ? 32 : 30, 
     fontWeight: '800',
@@ -70,71 +46,11 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     letterSpacing: -0.8,
     marginTop: 2,
   },
-  todayButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    paddingHorizontal: isDesktop ? 18 : 14,
-    paddingVertical: isDesktop ? 10 : 8,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
-  },
-  todayButtonText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
   scrollContent: {
     padding: isDesktop ? 24 : isTablet ? 16 : 14,
     paddingBottom: isDesktop ? 48 : 40,
   },
   // Quick Stats Inline - Compacto
-  quickStatsInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-around',
-    marginBottom: SPACING.sm,
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    backgroundColor: isDark ? 'rgba(30, 30, 35, 0.95)' : '#FFFFFF',
-    borderWidth: 1,
-    borderColor: theme.glassBorder,
-    shadowColor: theme.glassShadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDark ? 0.10 : 0.06,
-    shadowRadius: 6,
-    ...Platform.select({ android: { elevation: 2 } }),
-  },
-  quickStatInlineItem: {
-    alignItems: 'center',
-    paddingHorizontal: 8,
-  },
-  quickStatInlineValue: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  quickStatInlineLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  quickStatInlineDivider: {
-    width: 1,
-    height: 24,
-    backgroundColor: theme.border,
-  },
-  completionPill: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  completionPillText: {
-    fontSize: 13,
-    fontWeight: '800',
-  },
   // Month controls con glassmorphism premium
   monthControlsWrapper: {
     marginBottom: SPACING.lg,
@@ -255,13 +171,6 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     shadowOpacity: 0.50,
     shadowRadius: 10,
     ...Platform.select({ android: { elevation: 6 } }),
-  },
-  todayCircle: {
-    position: 'absolute',
-    width: '100%',
-    height: '100%',
-    borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.1)',
   },
   dayHighPriority: {
     backgroundColor: isDark ? 'rgba(255,59,48,0.22)' : 'rgba(255,59,48,0.10)',

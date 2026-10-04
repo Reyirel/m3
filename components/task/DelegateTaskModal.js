@@ -207,15 +207,4 @@ const createStyles = (_theme) =>
     userArea: {
       fontSize: 13,
     },
-    cancelButton: {
-      marginHorizontal: 20,
-      marginTop: 20,
-      paddingVertical: 14,
-      borderRadius: 12,
-      alignItems: 'center',
-    },
-    cancelButtonText: {
-      fontSize: 16,
-      fontWeight: '600',
-    },
   });

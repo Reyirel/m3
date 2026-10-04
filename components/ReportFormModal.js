@@ -304,21 +304,6 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       gap: 12,
       marginTop: 24,
     },
-    saveButton: {
-      flex: 1,
-      paddingVertical: 12,
-      borderRadius: 8,
-      backgroundColor: theme.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      flexDirection: 'row',
-      gap: 8,
-    },
-    buttonText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: '#fff',
-    },
     errorText: {
       color: theme.error,
       fontSize: 12,
@@ -343,11 +328,6 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       fontWeight: '600',
       color: theme.textSecondary,
     },
-    templatesToggle: {
-      fontSize: 12,
-      color: theme.primary,
-      fontWeight: '500',
-    },
     templatesGrid: {
       flexDirection: 'row',
       flexWrap: 'wrap',
@@ -363,10 +343,6 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       borderWidth: 1,
       borderColor: theme.border,
       gap: 6,
-    },
-    templateChipActive: {
-      backgroundColor: theme.primary + '15',
-      borderColor: theme.primary,
     },
     templateIcon: {
       fontSize: 16,
@@ -604,7 +580,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       animationType="fade"
     >
       <WebSafeBlur intensity={70} style={styles.container}>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityLabel="Cerrar"
           style={styles.background}
           activeOpacity={1}
           onPress={handleClose}

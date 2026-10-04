@@ -489,23 +489,6 @@ function createStyles(theme, isDark, isDesktop, width, padding) {
       borderBottomRightRadius: 28,
       gap: 10,
     },
-    loadingLine1: {
-      width: 90,
-      height: 12,
-      borderRadius: 6,
-      backgroundColor: 'rgba(255,255,255,0.22)',
-    },
-    loadingLine2: {
-      width: 180,
-      height: 26,
-      borderRadius: 8,
-      backgroundColor: 'rgba(255,255,255,0.28)',
-    },
-    loadingCenter: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
     listContent: {
       paddingBottom: 100,
     },
@@ -524,75 +507,6 @@ function createStyles(theme, isDark, isDesktop, width, padding) {
     listSub: {
       fontSize: 13,
       marginTop: 2,
-    },
-    urgentBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 10,
-      borderWidth: 1,
-    },
-    urgentBadgeText: {
-      fontSize: 12,
-      fontWeight: '600',
-    },
-    modalOverlay: {
-      flex: 1,
-      backgroundColor: 'rgba(0,0,0,0.52)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      padding: 20,
-    },
-    modalCard: {
-      width: '100%',
-      maxWidth: 440,
-      borderRadius: 20,
-      borderWidth: 1,
-      padding: 20,
-      shadowColor: '#000',
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.22,
-      shadowRadius: 20,
-      elevation: 10,
-    },
-    modalHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      marginBottom: 16,
-    },
-    modalTitle: {
-      fontSize: 17,
-      fontWeight: '700',
-    },
-    modalSub: {
-      fontSize: 13,
-      marginTop: 2,
-    },
-    urgentRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: 12,
-      borderRadius: 12,
-      borderWidth: 1.5,
-      marginBottom: 8,
-    },
-    urgentTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      lineHeight: 20,
-    },
-    modalBtn: {
-      borderRadius: 12,
-      paddingVertical: 14,
-      alignItems: 'center',
-    },
-    modalBtnText: {
-      fontSize: 15,
-      fontWeight: '700',
-      color: '#FFFFFF',
     },
   });
 }

@@ -140,7 +140,4 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   restoreText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40, gap: 10 },
-  emptyTitle: { fontSize: 18, fontWeight: '800', marginTop: 6 },
-  emptyText: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 });

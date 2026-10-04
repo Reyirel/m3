@@ -70,7 +70,7 @@ export default function ConfirmDialog({
       onRequestClose={handleCancel}
     >
       <View style={[styles.overlay, { backgroundColor: theme.overlay }]}>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityLabel="Cerrar"
           style={styles.backdrop}
           activeOpacity={1}
           onPress={handleCancel}

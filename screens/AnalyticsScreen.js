@@ -67,45 +67,6 @@ const AnalyticsScreen = ({ navigation }) => {
       backgroundColor: theme.background,
     },
     // ✨ Header Premium
-    headerGradient: {
-      paddingTop: 48,
-      paddingBottom: 20,
-      paddingHorizontal: 20,
-    },
-    headerContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    backButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: 'rgba(255,255,255,0.15)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 16,
-    },
-    headerTitleContainer: {
-      flex: 1,
-    },
-    headerTitle: {
-      fontSize: 26,
-      fontWeight: '800',
-      color: '#FFFFFF',
-      letterSpacing: -0.5,
-    },
-    headerSubtitle: {
-      fontSize: 13,
-      color: 'rgba(255,255,255,0.75)',
-      marginTop: 4,
-      letterSpacing: 0.2,
-    },
-    headerDecoration: {
-      position: 'absolute',
-      right: 20,
-      top: 50,
-      opacity: 0.08,
-    },
     content: {
       flex: 1,
     },
@@ -154,14 +115,6 @@ const AnalyticsScreen = ({ navigation }) => {
       position: 'relative',
       overflow: 'hidden',
     },
-    metricGlassOverlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      borderRadius: 20,
-    },
     metricIconWrapper: {
       width: 48,
       height: 48,
@@ -188,15 +141,6 @@ const AnalyticsScreen = ({ navigation }) => {
       color: 'rgba(255,255,255,0.6)',
       marginTop: 4,
       fontWeight: '500',
-    },
-    metricShine: {
-      position: 'absolute',
-      top: -50,
-      right: -50,
-      width: 120,
-      height: 120,
-      borderRadius: 60,
-      backgroundColor: 'rgba(255,255,255,0.08)',
     },
     // ✨ Rating Distribution Premium
     ratingContainer: {
@@ -416,18 +360,6 @@ const AnalyticsScreen = ({ navigation }) => {
       color: theme.accentLight,
     },
     // Loading
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    loadingGradient: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      height: 300,
-    },
   }), [isDark]);
 
   // ✨ Función para ejecutar animaciones de entrada

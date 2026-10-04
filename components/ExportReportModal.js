@@ -256,7 +256,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
       animationType="fade"
     >
       <WebSafeBlur intensity={70} style={styles.container}>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityLabel="Cerrar"
           style={styles.background}
           activeOpacity={1}
           onPress={onClose}

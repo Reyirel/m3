@@ -172,7 +172,7 @@ export default function MyInboxScreen({ navigation }) {
       ]}>
         {/* Selección múltiple (admin) */}
         {isAdmin && (
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="checkbox" accessibilityLabel="Seleccionar tarea" accessibilityState={{ checked: isSelected }}
             onPress={() => toggleTaskSelection(item.id)}
             style={[
               styles.selectionCircle,

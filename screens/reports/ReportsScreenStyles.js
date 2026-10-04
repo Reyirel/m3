@@ -19,14 +19,6 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge,
       maxWidth: Platform.OS === 'web' ? MAX_WIDTHS.content : width,
       alignSelf: 'center',
     },
-    centered: {
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    loadingText: {
-      marginTop: 12,
-      fontSize: 16,
-    },
     headerGradientInner: {
       paddingHorizontal: responsiveHeaderPadding,
       paddingTop: isDesktop ? 28 : 48,
@@ -245,36 +237,6 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge,
       letterSpacing: 0.1,
     },
     // Legacy stat styles (for compatibility)
-    stat: {
-      width: isDesktop ? '23%' : '48%',
-      backgroundColor: theme.glass,
-      borderWidth: 1,
-      borderColor: theme.glassBorder,
-      padding: 16,
-      borderRadius: 16,
-      alignItems: 'center',
-    },
-    statContent: {
-      alignItems: 'center',
-      width: '100%',
-    },
-    statIcon: {
-      width: 56,
-      height: 56,
-      borderRadius: 14,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 12,
-    },
-    statValue: {
-      fontSize: 24,
-      fontWeight: '900',
-      marginBottom: 4,
-    },
-    statLabel: {
-      fontSize: 13,
-      fontWeight: '600',
-    },
     chartCard: {
       backgroundColor: theme.glass,
       borderWidth: 1,
@@ -288,96 +250,8 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge,
       fontWeight: '700',
       marginBottom: 16,
     },
-    chart: {
-      borderRadius: 16,
-      marginVertical: 0,
-    },
-    areaMetricsGrid: {
-      gap: 16,
-    },
-    areaMetricItem: {
-      gap: 8,
-    },
-    areaName: {
-      fontSize: 14,
-      fontWeight: '700',
-    },
-    areaProgressBar: {
-      height: 8,
-      borderRadius: 4,
-      backgroundColor: theme.border,
-      overflow: 'hidden',
-    },
-    areaProgressFill: {
-      height: '100%',
-      borderRadius: 4,
-    },
-    areaStats: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-    },
-    areaCount: {
-      fontSize: 12,
-      fontWeight: '600',
-    },
-    areaPercent: {
-      fontSize: 12,
-      fontWeight: '700',
-    },
     // Subtasks Statistics Styles
-    subtasksStatsSection: {
-      marginVertical: 16,
-      paddingHorizontal: responsiveContentPadding,
-    },
-    subtaskCard: {
-      borderRadius: 16,
-      padding: 20,
-    },
-    subtaskHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 16,
-    },
-    subtaskTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-    },
-    subtaskStatsGrid: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      marginBottom: 20,
-    },
-    subtaskStat: {
-      alignItems: 'center',
-      flex: 1,
-    },
-    subtaskStatValue: {
-      fontSize: 24,
-      fontWeight: '800',
-      marginBottom: 4,
-    },
-    subtaskStatLabel: {
-      fontSize: 12,
-      fontWeight: '600',
-    },
-    progressRingContainer: {
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginTop: 12,
-    },
-    progressRing: {
-      borderRadius: 60,
-      overflow: 'hidden',
-    },
-    progressRingFill: {
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
     // Task Progress Styles
-    tasksProgressContainer: {
-      marginTop: 12,
-      gap: 12,
-    },
     // Empty State Styles
     emptyStateIcon: {
       width: 56,
@@ -466,47 +340,6 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge,
       fontSize: 13,
       fontWeight: '500',
       textAlign: 'center',
-    },
-    taskProgressContainer: {
-      marginTop: 12,
-      gap: 12,
-    },
-    taskProgressItem: {
-      paddingVertical: 12,
-      paddingHorizontal: 12,
-      borderRadius: 12,
-      backgroundColor: isDark ? 'rgba(159, 34, 65, 0.1)' : 'rgba(159, 34, 65, 0.05)',
-    },
-    taskProgressHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 8,
-    },
-    taskProgressTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      flex: 1,
-      marginRight: 8,
-    },
-    taskProgressPercent: {
-      fontSize: 12,
-      fontWeight: '700',
-    },
-    taskProgressBar: {
-      height: 8,
-      backgroundColor: theme.border,
-      borderRadius: 4,
-      overflow: 'hidden',
-      marginBottom: 8,
-    },
-    taskProgressBarFill: {
-      height: '100%',
-      borderRadius: 4,
-    },
-    taskProgressDetail: {
-      fontSize: 12,
-      fontWeight: '500',
     },
     // New Area Metrics Styles
     areaCardsContainer: {
@@ -783,95 +616,6 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge,
       fontWeight: '600',
     },
     // Legacy styles (mantener compatibilidad)
-    hierarchyContainer: {
-      flexDirection: isDesktop ? 'row' : 'column',
-      gap: 16,
-      marginTop: 16,
-    },
-    hierarchyCard: {
-      flex: 1,
-      borderRadius: 16,
-      borderWidth: 2,
-      padding: 16,
-    },
-    hierarchyHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      marginBottom: 16,
-    },
-    hierarchyIconBadge: {
-      width: 40,
-      height: 40,
-      borderRadius: 12,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    hierarchyTitleContainer: {
-      flex: 1,
-    },
-    hierarchyTitle: {
-      fontSize: 18,
-      fontWeight: '700',
-    },
-    hierarchySubtitle: {
-      fontSize: 12,
-      marginTop: 2,
-    },
-    hierarchyStats: {
-      flexDirection: 'row',
-      justifyContent: 'space-around',
-      marginBottom: 16,
-      paddingVertical: 12,
-      borderRadius: 12,
-      backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-    },
-    hierarchyStat: {
-      alignItems: 'center',
-    },
-    hierarchyStatValue: {
-      fontSize: 20,
-      fontWeight: '700',
-    },
-    hierarchyStatLabel: {
-      fontSize: 12,
-      marginTop: 4,
-      textTransform: 'uppercase',
-      letterSpacing: 0.5,
-    },
-    hierarchyProgressContainer: {
-      gap: 8,
-    },
-    hierarchyProgressBg: {
-      height: 8,
-      borderRadius: 4,
-      overflow: 'hidden',
-    },
-    hierarchyProgress: {
-      height: '100%',
-      borderRadius: 4,
-    },
-    hierarchyRateText: {
-      fontSize: 13,
-      fontWeight: '600',
-      textAlign: 'center',
-    },
-    clearFilterBtn: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 6,
-      marginTop: 16,
-      paddingVertical: 8,
-      paddingHorizontal: 16,
-      borderRadius: 8,
-      borderWidth: 1,
-      alignSelf: 'center',
-    },
-    clearFilterText: {
-      fontSize: 13,
-      fontWeight: '600',
-    },
     // ✨ Quick Metrics Premium Styles
     quickMetricsHeader: {
       flexDirection: 'row',

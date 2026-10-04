@@ -55,18 +55,6 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     justifyContent: 'space-between',
     alignItems: 'flex-start'
   },
-  greetingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4
-  },
-  greeting: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    opacity: 0.9,
-    letterSpacing: 0.2
-  },
   heading: {
     fontSize: screenWidth > 768 ? 30 : 26,
     fontWeight: '800',
@@ -170,37 +158,6 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)'
   },
-  priorityBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 8
-  },
-  cardMeta: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 8,
-    flexWrap: 'wrap'
-  },
-  areaBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    maxWidth: 120
-  },
-  areaText: {
-    fontSize: 12,
-    fontWeight: '600'
-  },
   contextMenuContent: {
     padding: 12
   },
@@ -246,11 +203,6 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
   statusOptionText: {
     fontSize: 13,
     fontWeight: '600'
-  },
-  columnsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 16,
-    paddingVertical: 16
   },
   board: {
     paddingHorizontal: Platform.OS === 'web' ? 10 : (dimensions.width > 480 ? 10 : 6),
@@ -340,17 +292,6 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     alignItems: 'center',
     gap: 6
   },
-  columnCountContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4
-  },
-  badgeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    position: 'relative'
-  },
   overdueColumnBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -359,19 +300,6 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     paddingVertical: 3,
     borderRadius: 10,
     shadowColor: theme.error,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2
-  },
-  priorityColumnBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 6,
-    paddingVertical: 3,
-    borderRadius: 10,
-    shadowColor: theme.warning,
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
@@ -431,11 +359,6 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     lineHeight: 14,
     opacity: 0.65
   },
-  emptyColumnText: {
-    fontSize: dimensions.width > 768 ? 14 : 12,
-    fontWeight: '500',
-    opacity: 0.6
-  },
   statusAgeIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -449,62 +372,6 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     fontSize: 11,
     fontWeight: '600'
   },
-  filterToggleBar: {
-    paddingHorizontal: dimensions.width > 768 ? 16 : 12,
-    paddingVertical: dimensions.width > 768 ? 4 : 2,
-    borderBottomWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center'
-  },
-  filterToggleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingVertical: dimensions.width > 768 ? 4 : 2,
-    paddingHorizontal: 12
-  },
-  filterToggleText: {
-    fontSize: dimensions.width > 768 ? 13 : 12,
-    fontWeight: '600',
-    letterSpacing: 0.2
-  },
-  quickFiltersRow: {
-    flexDirection: 'row',
-    gap: dimensions.width > 768 ? 8 : 6,
-    paddingVertical: dimensions.width > 768 ? 4 : 2,
-  },
-  quickFilterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: dimensions.width > 768 ? 12 : 10,
-    paddingVertical: dimensions.width > 768 ? 8 : 6,
-    borderRadius: 16,
-    borderWidth: 1.5,
-    shadowColor: theme.glassShadow,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  quickFilterText: {
-    fontSize: dimensions.width > 768 ? 12 : 11,
-    fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  clearFilterButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: dimensions.width > 768 ? 10 : 8,
-    paddingVertical: dimensions.width > 768 ? 8 : 6,
-    borderRadius: 16,
-  },
-  clearFilterText: {
-    fontSize: dimensions.width > 768 ? 11 : 10,
-    fontWeight: '600',
-  },
   columnCountText: {
     fontSize: 12,
     fontWeight: '700',
@@ -514,42 +381,6 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     marginHorizontal: 8,
     borderRadius: 14,
     position: 'relative',
-  },
-  cardGlassHighlight: {
-    position: 'absolute',
-    top: 0,
-    left: 4,
-    right: 4,
-    height: 1,
-    borderRadius: 1,
-    zIndex: 2,
-    pointerEvents: 'none',
-  },
-  cardAccentGlow: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    width: 100,
-    zIndex: 1,
-    pointerEvents: 'none',
-  },
-  cardRimGlow: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: dimensions.width > 600 ? 16 : 14,
-    borderWidth: 1,
-    zIndex: 2,
-    pointerEvents: 'none',
-  },
-  cardDragging: {
-    opacity: 0.95,
-    transform: [{ scale: 1.05 }],
-    shadowOpacity: 0.25,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
-    borderWidth: 2,
-    borderColor: theme.primary
   },
   cardTopRow: {
     flexDirection: 'row',
@@ -655,31 +486,6 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     fontWeight: '600',
     paddingVertical: 2
   },
-  dragIndicator: {
-    position: 'absolute',
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    marginHorizontal: 14,
-    borderRadius: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
-    borderWidth: 2.5,
-    borderColor: theme.primary
-  },
-  dragIndicatorText: {
-    fontSize: 17,
-    fontWeight: '800',
-    color: theme.primary,
-    letterSpacing: 0.4,
-    textTransform: 'uppercase'
-  },
   statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -723,50 +529,6 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
   },
   statCardPct: {
     fontSize: 12,
-    fontWeight: '600',
-  },
-  statItem: {
-    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.80)',
-    borderRadius: 14,
-    padding: 12,
-    borderWidth: 1,
-    borderColor: theme.glassBorder,
-  },
-  statHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  statLabel: {
-    fontSize: 18,
-    fontWeight: '800',
-    marginLeft: 10,
-    color: theme.text,
-    letterSpacing: -0.3,
-    textShadowColor: 'rgba(0,0,0,0.08)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1
-  },
-  statProgress: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  statNumbers: {
-    alignItems: 'flex-end',
-  },
-  statCount: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: theme.text,
-    letterSpacing: -0.5,
-    textShadowColor: 'rgba(0,0,0,0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
-  },
-  statPercentage: {
-    fontSize: 14,
-    color: theme.textSecondary,
     fontWeight: '600',
   },
   filterCompactBar: {
@@ -870,9 +632,6 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
   },
   searchInputWrapper: {
     flex: 1,
-  },
-  searchInputPlaceholder: {
-    fontSize: 15,
   },
   priorityButtonsRow: {
     flexDirection: 'row',

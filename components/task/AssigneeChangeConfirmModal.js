@@ -161,14 +161,4 @@ const createStyles = (_theme, _isDark) =>
       gap: 12,
       marginTop: 20,
     },
-    button: {
-      flex: 1,
-      paddingVertical: 12,
-      borderRadius: 8,
-      alignItems: 'center',
-    },
-    buttonText: {
-      fontSize: 16,
-      fontWeight: '700',
-    },
   });

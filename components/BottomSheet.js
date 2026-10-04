@@ -106,7 +106,7 @@ const BottomSheet = ({
             },
           ]}
         >
-          <TouchableOpacity
+          <TouchableOpacity accessibilityLabel="Cerrar"
             style={styles.backdropTouchable}
             activeOpacity={1}
             onPress={closeOnBackdrop ? hide : undefined}

@@ -811,12 +811,6 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingVertical: 4,
   },
-  titularDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    marginTop: 4,
-  },
   titularName: {
     fontSize: 13,
     fontWeight: '600',

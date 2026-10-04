@@ -367,7 +367,7 @@ const AdminReportsScreen = ({ navigation }) => {
                       const imageUri = typeof img === 'string' ? img : (img.url || img.uri || img.dataUrl);
                       if (!imageUri) return null;
                       return (
-                        <TouchableOpacity
+                        <TouchableOpacity accessibilityRole="imagebutton" accessibilityLabel="Ver imagen"
                           key={index}
                           onPress={() => {
                             setSelectedImage(imageUri);
@@ -442,40 +442,6 @@ const AdminReportsScreen = ({ navigation }) => {
     innerContainer: {
       flex: 1,
       backgroundColor: 'transparent',
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingTop: Platform.OS === 'web' ? 16 : 48,
-      paddingBottom: 24,
-      borderBottomLeftRadius: 32,
-      borderBottomRightRadius: 32,
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.35,
-      shadowRadius: 20,
-      elevation: 12,
-      overflow: 'hidden',
-    },
-    backButton: {
-      marginRight: 12,
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: 'rgba(255,255,255,0.14)',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.20)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    headerTitle: {
-      fontSize: 24,
-      fontWeight: '800',
-      color: '#FFFFFF',
-      letterSpacing: -0.5,
-      textShadowColor: 'rgba(0,0,0,0.20)',
-      textShadowOffset: { width: 0, height: 1 },
-      textShadowRadius: 4,
     },
     statsRow: {
       flexDirection: 'row',
@@ -660,11 +626,6 @@ const AdminReportsScreen = ({ navigation }) => {
     starsContainer: {
       flexDirection: 'row',
       gap: 2,
-    },
-    loadingContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
     },
     emptyContainer: {
       flex: 1,
