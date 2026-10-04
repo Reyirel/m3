@@ -12,7 +12,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useNotification } from '../contexts/NotificationContext';
 import OverdueAlert from '../components/OverdueAlert';
 import ShimmerEffect from '../components/ShimmerEffect';
-import OrgChartEditor from '../components/OrgChartEditor';
+import OrgChartEditor from '../components/admin/OrgChartEditor';
 import { SECRETARIAS, DIRECCIONES } from '../config/areas';
 import { toMs } from '../utils/dateUtils';
 import { hapticMedium, hapticLight } from '../utils/haptics';

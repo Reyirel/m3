@@ -1,4 +1,4 @@
-// components/AlertsPanel.js
+// screens/reports/AlertsPanel.js
 // Panel de alertas y sugerencias de optimización
 // Ligero y sin dependencias pesadas
 
@@ -10,8 +10,8 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
-import SpringCard from './SpringCard';
+import { useTheme } from '../../contexts/ThemeContext';
+import SpringCard from '../../components/SpringCard';
 
 export default function AlertsPanel({
   alerts = [],

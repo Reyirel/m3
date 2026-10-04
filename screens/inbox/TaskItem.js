@@ -1,23 +1,23 @@
-// components/TaskItem.js
+// screens/inbox/TaskItem.js
 // TaskItem moderno con animaciones y glassmorphism - Compatible con web
 import React, { useEffect, useState, memo, useRef, useMemo } from 'react';
 import { TouchableOpacity, View, Text, StyleSheet, Animated, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
-import { GlassView } from '../utils/GlassView';
-import { useResponsive } from '../utils/responsive';
-import { hapticLight, hapticMedium } from '../utils/haptics';
-import { getSwipeable } from '../utils/platformComponents';
+import { useTheme } from '../../contexts/ThemeContext';
+import { GlassView } from '../../utils/GlassView';
+import { useResponsive } from '../../utils/responsive';
+import { hapticLight, hapticMedium } from '../../utils/haptics';
+import { getSwipeable } from '../../utils/platformComponents';
 import ContextMenu from './ContextMenu';
 import ConfirmDialog from './ConfirmDialog';
-import Avatar from './Avatar';
-import ProgressBar from './ProgressBar';
-import { subscribeToTaskProgress } from '../services/taskProgress';
-import { toMs } from '../utils/dateUtils';
-import { useTasks } from '../contexts/TasksContext';
-import { useChatUnread } from '../hooks/useChatUnread';
-import { predictDelayRisk, riskLevelDisplay } from '../utils/aiFeatures';
-import { isInProgress, statusLabel } from '../utils/taskStatus';
+import Avatar from '../../components/Avatar';
+import ProgressBar from '../../components/ProgressBar';
+import { subscribeToTaskProgress } from '../../services/taskProgress';
+import { toMs } from '../../utils/dateUtils';
+import { useTasks } from '../../contexts/TasksContext';
+import { useChatUnread } from '../../hooks/useChatUnread';
+import { predictDelayRisk, riskLevelDisplay } from '../../utils/aiFeatures';
+import { isInProgress, statusLabel } from '../../utils/taskStatus';
 
 const Swipeable = getSwipeable();
 

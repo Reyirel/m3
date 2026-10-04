@@ -1,4 +1,4 @@
-// components/AreaRankingCard.js
+// screens/reports/AreaRankingCard.js
 // Componente para mostrar ranking de áreas con información detallada
 
 import React from 'react';
@@ -10,7 +10,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export default function AreaRankingCard({
   areaMetrics = {},

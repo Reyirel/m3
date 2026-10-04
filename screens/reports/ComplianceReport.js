@@ -1,12 +1,12 @@
-// components/ComplianceReport.js
+// screens/reports/ComplianceReport.js
 // Reporte de cumplimiento individual por usuario/área
 // Muestra quién trabaja y quién no en base a confirmaciones
 
 import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getComplianceMetrics } from '../services/taskConfirmations';
-import { useTheme } from '../contexts/ThemeContext';
+import { getComplianceMetrics } from '../../services/taskConfirmations';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const ComplianceReport = ({ 
   tasks = [],

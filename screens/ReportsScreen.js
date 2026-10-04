@@ -21,10 +21,10 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useResponsive } from '../utils/responsive';
 import { useTasks } from '../contexts/TasksContext';
 import ShimmerEffect from '../components/ShimmerEffect';
-import AreaFilter from '../components/AreaFilter';
-import AlertsPanel from '../components/AlertsPanel';
-import InsightsPanel from '../components/InsightsPanel';
-import AreaMetricsPanel from '../components/AreaMetricsPanel';
+import AreaFilter from './reports/AreaFilter';
+import AlertsPanel from './reports/AlertsPanel';
+import InsightsPanel from './reports/InsightsPanel';
+import AreaMetricsPanel from './reports/AreaMetricsPanel';
 import { exportAreaReport } from '../services/ReportsExport';
 import { MAX_WIDTHS } from '../theme/tokens';
 import { createStyles } from './reports/ReportsScreenStyles';
@@ -36,7 +36,7 @@ import HierarchySummary from './reports/HierarchySummary';
 import AreaSections from './reports/AreaSections';
 import ChartsModal, { priorityChartData } from './reports/ChartsModal';
 
-const ComplianceReport = React.lazy(() => import('../components/ComplianceReport'));
+const ComplianceReport = React.lazy(() => import('./reports/ComplianceReport'));
 
 // Las predicciones aún no se calculan; InsightsPanel las recibe vacías
 const NO_PREDICTIONS = {};

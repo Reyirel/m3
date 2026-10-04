@@ -1,4 +1,4 @@
-// components/AreaStatsCard.js
+// screens/reports/AreaStatsCard.js
 // Tarjeta compacta con modal de detalle al tocar
 // Sin animaciones useNativeDriver:false para evitar bloqueo del cursor en web
 
@@ -14,7 +14,7 @@ import {
   TouchableWithoutFeedback,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 // ── componente principal ───────────────────────────────────────────────────
 const AreaStatsCard = memo(function AreaStatsCard({

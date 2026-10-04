@@ -1,4 +1,4 @@
-// components/AreaComparisonChart.js
+// screens/reports/AreaComparisonChart.js
 // Gráfico comparativo horizontal de áreas para visualizar rendimiento relativo
 
 import React from 'react';
@@ -12,7 +12,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 Dimensions.get('window');
 

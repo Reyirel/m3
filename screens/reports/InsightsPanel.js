@@ -1,4 +1,4 @@
-// components/InsightsPanel.js
+// screens/reports/InsightsPanel.js
 // Panel de insights, comparativas y predicciones
 // Ligero y optimizado para rendimiento
 
@@ -11,8 +11,8 @@ import {
   Dimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
-import SpringCard from './SpringCard';
+import { useTheme } from '../../contexts/ThemeContext';
+import SpringCard from '../../components/SpringCard';
 
 const { width } = Dimensions.get('window');
 

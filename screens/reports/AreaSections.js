@@ -6,10 +6,10 @@ import { View, Text, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ShimmerEffect from '../../components/ShimmerEffect';
 import SpringCard from '../../components/SpringCard';
-import AreaStatsCard from '../../components/AreaStatsCard';
-import AreaRankingCard from '../../components/AreaRankingCard';
+import AreaStatsCard from './AreaStatsCard';
+import AreaRankingCard from './AreaRankingCard';
 
-const AreaComparisonChart = React.lazy(() => import('../../components/AreaComparisonChart'));
+const AreaComparisonChart = React.lazy(() => import('./AreaComparisonChart'));
 
 // Lo que se muestra en el lugar de una sección mientras no hay áreas con datos
 function EmptySection({ icon, title, subtitle, anim, styles, theme }) {

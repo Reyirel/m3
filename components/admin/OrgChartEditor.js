@@ -1,4 +1,4 @@
-// components/OrgChartEditor.js
+// components/admin/OrgChartEditor.js
 // Editor visual del organigrama municipal — modos: Lista editable + Diagrama jerárquico
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -10,13 +10,13 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   addSecretariaToStructure, getAreaNameError, getOrgStructure, moveDireccionInStructure,
   moveSecretariaInStructure, renameAreaInStructure,
-} from '../config/areas';
-import { useTheme } from '../contexts/ThemeContext';
+} from '../../config/areas';
+import { useTheme } from '../../contexts/ThemeContext';
 import {
   applyAreaRename, applyDireccionMove, moveDireccion, removeArea, renameArea, saveOrgStructure,
   subscribeToSavedOrgStructure,
-} from '../services/orgStructure';
-import { showDialog } from '../utils/alert';
+} from '../../services/orgStructure';
+import { showDialog } from '../../utils/alert';
 import OrgDiagramBoard from './OrgDiagramBoard';
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;

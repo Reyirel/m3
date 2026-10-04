@@ -1,14 +1,14 @@
-// components/AreaMetricsPanel.js
+// screens/reports/AreaMetricsPanel.js
 // Panel de métricas de área para secretarios
 // Muestra el rendimiento de los directores de su área
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { getUsersByRole } from '../services/usersDirectory';
-import { useTheme } from '../contexts/ThemeContext';
-import { SPACING, RADIUS, TYPOGRAPHY, SHADOWS } from '../theme/tokens';
-import { toMs } from '../utils/dateUtils';
+import { getUsersByRole } from '../../services/usersDirectory';
+import { useTheme } from '../../contexts/ThemeContext';
+import { SPACING, RADIUS, TYPOGRAPHY, SHADOWS } from '../../theme/tokens';
+import { toMs } from '../../utils/dateUtils';
 
 const AreaMetricsPanel = ({ 
   userArea,

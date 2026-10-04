@@ -1,4 +1,4 @@
-// components/ContextMenu.js
+// screens/inbox/ContextMenu.js
 // Menú contextual para long-press en TaskItem
 import React, { useEffect, useRef } from 'react';
 import {
@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import { useTheme } from '../contexts/ThemeContext';
+import { useTheme } from '../../contexts/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 

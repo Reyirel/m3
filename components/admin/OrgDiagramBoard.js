@@ -1,4 +1,4 @@
-// components/OrgDiagramBoard.js
+// components/admin/OrgDiagramBoard.js
 // Diagrama del organigrama con arrastrar y soltar.
 //
 // Cada secretaría es una columna y cada dirección una ficha. Una ficha se puede:
@@ -16,7 +16,7 @@ import {
   PanResponder, Animated, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SPACING, TOUCH_TARGET } from '../theme/tokens';
+import { SPACING, TOUCH_TARGET } from '../../theme/tokens';
 
 const COL_WIDTH = 190;
 const COL_GAP = 10;

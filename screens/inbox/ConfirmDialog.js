@@ -1,11 +1,11 @@
-// components/ConfirmDialog.js
+// screens/inbox/ConfirmDialog.js
 // Diálogo de confirmación personalizado elegante
 import React from 'react';
 import { View, Text, Modal, TouchableOpacity, StyleSheet, Animated, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTheme } from '../contexts/ThemeContext';
-import { GlassView } from '../utils/GlassView';
+import { useTheme } from '../../contexts/ThemeContext';
+import { GlassView } from '../../utils/GlassView';
 
 export default function ConfirmDialog({
   visible,

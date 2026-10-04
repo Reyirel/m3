@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import TaskItem from '../components/TaskItem';
+import TaskItem from './inbox/TaskItem';
 import EmptyState from '../components/EmptyState';
 import ShimmerEffect from '../components/ShimmerEffect';
 import { updateTask } from '../services/tasks';
