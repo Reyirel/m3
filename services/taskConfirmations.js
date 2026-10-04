@@ -152,14 +152,16 @@ export const getComplianceMetrics = (tasks, userEmail = null) => {
   const metrics = {};
   
   tasks.forEach(task => {
-    const assignedTo = task.assignedTo || [];
-    const completedBy = task.completedBy || [];
-    
+    // assignedTo puede ser un solo correo en tareas antiguas
+    const assignedTo = Array.isArray(task.assignedTo) ? task.assignedTo : task.assignedTo ? [task.assignedTo] : [];
+    const completedBy = Array.isArray(task.completedBy) ? task.completedBy : [];
+
     assignedTo.forEach((email, index) => {
-      const emailLower = email.toLowerCase();
+      const emailLower = normalizeEmail(email);
+      if (!emailLower) return;
       
       // Si se especificó un usuario, filtrar
-      if (userEmail && emailLower !== userEmail.toLowerCase()) return;
+      if (userEmail && emailLower !== normalizeEmail(userEmail)) return;
       
       if (!metrics[emailLower]) {
         metrics[emailLower] = {
@@ -176,7 +178,7 @@ export const getComplianceMetrics = (tasks, userEmail = null) => {
       
       metrics[emailLower].assigned++;
       
-      const confirmation = completedBy.find(c => c.email.toLowerCase() === emailLower);
+      const confirmation = completedBy.find(c => normalizeEmail(c?.email) === emailLower);
       if (confirmation) {
         metrics[emailLower].confirmed++;
         

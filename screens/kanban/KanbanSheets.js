@@ -8,31 +8,35 @@ import BottomSheet from '../../components/BottomSheet';
 const PRIORITY_LABELS = { alta: '🔴 Alta', media: '🟡 Media', baja: '🟢 Baja' };
 
 /** Cambiar prioridad o estado de una tarea sin abrirla (se abre con un toque largo) */
-export function QuickEditSheet({ task, statuses, canClose, onChangePriority, onChangeStatus, onClose, styles, theme, isDark }) {
+export function QuickEditSheet({ task, statuses, canClose, canEditPriority, onChangePriority, onChangeStatus, onClose, styles, theme, isDark }) {
   if (!task) return null;
   return (
     <BottomSheet visible onClose={onClose} height={300} title="Edición Rápida">
       <View style={styles.contextMenuContent}>
         <Text style={[styles.contextTaskTitle, { color: theme.text }]}>{task.title}</Text>
 
-        <Text style={[styles.contextLabel, { color: theme.textSecondary }]}>Cambiar prioridad:</Text>
-        <View style={styles.priorityOptions}>
-          {Object.keys(PRIORITY_LABELS).map((priority) => (
-            <TouchableOpacity
-              key={priority}
-              style={[
-                styles.priorityOption,
-                { backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)' },
-                task.priority === priority && { backgroundColor: theme.primaryAlpha },
-              ]}
-              onPress={() => onChangePriority(task.id, priority)}
-            >
-              <Text style={[styles.priorityOptionText, { color: theme.text }]}>{PRIORITY_LABELS[priority]}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {canEditPriority && (
+          <>
+            <Text style={[styles.contextLabel, { color: theme.textSecondary }]}>Cambiar prioridad:</Text>
+            <View style={styles.priorityOptions}>
+              {Object.keys(PRIORITY_LABELS).map((priority) => (
+                <TouchableOpacity
+                  key={priority}
+                  style={[
+                    styles.priorityOption,
+                    { backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)' },
+                    task.priority === priority && { backgroundColor: theme.primaryAlpha },
+                  ]}
+                  onPress={() => onChangePriority(task.id, priority)}
+                >
+                  <Text style={[styles.priorityOptionText, { color: theme.text }]}>{PRIORITY_LABELS[priority]}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
 
-        <Text style={[styles.contextLabel, { color: theme.textSecondary, marginTop: 16 }]}>Cambiar estado:</Text>
+        <Text style={[styles.contextLabel, { color: theme.textSecondary, marginTop: canEditPriority ? 16 : 0 }]}>Cambiar estado:</Text>
         <View style={styles.statusOptions}>
           {statuses.filter((status) => status.key !== 'cerrada' || canClose).map((status) => (
             <TouchableOpacity

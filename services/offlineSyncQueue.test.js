@@ -95,3 +95,35 @@ describe('cola offline — sincronización', () => {
     expect(isPermanentError(new Error('Network request failed'))).toBe(false);
   });
 });
+
+describe('cola offline — cambios de otra persona en el mismo dispositivo', () => {
+  beforeEach(() => {
+    Object.keys(mockStore).forEach(k => delete mockStore[k]);
+    jest.clearAllMocks();
+    addDoc.mockReset();
+    addDoc.mockResolvedValue({ id: 'nuevo' });
+  });
+
+  test('solo se envían los cambios del usuario con la sesión abierta', async () => {
+    await queueOperation(OPERATION_TYPES.CREATE, { title: 'Mía' }, 'temp_1', USER);
+    await queueOperation(OPERATION_TYPES.CREATE, { title: 'De otra persona' }, 'temp_2', 'otro@test.com');
+    mockStore.userSession = JSON.stringify({ email: 'USER@test.com' });
+
+    const result = await syncPendingOperations();
+
+    expect(result.synced).toBe(1);
+    expect(addDoc).toHaveBeenCalledTimes(1);
+    const pending = await getPendingOperations();
+    expect(pending).toHaveLength(1);
+    expect(pending[0].userEmail).toBe('otro@test.com');
+  });
+
+  test('una operación sin autor se envía con cualquier sesión', async () => {
+    await queueOperation(OPERATION_TYPES.CREATE, { title: 'Sin autor' }, 'temp_1');
+    mockStore.userSession = JSON.stringify({ email: USER });
+
+    await syncPendingOperations();
+
+    expect(await getPendingOperations()).toHaveLength(0);
+  });
+});

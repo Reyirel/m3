@@ -81,7 +81,7 @@ export function useTaskDeletion({ currentUser, setTasks, notify }) {
   const deleteTask = useCallback(async (taskId) => {
     if (deletingRef.current.has(taskId)) return;
     if (currentUser?.role !== 'admin') {
-      notifyRef.current.showError(`Solo admins pueden eliminar. Tu rol: ${currentUser?.role || 'desconocido'}`);
+      notifyRef.current.showError('Solo el administrador puede eliminar tareas');
       return;
     }
 
@@ -91,16 +91,16 @@ export function useTaskDeletion({ currentUser, setTasks, notify }) {
     deleteManager.markDeleting(taskId);
     await saveDeleting(deletingRef.current);
 
-    notifyRef.current.showInfo('Eliminando tarea, espera un momento...');
+    notifyRef.current.showInfo('Eliminando tarea…');
     removeFromListLater(new Set([taskId]), SINGLE_DELAY_MS);
 
     deleteTaskFirebase(taskId)
       .then(() => {
-        notifyRef.current.showSuccess('✅ ¡TAREA ELIMINADA! Ya no aparecerá');
+        notifyRef.current.showSuccess('Tarea eliminada');
         deleteManager.confirmDelete(taskId);
       })
       // Si falla se deja marcada en deleteManager para que no reaparezca
-      .catch(() => notifyRef.current.showError('Error: No se pudo eliminar la tarea'))
+      .catch(() => notifyRef.current.showError('No se pudo eliminar la tarea'))
       .finally(() => unmark([taskId]));
   }, [currentUser, removeFromListLater, unmark]);
 
@@ -111,17 +111,17 @@ export function useTaskDeletion({ currentUser, setTasks, notify }) {
    */
   const deleteTasks = useCallback(async (selectedIds, onDone) => {
     if (selectedIds.size === 0) {
-      notifyRef.current.showWarning('⚠️ Selecciona al menos una tarea');
+      notifyRef.current.showWarning('Selecciona al menos una tarea');
       return;
     }
     if (currentUser?.role !== 'admin') {
-      notifyRef.current.showError('❌ Solo admins pueden eliminar tareas');
+      notifyRef.current.showError('Solo el administrador puede eliminar tareas');
       return;
     }
 
     const ids = Array.from(selectedIds);
     const idSet = new Set(ids);
-    notifyRef.current.showInfo(`🔴 ¡ELIMINANDO ${ids.length} TAREA${ids.length > 1 ? 'S' : ''}! Espera...`);
+    notifyRef.current.showInfo(ids.length > 1 ? `Eliminando ${ids.length} tareas…` : 'Eliminando tarea…');
 
     const deleting = new Set([...deletingRef.current, ...ids]);
     deletingRef.current = deleting;
@@ -140,7 +140,13 @@ export function useTaskDeletion({ currentUser, setTasks, notify }) {
       .catch(() => false)));
 
     const done = results.filter(Boolean).length;
-    notifyRef.current.showSuccess(`✅ ¡${done} TAREA${done > 1 ? 'S' : ''} ELIMINADA${done > 1 ? 'S' : ''}! Ya no aparecerán`);
+    const failed = ids.length - done;
+    if (done > 0) {
+      notifyRef.current.showSuccess(done > 1 ? `${done} tareas eliminadas` : 'Tarea eliminada');
+    }
+    if (failed > 0) {
+      notifyRef.current.showError(`No se ${failed > 1 ? `pudieron eliminar ${failed} tareas` : 'pudo eliminar 1 tarea'}`);
+    }
     onDone?.();
     unmark(ids);
   }, [currentUser, removeFromListLater, unmark]);

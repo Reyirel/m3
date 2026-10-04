@@ -116,6 +116,10 @@ export async function notifyAssignment(task) {
     return null;
   }
   
+  // El aviso a los asignados no depende del aviso local: sin permiso de notificaciones
+  // en este dispositivo, los asignados deben recibir el suyo igual
+  await notifyMultipleAssignees(task);
+
   try {
     // Notificación local para el dispositivo actual
     const localNotifId = await Notifications.scheduleNotificationAsync({
@@ -134,9 +138,6 @@ export async function notifyAssignment(task) {
       },
       trigger: null // Notificación inmediata
     });
-
-    // También notificar via FCM a los demás asignados
-    await notifyMultipleAssignees(task);
 
     return localNotifId;
   } catch (e) {

@@ -26,12 +26,19 @@ const isDone = (task) => task.status === 'cerrada' || task.status === 'completad
 
 /** Días promedio entre crear y completar una tarea */
 export const averageCompletionDays = (completedTasks) => {
-  if (completedTasks.length === 0) return 0;
-  const totalTime = completedTasks.reduce(
-    (sum, task) => sum + (toMs(task.completedAt) - toMs(task.createdAt)),
-    0
-  );
-  return Math.round(totalTime / completedTasks.length / DAY_MS);
+  // Solo cuentan las tareas que guardaron cuándo se crearon y cuándo se completaron
+  const durations = completedTasks
+    .map((task) => ({ start: toMs(task.createdAt), end: toMs(task.completedAt) }))
+    .filter(({ start, end }) => start !== null && end !== null && end >= start)
+    .map(({ start, end }) => end - start);
+  if (durations.length === 0) return 0;
+  return Math.round(durations.reduce((sum, ms) => sum + ms, 0) / durations.length / DAY_MS);
+};
+
+// Vencida: tiene fecha límite, ya pasó y la tarea no se ha terminado
+const isOverdueAt = (task, now) => {
+  const due = toMs(task.dueAt);
+  return due !== null && due < now && !isDone(task);
 };
 
 /**
@@ -48,7 +55,7 @@ export const periodStats = (tasks, days, now = Date.now()) => {
       completed: completed.length,
       inProgress: inPeriod.filter((task) => isInProgress(task.status) || task.status === 'en_revision').length,
       pending: inPeriod.filter((task) => task.status === 'pendiente').length,
-      overdue: inPeriod.filter((task) => toMs(task.dueAt) < now && task.status !== 'cerrada').length,
+      overdue: inPeriod.filter((task) => isOverdueAt(task, now)).length,
       completionRate: inPeriod.length > 0 ? Math.round((completed.length / inPeriod.length) * 100) : 0,
       avgCompletionTime: averageCompletionDays(completed),
     },

@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { collection, addDoc, updateDoc, doc, getDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
+import { toMs } from '../utils/dateUtils';
 
 const OFFLINE_TASKS_KEY = '@offline_tasks';
 const PENDING_OPERATIONS_KEY = '@pending_operations';
@@ -220,6 +221,26 @@ export const queueOperation = async (type, data, taskId = null, userEmail = null
   }
 };
 
+const normalizeEmail = (email) => (email || '').toLowerCase().trim();
+
+/**
+ * ¿La operación la hizo este usuario? Las que no guardaron autor valen para cualquiera.
+ * La cola se conserva al cerrar sesión, así que en un dispositivo compartido puede
+ * tener cambios de otra persona.
+ */
+export const isOperationOfUser = (op, userEmail) =>
+  !op?.userEmail || normalizeEmail(op.userEmail) === normalizeEmail(userEmail);
+
+// Correo de la sesión abierta en este dispositivo (null si no hay sesión)
+const getSessionEmail = async () => {
+  try {
+    const stored = await AsyncStorage.getItem('userSession');
+    return stored ? normalizeEmail(JSON.parse(stored)?.email) || null : null;
+  } catch (_e) {
+    return null;
+  }
+};
+
 // Obtener operaciones pendientes
 export const getPendingOperations = async () => {
   try {
@@ -278,11 +299,17 @@ export const syncPendingOperations = async () => {
     return { success: false, synced: 0, pending: await getPendingCount() };
   }
 
-  const pendingOps = await getPendingOperations();
+  // Los cambios que dejó pendientes otra persona en este dispositivo no se envían con la
+  // sesión actual (se harían a su nombre o se rechazarían): esperan a que vuelva a entrar
+  const sessionEmail = await getSessionEmail();
+  const allPendingOps = await getPendingOperations();
+  const pendingOps = sessionEmail
+    ? allPendingOps.filter(op => isOperationOfUser(op, sessionEmail))
+    : allPendingOps;
 
   if (pendingOps.length === 0) {
     log('✅ No hay operaciones pendientes');
-    return { success: true, synced: 0, pending: 0 };
+    return { success: true, synced: 0, pending: allPendingOps.length };
   }
 
   log('🔄 Sincronizando', pendingOps.length, 'operaciones pendientes...');
@@ -363,11 +390,12 @@ const reviveTimestamp = (value) =>
 const syncCreateOperation = async (op) => {
   const tasksRef = collection(db, 'tasks');
   
+  // Las fechas llegan de la cola como número, texto o { seconds } según cómo se guardaron
   const taskData = {
     ...op.data,
-    createdAt: Timestamp.fromMillis(op.data.createdAt || Date.now()),
-    updatedAt: Timestamp.fromMillis(op.data.updatedAt || Date.now()),
-    dueAt: op.data.dueAt ? Timestamp.fromMillis(op.data.dueAt) : Timestamp.fromMillis(Date.now()),
+    createdAt: Timestamp.fromMillis(toMs(op.data.createdAt) || Date.now()),
+    updatedAt: Timestamp.fromMillis(toMs(op.data.updatedAt) || Date.now()),
+    dueAt: Timestamp.fromMillis(toMs(op.data.dueAt) || Date.now()),
     syncedAt: Timestamp.now()
   };
   
@@ -620,6 +648,7 @@ export default {
   subscribeSyncStatus,
   subscribeToCacheChanges,
   isPermanentError,
+  isOperationOfUser,
   cacheTasksLocally,
   getCachedTasks,
   getLastSyncTime,

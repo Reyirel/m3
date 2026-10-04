@@ -26,6 +26,11 @@ const assigneeText = (assignedTo) => {
   return text || 'Sin asignar';
 };
 
+const dueDateText = (dueAt) => {
+  const ms = toMs(dueAt);
+  return ms === null ? 'Sin fecha' : new Date(ms).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+};
+
 const keyExtractor = (item) => item.id;
 const getItemLayout = (_data, index) => ({ length: CARD_HEIGHT, offset: CARD_HEIGHT * index, index });
 
@@ -106,7 +111,7 @@ const KanbanCard = React.memo(function KanbanCard({
               <View style={styles.cardInfoItem}>
                 <Ionicons name="calendar-outline" size={11} color={status.color} />
                 <Text style={[styles.cardInfoText, { color: theme.textSecondary }]}>
-                  {new Date(toMs(item.dueAt)).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}
+                  {dueDateText(item.dueAt)}
                 </Text>
               </View>
             </View>
@@ -172,7 +177,7 @@ export default function KanbanColumn({
 }) {
   const { byStatus, filtered, sorted } = group;
   const shownRate = byStatus.length > 0 ? (filtered.length / byStatus.length) * 100 : 0;
-  const overdueCount = sorted.filter((task) => toMs(task.dueAt) < Date.now()).length;
+  const overdueCount = sorted.filter(isTaskOverdue).length;
 
   const animatedStyle = {
     opacity: animation,
@@ -183,7 +188,7 @@ export default function KanbanColumn({
     <Animated.View
       style={[
         styles.column,
-        { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.06)', borderWidth: 0.5 },
+        { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.glassBorder, borderWidth: 0.5 },
         animatedStyle,
       ]}
     >

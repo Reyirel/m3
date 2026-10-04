@@ -38,6 +38,23 @@ describe('periodStats', () => {
     expect(stats.completionRate).toBe(40);
   });
 
+  test('una tarea sin fecha límite o ya terminada no cuenta como vencida', () => {
+    const { stats } = periodStats([
+      { status: 'pendiente', createdAt: daysAgo(1) },
+      { status: 'completada', createdAt: daysAgo(4), completedAt: daysAgo(1), dueAt: daysAgo(2) },
+      { status: 'cerrada', createdAt: daysAgo(4), dueAt: daysAgo(2) },
+    ], 7, NOW);
+    expect(stats.overdue).toBe(0);
+  });
+
+  test('el tiempo promedio ignora las tareas sin fecha de término', () => {
+    expect(averageCompletionDays([
+      { createdAt: daysAgo(5), completedAt: daysAgo(1) },
+      { createdAt: daysAgo(5) },
+    ])).toBe(4);
+    expect(averageCompletionDays([{ createdAt: daysAgo(5) }])).toBe(0);
+  });
+
   test('sin tareas todo queda en cero', () => {
     expect(periodStats([], 7, NOW).stats).toEqual({
       completed: 0, inProgress: 0, pending: 0, overdue: 0, completionRate: 0, avgCompletionTime: 0,

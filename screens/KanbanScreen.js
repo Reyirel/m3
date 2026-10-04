@@ -23,7 +23,7 @@ import { useTasks } from '../contexts/TasksContext';
 import { hapticMedium, hapticLight, hapticSuccess, hapticWarning } from '../utils/haptics';
 import { useNotification } from '../contexts/NotificationContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { canChangeTaskStatus } from '../services/permissions';
+import { canChangeTaskStatus, canEditTask } from '../services/permissions';
 import QuickTip, { TIPS } from '../components/QuickTip';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
@@ -134,13 +134,22 @@ export default function KanbanScreen({ navigation }) {
   }, [currentUser, tasks, showError, showSuccess, showWarning]);
 
   const changePriority = async (taskId, priority) => {
+    // La prioridad es parte del contenido de la tarea: solo la cambia quien puede editarla
+    const permission = canEditTask(currentUser, tasks.find((t) => t.id === taskId));
+    if (!permission.canEdit) {
+      showWarning(permission.reason);
+      hapticWarning();
+      return;
+    }
     try {
       await updateTask(taskId, { priority });
       hapticMedium();
       showSuccess(`Prioridad cambiada a ${priority}`);
       setQuickEditTask(null);
     } catch {
-      // Si falla, el panel sigue abierto con la prioridad anterior
+      // El panel sigue abierto con la prioridad anterior
+      showError('No se pudo cambiar la prioridad');
+      hapticWarning();
     }
   };
 
@@ -174,8 +183,8 @@ export default function KanbanScreen({ navigation }) {
   const styles = React.useMemo(() => createKanbanStyles(theme, isDark, columnWidth, dimensions), [theme, isDark, columnWidth, dimensions]);
 
   const glassCard = {
-    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
-    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+    backgroundColor: theme.glass,
+    borderColor: theme.glassBorder,
   };
 
   if (isLoading) {
@@ -431,6 +440,7 @@ export default function KanbanScreen({ navigation }) {
             task={quickEditTask}
             statuses={STATUSES}
             canClose={currentUser?.role === 'admin'}
+            canEditPriority={currentUser?.role === 'admin'}
             onChangePriority={changePriority}
             onChangeStatus={(taskId, status) => {
               changeStatus(taskId, status);
