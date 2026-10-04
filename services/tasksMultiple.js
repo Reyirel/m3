@@ -2,26 +2,25 @@
 // Servicio mejorado con soporte para asignaciones múltiples y subtareas
 // Extiende/reemplaza gradualmente el servicio actual
 
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  onSnapshot, 
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  onSnapshot,
   query,
   orderBy,
   serverTimestamp,
   Timestamp,
   getDoc,
   getDocs,
-  arrayUnion,
-  arrayRemove
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getCurrentSession } from './authFirestore';
 import { notifySubtaskCompletion } from './subtaskNotifications';
 import { toMs } from '../utils/dateUtils';
+import { getDisplayNamesByEmail } from './usersDirectory';
 
 const TASKS_COLLECTION = 'tasks';
 const SUBTASKS_SUBCOLLECTION = 'subtasks';
@@ -32,103 +31,6 @@ const _MESSAGES_SUBCOLLECTION = 'messages';
  * FUNCIONES PARA ASIGNACIONES MÚLTIPLES
  * ============================================
  */
-
-/**
- * Crear tarea con asignaciones múltiples
- * @param {Object} task - { title, description, dueAt, area, assignedEmails: [...], priority }
- * @returns {Promise<string>} Task ID
- */
-export async function createTaskMultiple(task) {
-  try {
-    const sessionResult = await getCurrentSession();
-    if (!sessionResult.success) throw new Error('Usuario no autenticado');
-    
-    const currentUser = sessionResult.session;
-    
-    // Obtener nombres de los asignados
-    const usersRef = collection(db, 'users');
-    const usersSnapshot = await getDocs(usersRef);
-    const usersMap = {};
-    usersSnapshot.forEach(doc => {
-      const user = doc.data();
-      usersMap[user.email] = user.displayName || user.email;
-    });
-    
-    // Construir array de asignaciones con emails normalizados
-    const assignedEmails = (task.assignedEmails || []).map(e => e?.toLowerCase().trim()).filter(Boolean);
-    const assignments = assignedEmails.map(email => ({
-      email: email,
-      name: usersMap[email] || usersMap[Object.keys(usersMap).find(k => k.toLowerCase() === email)] || email,
-      status: 'pendiente',
-      completedAt: null
-    }));
-    
-    // Obtener nombres considerando case-insensitive
-    const getNameForEmail = (email) => {
-      const directMatch = usersMap[email];
-      if (directMatch) return directMatch;
-      const key = Object.keys(usersMap).find(k => k?.toLowerCase().trim() === email);
-      return key ? usersMap[key] : email;
-    };
-    
-    const taskData = {
-      title: task.title,
-      description: task.description,
-      priority: task.priority || 'normal',
-      area: task.area,
-      
-      // MÚLTIPLES ASIGNACIONES (emails normalizados)
-      assignedTo: assignedEmails,
-      assignedToNames: assignedEmails.map(e => getNameForEmail(e)),
-      assignments: assignments,
-      
-      // PROGRESO
-      progressPercentage: 0,
-      parentTaskId: task.parentTaskId || null,
-      
-      // METADATOS
-      status: task.status || 'pendiente',
-      createdBy: currentUser.userId,
-      createdByName: currentUser.displayName,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      dueAt: Timestamp.fromMillis(task.dueAt),
-      tags: task.tags || [],
-      estimatedHours: task.estimatedHours || null,
-      isRecurring: task.isRecurring || false,
-      recurrencePattern: task.recurrencePattern || null,
-      lastRecurrenceCreated: task.lastRecurrenceCreated || null
-    };
-    
-    const docRef = await addDoc(collection(db, TASKS_COLLECTION), taskData);
-    
-    // 🔔 Enviar notificaciones a múltiples asignados
-    try {
-      const { notifyAssignment, scheduleEscalatedReminders } = await import('./notifications');
-      await notifyAssignment({
-        id: docRef.id,
-        title: task.title,
-        dueAt: task.dueAt,
-        assignedTo: assignedEmails,
-        priority: task.priority
-      });
-      
-      // 🔔 Programar recordatorios escalonados (24h, 12h, 2h antes)
-      await scheduleEscalatedReminders({
-        id: docRef.id,
-        title: task.title,
-        dueAt: task.dueAt,
-        status: 'pendiente'
-      });
-    } catch (_notifError) {
-      // Notificaciones no son críticas, continuar
-    }
-    
-    return docRef.id;
-  } catch (error) {
-    throw new Error(`Error creando tarea: ${error.message}`);
-  }
-}
 
 /**
  * Actualizar tarea con asignaciones múltiples
@@ -159,13 +61,7 @@ export async function updateTaskMultiple(taskId, task) {
     
     // Si se proporcionan nuevos asignados, actualizar array con emails normalizados
     if (task.assignedEmails && Array.isArray(task.assignedEmails)) {
-      const usersRef = collection(db, 'users');
-      const usersSnapshot = await getDocs(usersRef);
-      const usersMap = {};
-      usersSnapshot.forEach(doc => {
-        const user = doc.data();
-        usersMap[user.email?.toLowerCase().trim()] = user.displayName || user.email;
-      });
+      const usersMap = await getDisplayNamesByEmail();
       
       // Normalizar emails
       const normalizedEmails = task.assignedEmails.map(e => e?.toLowerCase().trim()).filter(Boolean);
@@ -186,89 +82,6 @@ export async function updateTaskMultiple(taskId, task) {
     
   } catch (error) {
     throw new Error(`Error actualizando tarea: ${error.message}`);
-  }
-}
-
-/**
- * Agregar asignado a una tarea existente
- * @param {string} taskId 
- * @param {string} email - Email del nuevo asignado
- */
-export async function addAssigneeToTask(taskId, email) {
-  try {
-    const taskRef = doc(db, TASKS_COLLECTION, taskId);
-    const taskSnap = await getDoc(taskRef);
-    
-    if (!taskSnap.exists()) throw new Error('Tarea no encontrada');
-    
-    const taskData = taskSnap.data();
-    const currentAssignees = taskData.assignedTo || [];
-    const normalizedEmail = email?.toLowerCase().trim() || '';
-    
-    // Evitar duplicados (case-insensitive)
-    if (currentAssignees.some(e => e?.toLowerCase().trim() === normalizedEmail)) {
-      throw new Error('Este usuario ya está asignado');
-    }
-    
-    // Obtener nombre del usuario
-    const usersRef = collection(db, 'users');
-    const usersSnapshot = await getDocs(usersRef);
-    let displayName = normalizedEmail;
-    usersSnapshot.forEach(doc => {
-      const user = doc.data();
-      if (user.email?.toLowerCase().trim() === normalizedEmail) {
-        displayName = user.displayName || user.email;
-      }
-    });
-    
-    // Agregar asignado con email normalizado
-    const newAssignment = {
-      email: normalizedEmail,
-      name: displayName,
-      status: 'pendiente',
-      completedAt: null
-    };
-    
-    await updateDoc(taskRef, {
-      assignedTo: arrayUnion(normalizedEmail),
-      assignedToNames: arrayUnion(displayName),
-      assignments: arrayUnion(newAssignment),
-      updatedAt: serverTimestamp()
-    });
-    
-  } catch (error) {
-    throw new Error(`Error agregando asignado: ${error.message}`);
-  }
-}
-
-/**
- * Remover asignado de una tarea
- * @param {string} taskId 
- * @param {string} email 
- */
-export async function removeAssigneeFromTask(taskId, email) {
-  try {
-    const taskRef = doc(db, TASKS_COLLECTION, taskId);
-    const taskSnap = await getDoc(taskRef);
-    
-    if (!taskSnap.exists()) throw new Error('Tarea no encontrada');
-    
-    const taskData = taskSnap.data();
-    const normalizedEmail = email?.toLowerCase().trim() || '';
-    
-    // Obtener nombre para remover del array (comparación case-insensitive)
-    const assignment = taskData.assignments?.find(a => a.email?.toLowerCase().trim() === normalizedEmail);
-    const displayName = assignment?.name || email;
-    
-    await updateDoc(taskRef, {
-      assignedTo: arrayRemove(email),
-      assignedToNames: arrayRemove(displayName),
-      assignments: arrayRemove(assignment),
-      updatedAt: serverTimestamp()
-    });
-    
-  } catch (error) {
-    throw new Error(`Error removiendo asignado: ${error.message}`);
   }
 }
 
@@ -677,18 +490,3 @@ export async function assignSubtaskToUser(taskId, subtaskId, assignee) {
     throw new Error(`Error al asignar subtarea: ${error.message}`);
   }
 }
-
-// Exportar el servicio
-export default {
-  createTaskMultiple,
-  updateTaskMultiple,
-  addAssigneeToTask,
-  removeAssigneeFromTask,
-  addSubtask,
-  updateSubtaskStatus,
-  deleteSubtask,
-  subscribeToSubtasks,
-  subscribeToTasksMultiple,
-  recalculateTaskProgress,
-  assignSubtaskToUser
-};

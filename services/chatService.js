@@ -2,10 +2,11 @@
 // Chat de tareas: avisos a los demás participantes y control de mensajes no leídos.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { collection, addDoc, getDocs, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toMs } from '../utils/dateUtils';
 import { getAssignedEmails } from '../utils/taskHelpers';
+import { getAllUsers } from './usersDirectory';
 
 const normalizeEmail = (email) => (email || '').toLowerCase().trim();
 
@@ -17,20 +18,7 @@ const NOTIFY_INTERVAL_MS = 60 * 1000;
 const lastNotifiedAt = new Map();
 
 // La lista de usuarios se reutiliza unos minutos para no leerla en cada mensaje
-const USERS_CACHE_MS = 5 * 60 * 1000;
-let usersCache = { loadedAt: 0, users: [] };
-
-const getUsers = async () => {
-  if (Date.now() - usersCache.loadedAt < USERS_CACHE_MS && usersCache.users.length > 0) {
-    return usersCache.users;
-  }
-  const snapshot = await getDocs(collection(db, 'users'));
-  usersCache = {
-    loadedAt: Date.now(),
-    users: snapshot.docs.map(d => ({ id: d.id, ...d.data() })),
-  };
-  return usersCache.users;
-};
+const getUsers = () => getAllUsers();
 
 /**
  * Participantes de la tarea que deben enterarse de un mensaje: los asignados y quien

@@ -5,8 +5,9 @@ import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import { toDate, toMs } from '../utils/dateUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { collection, getDocs, addDoc } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { getAllUsers } from './usersDirectory';
 
 // Configurar handler de notificaciones (solo en móvil — no aplica en web)
 if (Platform.OS !== 'web') {
@@ -105,165 +106,7 @@ export async function scheduleNotificationForTask(task, options = { minutesBefor
 }
 
 // Programa recordatorios diarios cada 24 horas para tareas no cerradas
-// Devuelve array de IDs de notificaciones programadas
-export async function scheduleDailyReminders(task, maxReminders = 3) {
-  // En web no programar notificaciones
-  if (Platform.OS === 'web') {
-    return [];
-  }
-  
-  try {
-    const granted = await ensurePermissions();
-    if (!granted) {
-      return [];
-    }
-
-    // Solo programar para tareas que no están cerradas
-    if (task.status === 'cerrada') {
-      return [];
-    }
-
-    const ids = [];
-    const now = new Date();
-    const due = toDate(task.dueAt);
-    if (!due) return [];
-    
-    // Programar recordatorios cada 24 horas hasta la fecha de vencimiento (máximo 3)
-    let reminderDate = new Date(now.getTime() + 24 * 60 * 60 * 1000); // +1 día
-    let count = 0;
-    
-    while (reminderDate < due && count < maxReminders) {
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: '📋 Recordatorio Diario',
-          body: `Tarea pendiente: "${task.title}" (Vence: ${due.toLocaleDateString()})`,
-          data: { 
-            taskId: task.id, 
-            type: 'daily_reminder',
-            taskTitle: task.title
-          },
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.DEFAULT,
-          color: '#667eea',
-        },
-        trigger: reminderDate
-      });
-      
-      ids.push(id);
-      reminderDate = new Date(reminderDate.getTime() + 24 * 60 * 60 * 1000); // +1 día más
-      count++;
-    }
-
-    return ids;
-  } catch (e) {
-    return [];
-  }
-}
-
 // 🔔 RECORDATORIOS ESCALONADOS: 24h, 12h, 2h antes del vencimiento
-// Programa múltiples notificaciones en intervalos específicos antes del deadline
-export async function scheduleEscalatedReminders(task) {
-  if (Platform.OS === 'web') {
-    return { scheduled: [], escalationLevel: 0 };
-  }
-  
-  try {
-    const granted = await ensurePermissions();
-    if (!granted) {
-      return { scheduled: [], escalationLevel: 0 };
-    }
-
-    if (task.status === 'cerrada') {
-      return { scheduled: [], escalationLevel: 0 };
-    }
-
-    const now = new Date();
-    const due = toDate(task.dueAt);
-    if (!due) return { scheduled: [], escalationLevel: 0 };
-    const scheduled = [];
-    
-    // Intervalos de recordatorio: 24h, 12h, 2h antes
-    const intervals = [
-      { hours: 24, emoji: '📅', urgency: 'normal', message: 'vence mañana' },
-      { hours: 12, emoji: '⏰', urgency: 'medium', message: 'vence en 12 horas' },
-      { hours: 2, emoji: '🚨', urgency: 'urgent', message: 'vence en 2 horas' },
-    ];
-
-    for (const interval of intervals) {
-      const triggerTime = new Date(due.getTime() - (interval.hours * 60 * 60 * 1000));
-      
-      // Solo programar si el trigger está en el futuro
-      if (triggerTime > now) {
-        const id = await Notifications.scheduleNotificationAsync({
-          content: {
-            title: `${interval.emoji} Recordatorio: ${interval.message}`,
-            body: `"${task.title}" - ${interval.urgency === 'urgent' ? '¡Actúa ahora!' : 'No olvides completarla'}`,
-            data: { 
-              taskId: task.id,
-              type: 'escalated_reminder',
-              urgency: interval.urgency,
-              hoursUntilDue: interval.hours,
-              taskTitle: task.title
-            },
-            sound: true,
-            priority: interval.urgency === 'urgent' 
-              ? Notifications.AndroidNotificationPriority.MAX 
-              : Notifications.AndroidNotificationPriority.HIGH,
-            color: interval.urgency === 'urgent' ? '#DC2626' : 
-                   interval.urgency === 'medium' ? '#F59E0B' : '#667eea',
-          },
-          trigger: triggerTime
-        });
-        
-        scheduled.push({
-          id,
-          hours: interval.hours,
-          triggerTime: triggerTime.toISOString(),
-          urgency: interval.urgency
-        });
-      }
-    }
-
-    // Guardar tracking de recordatorios programados
-    try {
-      const trackingKey = `${NOTIFICATION_TRACKING_KEY}_${task.id}`;
-      await AsyncStorage.setItem(trackingKey, JSON.stringify({
-        taskId: task.id,
-        scheduled,
-        createdAt: new Date().toISOString()
-      }));
-    } catch (e) {
-      // Ignore storage errors
-    }
-
-    return { scheduled, escalationLevel: scheduled.length };
-  } catch (e) {
-    return { scheduled: [], escalationLevel: 0 };
-  }
-}
-
-// Cancelar todos los recordatorios escalonados de una tarea
-export async function cancelEscalatedReminders(taskId) {
-  try {
-    const trackingKey = `${NOTIFICATION_TRACKING_KEY}_${taskId}`;
-    const stored = await AsyncStorage.getItem(trackingKey);
-    
-    if (stored) {
-      const data = JSON.parse(stored);
-      for (const reminder of data.scheduled || []) {
-        if (reminder.id) {
-          await Notifications.cancelScheduledNotificationAsync(reminder.id);
-        }
-      }
-      await AsyncStorage.removeItem(trackingKey);
-    }
-    
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
 // Notificación al asignar tarea (Local optimizada + FCM para múltiples asignados)
 export async function notifyAssignment(task) {
   // En web no enviar notificaciones locales
@@ -309,14 +152,12 @@ async function notifyMultipleAssignees(task) {
     if (assignees.length === 0) return;
     
     // Obtener usuarios para los emails asignados
-    const usersRef = collection(db, 'users');
-    const usersSnap = await getDocs(usersRef);
+    const assigneeEmails = assignees.map(e => e.toLowerCase());
     const assignedUsers = [];
     
-    usersSnap.forEach(doc => {
-      const userData = doc.data();
-      if (assignees.map(e => e.toLowerCase()).includes(userData.email?.toLowerCase())) {
-        assignedUsers.push({ id: doc.id, ...userData });
+    (await getAllUsers()).forEach(userData => {
+      if (assigneeEmails.includes(userData.email?.toLowerCase())) {
+        assignedUsers.push(userData);
       }
     });
     
@@ -495,23 +336,6 @@ export async function cancelNotification(notificationId) {
   }
 }
 
-// Cancelar múltiples notificaciones
-export async function cancelNotifications(notificationIds = []) {
-  // En web no hay notificaciones que cancelar
-  if (Platform.OS === 'web') {
-    return;
-  }
-  
-  try {
-    if (!notificationIds || notificationIds.length === 0) {
-      return;
-    }
-    await Promise.all(notificationIds.map(id => Notifications.cancelScheduledNotificationAsync(id)));
-  } catch (e) {
-    if (__DEV__) console.error('Error cancelando notificaciones:', e);
-  }
-}
-
 // Obtener todas las notificaciones programadas (útil para debugging)
 export async function getAllScheduledNotifications() {
   // En web no hay notificaciones
@@ -547,139 +371,6 @@ export async function cancelAllNotifications() {
 // ========================================
 // NUEVAS FUNCIONALIDADES AGREGADAS
 // ========================================
-
-/**
- * 1️⃣ NOTIFICACIONES RECURRENTES CADA HORA PARA TAREAS URGENTES
- * Programa notificaciones cada hora para tareas con prioridad alta o vencidas
- */
-export async function scheduleHourlyReminders(task) {
-  if (Platform.OS === 'web' || !task) {
-    return [];
-  }
-
-  try {
-    const granted = await ensurePermissions();
-    if (!granted) return [];
-
-    // Solo para tareas de alta prioridad o vencidas
-    const isUrgent = task.priority === 'alta';
-    const isOverdue = task.dueAt && toMs(task.dueAt) < Date.now();
-    
-    if (!isUrgent && !isOverdue) {
-      return [];
-    }
-
-    const ids = [];
-    const now = new Date();
-    
-    // Programar 12 notificaciones (cada hora durante 12 horas)
-    for (let i = 1; i <= 12; i++) {
-      const triggerTime = new Date(now.getTime() + i * 60 * 60 * 1000);
-      
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `🚨 URGENTE: ${task.title}`,
-          body: isOverdue 
-            ? `⏰ Esta tarea está VENCIDA. Complétala ahora.`
-            : `⚡ Tarea de alta prioridad pendiente. Vence: ${new Date(toMs(task.dueAt)).toLocaleDateString()}`,
-          data: { 
-            taskId: task.id,
-            type: 'hourly_urgent',
-            priority: task.priority,
-            hour: i,
-            sticky: true // Marcar como persistente
-          },
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority.MAX,
-          color: '#DC2626',
-          vibrate: [0, 500, 200, 500], // Vibración más fuerte
-          badge: 1,
-          sticky: true, // Android: notificación persistente
-          ongoing: true, // Android: no se puede descartar fácilmente
-        },
-        trigger: triggerTime
-      });
-
-      ids.push(id);
-    }
-
-    return ids;
-  } catch (e) {
-    if (__DEV__) console.error('Error programando notificaciones horarias:', e);
-    return [];
-  }
-}
-
-/**
- * NOTIFICACIONES PERSISTENTES CON ACCIONES OBLIGATORIAS
- * Crea notificaciones que requieren acción del usuario para descartarse
- */
-export async function schedulePersistentNotification(task) {
-  if (Platform.OS === 'web' || !task) {
-    return null;
-  }
-
-  try {
-    const granted = await ensurePermissions();
-    if (!granted) return null;
-
-    // Definir categoría con acciones
-    await Notifications.setNotificationCategoryAsync('TASK_ACTION', [
-      {
-        identifier: 'COMPLETE',
-        buttonTitle: 'Completar',
-        options: {
-          opensAppToForeground: true,
-        },
-      },
-      {
-        identifier: 'SNOOZE',
-        buttonTitle: 'Posponer 1h',
-        options: {
-          opensAppToForeground: false,
-        },
-      },
-      {
-        identifier: 'VIEW',
-        buttonTitle: 'Ver Tarea',
-        options: {
-          opensAppToForeground: true,
-        },
-      },
-    ]);
-
-    const id = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: `REQUIERE ACCIÓN: ${task.title}`,
-        body: `Esta tarea necesita tu atención inmediata. Vence: ${new Date(toMs(task.dueAt)).toLocaleDateString()}`,
-        data: { 
-          taskId: task.id,
-          type: 'persistent_action_required',
-          requiresConfirmation: true,
-          timestamp: Date.now()
-        },
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.MAX,
-        color: '#DC2626',
-        vibrate: [0, 500, 200, 500, 200, 500],
-        badge: 1,
-        sticky: true, // No se puede descartar fácilmente
-        ongoing: true, // Android: notificación persistente
-        categoryIdentifier: 'TASK_ACTION', // Asociar acciones
-        autoDismiss: false, // No descartar automáticamente
-      },
-      trigger: null // Inmediata
-    });
-
-    // Guardar tracking de notificación enviada
-    await trackNotificationSent(task.id, id);
-
-    return id;
-  } catch (e) {
-    if (__DEV__) console.error('Error creando notificación persistente:', e);
-    return null;
-  }
-}
 
 /**
  * SISTEMA DE CONFIRMACIÓN OBLIGATORIA
@@ -723,40 +414,6 @@ export async function confirmNotificationViewed(taskId) {
   }
 }
 
-// Verificar notificaciones no confirmadas y reprogramar
-export async function checkUnconfirmedNotifications(tasks) {
-  if (Platform.OS === 'web') return;
-  
-  try {
-    const tracking = await AsyncStorage.getItem(NOTIFICATION_TRACKING_KEY);
-    if (!tracking) return;
-    
-    const data = JSON.parse(tracking);
-    const now = Date.now();
-    const CONFIRMATION_TIMEOUT = 30 * 60 * 1000; // 30 minutos
-    
-    for (const taskId in data) {
-      const notifData = data[taskId];
-      
-      // Si no se confirmó y pasaron más de 30 minutos, reprogramar
-      if (!notifData.confirmed && (now - notifData.sentAt) > CONFIRMATION_TIMEOUT) {
-        const task = tasks.find(t => t.id === taskId);
-        
-        if (task && task.status !== 'cerrada') {
-          
-          // Enviar notificación más agresiva
-          await schedulePersistentNotification(task);
-          
-          // Incrementar nivel de escalado
-          await incrementEscalationLevel(taskId);
-        }
-      }
-    }
-  } catch (e) {
-    if (__DEV__) console.error('Error verificando notificaciones no confirmadas:', e);
-  }
-}
-
 /**
  * SISTEMA DE ESCALADO DE NOTIFICACIONES
  * Aumenta intensidad y frecuencia si el usuario no responde
@@ -782,75 +439,6 @@ async function incrementEscalationLevel(taskId) {
   } catch (e) {
     if (__DEV__) console.error('Error incrementando escalado:', e);
     return 0;
-  }
-}
-
-// Resetear nivel de escalado cuando se completa tarea
-export async function resetEscalationLevel(taskId) {
-  try {
-    await AsyncStorage.removeItem(`${ESCALATION_LEVEL_KEY}_${taskId}`);
-  } catch (e) {
-    if (__DEV__) console.error('Error reseteando escalado:', e);
-  }
-}
-
-// Programar notificaciones con escalado progresivo
-export async function scheduleEscalatedNotifications(task) {
-  if (Platform.OS === 'web' || !task) return [];
-  
-  try {
-    const granted = await ensurePermissions();
-    if (!granted) return [];
-    
-    const level = await getEscalationLevel(task.id);
-    const ids = [];
-    
-    // Configuración según nivel de escalado
-    const escalationConfig = {
-      0: { intervals: [60], priority: 'DEFAULT', vibration: [0, 250, 250, 250] },
-      1: { intervals: [30, 60], priority: 'HIGH', vibration: [0, 300, 200, 300] },
-      2: { intervals: [15, 30, 45, 60], priority: 'HIGH', vibration: [0, 400, 200, 400] },
-      3: { intervals: [10, 20, 30, 40, 50, 60], priority: 'MAX', vibration: [0, 500, 200, 500, 200, 500] },
-      4: { intervals: [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60], priority: 'MAX', vibration: [0, 600, 200, 600, 200, 600] },
-      5: { intervals: Array.from({length: 20}, (_, i) => (i + 1) * 3), priority: 'MAX', vibration: [0, 800, 200, 800, 200, 800, 200, 800] }, // Cada 3 minutos
-    };
-    
-    const config = escalationConfig[level] || escalationConfig[0];
-    const now = new Date();
-    
-    for (const minutes of config.intervals) {
-      const triggerTime = new Date(now.getTime() + minutes * 60 * 1000);
-      
-      const id = await Notifications.scheduleNotificationAsync({
-        content: {
-          title: `NIVEL ${level}: ${task.title}`,
-          body: level >= 3 
-            ? `CRÍTICO: Esta tarea lleva mucho tiempo sin atención. RESPONDE AHORA.`
-            : `Recordatorio ${level > 0 ? 'escalado' : ''}: Completa esta tarea.`,
-          data: { 
-            taskId: task.id,
-            type: 'escalated',
-            escalationLevel: level,
-            minute: minutes
-          },
-          sound: true,
-          priority: Notifications.AndroidNotificationPriority[config.priority],
-          color: level >= 3 ? '#7F1D1D' : '#DC2626',
-          vibrate: config.vibration,
-          badge: level + 1,
-          sticky: level >= 2, // Nivel 2+ son persistentes
-          ongoing: level >= 3, // Nivel 3+ no se pueden descartar
-        },
-        trigger: triggerTime
-      });
-      
-      ids.push(id);
-    }
-    
-    return ids;
-  } catch (e) {
-    if (__DEV__) console.error('Error programando notificaciones escaladas:', e);
-    return [];
   }
 }
 

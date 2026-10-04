@@ -15,6 +15,18 @@ export const ROLES = {
 };
 
 /**
+ * Nombre del rol para mostrar. Un rol desconocido NO se presenta como otro rol.
+ */
+export function roleLabel(role) {
+  switch (role) {
+    case ROLES.ADMIN: return 'Administrador';
+    case ROLES.SECRETARIO: return 'Secretario';
+    case ROLES.DIRECTOR: return 'Director';
+    default: return 'Sin rol asignado';
+  }
+}
+
+/**
  * Permisos disponibles en el sistema
  */
 export const PERMISSIONS = {
@@ -85,19 +97,6 @@ const ROLE_PERMISSIONS = {
     PERMISSIONS.VIEW_AREA_REPORTS
   ]
 };
-
-/**
- * Verifica si un usuario tiene un permiso específico
- * @param {Object} user - Usuario actual {role, email, area, direcciones}
- * @param {string} permission - Permiso a verificar
- * @returns {boolean}
- */
-export function hasPermission(user, permission) {
-  if (!user || !user.role) return false;
-  
-  const rolePermissions = ROLE_PERMISSIONS[user.role] || [];
-  return rolePermissions.includes(permission);
-}
 
 /**
  * Verifica si el usuario puede reabrir una tarea
@@ -347,46 +346,3 @@ export function canCreateTask(user) {
   return { canCreate: false, allowedAreas: [], reason: 'Solo administradores pueden crear tareas' };
 }
 
-/**
- * Obtiene el resumen de permisos para un usuario
- * @param {Object} user - Usuario actual
- * @returns {Object} Resumen de permisos
- */
-export function getPermissionsSummary(user) {
-  if (!user || !user.role) {
-    return {
-      canCreateTask: false,
-      canEditTasks: false,
-      canDeleteTasks: false,
-      canDelegateTasks: false,
-      canCreateSubtasks: false,
-      canViewAllReports: false,
-      canManageUsers: false,
-      role: null
-    };
-  }
-  
-  return {
-    canCreateTask: hasPermission(user, PERMISSIONS.CREATE_TASK),
-    canEditTasks: user.role === ROLES.ADMIN,
-    canDeleteTasks: user.role === ROLES.ADMIN,
-    canDelegateTasks: user.role === ROLES.ADMIN || user.role === ROLES.SECRETARIO,
-    canCreateSubtasks: hasPermission(user, PERMISSIONS.CREATE_SUBTASK),
-    canViewAllReports: user.role === ROLES.ADMIN,
-    canManageUsers: user.role === ROLES.ADMIN,
-    role: user.role
-  };
-}
-
-export default {
-  ROLES,
-  PERMISSIONS,
-  hasPermission,
-  canEditTask,
-  canDelegateTask,
-  canCreateSubtask,
-  canChangeTaskStatus,
-  canDeleteTask,
-  canCreateTask,
-  getPermissionsSummary
-};

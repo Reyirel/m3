@@ -10,7 +10,7 @@
  */
 
 import NetInfo from '@react-native-community/netinfo';
-import * as productionLogger from './productionLogger';
+import logger from '../services/Logger';
 
 const MONITOR_INTERVAL = 30 * 1000; // Check cada 30s
 const PING_TIMEOUT = 5000;
@@ -111,7 +111,7 @@ class NetworkQualityMonitor {
       this.recordToHistory();
       this.notifyListeners();
     } catch (error) {
-      productionLogger.logError('Network check failed', error);
+      logger.error('NetworkMonitor', 'Network check failed', error);
     }
   }
 
@@ -327,9 +327,4 @@ export {
 
 export const startNetworkMonitoring = () => monitor.start();
 export const stopNetworkMonitoring = () => monitor.stop();
-export const getNetworkState = () => monitor.getState();
-export const getNetworkDescription = () => monitor.getDescription();
-export const subscribeToNetworkStatus = (callback) => monitor.onStatusChange(callback);
-export const getNetworkStats = () => monitor.getStats();
-
 export default monitor;

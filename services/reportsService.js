@@ -17,6 +17,7 @@ import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toMs } from '../utils/dateUtils';
 import { uriToDataUrl, dataUrlToBlob } from '../utils/imageData';
 import { canUserSeeTask, filterVisibleReports } from '../utils/taskVisibility';
+import { getAllUsers } from './usersDirectory';
 
 const storage = getStorage();
 
@@ -30,11 +31,10 @@ const notifyAdminsOfNewReport = async (taskId, reportId, reportTitle, createdByN
     const taskArea = taskData.area || '';
     const sender = (senderEmail || '').toLowerCase().trim();
 
-    const usersSnapshot = await getDocs(collection(db, 'users'));
+    const users = await getAllUsers();
 
     const notifications = [];
-    usersSnapshot.forEach((userDoc) => {
-      const user = userDoc.data();
+    users.forEach((user) => {
       const email = (user.email || '').toLowerCase().trim();
       // Cuentas desactivadas y el propio autor no reciben aviso
       if (user.active === false || !email || email === sender) return;
@@ -45,7 +45,7 @@ const notifyAdminsOfNewReport = async (taskId, reportId, reportTitle, createdByN
       if (!isAdmin && !isSecretarioOfTask) return;
 
       notifications.push({
-        userId: userDoc.id,
+        userId: user.id,
         userEmail: email,
         type: 'new_report',
         title: isAdmin ? '📋 Nuevo Reporte' : '📋 Nuevo Reporte en tu Área',
@@ -305,33 +305,6 @@ export const subscribeToTaskReports = (taskId, callback) => {
 };
 
 /**
- * Get all reports for user
- * @param {string} userId - User ID
- * @returns {Promise<Array>} Array of reports
- */
-export const getUserReports = async (userId) => {
-  try {
-    const q = query(
-      collection(db, 'task_reports'),
-      where('createdBy', '==', userId)
-    );
-
-    const snapshot = await getDocs(q);
-    const reports = [];
-    snapshot.forEach((doc) => {
-      reports.push({
-        id: doc.id,
-        ...doc.data(),
-      });
-    });
-    return reports;
-  } catch (error) {
-    if (__DEV__) console.error('Error getting user reports:', error);
-    throw error;
-  }
-};
-
-/**
  * Log task activity (audit trail)
  * @param {string} taskId - Task ID
  * @param {string} userId - User ID performing action
@@ -536,189 +509,3 @@ export const subscribeToAllReports = (callback, onError) => {
   }, onError);
 };
 
-/**
- * Get reports grouped by area/origin
- * @returns {Promise<Object>} Reports grouped by area
- */
-export const getReportsGroupedByArea = async () => {
-  try {
-    const snapshot = await getDocs(collection(db, 'task_reports'));
-    const reports = [];
-    const taskIds = new Set();
-
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      if (!data.deleted) {
-        reports.push({
-          id: doc.id,
-          ...data,
-        });
-        if (data.taskId) {
-          taskIds.add(data.taskId);
-        }
-      }
-    });
-
-    // Get task info
-    const tasksInfo = {};
-    for (const taskId of taskIds) {
-      try {
-        const taskDoc = await getDoc(doc(db, 'tasks', taskId));
-        if (taskDoc.exists()) {
-          const taskData = taskDoc.data();
-          tasksInfo[taskId] = {
-            title: taskData.title || 'Sin título',
-            area: taskData.area || 'Sin área',
-          };
-        }
-      } catch (err) {
-      }
-    }
-
-    // Group by area
-    const grouped = {};
-    reports.forEach(report => {
-      const area = tasksInfo[report.taskId]?.area || 'Sin área';
-      if (!grouped[area]) {
-        grouped[area] = [];
-      }
-      grouped[area].push({
-        ...report,
-        taskTitle: tasksInfo[report.taskId]?.title || 'Tarea sin título',
-      });
-    });
-
-    return grouped;
-  } catch (error) {
-    if (__DEV__) console.error('Error getting grouped reports:', error);
-    throw error;
-  }
-};
-
-/**
- * Subscribe to reports for specific areas (for secretarios)
- * @param {Array<string>} areas - List of area names to watch
- * @param {Function} callback - Callback function
- * @returns {Function} Unsubscribe function
- */
-export const subscribeToAreaReports = (areas, callback, onError) => {
-  const q = query(collection(db, 'task_reports'));
-
-  return onSnapshot(q, async (snapshot) => {
-    const reports = [];
-    const taskIds = new Set();
-    
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      if (!data.deleted) {
-        reports.push({
-          id: doc.id,
-          ...data,
-        });
-        if (data.taskId) {
-          taskIds.add(data.taskId);
-        }
-      }
-    });
-
-    // Get task info to filter by area
-    const tasksInfo = {};
-    for (const taskId of taskIds) {
-      try {
-        const taskDoc = await getDoc(doc(db, 'tasks', taskId));
-        if (taskDoc.exists()) {
-          const taskData = taskDoc.data();
-          tasksInfo[taskId] = {
-            title: taskData.title || 'Sin título',
-            area: taskData.area || 'Sin área',
-            assignedTo: taskData.assignedTo || [],
-          };
-        }
-      } catch (err) {
-      }
-    }
-
-    // Filter reports by allowed areas (case-insensitive)
-    const filteredReports = reports.filter(report => {
-      const taskArea = (report.area || tasksInfo[report.taskId]?.area || '').toLowerCase().trim();
-      return areas.some(a => a?.toLowerCase().trim() === taskArea);
-    });
-
-    // Enrich reports with task info
-    const enrichedReports = filteredReports.map(report => ({
-      ...report,
-      taskInfo: tasksInfo[report.taskId] || { title: 'Tarea no encontrada', area: 'Desconocida' },
-    }));
-
-    // Sort by creation date descending
-    enrichedReports.sort((a, b) => {
-      const dateA = toMs(a.createdAt) || 0;
-      const dateB = toMs(b.createdAt) || 0;
-      return dateB - dateA;
-    });
-
-    callback(enrichedReports);
-  }, onError);
-};
-
-/**
- * Subscribe to reports created by a specific user (for directors to see their own)
- * @param {string} userEmail - User email
- * @param {Function} callback - Callback function
- * @returns {Function} Unsubscribe function
- */
-export const subscribeToMyReports = (userEmail, callback, onError) => {
-  const q = query(
-    collection(db, 'task_reports'),
-    where('createdBy', '==', userEmail.toLowerCase())
-  );
-
-  return onSnapshot(q, async (snapshot) => {
-    const reports = [];
-    const taskIds = new Set();
-    
-    snapshot.forEach((doc) => {
-      const data = doc.data();
-      if (!data.deleted) {
-        reports.push({
-          id: doc.id,
-          ...data,
-        });
-        if (data.taskId) {
-          taskIds.add(data.taskId);
-        }
-      }
-    });
-
-    // Get task info
-    const tasksInfo = {};
-    for (const taskId of taskIds) {
-      try {
-        const taskDoc = await getDoc(doc(db, 'tasks', taskId));
-        if (taskDoc.exists()) {
-          const taskData = taskDoc.data();
-          tasksInfo[taskId] = {
-            title: taskData.title || 'Sin título',
-            area: taskData.area || 'Sin área',
-          };
-        }
-      } catch (err) {
-      }
-    }
-
-    // Enrich reports with task info
-    const enrichedReports = reports.map(report => ({
-      ...report,
-      taskInfo: tasksInfo[report.taskId] || { title: 'Tarea no encontrada', area: 'Desconocida' },
-    }));
-
-    // Sort by creation date descending
-    enrichedReports.sort((a, b) => {
-      const dateA = toMs(a.createdAt) || 0;
-      const dateB = toMs(b.createdAt) || 0;
-      return dateB - dateA;
-    });
-
-    callback(enrichedReports);
-  }, onError);
-};

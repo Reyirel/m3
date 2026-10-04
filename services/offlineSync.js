@@ -264,18 +264,6 @@ const registerFailedAttempt = async (operationId) => {
   }
 };
 
-// Limpiar todas las operaciones pendientes (para casos de error)
-export const clearPendingOperations = async () => {
-  try {
-    await AsyncStorage.removeItem(PENDING_OPERATIONS_KEY);
-    log('🗑️ Cola de operaciones limpiada');
-    return true;
-  } catch (error) {
-    if (__DEV__) console.error('Error limpiando operaciones:', error);
-    return false;
-  }
-};
-
 // ============ SINCRONIZACIÓN ============
 
 // Sincronizar operaciones pendientes con Firebase

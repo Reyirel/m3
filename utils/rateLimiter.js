@@ -10,7 +10,7 @@
  */
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as productionLogger from './productionLogger';
+import logger from '../services/Logger';
 
 const RATE_LIMIT_KEY = 'rate_limits';
 const LIMITS = {
@@ -51,7 +51,7 @@ export const checkRateLimit = async (action) => {
       const oldestEvent = Math.min(...history);
       const retryAfter = Math.ceil((oldestEvent + limit.window - now) / 1000);
 
-      productionLogger.logWarn(`Rate limit exceeded: ${action}`, {
+      logger.warn('RateLimiter', `Rate limit exceeded: ${action}`, {
         action,
         count: history.length,
         limit: limit.count,
@@ -79,7 +79,7 @@ export const checkRateLimit = async (action) => {
       limit: limit.count
     };
   } catch (error) {
-    productionLogger.logError('Rate limit check failed', error);
+    logger.error('RateLimiter', 'Rate limit check failed', error);
     // En caso de error, permitir la acción (fail-open)
     return { allowed: true };
   }
@@ -125,7 +125,7 @@ export const clearRateLimits = async (action = null) => {
     }
     return true;
   } catch (error) {
-    productionLogger.logError('Error clearing rate limits', error);
+    logger.error('RateLimiter', 'Error clearing rate limits', error);
     return false;
   }
 };
@@ -156,7 +156,7 @@ export const getRateLimitStats = async () => {
 
     return stats;
   } catch (error) {
-    productionLogger.logError('Error getting rate limit stats', error);
+    logger.error('RateLimiter', 'Error getting rate limit stats', error);
     return {};
   }
 };

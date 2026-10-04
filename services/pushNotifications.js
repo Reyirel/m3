@@ -6,7 +6,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { db } from '../firebase';
-import { collection, addDoc, doc, getDocs, deleteDoc, query, where, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const log = __DEV__ ? console.log : () => {};
 
@@ -145,32 +145,6 @@ export const batchSendPushNotifications = async (userIds = [], notification) => 
 };
 
 /**
- * Crear notificación para asignación de tarea
- * @param {string} taskId - Task ID
- * @param {string} taskTitle - Task title
- * @param {Array<string>} assignedUserIds - User IDs to notify
- * @param {string} assignedBy - User who assigned
- * @returns {Promise<void>}
- */
-export const notifyTaskAssignment = async (taskId, taskTitle, assignedUserIds = [], assignedBy) => {
-  try {
-    const notification = {
-      title: '📋 Nueva Tarea Asignada',
-      body: taskTitle,
-      data: {
-        type: 'task_assigned',
-        taskId,
-        assignedBy,
-      },
-    };
-
-    await batchSendPushNotifications(assignedUserIds, notification);
-  } catch (error) {
-    if (__DEV__) console.error('Error notifying task assignment:', error);
-  }
-};
-
-/**
  * Crear notificación para completación de subtarea
  * @param {string} taskId - Task ID
  * @param {string} subtaskTitle - Subtask title
@@ -196,138 +170,3 @@ export const notifySubtaskCompletion = async (taskId, subtaskTitle, teamMemberId
   }
 };
 
-/**
- * Crear notificación de urgencia (fecha próxima)
- * @param {string} taskId - Task ID
- * @param {string} taskTitle - Task title
- * @param {string} responsibleUserId - User responsible
- * @param {number} hoursUntilDue - Hours until due
- * @returns {Promise<void>}
- */
-export const notifyTaskDueSOON = async (taskId, taskTitle, responsibleUserId, hoursUntilDue) => {
-  try {
-    const notification = {
-      title: '⏰ Tarea Vence Pronto',
-      body: `${taskTitle} (en ${hoursUntilDue} horas)`,
-      data: {
-        type: 'task_due_soon',
-        taskId,
-        hoursUntilDue,
-      },
-    };
-
-    await sendPushNotification(responsibleUserId, notification);
-  } catch (error) {
-    if (__DEV__) console.error('Error notifying task due soon:', error);
-  }
-};
-
-/**
- * Enviar notificación de reporte
- * @param {string} reportId - Report ID
- * @param {string} taskId - Task ID
- * @param {string} reportTitle - Report title
- * @param {Array<string>} reviewerIds - Users to notify
- * @param {string} submittedBy - User who submitted
- * @returns {Promise<void>}
- */
-export const notifyNewReport = async (reportId, taskId, reportTitle, reviewerIds = [], submittedBy) => {
-  try {
-    const notification = {
-      title: '📸 Nuevo Reporte Enviado',
-      body: reportTitle,
-      data: {
-        type: 'report_submitted',
-        taskId,
-        reportId,
-        submittedBy,
-      },
-    };
-
-    await batchSendPushNotifications(reviewerIds, notification);
-  } catch (error) {
-    if (__DEV__) console.error('Error notifying new report:', error);
-  }
-};
-
-/**
- * Enviar notificación de calificación de reporte
- * @param {string} reportId - Report ID
- * @param {string} taskId - Task ID
- * @param {number} rating - Rating (1-5)
- * @param {string} submitterId - User who submitted report
- * @param {string} ratedBy - User who rated
- * @returns {Promise<void>}
- */
-export const notifyReportRated = async (reportId, taskId, rating, submitterId, ratedBy) => {
-  try {
-    const notification = {
-      title: '⭐ Tu Reporte fue Calificado',
-      body: `Calificación: ${rating}/5 estrellas`,
-      data: {
-        type: 'report_rated',
-        taskId,
-        reportId,
-        rating,
-        ratedBy,
-      },
-    };
-
-    await sendPushNotification(submitterId, notification);
-  } catch (error) {
-    if (__DEV__) console.error('Error notifying report rated:', error);
-  }
-};
-
-/**
- * Clean up expired push tokens
- * @returns {Promise<number>} Number of tokens removed
- */
-export const cleanupExpiredTokens = async () => {
-  try {
-    const now = new Date();
-    const q = query(
-      collection(db, 'user_push_tokens'),
-      where('expiresAt', '<', now)
-    );
-
-    const snapshot = await getDocs(q);
-    let deleted = 0;
-
-    for (const docSnapshot of snapshot.docs) {
-      await deleteDoc(doc(db, 'user_push_tokens', docSnapshot.id));
-      deleted++;
-    }
-
-    log(`Cleaned up ${deleted} expired tokens`);
-    return deleted;
-  } catch (error) {
-    if (__DEV__) console.error('Error cleaning up tokens:', error);
-    return 0;
-  }
-};
-
-/**
- * Schedule push notification to be sent later
- * @param {string} userId - User ID
- * @param {Object} notification - Notification data
- * @param {Date} sendAt - When to send
- * @returns {Promise<void>}
- */
-export const schedulePushNotification = async (userId, notification, sendAt) => {
-  try {
-    await addDoc(collection(db, 'scheduled_notifications'), {
-      userId,
-      title: notification.title,
-      body: notification.body,
-      data: notification.data || {},
-      scheduleAt: sendAt,
-      status: 'pending',
-      createdAt: serverTimestamp(),
-    });
-
-    log('Notification scheduled for:', sendAt);
-  } catch (error) {
-    if (__DEV__) console.error('Error scheduling notification:', error);
-  }
-};

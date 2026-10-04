@@ -122,37 +122,6 @@ export const calculateDetailedAreaMetrics = (tasks = [], previousTasks = []) => 
 };
 
 /**
- * Recupera tareas de un período anterior (semana anterior, mes anterior, etc.)
- */
-export const getPreviousPeriodicTasks = async (tasks, periodDays) => {
-  const now = Date.now();
-  const periodStart = now - periodDays * 24 * 60 * 60 * 1000;
-  const periodEnd = now - (periodDays - 7) * 24 * 60 * 60 * 1000; // Una semana antes
-
-  return tasks.filter((task) => {
-    const taskDate = toMs(task.createdAt);
-    return taskDate >= periodStart && taskDate <= periodEnd;
-  });
-};
-
-/**
- * Obtiene área con mejor desempeño
- */
-export const getTopPerformingArea = (areaMetrics) => {
-  let topArea = null;
-  let topRate = -1;
-
-  Object.entries(areaMetrics).forEach(([name, metrics]) => {
-    if (metrics.completionRate > topRate) {
-      topRate = metrics.completionRate;
-      topArea = { name, ...metrics };
-    }
-  });
-
-  return topArea;
-};
-
-/**
  * Obtiene áreas que necesitan atención (bajo rendimiento)
  */
 export const getAreasNeedingAttention = (areaMetrics, threshold = 50) => {
@@ -160,89 +129,6 @@ export const getAreasNeedingAttention = (areaMetrics, threshold = 50) => {
     .filter(([_, metrics]) => metrics.completionRate < threshold)
     .map(([name, metrics]) => ({ name, ...metrics }))
     .sort((a, b) => a.completionRate - b.completionRate);
-};
-
-/**
- * Calcula distribución de tareas por estado en un área
- */
-export const getAreaTaskDistribution = (tasks, areaName) => {
-  const filtered = tasks.filter((task) => getTaskArea(task) === areaName);
-  
-  const distribution = {
-    completed: 0,
-    pending: 0,
-    inProgress: 0,
-    overdue: 0,
-  };
-
-  filtered.forEach((task) => {
-    const status = task.status?.toLowerCase() || 'pendiente';
-    if (status === 'cerrada' || status === 'completada') {
-      distribution.completed++;
-    } else if (status === 'pendiente') {
-      distribution.pending++;
-    } else if (isInProgress(status)) {
-      distribution.inProgress++;
-    }
-
-    if (task.dueAt) {
-      const dueDate = toMs(task.dueAt);
-      if (dueDate < Date.now() && (status !== 'cerrada' && status !== 'completada')) {
-        distribution.overdue++;
-      }
-    }
-  });
-
-  return distribution;
-};
-
-/**
- * Obtiene usuarios asignados a un área
- */
-export const getAreaUsers = (tasks, areaName) => {
-  const filtered = tasks.filter((task) => getTaskArea(task) === areaName);
-  const users = new Set();
-
-  filtered.forEach((task) => {
-    if (task.assignedTo) {
-      users.add(task.assignedTo);
-    }
-    if (Array.isArray(task.assignedUsers)) {
-      task.assignedUsers.forEach(u => users.add(u));
-    }
-  });
-
-  return Array.from(users);
-};
-
-/**
- * Compara rendimiento de dos períodos
- */
-export const compareAreaPerformance = (currentMetrics, previousMetrics) => {
-  const comparison = {};
-
-  Object.keys(currentMetrics).forEach((area) => {
-    const current = currentMetrics[area];
-    const previous = previousMetrics[area] || { total: 0, completed: 0 };
-
-    const prevRate = previous.total > 0 
-      ? (previous.completed / previous.total) * 100 
-      : 0;
-    const currentRate = current.total > 0 
-      ? (current.completed / current.total) * 100 
-      : 0;
-
-    comparison[area] = {
-      currentRate: Math.round(currentRate),
-      previousRate: Math.round(prevRate),
-      change: Math.round(currentRate - prevRate),
-      tasksCompleted: current.completed,
-      totalTasks: current.total,
-      newTasks: current.total - (previous.total || 0),
-    };
-  });
-
-  return comparison;
 };
 
 /**

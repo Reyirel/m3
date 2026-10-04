@@ -8,7 +8,7 @@
  * - Max 4 reintentos antes de fallar
  */
 
-import * as productionLogger from './productionLogger';
+import logger from '../services/Logger';
 
 const DEFAULT_MAX_RETRIES = 4;
 const DEFAULT_INITIAL_DELAY = 1000; // 1s
@@ -104,7 +104,7 @@ export const withRetry = async (
       const result = await asyncFn();
       
       if (attempt > 0) {
-        productionLogger.logInfo(`${operationName} succeeded after ${attempt} retries`);
+        logger.info('ErrorRecovery', `${operationName} succeeded after ${attempt} retries`);
       }
       
       return result;
@@ -113,7 +113,7 @@ export const withRetry = async (
 
       // Verificar si es reintentable
       if (!isRetryable(error, attempt)) {
-        productionLogger.logError(
+        logger.error('ErrorRecovery', 
           `${operationName} failed with non-retryable error`,
           error,
           { attempt, operationName }
@@ -123,7 +123,7 @@ export const withRetry = async (
 
       // Si fue el último intento, fallar
       if (attempt === maxRetries) {
-        productionLogger.logError(
+        logger.error('ErrorRecovery', 
           `${operationName} failed after ${maxRetries} retries`,
           error,
           { attempt, maxRetries, operationName }
@@ -135,7 +135,7 @@ export const withRetry = async (
       const delay = calculateDelay(attempt);
       const delaySeconds = Math.round(delay / 1000);
 
-      productionLogger.logWarn(`${operationName} failed, retrying in ${delaySeconds}s`, {
+      logger.warn('ErrorRecovery', `${operationName} failed, retrying in ${delaySeconds}s`, {
         attempt,
         maxRetries,
         error: error.message,
@@ -184,7 +184,7 @@ export const backgroundRetry = async (asyncFn, operationName, maxDuration = 6000
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     // Si pasó max duration, parar
     if (Date.now() - startTime > maxDuration) {
-      productionLogger.logWarn(`${operationName} retry timeout after ${maxDuration}ms`, {
+      logger.warn('ErrorRecovery', `${operationName} retry timeout after ${maxDuration}ms`, {
         attempt,
         maxRetries
       });
@@ -193,7 +193,7 @@ export const backgroundRetry = async (asyncFn, operationName, maxDuration = 6000
 
     try {
       const result = await asyncFn();
-      productionLogger.logInfo(`${operationName} succeeded on background retry`, {
+      logger.info('ErrorRecovery', `${operationName} succeeded on background retry`, {
         attempt,
         duration: Date.now() - startTime
       });
@@ -255,7 +255,7 @@ class CircuitBreaker {
       if (this.failureCount >= this.failureThreshold) {
         this.state = 'OPEN';
         this.openedAt = Date.now();
-        productionLogger.logCritical(
+        logger.error('ErrorRecovery', 
           `Circuit breaker OPEN: ${this.operationName}`,
           error,
           { failureCount: this.failureCount }

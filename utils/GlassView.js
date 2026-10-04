@@ -4,7 +4,7 @@
 // — Native: expo-blur BlurView (iOS/Android)
 // — Fallback: semi-transparente sin blur (listas, rendimiento)
 import React from 'react';
-import { View, Platform, StyleSheet } from 'react-native';
+import { View, Platform } from 'react-native';
 
 let BlurView = null;
 try {

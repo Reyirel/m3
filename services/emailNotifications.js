@@ -5,6 +5,7 @@
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
 const APP_URL = process.env.APP_URL || process.env.EXPO_PUBLIC_APP_URL || '';
 import { toMs } from '../utils/dateUtils';
+import { statusLabel } from '../utils/taskStatus';
 const FROM_EMAIL = process.env.FROM_EMAIL || process.env.EXPO_PUBLIC_FROM_EMAIL || 'noreply@todoapp.com';
 
 /**
@@ -158,7 +159,7 @@ export async function notifyTaskDueSoon(task, assignedTo) {
       <strong style="font-size: 16px; color: #F59E0B;">${task.title}</strong>
       <p style="margin: 10px 0;">${task.description}</p>
       <p style="margin: 5px 0;"><strong>Vence:</strong> ${new Date(dueAtMs).toLocaleString('es-ES')}</p>
-      <p style="margin: 5px 0;"><strong>Estado:</strong> ${task.status === 'pendiente' ? 'Pendiente' : (task.status === 'en_proceso' || task.status === 'en-progreso') ? 'En proceso' : 'En revisión'}</p>
+      <p style="margin: 5px 0;"><strong>Estado:</strong> ${statusLabel(task.status)}</p>
     </div>
     <p>¡No olvides completarla a tiempo!</p>
   `;
@@ -177,81 +178,3 @@ export async function notifyTaskDueSoon(task, assignedTo) {
   });
 }
 
-/**
- * Enviar email cuando hay un nuevo mensaje en el chat
- */
-export async function notifyNewChatMessage(task, message, recipient) {
-  const content = `
-    <h2>💬 Nuevo mensaje en el chat</h2>
-    <p><strong>${message.author}</strong> escribió en la tarea:</p>
-    <div style="background: #f8f8f8; padding: 15px; border-radius: 8px; margin: 15px 0;">
-      <strong style="font-size: 16px; color: #9F2241;">${task.title}</strong>
-    </div>
-    <div style="background: #E3F2FD; padding: 15px; border-radius: 8px; margin: 15px 0; border-left: 4px solid #2196F3;">
-      <p style="margin: 0; font-style: italic;">"${message.text}"</p>
-    </div>
-  `;
-  
-  const html = getEmailTemplate(
-    'Nuevo Mensaje',
-    content,
-    APP_URL ? `${APP_URL}/tasks/${task.id}/chat` : null,
-    'Ver Chat'
-  );
-  
-  return await sendEmail({
-    to: recipient,
-    subject: `💬 Nuevo mensaje en "${task.title}"`,
-    html
-  });
-}
-
-/**
- * Enviar resumen diario de tareas
- */
-export async function sendDailySummary(userEmail, summary) {
-  const { overdue, dueToday, dueSoon, total } = summary;
-  
-  let statusHtml = '';
-  if (overdue > 0) {
-    statusHtml += `<div style="background: #FEE; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #EF4444;">
-      <strong style="color: #EF4444;">${overdue} tarea${overdue > 1 ? 's' : ''} vencida${overdue > 1 ? 's' : ''}</strong>
-    </div>`;
-  }
-  if (dueToday > 0) {
-    statusHtml += `<div style="background: #FFF3E0; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #F59E0B;">
-      <strong style="color: #F59E0B;">📅 ${dueToday} tarea${dueToday > 1 ? 's' : ''} vence${dueToday > 1 ? 'n' : ''} hoy</strong>
-    </div>`;
-  }
-  if (dueSoon > 0) {
-    statusHtml += `<div style="background: #E3F2FD; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #2196F3;">
-      <strong style="color: #2196F3;">⏰ ${dueSoon} tarea${dueSoon > 1 ? 's' : ''} próxima${dueSoon > 1 ? 's' : ''} a vencer</strong>
-    </div>`;
-  }
-  
-  if (!statusHtml) {
-    statusHtml = `<div style="background: #E8F5E9; padding: 15px; border-radius: 8px; margin: 10px 0; border-left: 4px solid #4CAF50;">
-      <strong style="color: #4CAF50;">✅ ¡Excelente! Todas tus tareas están al día</strong>
-    </div>`;
-  }
-  
-  const content = `
-    <h2>Buenos días! 🌅</h2>
-    <p>Aquí está el resumen de tus tareas:</p>
-    ${statusHtml}
-    <p style="margin-top: 20px;">Tienes <strong>${total} tareas activas</strong> en total.</p>
-  `;
-  
-  const html = getEmailTemplate(
-    'Resumen Diario de Tareas',
-    content,
-    APP_URL || null,
-    'Abrir App'
-  );
-  
-  return await sendEmail({
-    to: userEmail,
-    subject: `Resumen del día - ${new Date().toLocaleDateString('es-ES')}`,
-    html
-  });
-}

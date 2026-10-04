@@ -48,27 +48,3 @@ export const useResponsive = () => {
   };
 };
 
-// Helper para estilos responsive
-export const responsiveStyle = (screenWidth, styles) => {
-  if (screenWidth >= BREAKPOINTS.desktopLarge) {
-    return { ...styles.base, ...styles.desktopLarge };
-  }
-  if (screenWidth >= BREAKPOINTS.desktop) {
-    return { ...styles.base, ...styles.desktop };
-  }
-  if (screenWidth >= BREAKPOINTS.tablet) {
-    return { ...styles.base, ...styles.tablet };
-  }
-  return { ...styles.base, ...styles.mobile };
-};
-
-// Helper para obtener ancho de columna en grid
-export const getGridColumnWidth = (screenWidth, columns, gap = 16, padding = 32) => {
-  const availableWidth = screenWidth - padding - (gap * (columns - 1));
-  return availableWidth / columns;
-};
-
-// Helper para decidir layout (list o grid)
-export const shouldUseGridLayout = (screenWidth) => {
-  return screenWidth >= BREAKPOINTS.tablet;
-};
