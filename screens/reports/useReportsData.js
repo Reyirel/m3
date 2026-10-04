@@ -2,8 +2,6 @@
 // Datos de la pantalla de reportes: estadísticas por periodo, métricas por área,
 // avance de subtareas y análisis (alertas, comparativas, cuellos de botella).
 import { useEffect, useMemo, useState } from 'react';
-import { collection, getDocs, query, orderBy } from 'firebase/firestore';
-import { db } from '../../firebase';
 import { calculateDetailedAreaMetrics, getAreasNeedingAttention } from '../../services/areaMetrics';
 import { getAreaAlerts } from '../../services/AreaAlerts';
 import {
@@ -14,6 +12,7 @@ import {
   getCachedAnalytics,
 } from '../../services/AreaAnalytics';
 import { subscribeToAreas } from '../../services/area/areaManagement';
+import { getSubtaskCounts } from '../../services/tasksMultiple';
 import {
   EMPTY_PERIOD_STATS, PERIOD_DAYS, dailyCompletions, emptyMetricsByType, metricsByAreaType,
   periodStats, priorityDistribution, simpleAreaMetrics,
@@ -50,11 +49,7 @@ function useSubtasksProgress(tasks) {
         const results = await Promise.all(
           tasks.slice(0, SUBTASK_SAMPLE).map(async (task) => {
             try {
-              const subtasksRef = collection(db, 'tasks', task.id, 'subtasks');
-              const snapshot = await getDocs(query(subtasksRef, orderBy('createdAt', 'asc')));
-              const subtasks = snapshot.docs.map((d) => d.data());
-              const completed = subtasks.filter((s) => s.status === 'completada').length;
-              return { task, completed, total: subtasks.length };
+              return { task, ...(await getSubtaskCounts(task.id)) };
             } catch {
               return { task, completed: 0, total: 0 };
             }

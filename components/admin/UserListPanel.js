@@ -11,8 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { deleteUser, setUserRole } from '../../services/usersDirectory';
 import { adminSetUserPassword } from '../../services/authFirestore';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -50,7 +49,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
     }
     try {
       hapticLight();
-      await updateDoc(doc(db, 'users', userId), { role: newRole });
+      await setUserRole(userId, newRole);
       showSuccess(`${userName} ahora es ${ROLE_LABELS[newRole]}`);
       setEditingRoleUserId(null);
       if (onUsersChanged) onUsersChanged();
@@ -71,7 +70,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
     if (!deleteConfirmUser) return;
     try {
       hapticMedium();
-      await deleteDoc(doc(db, 'users', deleteConfirmUser.id));
+      await deleteUser(deleteConfirmUser.id);
       showSuccess(`Cuenta de ${deleteConfirmUser.displayName} eliminada`);
       setDeleteConfirmUser(null);
       if (onUsersChanged) onUsersChanged();

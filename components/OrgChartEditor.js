@@ -7,20 +7,17 @@ import {
   ActivityIndicator, Alert, ScrollView, Platform, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
 import {
   addSecretariaToStructure, getAreaNameError, getOrgStructure, moveDireccionInStructure,
-  moveSecretariaInStructure, renameAreaInStructure, sanitizeOrgStructure,
+  moveSecretariaInStructure, renameAreaInStructure,
 } from '../config/areas';
 import { useTheme } from '../contexts/ThemeContext';
 import {
   applyAreaRename, applyDireccionMove, moveDireccion, removeArea, renameArea, saveOrgStructure,
+  subscribeToSavedOrgStructure,
 } from '../services/orgStructure';
 import { showDialog } from '../utils/alert';
 import OrgDiagramBoard from './OrgDiagramBoard';
-
-const ORG_DOC_REF = () => doc(db, 'metadata', 'orgStructure');
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
@@ -264,19 +261,10 @@ export default function OrgChartEditor() {
   const [prompt, setPrompt] = useState(null);
 
   useEffect(() => {
-    const unsub = onSnapshot(
-      ORG_DOC_REF(),
-      (snap) => {
-        // Sin documento (nunca se ha editado) se muestra el organigrama vigente de la app
-        setOrgData((snap.exists() && sanitizeOrgStructure(snap.data())) || getOrgStructure());
-        setLoading(false);
-      },
-      () => {
-        setOrgData(getOrgStructure());
-        setLoading(false);
-      }
-    );
-    return () => unsub();
+    return subscribeToSavedOrgStructure((structure) => {
+      setOrgData(structure);
+      setLoading(false);
+    });
   }, []);
 
   const persist = useCallback(async (newData) => {

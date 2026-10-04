@@ -20,8 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 const LineChart = React.lazy(() => import('react-native-chart-kit').then(module => ({ default: module.LineChart })));
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
-import { collection, onSnapshot } from 'firebase/firestore';
-import { db } from '../firebase';
+import { subscribeToUsers } from '../services/usersDirectory';
 import ProgressBar from '../components/ProgressBar';
 import Avatar from '../components/Avatar';
 import ShimmerEffect from '../components/ShimmerEffect';
@@ -279,11 +278,9 @@ export default function AdminExecutiveDashboard({ navigation }) {
   useEffect(() => {
     let mounted = true;
 
-    // onSnapshot dispara inmediatamente con el estado actual, no necesita getDocs previo
-    const usersRef = collection(db, 'users');
-    const unsubscribeUsers = onSnapshot(usersRef, (snapshot) => {
+    // La suscripción entrega de inmediato la lista actual
+    const unsubscribeUsers = subscribeToUsers((usersData) => {
       if (!mounted) return;
-      const usersData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
       setUsers(usersData);
       setLoading(false);
     }, (error) => {

@@ -2,13 +2,73 @@
 // Chat de tareas: avisos a los demás participantes y control de mensajes no leídos.
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../firebase';
+import {
+  collection, addDoc, serverTimestamp, onSnapshot, query, orderBy, limit, doc, getDoc, getDocs, updateDoc,
+} from 'firebase/firestore';
+import { db, getServerTimestamp } from '../firebase';
 import { toMs } from '../utils/dateUtils';
 import { getAssignedEmails } from '../utils/taskHelpers';
 import { getAllUsers } from './usersDirectory';
 
 const normalizeEmail = (email) => (email || '').toLowerCase().trim();
+
+// ───────────────────────────── MENSAJES ─────────────────────────────
+
+const messagesRef = (taskId) => collection(db, 'tasks', taskId, 'messages');
+
+/** Datos de una tarea que no está entre las cargadas (null si no existe) */
+export const getChatTask = async (taskId) => {
+  const snapshot = await getDoc(doc(db, 'tasks', taskId));
+  return snapshot.exists() ? snapshot.data() : null;
+};
+
+/**
+ * Mensajes de una tarea en tiempo real, del más antiguo al más reciente.
+ * Cada mensaje trae `_pending: true` mientras no lo confirma el servidor.
+ * @returns {() => void} Función para dejar de escuchar
+ */
+export const subscribeToMessages = (taskId, callback, onError) => onSnapshot(
+  query(messagesRef(taskId), orderBy('createdAt', 'asc')),
+  // includeMetadataChanges: avisa también cuando un mensaje pasa de "enviando" a "enviado"
+  { includeMetadataChanges: true },
+  (snapshot) => callback(snapshot.docs.map((d) => ({
+    id: d.id,
+    // 'estimate': un mensaje aún sin confirmar muestra la hora local en vez de quedar sin hora
+    ...d.data({ serverTimestamps: 'estimate' }),
+    _pending: d.metadata.hasPendingWrites,
+  }))),
+  onError
+);
+
+/**
+ * Guardar un mensaje y anotar en la tarea quién escribió por última vez.
+ * La promesa se resuelve cuando el servidor confirma el mensaje; sin conexión queda
+ * pendiente y el mensaje sale solo al recuperarla.
+ * @param {string} taskId
+ * @param {Object} message - { type: 'text', text } o { type: 'image', imageUrl, imageName }
+ * @param {Object} sender - { userId, email, name }
+ */
+export const sendMessage = (taskId, message, sender) => {
+  updateDoc(doc(db, 'tasks', taskId), {
+    lastMessageAt: getServerTimestamp(),
+    lastMessageBy: sender.name,
+    lastMessageByEmail: sender.email || '',
+  }).catch(() => {});
+
+  return addDoc(messagesRef(taskId), {
+    ...message,
+    author: sender.name,
+    authorId: sender.userId,
+    authorEmail: sender.email || '',
+    createdAt: getServerTimestamp(),
+  });
+};
+
+/** Los últimos mensajes de una tarea, del más reciente al más antiguo */
+export const getRecentMessages = async (taskId, count) => {
+  const snapshot = await getDocs(query(messagesRef(taskId), orderBy('createdAt', 'desc'), limit(count)));
+  return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+};
 
 // ───────────────────────────── AVISOS ─────────────────────────────
 

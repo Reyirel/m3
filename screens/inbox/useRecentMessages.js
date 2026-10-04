@@ -2,8 +2,7 @@
 // Últimos mensajes de chat de las tareas del usuario, escritos por otras personas.
 import { useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { getRecentMessages } from '../../services/chatService';
 import { toMs } from '../../utils/dateUtils';
 import { isTaskAssignedToUser } from '../../utils/taskHelpers';
 
@@ -29,7 +28,7 @@ export function useRecentMessages(tasks, currentUser) {
   const [messages, setMessages] = useState([]);
 
   useEffect(() => {
-    if (!currentUser?.email || !db || tasks.length === 0) return;
+    if (!currentUser?.email || tasks.length === 0) return;
 
     const cacheKey = `@inbox_messages_${currentUser.email.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
 
@@ -47,15 +46,12 @@ export function useRecentMessages(tasks, currentUser) {
         const found = [];
         for (const task of tasksToCheck(tasks, currentUser)) {
           try {
-            const messagesRef = collection(db, 'tasks', task.id, 'messages');
-            const snapshot = await getDocs(query(messagesRef, orderBy('createdAt', 'desc'), limit(MESSAGES_PER_TASK)));
-            snapshot.forEach((messageDoc) => {
-              const data = messageDoc.data();
+            (await getRecentMessages(task.id, MESSAGES_PER_TASK)).forEach((data) => {
               const hasText = data && typeof data.text === 'string' && data.text.trim() !== '';
               const fromOther = data?.author && data.author !== currentUser.displayName && data.author !== currentUser.email;
               if (hasText && fromOther) {
                 found.push({
-                  id: `${messageDoc.id}-${Date.now()}`,
+                  id: `${data.id}-${Date.now()}`,
                   taskId: task.id,
                   taskTitle: task.title || 'Sin título',
                   author: data.author,

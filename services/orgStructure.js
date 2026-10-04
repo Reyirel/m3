@@ -68,6 +68,20 @@ export function startOrgStructureSync() {
   );
 }
 
+/**
+ * Organigrama guardado, en tiempo real (para el editor). Mientras no se haya editado
+ * nunca, o si no se puede leer, entrega el organigrama vigente de la app.
+ * @param {(structure: Object) => void} callback
+ * @returns {() => void} Función para dejar de escuchar
+ */
+export function subscribeToSavedOrgStructure(callback) {
+  return onSnapshot(
+    orgDocRef(),
+    (snapshot) => callback((snapshot.exists() && sanitizeOrgStructure(snapshot.data())) || getOrgStructure()),
+    () => callback(getOrgStructure())
+  );
+}
+
 /** Guardar el organigrama completo (y aplicarlo de inmediato en este dispositivo) */
 export async function saveOrgStructure(structure) {
   const clean = sanitizeOrgStructure(structure);

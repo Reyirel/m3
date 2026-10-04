@@ -8,11 +8,8 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
-  collection, addDoc, onSnapshot, query, orderBy,
-  doc, getDoc, updateDoc,
-} from 'firebase/firestore';
-import { db, getServerTimestamp } from '../firebase';
-import { notifyChatParticipants, markChatRead } from '../services/chatService';
+  getChatTask, markChatRead, notifyChatParticipants, sendMessage, subscribeToMessages,
+} from '../services/chatService';
 import ChatImageUpload from '../components/ChatImageUpload';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
@@ -95,9 +92,9 @@ export default function TaskChatScreen({ route, navigation }) {
 
     (async () => {
       try {
-        const taskDoc = await getDoc(doc(db, 'tasks', taskId));
-        if (taskDoc.exists()) {
-          setTaskData(taskDoc.data());
+        const task = await getChatTask(taskId);
+        if (task) {
+          setTaskData(task);
           setHasAccess(allowedRole);
         }
       } catch (e) {
@@ -112,16 +109,7 @@ export default function TaskChatScreen({ route, navigation }) {
   // ── realtime messages ─────────────────────────────────────────────────────
   useEffect(() => {
     if (!hasAccess) return;
-    const q = query(collection(db, 'tasks', taskId, 'messages'), orderBy('createdAt', 'asc'));
-    // includeMetadataChanges: avisa también cuando un mensaje pasa de "enviando" a "enviado"
-    return onSnapshot(q, { includeMetadataChanges: true }, snap => {
-      setMessages(snap.docs.map(d => ({
-        id: d.id,
-        // 'estimate': un mensaje aún sin confirmar muestra la hora local en vez de quedar sin hora
-        ...d.data({ serverTimestamps: 'estimate' }),
-        _pending: d.metadata.hasPendingWrites,
-      })));
-    }, err => {
+    return subscribeToMessages(taskId, setMessages, err => {
       if (__DEV__) console.error('[TaskChat] snapshot:', err);
     });
   }, [taskId, hasAccess]);
@@ -134,27 +122,15 @@ export default function TaskChatScreen({ route, navigation }) {
   // Guardar un mensaje. No se espera la confirmación del servidor: el mensaje aparece de
   // inmediato con el reloj de "enviando" y, si no hay conexión, sale solo al recuperarla.
   const postMessage = (message, preview) => {
-    const author = currentUser || 'Usuario';
-    addDoc(collection(db, 'tasks', taskId, 'messages'), {
-      ...message,
-      author,
-      authorId: currentUserId,
-      authorEmail: ctxUser?.email || '',
-      createdAt: getServerTimestamp(),
-    }).catch(e => {
+    const sender = { userId: currentUserId, email: ctxUser?.email, name: currentUser || 'Usuario' };
+    sendMessage(taskId, message, sender).catch(e => {
       if (__DEV__) console.error('[TaskChat] send:', e);
       showError(`No se pudo enviar el mensaje: ${e.message}`);
     });
 
-    updateDoc(doc(db, 'tasks', taskId), {
-      lastMessageAt: getServerTimestamp(),
-      lastMessageBy: author,
-      lastMessageByEmail: ctxUser?.email || '',
-    }).catch(() => {});
-
     notifyChatParticipants(
       { ...(taskData || {}), id: taskId, title: taskTitle || taskData?.title },
-      { userId: currentUserId, email: ctxUser?.email, name: author },
+      sender,
       preview,
     );
 

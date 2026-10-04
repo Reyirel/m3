@@ -18,8 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { getUsersByRole } from '../services/usersDirectory';
 import { getDireccionesBySecretaria, resolveAreaName } from '../config/areas';
 import ProgressBar from '../components/ProgressBar';
 import Avatar from '../components/Avatar';
@@ -121,13 +120,8 @@ export default function SecretarioDashboardScreen({ navigation }) {
       const direcciones = [...new Set([...direccionesOficiales, ...direccionesFirebase])].filter(Boolean);
       const secretariaArea = user.area || '';
 
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('role', '==', 'director'));
-      const snapshot = await getDocs(q);
-
       const myDirectors = [];
-      snapshot.forEach(doc => {
-        const directorData = { id: doc.id, ...doc.data() };
+      (await getUsersByRole('director')).forEach(directorData => {
         if (direcciones.includes(directorData.area) ||
             direcciones.includes(directorData.department) ||
             directorData.area?.includes(secretariaArea)) {

@@ -7,8 +7,6 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { ensurePermissions, getAllScheduledNotifications, cancelAllNotifications } from '../services/notifications';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
 import * as Notifications from 'expo-notifications';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNotification } from '../contexts/NotificationContext';
@@ -25,7 +23,7 @@ import { confirmAlert } from '../utils/alert';
 import CreateUserForm from '../components/admin/CreateUserForm';
 import PasswordResetForm from '../components/admin/PasswordResetForm';
 import UserListPanel from '../components/admin/UserListPanel';
-import { invalidateUsersDirectory } from '../services/usersDirectory';
+import { getAllUsers, invalidateUsersDirectory } from '../services/usersDirectory';
 import ScreenHeader from '../components/ui/ScreenHeader';
 
 const TABS = [
@@ -103,13 +101,11 @@ export default function AdminScreen({ navigation, onLogout }) {
       // Se llama al abrir la pantalla y tras cada alta, baja o cambio de usuario:
       // el resto de la app debe dejar de usar la lista anterior
       invalidateUsersDirectory();
-      const snap = await getDocs(collection(db, 'users'));
-      if (snap.empty) { setAllUsers([]); return; }
-      setAllUsers(snap.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt || new Date(),
-        active: doc.data().active !== false,
+      const users = await getAllUsers({ force: true });
+      setAllUsers(users.map(user => ({
+        ...user,
+        createdAt: user.createdAt || new Date(),
+        active: user.active !== false,
       })));
     } catch {
       setAllUsers([]);

@@ -5,8 +5,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
+import { getUsersByRole } from '../services/usersDirectory';
 import { useTheme } from '../contexts/ThemeContext';
 import { SPACING, RADIUS, TYPOGRAPHY, SHADOWS } from '../theme/tokens';
 import { toMs } from '../utils/dateUtils';
@@ -38,21 +37,9 @@ const AreaMetricsPanel = ({
     
     setLoading(true);
     try {
-      const usersRef = collection(db, 'users');
-      // Solo filtrar por role, luego filtrar área en cliente (case-insensitive)
-      const q = query(
-        usersRef, 
-        where('role', '==', 'director')
-      );
-      const snapshot = await getDocs(q);
-      
-      // Filtrar por área de forma case-insensitive
+      // Directores del área, sin distinguir mayúsculas
       const userAreaNorm = userArea.toLowerCase().trim();
-      const directorsData = snapshot.docs
-        .map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }))
+      const directorsData = (await getUsersByRole('director'))
         .filter(d => (d.area || '').toLowerCase().trim() === userAreaNorm);
       
       setDirectors(directorsData);

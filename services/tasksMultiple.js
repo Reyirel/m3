@@ -242,6 +242,19 @@ export async function deleteSubtask(taskId, subtaskId) {
 }
 
 /**
+ * Cuántas subtareas tiene una tarea y cuántas están completadas (lectura puntual)
+ * @param {string} taskId
+ * @returns {Promise<{ completed: number, total: number }>}
+ */
+export async function getSubtaskCounts(taskId) {
+  const snapshot = await getDocs(collection(db, 'tasks', taskId, 'subtasks'));
+  return {
+    completed: snapshot.docs.filter((d) => d.data().status === 'completada').length,
+    total: snapshot.size,
+  };
+}
+
+/**
  * Obtener y escuchar subtareas de una tarea
  * @param {string} taskId 
  * @param {Function} callback 

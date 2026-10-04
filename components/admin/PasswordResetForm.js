@@ -9,8 +9,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { findUserByEmail } from '../../services/usersDirectory';
 import { adminSetUserPassword } from '../../services/authFirestore';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNotification } from '../../contexts/NotificationContext';
@@ -40,17 +39,13 @@ export default function PasswordResetForm({ isUserAdmin }) {
     }
 
     try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('email', '==', resetEmail.toLowerCase()));
-      const querySnapshot = await getDocs(q);
-
-      if (querySnapshot.empty) {
+      const user = await findUserByEmail(resetEmail);
+      if (!user) {
         showError('Usuario no encontrado');
         return;
       }
 
-      const userDoc = querySnapshot.docs[0];
-      await adminSetUserPassword(userDoc.id, resetEmail, newPassword);
+      await adminSetUserPassword(user.id, resetEmail, newPassword);
 
       showSuccess('La contraseña ha sido actualizada');
       setResetEmail('');
