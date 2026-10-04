@@ -417,8 +417,8 @@ const createStyles = (theme, isDark) => StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 50,
     paddingBottom: 18,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.30,
     shadowRadius: 16,
@@ -452,7 +452,7 @@ const createStyles = (theme, isDark) => StyleSheet.create({
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.4,
@@ -515,7 +515,7 @@ const createStyles = (theme, isDark) => StyleSheet.create({
     marginBottom: 2,
   },
   avatarText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
   },
 
@@ -524,7 +524,7 @@ const createStyles = (theme, isDark) => StyleSheet.create({
     maxWidth: BUBBLE_MAX,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.07,
@@ -545,7 +545,7 @@ const createStyles = (theme, isDark) => StyleSheet.create({
     letterSpacing: 0.1,
   },
   bubbleText: {
-    fontSize: 15,
+    fontSize: 16,
     lineHeight: 21,
     fontWeight: '400',
     color: theme.text,
@@ -561,7 +561,7 @@ const createStyles = (theme, isDark) => StyleSheet.create({
   msgImage: {
     width: 200,
     height: 160,
-    borderRadius: 12,
+    borderRadius: 10,
     marginBottom: 4,
   },
   imageOverlay: {
@@ -594,8 +594,8 @@ const createStyles = (theme, isDark) => StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 14,
     backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F2F2F7',
-    borderRadius: 20,
-    fontSize: 15,
+    borderRadius: 24,
+    fontSize: 16,
     fontWeight: '400',
     borderWidth: 1,
     maxHeight: 100,
@@ -636,7 +636,7 @@ const createStyles = (theme, isDark) => StyleSheet.create({
     marginBottom: 4,
   },
   emptyTitle: {
-    fontSize: 19,
+    fontSize: 18,
     fontWeight: '800',
     letterSpacing: -0.5,
   },
@@ -662,7 +662,7 @@ const createStyles = (theme, isDark) => StyleSheet.create({
     marginTop: 8,
   },
   noAccessText: {
-    fontSize: 15,
+    fontSize: 16,
     textAlign: 'center',
     lineHeight: 22,
     fontWeight: '500',
@@ -681,19 +681,19 @@ const createStyles = (theme, isDark) => StyleSheet.create({
     right: 20,
     zIndex: 10,
     backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 8,
   },
   fullScreenImage: {
     width: SCREEN_W - 32,
     height: Dimensions.get('window').height * 0.70,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   imageModalHint: {
     position: 'absolute',
     bottom: 50,
     color: 'rgba(255,255,255,0.55)',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
   },
 });

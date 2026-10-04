@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
   },
   suggestionTitle: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   applyButton: {
@@ -457,7 +457,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   applyButtonText: {
     color: 'white',
@@ -471,10 +471,10 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   actionButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   suggestionsList: {
@@ -486,10 +486,10 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   suggestionText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
   },
   suggestionMeta: {

@@ -64,5 +64,5 @@ export default function AnimatedNumber({
 }
 
 const styles = StyleSheet.create({
-  defaultText: { fontSize: 24, fontWeight: '700', color: '#333' },
+  defaultText: { fontSize: 22, fontWeight: '700', color: '#333' },
 });

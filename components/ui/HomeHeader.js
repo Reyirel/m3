@@ -78,7 +78,7 @@ export default function HomeHeader({
               </View>
               <View style={[styles.userInfo, isWide && styles.userInfoWide]}>
                 {!isWide && <Text style={styles.greeting}>{getGreeting()}</Text>}
-                <Text style={[styles.name, isWide && { fontSize: 17, lineHeight: 22 }]} numberOfLines={1}>{userName}</Text>
+                <Text style={[styles.name, isWide && { fontSize: 16, lineHeight: 22 }]} numberOfLines={1}>{userName}</Text>
                 {isWide && <Text style={styles.greeting}>{role}</Text>}
               </View>
             </View>
@@ -167,8 +167,8 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 52 : 32,
     paddingBottom: 32,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 28,
-    borderBottomRightRadius: 28,
+    borderBottomLeftRadius: 32,
+    borderBottomRightRadius: 32,
     shadowColor: '#9F2241',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.28,
@@ -181,8 +181,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 28,
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
   },
   headerRow: {
     flexDirection: 'row',
@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.5,
@@ -222,7 +222,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   greeting: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
     color: 'rgba(255,255,255,0.68)',
     letterSpacing: 0.3,
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.14)',
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.22)',
   },
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
   },
   searchWrapper: { marginTop: -18, paddingHorizontal: 16, zIndex: 10 },
   searchCard: {
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.10,

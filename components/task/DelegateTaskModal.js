@@ -143,7 +143,7 @@ const createStyles = (_theme) =>
       marginBottom: 10,
     },
     title: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: '800',
     },
     subtitle: {
@@ -157,7 +157,7 @@ const createStyles = (_theme) =>
       marginHorizontal: 20,
       marginBottom: 16,
       padding: 12,
-      borderRadius: 8,
+      borderRadius: 10,
       borderWidth: 1,
       gap: 8,
     },
@@ -177,14 +177,14 @@ const createStyles = (_theme) =>
     },
     emptyText: {
       marginTop: 16,
-      fontSize: 15,
+      fontSize: 16,
       textAlign: 'center',
     },
     userItem: {
       flexDirection: 'row',
       alignItems: 'center',
       padding: 16,
-      borderRadius: 14,
+      borderRadius: 16,
       marginBottom: 12,
       borderWidth: 1,
     },
@@ -205,6 +205,6 @@ const createStyles = (_theme) =>
       marginBottom: 2,
     },
     userArea: {
-      fontSize: 13,
+      fontSize: 14,
     },
   });

@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
   iconContainer: {
     width: 48,
     height: 48,
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 14,
@@ -259,12 +259,12 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   title: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     marginBottom: 4,
   },
   message: {
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 18,
   },
   closeButton: {

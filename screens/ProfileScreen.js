@@ -306,7 +306,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.4,
   },
   heroEmail: {
-    fontSize: 13,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.68)',
     marginTop: 2,
   },
@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     paddingHorizontal: 12,
     paddingVertical: 5,
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
   },
@@ -400,10 +400,10 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   infoLabel: {
-    fontSize: 13,
+    fontSize: 14,
   },
   infoValue: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   footer: {

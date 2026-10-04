@@ -109,7 +109,7 @@ export default function AiSubtasksModal({
                 >
                   {opt.checked && <Ionicons name="checkmark" size={13} color="#FFF" />}
                 </View>
-                <Text style={{ flex: 1, fontSize: 13, color: theme.text, lineHeight: 18 }}>
+                <Text style={{ flex: 1, fontSize: 14, color: theme.text, lineHeight: 18 }}>
                   {opt.title}
                 </Text>
               </TouchableOpacity>
@@ -150,8 +150,8 @@ const createStyles = (_theme, _isDark) =>
       backgroundColor: 'rgba(0,0,0,0.5)',
     },
     container: {
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
       padding: 20,
       paddingBottom: 36,
     },
@@ -162,7 +162,7 @@ const createStyles = (_theme, _isDark) =>
       gap: 10,
     },
     title: {
-      fontSize: 17,
+      fontSize: 16,
       fontWeight: '700',
     },
     subtitle: {

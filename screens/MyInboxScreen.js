@@ -237,7 +237,7 @@ export default function MyInboxScreen({ navigation }) {
           </LinearGradient>
           <View style={{ flex: 1, padding: 16 }}>
             {[1, 2, 3, 4, 5].map((i) => (
-              <View key={i} style={[glassCard, { borderWidth: 1, padding: 16, borderRadius: 14, marginBottom: 12 }]}>
+              <View key={i} style={[glassCard, { borderWidth: 1, padding: 16, borderRadius: 16, marginBottom: 12 }]}>
                 <ShimmerEffect width="70%" height={18} style={{ marginBottom: 8 }} />
                 <ShimmerEffect width="100%" height={14} style={{ marginBottom: 6 }} />
                 <ShimmerEffect width="40%" height={12} />

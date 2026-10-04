@@ -230,7 +230,7 @@ const styles = StyleSheet.create({
   rows: { gap: 8 },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 14, paddingVertical: 13, borderRadius: 14, borderWidth: 1.5,
+    paddingHorizontal: 14, paddingVertical: 13, borderRadius: 16, borderWidth: 1.5,
     // Necesario para que el input del navegador (web) quede contenido en la fila
     position: 'relative',
   },
@@ -239,9 +239,9 @@ const styles = StyleSheet.create({
   rowValue: { fontSize: 14, fontWeight: '600', marginTop: 1 },
   todayBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, paddingVertical: 10, borderRadius: 12, borderWidth: 1,
+    gap: 6, paddingVertical: 10, borderRadius: 16, borderWidth: 1,
   },
-  todayText: { fontSize: 13, fontWeight: '600' },
+  todayText: { fontSize: 14, fontWeight: '600' },
 
   // iOS modal
   iosOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
@@ -251,5 +251,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingVertical: 16,
   },
   iosTitle: { fontSize: 16, fontWeight: '700' },
-  iosBtnText: { fontSize: 15, fontWeight: '500' },
+  iosBtnText: { fontSize: 16, fontWeight: '500' },
 });

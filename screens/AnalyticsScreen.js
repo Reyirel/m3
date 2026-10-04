@@ -21,7 +21,8 @@ import ScreenHeader from '../components/ui/ScreenHeader';
 
 const { width } = Dimensions.get('window');
 
-const AnalyticsScreen = ({ navigation }) => {
+// `embedded`: se muestra como pestaña dentro de Reportes, sin encabezado propio
+const AnalyticsScreen = ({ navigation, embedded = false }) => {
   const { theme, isDark } = useTheme();
   const { tasks: contextTasks, currentUser } = useTasks();
   // Las estadísticas de reportes cuentan solo los que este usuario puede ver
@@ -109,7 +110,7 @@ const AnalyticsScreen = ({ navigation }) => {
       width: (width - 44) / 2,
     },
     metricCardGradient: {
-      borderRadius: 20,
+      borderRadius: 24,
       padding: 18,
       minHeight: 140,
       position: 'relative',
@@ -118,14 +119,14 @@ const AnalyticsScreen = ({ navigation }) => {
     metricIconWrapper: {
       width: 48,
       height: 48,
-      borderRadius: 14,
+      borderRadius: 16,
       backgroundColor: 'rgba(255,255,255,0.2)',
       justifyContent: 'center',
       alignItems: 'center',
       marginBottom: 14,
     },
     metricLabel: {
-      fontSize: 13,
+      fontSize: 14,
       color: 'rgba(255,255,255,0.8)',
       fontWeight: '600',
       marginBottom: 6,
@@ -144,7 +145,7 @@ const AnalyticsScreen = ({ navigation }) => {
     },
     // ✨ Rating Distribution Premium
     ratingContainer: {
-      borderRadius: 20,
+      borderRadius: 24,
       padding: 20,
       overflow: 'hidden',
     },
@@ -156,7 +157,7 @@ const AnalyticsScreen = ({ navigation }) => {
     ratingIconBg: {
       width: 44,
       height: 44,
-      borderRadius: 12,
+      borderRadius: 10,
       backgroundColor: 'rgba(255,255,255,0.15)',
       justifyContent: 'center',
       alignItems: 'center',
@@ -202,7 +203,7 @@ const AnalyticsScreen = ({ navigation }) => {
       borderRadius: 6,
     },
     ratingCount: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '700',
       color: '#FFFFFF',
       minWidth: 30,
@@ -210,7 +211,7 @@ const AnalyticsScreen = ({ navigation }) => {
     },
     // ✨ Task Status Premium
     statusContainer: {
-      borderRadius: 20,
+      borderRadius: 24,
       padding: 20,
       overflow: 'hidden',
     },
@@ -222,7 +223,7 @@ const AnalyticsScreen = ({ navigation }) => {
     statusIconBg: {
       width: 44,
       height: 44,
-      borderRadius: 12,
+      borderRadius: 10,
       backgroundColor: 'rgba(255,255,255,0.15)',
       justifyContent: 'center',
       alignItems: 'center',
@@ -275,12 +276,12 @@ const AnalyticsScreen = ({ navigation }) => {
     },
     statusBarFill: {
       height: '100%',
-      borderRadius: 7,
+      borderRadius: 10,
     },
     // ✨ Top Tasks Premium
     topTasksContainer: {
       backgroundColor: theme.glass,
-      borderRadius: 20,
+      borderRadius: 24,
       overflow: 'hidden',
       borderWidth: 1,
       borderColor: theme.glassBorder,
@@ -297,13 +298,13 @@ const AnalyticsScreen = ({ navigation }) => {
     topTasksIconBg: {
       width: 40,
       height: 40,
-      borderRadius: 12,
+      borderRadius: 10,
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: 12,
     },
     topTasksTitle: {
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: '700',
       color: theme.text,
     },
@@ -322,7 +323,7 @@ const AnalyticsScreen = ({ navigation }) => {
     topTaskRank: {
       width: 32,
       height: 32,
-      borderRadius: 8,
+      borderRadius: 10,
       justifyContent: 'center',
       alignItems: 'center',
       marginRight: 14,
@@ -352,7 +353,7 @@ const AnalyticsScreen = ({ navigation }) => {
       backgroundColor: isDark ? 'rgba(251,191,36,0.15)' : 'rgba(251,191,36,0.1)',
       paddingHorizontal: 10,
       paddingVertical: 6,
-      borderRadius: 20,
+      borderRadius: 24,
     },
     topTaskRatingText: {
       fontSize: 14,
@@ -518,7 +519,7 @@ const AnalyticsScreen = ({ navigation }) => {
         <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center' }}>No se pudieron cargar las métricas. Verifica tu conexión.</Text>
         <TouchableOpacity
           onPress={() => { setLoadError(false); setLoading(true); setRetryCount(c => c + 1); }}
-          style={{ backgroundColor: theme.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+          style={{ backgroundColor: theme.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 24, flexDirection: 'row', alignItems: 'center', gap: 8 }}
           accessibilityLabel="Reintentar" accessibilityRole="button"
         >
           <Ionicons name="refresh" size={16} color="#fff" />
@@ -563,18 +564,19 @@ const AnalyticsScreen = ({ navigation }) => {
   return (
     <View style={styles.container}>
 
-      {/* ✨ Glassmorphic Header */}
-      <Animated.View style={{
-        opacity: headerAnim,
-        transform: [{ translateY: headerSlide }]
-      }}>
-        <ScreenHeader
-          title="Analíticas"
-          subtitle="Indicadores de rendimiento"
-          icon="analytics"
-          onBack={() => navigation.goBack()}
-        />
-      </Animated.View>
+      {!embedded && (
+        <Animated.View style={{
+          opacity: headerAnim,
+          transform: [{ translateY: headerSlide }]
+        }}>
+          <ScreenHeader
+            title="Analíticas"
+            subtitle="Indicadores de rendimiento"
+            icon="analytics"
+            onBack={() => navigation.goBack()}
+          />
+        </Animated.View>
+      )}
 
       <ScrollView 
         style={styles.content} 

@@ -39,7 +39,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   headerIconWrapper: {
     width: 42,
     height: 42,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.18)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
@@ -73,7 +73,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 16,
     gap: 10,
   },
   searchDivider: {
@@ -83,7 +83,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   filterIconBtn: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -97,7 +97,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     marginBottom: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
   },
   actionsBarLeft: {
@@ -117,7 +117,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   selectionBadgeText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
   },
   selectionText: {
@@ -142,7 +142,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     gap: 6,
     marginBottom: 4,
     paddingHorizontal: 4,
-    borderRadius: 18,
+    borderRadius: 24,
   },
   selectionCircle: {
     width: 24,
@@ -224,7 +224,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     textShadowRadius: 1
   },
   messageAuthor: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     marginBottom: 8,
     color: theme.primary,
@@ -363,7 +363,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     elevation: 5,
   },
   filterOptionText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: theme.text,
     letterSpacing: 0.3,
@@ -389,7 +389,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     elevation: 3,
   },
   clearFiltersBtnText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
@@ -428,7 +428,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     borderColor: theme.primary,
   },
   modalFooterBtnText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
@@ -471,12 +471,12 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     flex: 1,
   },
   helpModalItemTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     marginBottom: 2,
   },
   helpModalItemDesc: {
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 18,
   },
   helpModalCloseBtn: {
@@ -487,7 +487,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   helpModalCloseBtnText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
   // Estilos para filtros rápidos

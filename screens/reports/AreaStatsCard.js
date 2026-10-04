@@ -224,7 +224,7 @@ export default AreaStatsCard;
 const styles = StyleSheet.create({
   // ── tarjeta compacta ──────────────────────────────────────────────
   card: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderLeftWidth: 4,
     marginBottom: 8,
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   iconWrap: {
     width: 30,
     height: 30,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   areaName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     lineHeight: 18,
   },
@@ -278,7 +278,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 7,
     paddingVertical: 3,
-    borderRadius: 20,
+    borderRadius: 24,
   },
   badgeText: {
     fontSize: 11,
@@ -300,8 +300,8 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   sheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingBottom: Platform.OS === 'ios' ? 34 : 20,
     maxHeight: '80%',
   },
@@ -397,7 +397,7 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 24,
   },
   tagChipText: {
     fontSize: 12,
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
   dismissBtn: {
     marginHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
   },
   dismissText: {

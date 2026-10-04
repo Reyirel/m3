@@ -45,7 +45,7 @@ export default function ChartsModal({
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' }}>
-        <View style={{ backgroundColor: theme.card, borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '85%' }}>
+        <View style={{ backgroundColor: theme.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, maxHeight: '85%' }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderBottomWidth: 1, borderBottomColor: theme.border }}>
             <Text style={{ fontSize: 16, fontWeight: '700', color: theme.text }}>Gráficas detalladas</Text>
             <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Cerrar">
@@ -62,7 +62,7 @@ export default function ChartsModal({
                     { label: 'Pendientes', value: subtasksStats.pending, color: theme.warning },
                     { label: 'Completado', value: `${subtasksStats.completionRate}%`, color: theme.primary },
                   ].map((stat) => (
-                    <View key={stat.label} style={{ flex: 1, backgroundColor: theme.glass, borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: theme.glassBorder }}>
+                    <View key={stat.label} style={{ flex: 1, backgroundColor: theme.glass, borderRadius: 16, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: theme.glassBorder }}>
                       <Text style={{ fontSize: 22, fontWeight: '800', color: stat.color }}>{stat.value}</Text>
                       <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>{stat.label}</Text>
                     </View>
@@ -76,8 +76,8 @@ export default function ChartsModal({
                 {withSubtasks.map((task, index) => (
                   <View key={task.id} style={{ marginBottom: 10 }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Text style={{ fontSize: 13, color: theme.text, flex: 1 }} numberOfLines={1}>{index + 1}. {task.title}</Text>
-                      <Text style={{ fontSize: 13, fontWeight: '700', color: theme.primary }}>{task.progress}%</Text>
+                      <Text style={{ fontSize: 14, color: theme.text, flex: 1 }} numberOfLines={1}>{index + 1}. {task.title}</Text>
+                      <Text style={{ fontSize: 14, fontWeight: '700', color: theme.primary }}>{task.progress}%</Text>
                     </View>
                     <View style={{ height: 6, backgroundColor: theme.border, borderRadius: 3, overflow: 'hidden' }}>
                       <View style={{ width: `${task.progress}%`, height: '100%', backgroundColor: task.progress === 100 ? theme.success : task.progress >= 50 ? theme.info : theme.warning, borderRadius: 3 }} />
@@ -101,10 +101,10 @@ export default function ChartsModal({
                       backgroundGradientTo: theme.card,
                       color: lineColor,
                       strokeWidth: 2,
-                      style: { borderRadius: 12 },
+                      style: { borderRadius: 16 },
                       labelColor: () => theme.textSecondary,
                     }}
-                    style={{ borderRadius: 12 }}
+                    style={{ borderRadius: 16 }}
                   />
                 </Suspense>
               </Section>

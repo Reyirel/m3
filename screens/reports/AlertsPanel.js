@@ -227,7 +227,7 @@ const styles = StyleSheet.create({
     marginBottom: 20
   },
   alertCard: {
-    borderRadius: 12,
+    borderRadius: 16,
     paddingHorizontal: 14,
     paddingVertical: 12,
     marginBottom: 8
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     gap: 10
   },
   alertDescription: {
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 18
   },
   statsRow: {
@@ -269,7 +269,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: 'rgba(0,0,0,0.05)'
   },
   statLabel: {
@@ -287,13 +287,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
     paddingHorizontal: 14,
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 8
   },
   actionText: {
     color: '#FFFFFF',
     fontWeight: '600',
-    fontSize: 13
+    fontSize: 14
   },
   suggestionsContainer: {
     borderTopWidth: 1,
@@ -308,13 +308,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   suggestionsTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   suggestionsBadge: {
     paddingHorizontal: 7,
     paddingVertical: 2,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   suggestionItem: {
     flexDirection: 'row',
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     gap: 2
   },
   suggestionPriority: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600'
   },
   suggestionText: {

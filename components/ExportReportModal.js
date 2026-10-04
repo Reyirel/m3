@@ -37,8 +37,8 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
     },
     sheet: {
       maxHeight: '80%',
-      borderTopLeftRadius: 28,
-      borderTopRightRadius: 28,
+      borderTopLeftRadius: 32,
+      borderTopRightRadius: 32,
       backgroundColor: isDark ? '#1C1118' : '#FFFFFF',
       borderTopWidth: 1,
       borderLeftWidth: 1,
@@ -59,7 +59,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
       marginBottom: 4,
     },
     subtitle: {
-      fontSize: 13,
+      fontSize: 14,
       color: theme.textTertiary,
     },
     section: {
@@ -90,7 +90,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
       flex: 1,
     },
     optionLabel: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '600',
       color: theme.text,
       marginBottom: 2,
@@ -116,7 +116,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
       alignItems: 'center',
     },
     toggleLabel: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '500',
       color: theme.text,
     },
@@ -149,7 +149,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
     cancelButton: {
       flex: 1,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: 10,
       backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
       justifyContent: 'center',
       alignItems: 'center',
@@ -157,7 +157,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
     exportButton: {
       flex: 1,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: 10,
       backgroundColor: theme.primary,
       justifyContent: 'center',
       alignItems: 'center',
@@ -379,7 +379,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
             <View
               style={{
                 backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)',
-                borderRadius: 8,
+                borderRadius: 10,
                 padding: 12,
                 marginBottom: 12,
               }}

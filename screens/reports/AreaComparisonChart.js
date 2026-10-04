@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
     marginRight: 2,
   },
   areaName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     flex: 1,
   },
@@ -222,13 +222,13 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 32,
     backgroundColor: 'rgba(107, 114, 128, 0.1)',
-    borderRadius: 8,
+    borderRadius: 10,
     overflow: 'hidden',
     position: 'relative',
   },
   barFill: {
     height: '100%',
-    borderRadius: 8,
+    borderRadius: 10,
     minWidth: 30,
     justifyContent: 'center',
     paddingHorizontal: 8,
@@ -240,7 +240,7 @@ const styles = StyleSheet.create({
     right: 0,
     height: '40%',
     backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 8,
+    borderRadius: 10,
   },
   alertIndicator: {
     position: 'absolute',
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     height: 200,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 12,
+    borderRadius: 10,
     gap: 8,
   },
   emptyText: {

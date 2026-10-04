@@ -160,7 +160,7 @@ export default function PasswordResetForm({ isUserAdmin }) {
 const styles = StyleSheet.create({
   sectionCard: {
     padding: 18,
-    borderRadius: 20,
+    borderRadius: 24,
     marginBottom: 24,
     borderWidth: 1.5,
     borderColor: 'rgba(0,0,0,0.08)',
@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.4)',
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '900',
     letterSpacing: -0.6,
     flex: 1,
@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     paddingVertical: 14,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   actionButton: {
@@ -238,18 +238,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     minHeight: 52,
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '900',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
   helpText: {
-    fontSize: 13,
+    fontSize: 14,
     fontStyle: 'italic',
     marginTop: 4,
     lineHeight: 18,

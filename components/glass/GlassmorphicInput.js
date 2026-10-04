@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
     letterSpacing: 0.3,
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   input: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '500',
     padding: 0,
   },

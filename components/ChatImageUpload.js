@@ -318,7 +318,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   menuTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: '#8E8E93',
     letterSpacing: 0.5,
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     color: '#1C1C1E',
   },
   menuOptionSub: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#8E8E93',
     marginTop: 1,
   },
@@ -357,7 +357,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingVertical: 14,
     backgroundColor: '#F2F2F7',
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: 'center',
   },
   menuCancelText: {
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#9F2241',
     paddingHorizontal: 14,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 24,
   },
   previewSendBtnDisabled: {
     opacity: 0.5,
@@ -452,20 +452,20 @@ const styles = StyleSheet.create({
   cancelBtn: {
     flex: 1,
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: 'center',
     backgroundColor: '#2C2C2E',
   },
   cancelBtnText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   confirmBtn: {
     flex: 2,
     flexDirection: 'row',
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
@@ -473,7 +473,7 @@ const styles = StyleSheet.create({
   },
   confirmBtnText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
 });

@@ -26,14 +26,14 @@ export const styles = StyleSheet.create({
     alignItems: 'flex-start',
   },
   greeting: {
-    fontSize: 13,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.72)',
     marginBottom: 4,
     fontWeight: '500',
     letterSpacing: 0.3,
   },
   headerTitle: {
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.5,
@@ -42,7 +42,7 @@ export const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.72)',
     marginTop: 4,
     fontWeight: '500',
@@ -62,7 +62,7 @@ export const styles = StyleSheet.create({
     paddingTop: 20,
   },
   section: {
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
@@ -102,7 +102,7 @@ export const styles = StyleSheet.create({
     width: (width - 64 - 30) / 4,
     minWidth: 70,
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
   },
   statIcon: {
@@ -114,7 +114,7 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
   },
   statValue: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
   },
   statLabel: {
@@ -143,7 +143,7 @@ export const styles = StyleSheet.create({
   coordinationCard: {
     flexDirection: 'row',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 12,
   },
   coordinationInfo: {
@@ -154,7 +154,7 @@ export const styles = StyleSheet.create({
     fontWeight: '700',
   },
   coordinationLabel: {
-    fontSize: 13,
+    fontSize: 14,
   },
   coordinationStats: {
     justifyContent: 'center',
@@ -166,7 +166,7 @@ export const styles = StyleSheet.create({
     gap: 6,
   },
   coordinationStatText: {
-    fontSize: 13,
+    fontSize: 14,
   },
   viewAllButton: {
     flexDirection: 'row',
@@ -192,7 +192,7 @@ export const styles = StyleSheet.create({
   },
   directorCard: {
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 10,
     borderLeftWidth: 4,
   },
@@ -206,7 +206,7 @@ export const styles = StyleSheet.create({
     marginLeft: 12,
   },
   directorName: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   directorArea: {
@@ -235,11 +235,11 @@ export const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 5,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
   },
   directorActionText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   modalOverlay: {
@@ -248,8 +248,8 @@ export const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     padding: 20,
     maxHeight: '75%',
   },
@@ -260,11 +260,11 @@ export const styles = StyleSheet.create({
     marginBottom: 16,
   },
   modalTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
   },
   modalSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
     marginTop: 2,
   },
   taskRow: {
@@ -277,7 +277,7 @@ export const styles = StyleSheet.create({
   taskStatusIcon: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -339,18 +339,18 @@ export const styles = StyleSheet.create({
     marginBottom: 8,
   },
   areaSummaryProgressLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
   },
   areaSummaryProgressValue: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
   directionCard: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 8,
   },
   directionIcon: {
@@ -381,12 +381,12 @@ export const styles = StyleSheet.create({
   actionButton: {
     width: (width - 64 - 12) / 2,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
     gap: 8,
   },
   actionText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
   },
 });

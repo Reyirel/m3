@@ -155,7 +155,7 @@ const GlassmorphicStatsCard = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     overflow: 'hidden',
     position: 'relative',
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     zIndex: 1,
   },

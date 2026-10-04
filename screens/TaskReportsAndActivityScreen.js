@@ -111,7 +111,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
       borderBottomColor: theme.primary,
     },
     tabText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '600',
       color: theme.textSecondary,
     },
@@ -138,7 +138,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
       textAlign: 'center',
     },
     emptySubtext: {
-      fontSize: 13,
+      fontSize: 14,
       color: theme.textSecondary,
       textAlign: 'center',
       marginBottom: 24,
@@ -155,7 +155,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     addButtonText: {
       color: '#fff',
       fontWeight: '600',
-      fontSize: 13,
+      fontSize: 14,
     },
     // Report styles
     reportCard: {
@@ -213,7 +213,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
       borderTopColor: isDark ? theme.glass : theme.glassStrong,
     },
     reportDescription: {
-      fontSize: 13,
+      fontSize: 14,
       color: theme.text,
       lineHeight: 20,
       marginBottom: 12,
@@ -229,7 +229,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     reportImage: {
       width: (width - 48) / 2,
       height: (width - 48) / 2,
-      borderRadius: 8,
+      borderRadius: 10,
       backgroundColor: isDark ? theme.glass : theme.glassStrong,
     },
     ratingSection: {
@@ -361,7 +361,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
             alignItems: 'center',
             width: 80,
             height: '100%',
-            borderRadius: 12,
+            borderRadius: 10,
           }}
           accessibilityLabel="Eliminar reporte"
         >
@@ -590,7 +590,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
 
         <View style={{ flex: 1 }}>
           <Text style={styles.headerTitle} numberOfLines={1}>{taskTitle}</Text>
-          <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.75)' }}>
+          <Text style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)' }}>
             Reportes e Historial
           </Text>
         </View>
@@ -604,7 +604,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
               paddingHorizontal: 12,
               paddingVertical: 8,
               backgroundColor: 'rgba(255,255,255,0.2)',
-              borderRadius: 8,
+              borderRadius: 10,
               justifyContent: 'center',
               alignItems: 'center',
               borderWidth: 1,

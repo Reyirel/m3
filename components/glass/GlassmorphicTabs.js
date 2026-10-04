@@ -139,7 +139,7 @@ const GlassmorphicTabs = ({
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     paddingHorizontal: 6,
     paddingVertical: 6,
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     marginRight: 2,
   },
   tabLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.1,
   },
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     zIndex: 1,
   },

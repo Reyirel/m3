@@ -682,7 +682,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   title: { 
-    fontSize: 15, 
+    fontSize: 16, 
     fontWeight: '700', 
     flex: 1, 
     marginRight: 8,
@@ -694,7 +694,7 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   meta: { 
-    fontSize: 13, 
+    fontSize: 14, 
     fontWeight: '500',
     letterSpacing: 0.1,
     marginBottom: 6,
@@ -704,7 +704,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 8,
+    borderRadius: 10,
     marginBottom: 6,
     borderWidth: 1,
     gap: 6,
@@ -730,7 +730,7 @@ const styles = StyleSheet.create({
   tagChip: {
     paddingHorizontal: 8,
     paddingVertical: 3,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   tagText: {
     fontSize: 12,
@@ -759,7 +759,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   progressValue: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
   },
   completeAction: {
@@ -838,7 +838,7 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     padding: 10,
-    borderRadius: 12,
+    borderRadius: 10,
     backgroundColor: 'rgba(255, 59, 48, 0.10)',
     borderWidth: 0.5,
     borderColor: 'rgba(255,59,48,0.20)',
@@ -860,7 +860,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: 12,
+    borderRadius: 16,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -898,7 +898,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
   },
   quickActionText: {

@@ -227,7 +227,7 @@ export default function AreaChiefDashboard({ navigation }) {
         <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center' }}>No se pudo cargar el dashboard.</Text>
         <TouchableOpacity
           onPress={() => { setLoadError(false); setLoading(true); loadChiefData(); }}
-          style={{ backgroundColor: theme.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 20, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+          style={{ backgroundColor: theme.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 24, flexDirection: 'row', alignItems: 'center', gap: 8 }}
           accessibilityLabel="Reintentar" accessibilityRole="button"
         >
           <Ionicons name="refresh" size={16} color="#fff" />
@@ -249,7 +249,7 @@ export default function AreaChiefDashboard({ navigation }) {
         subtitle="Tus tareas y equipo"
         onBack={() => navigation.goBack()}
         actions={[
-          { icon: 'document-text', label: 'Ver reportes de mi área', onPress: () => navigation.navigate('MyAreaReports') },
+          { icon: 'document-text', label: 'Ver reportes de mi área', onPress: () => navigation.navigate('Main', { screen: 'Reports', params: { tab: 'enviados' } }) },
         ]}
       />
 
@@ -317,7 +317,7 @@ export default function AreaChiefDashboard({ navigation }) {
 
         {/* Acceso a Reportes */}
         <TouchableOpacity
-          onPress={() => navigation.navigate('MyAreaReports')}
+          onPress={() => navigation.navigate('Main', { screen: 'Reports', params: { tab: 'enviados' } })}
           style={[styles.reportsButton, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: theme.primary }]}
           activeOpacity={0.7}
         >
@@ -489,7 +489,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   reportsButtonTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
   reportsButtonDesc: {
@@ -548,7 +548,7 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   taskTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: -0.2,
   },

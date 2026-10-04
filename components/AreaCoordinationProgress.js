@@ -147,7 +147,7 @@ export default function AreaCoordinationProgress({ parentTaskId, onSubtaskPress,
 
 const styles = StyleSheet.create({
   container: {
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginVertical: 12,
     borderWidth: 1,
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   progressBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   progressText: {
     color: '#FFF',
@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   },
   areaItem: {
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     borderLeftWidth: 4,
     borderWidth: 2,
   },
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   statusLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
   },
   assignees: {
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     gap: 8,
     padding: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     marginTop: 12,
   },
   infoText: {

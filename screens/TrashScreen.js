@@ -129,7 +129,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   cardBody: { flex: 1, gap: 3 },
-  title: { fontSize: 15, fontWeight: '700' },
+  title: { fontSize: 16, fontWeight: '700' },
   meta: { fontSize: 12, fontWeight: '500' },
   restoreBtn: {
     flexDirection: 'row',
@@ -137,7 +137,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 9,
-    borderRadius: 20,
+    borderRadius: 24,
   },
-  restoreText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
+  restoreText: { color: '#FFFFFF', fontSize: 14, fontWeight: '700' },
 });

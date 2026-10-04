@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
   chip: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 24,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   expandedContainer: {
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 12,
     overflow: 'hidden',
     elevation: 3,
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
   },
   expandedTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   expandedList: {
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   expandedItemText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
     flex: 1,
   },
@@ -327,7 +327,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   emptyStateContainer: {
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     paddingVertical: 28,
     paddingHorizontal: 16,
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   emptyStateText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     marginTop: 4,
   },

@@ -310,7 +310,7 @@ export default function NotificationsScreen({ navigation }) {
             alignItems: 'center',
             width: 80,
             height: '100%',
-            borderRadius: 12,
+            borderRadius: 10,
           }}
           accessibilityLabel="Eliminar notificación"
         >
@@ -527,7 +527,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
   },
   title: {
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -0.5,
@@ -598,7 +598,7 @@ const styles = StyleSheet.create({
   notificationIcon: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -625,7 +625,7 @@ const styles = StyleSheet.create({
   deleteButton: {
     width: 36,
     height: 36,
-    borderRadius: 8,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 59, 48, 0.15)',
@@ -662,7 +662,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 10,
-    borderRadius: 20,
+    borderRadius: 24,
     marginTop: 4,
   },
   retryButtonText: {
@@ -690,7 +690,7 @@ const cardStyles = StyleSheet.create({
   notificationCard: {
     flexDirection: 'row',
     padding: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     alignItems: 'center',
     gap: 8,
@@ -732,7 +732,7 @@ const cardStyles = StyleSheet.create({
   deleteButton: {
     width: 36,
     height: 36,
-    borderRadius: 8,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: 'rgba(255, 59, 48, 0.15)',

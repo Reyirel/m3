@@ -450,7 +450,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 4
   },
   completionBadgeText: {
@@ -469,11 +469,11 @@ const styles = StyleSheet.create({
     width: '48%',
     alignItems: 'center',
     paddingVertical: 12,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: 'rgba(0,0,0,0.02)'
   },
   statNumber: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '700',
     marginBottom: 4
   },
@@ -533,7 +533,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     marginBottom: 8,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   subtasksList: {
     marginTop: 16,
@@ -551,7 +551,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   subtaskTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     marginBottom: 4,
     letterSpacing: 0.3,
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   detailLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
     lineHeight: 18,
   },
@@ -578,7 +578,7 @@ const styles = StyleSheet.create({
   progressBadge: {
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   progressBadgeText: {
     color: '#FFFFFF',
@@ -591,7 +591,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 16,
     borderLeftWidth: 3,
-    borderRadius: 8,
+    borderRadius: 10,
     marginTop: 12
   },
   activityDot: {

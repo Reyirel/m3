@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
   },
   rankingList: {
     marginBottom: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   rankingItem: {
@@ -260,7 +260,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   areaName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     marginBottom: 4,
   },
@@ -310,7 +310,7 @@ const styles = StyleSheet.create({
   },
   generalStats: {
     flexDirection: 'row',
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
     marginTop: 8,
   },
@@ -344,14 +344,14 @@ const styles = StyleSheet.create({
   },
   empty: {
     height: 200,
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
   },
   emptyText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
   },
 });

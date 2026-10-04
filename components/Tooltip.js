@@ -211,7 +211,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.25,
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
   },
   tooltipTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
     marginBottom: 4,

@@ -427,11 +427,11 @@ export default function OrgDiagramBoard({
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  hint: { fontSize: 13, lineHeight: 18, paddingHorizontal: SPACING.xs, paddingBottom: SPACING.sm },
+  hint: { fontSize: 14, lineHeight: 18, paddingHorizontal: SPACING.xs, paddingBottom: SPACING.sm },
   columns: { paddingHorizontal: COLS_PADDING, paddingBottom: SPACING.xl, gap: COL_GAP, alignItems: 'flex-start' },
   column: { width: COL_WIDTH, borderRadius: 16, borderWidth: 2, overflow: 'hidden' },
   columnHeader: { padding: SPACING.md, alignItems: 'center', gap: SPACING.xs },
-  columnName: { color: '#FFFFFF', fontSize: 13, fontWeight: '700', textAlign: 'center', lineHeight: 17 },
+  columnName: { color: '#FFFFFF', fontSize: 14, fontWeight: '700', textAlign: 'center', lineHeight: 17 },
   columnCount: { backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 1 },
   columnCountText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
   columnActions: { flexDirection: 'row', gap: SPACING.xs, marginTop: SPACING.xs },
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     width: COL_WIDTH, minHeight: 120, borderRadius: 16, borderWidth: 2, borderStyle: 'dashed',
     alignItems: 'center', justifyContent: 'center', gap: SPACING.xs, padding: SPACING.md,
   },
-  addColumnText: { fontSize: 13, fontWeight: '700', textAlign: 'center' },
+  addColumnText: { fontSize: 14, fontWeight: '700', textAlign: 'center' },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   chipBody: { flex: 1, justifyContent: 'center', alignSelf: 'stretch' },
-  chipName: { flex: 1, fontSize: 13, lineHeight: 17, paddingVertical: SPACING.sm, paddingRight: SPACING.sm },
+  chipName: { flex: 1, fontSize: 14, lineHeight: 17, paddingVertical: SPACING.sm, paddingRight: SPACING.sm },
   dropLine: { height: 3, borderRadius: 2, marginBottom: SPACING.sm },
   empty: { fontSize: 12, fontStyle: 'italic', textAlign: 'center', paddingVertical: SPACING.md },
   ghost: {
@@ -493,6 +493,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   pickerRowText: { flex: 1, fontSize: 14, lineHeight: 20 },
-  pickerCancel: { marginTop: SPACING.lg, minHeight: TOUCH_TARGET.min, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  pickerCancel: { marginTop: SPACING.lg, minHeight: TOUCH_TARGET.min, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   pickerCancelText: { fontSize: 16, fontWeight: '600' },
 });

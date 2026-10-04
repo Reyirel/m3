@@ -249,7 +249,7 @@ export function KanbanHelpModal({ visible, onClose, styles, theme }) {
           </ScrollView>
           <View style={styles.filterModalFooter}>
             <TouchableOpacity style={[styles.filterModalApply, { flex: 1 }]} onPress={onClose}>
-              <LinearGradient colors={theme.gradientPrimary.slice(0, 2)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.filterModalApplyGradient, { borderRadius: 14 }]}>
+              <LinearGradient colors={theme.gradientPrimary.slice(0, 2)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.filterModalApplyGradient, { borderRadius: 16 }]}>
                 <Ionicons name="checkmark" size={18} color="#FFFFFF" />
                 <Text style={styles.filterModalApplyText}>¡Entendido!</Text>
               </LinearGradient>

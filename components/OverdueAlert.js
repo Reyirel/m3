@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     ...Platform.select({
       ios: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 4 },
@@ -282,7 +282,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   bannerText: {
-    fontSize: 13,
+    fontSize: 14,
     flexShrink: 1,
   },
   bannerBtn: {
@@ -291,12 +291,12 @@ const styles = StyleSheet.create({
     gap: 3,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
     marginLeft: 8,
   },
   bannerBtnText: {
     color: '#FFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
   },
 
@@ -331,7 +331,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   modalSubtitle: {
-    fontSize: 13,
+    fontSize: 14,
     marginTop: 2,
   },
   tabs: {
@@ -349,10 +349,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 5,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   tabText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   list: {
@@ -360,7 +360,7 @@ const styles = StyleSheet.create({
     maxHeight: 320,
   },
   taskCard: {
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 14,
     marginBottom: 10,
     borderLeftWidth: 4,
@@ -415,12 +415,12 @@ const styles = StyleSheet.create({
   },
   footerBtn: {
     paddingVertical: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: 'center',
   },
   footerBtnText: {
     color: '#FFF',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
 });

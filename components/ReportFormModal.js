@@ -123,8 +123,8 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     },
     sheet: {
       maxHeight: '90%',
-      borderTopLeftRadius: 28,
-      borderTopRightRadius: 28,
+      borderTopLeftRadius: 32,
+      borderTopRightRadius: 32,
       backgroundColor: theme.card,
       borderTopWidth: 1,
       borderLeftWidth: 1,
@@ -149,7 +149,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       marginBottom: 4,
     },
     title: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: 'bold',
       color: theme.text,
     },
@@ -158,7 +158,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       alignItems: 'center',
       paddingHorizontal: 8,
       paddingVertical: 4,
-      borderRadius: 12,
+      borderRadius: 16,
       gap: 4,
     },
     connectionText: {
@@ -167,7 +167,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       color: '#fff',
     },
     subtitle: {
-      fontSize: 13,
+      fontSize: 14,
       color: theme.textSecondary,
     },
     offlineWarning: {
@@ -175,7 +175,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       alignItems: 'center',
       backgroundColor: theme.warningAlpha,
       padding: 12,
-      borderRadius: 8,
+      borderRadius: 10,
       marginBottom: 16,
       gap: 8,
     },
@@ -194,7 +194,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       marginBottom: 8,
     },
     input: {
-      borderRadius: 8,
+      borderRadius: 10,
       borderWidth: 1,
       borderColor: theme.border,
       paddingHorizontal: 12,
@@ -230,7 +230,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     },
     imageContainer: {
       position: 'relative',
-      borderRadius: 8,
+      borderRadius: 10,
       overflow: 'hidden',
     },
     image: {
@@ -254,7 +254,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       backgroundColor: 'rgba(0, 0, 0, 0.6)',
       justifyContent: 'center',
       alignItems: 'center',
-      borderRadius: 8,
+      borderRadius: 10,
     },
     successBadge: {
       backgroundColor: 'rgba(0, 0, 0, 0.4)',
@@ -272,10 +272,10 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       backgroundColor: isDark ? theme.glass : theme.glassStrong,
       paddingVertical: 8,
       paddingHorizontal: 12,
-      borderRadius: 8,
+      borderRadius: 10,
     },
     uploadSummaryText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '500',
     },
     imageButtonsRow: {
@@ -285,7 +285,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     addImageButton: {
       width: (width - 72) / 3,
       aspectRatio: 1,
-      borderRadius: 8,
+      borderRadius: 10,
       borderWidth: 2,
       borderStyle: 'dashed',
       borderColor: theme.primary,
@@ -324,7 +324,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       marginBottom: 10,
     },
     templatesTitle: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '600',
       color: theme.textSecondary,
     },
@@ -348,7 +348,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       fontSize: 16,
     },
     templateLabel: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '600',
       color: theme.text,
     },

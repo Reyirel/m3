@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   },
   title: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: -0.2,
     lineHeight: 20,
@@ -276,7 +276,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.4,
   },
   description: {
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 18,
   },
   footer: {

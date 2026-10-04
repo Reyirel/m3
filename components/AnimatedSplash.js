@@ -156,11 +156,11 @@ const styles = StyleSheet.create({
   logo: {
     width: LOGO_SIZE,
     height: LOGO_SIZE,
-    borderRadius: 26,
+    borderRadius: 32,
   },
   title: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
   },

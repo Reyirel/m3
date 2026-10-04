@@ -402,10 +402,10 @@ export default function CalendarScreen({ navigation }) {
             </View>
           </LinearGradient>
           <View style={{ flex: 1, padding: 16 }}>
-            <ShimmerEffect width="100%" height={60} style={{ marginBottom: 16, borderRadius: 12 }} />
+            <ShimmerEffect width="100%" height={60} style={{ marginBottom: 16, borderRadius: 16 }} />
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
               {[...Array(35)].map((_, i) => (
-                <ShimmerEffect key={i} width={isDesktop ? 60 : 40} height={isDesktop ? 60 : 40} style={{ borderRadius: 8 }} />
+                <ShimmerEffect key={i} width={isDesktop ? 60 : 40} height={isDesktop ? 60 : 40} style={{ borderRadius: 10 }} />
               ))}
             </View>
           </View>

@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   avatarText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.5,

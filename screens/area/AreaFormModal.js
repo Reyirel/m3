@@ -309,7 +309,7 @@ const createStyles = (theme, isDark) =>
     inputContainer: {
       flexDirection: 'row',
       alignItems: 'center',
-      borderRadius: 12,
+      borderRadius: 10,
       borderWidth: 1.5,
       paddingHorizontal: 14,
       height: 48,
@@ -321,13 +321,13 @@ const createStyles = (theme, isDark) =>
       fontWeight: '500',
     },
     textareaContainer: {
-      borderRadius: 12,
+      borderRadius: 10,
       borderWidth: 1.5,
       padding: 12,
       minHeight: 100,
     },
     textarea: {
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: '400',
       textAlignVertical: 'top',
       flex: 1,
@@ -368,7 +368,7 @@ const createStyles = (theme, isDark) =>
     button: {
       flex: 1,
       paddingVertical: 12,
-      borderRadius: 12,
+      borderRadius: 16,
       justifyContent: 'center',
       alignItems: 'center',
       flexDirection: 'row',

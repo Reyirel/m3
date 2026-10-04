@@ -65,6 +65,7 @@ export const TYPOGRAPHY = {
     xl: 18,
     xxl: 22,
     xxxl: 28,
+    display: 32, // cifras grandes de los paneles
   },
   // Pesos de fuente
   weights: {

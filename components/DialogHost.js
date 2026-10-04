@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     letterSpacing: -0.3,
     textAlign: 'center',
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
     minHeight: 48,
-    borderRadius: 14,
+    borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 12,
@@ -165,6 +165,6 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   buttonText: {
-    fontSize: 15,
+    fontSize: 16,
   },
 });

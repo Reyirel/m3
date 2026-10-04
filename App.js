@@ -667,7 +667,7 @@ const styles = StyleSheet.create({
     marginTop: 24,
     paddingHorizontal: 24,
     minHeight: 44,
-    borderRadius: 12,
+    borderRadius: 10,
     justifyContent: 'center',
   },
   notFoundButtonText: {

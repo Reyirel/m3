@@ -123,7 +123,7 @@ const createStyles = (_theme, _isDark) =>
       marginBottom: 4,
     },
     subtitle: {
-      fontSize: 13,
+      fontSize: 14,
       marginTop: 4,
     },
     changeLabel: {
@@ -138,7 +138,7 @@ const createStyles = (_theme, _isDark) =>
       paddingHorizontal: 12,
       marginBottom: 8,
       borderLeftWidth: 3,
-      borderRadius: 8,
+      borderRadius: 10,
     },
     changeEmail: {
       fontSize: 14,
@@ -148,11 +148,11 @@ const createStyles = (_theme, _isDark) =>
       flexDirection: 'row',
       alignItems: 'center',
       padding: 12,
-      borderRadius: 8,
+      borderRadius: 10,
       marginTop: 8,
     },
     warningText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '500',
       flex: 1,
     },

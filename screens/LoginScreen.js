@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
   },
   iconWrap: {
     marginBottom: 20,
-    borderRadius: 28,
+    borderRadius: 32,
     shadowColor: BRAND,
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.65,
@@ -400,12 +400,12 @@ const styles = StyleSheet.create({
   iconGradient: {
     width: 92,
     height: 92,
-    borderRadius: 28,
+    borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
   appName: {
-    fontSize: 38,
+    fontSize: 32,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: -1,
@@ -421,7 +421,7 @@ const styles = StyleSheet.create({
   // Card de formulario
   card: {
     backgroundColor: '#1C1C1E',
-    borderRadius: 22,
+    borderRadius: 24,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
     padding: 24,
@@ -433,7 +433,7 @@ const styles = StyleSheet.create({
     elevation: 18,
   },
   cardTitle: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '800',
     color: '#FFFFFF',
     marginBottom: 24,
@@ -456,7 +456,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#2C2C2E',
-    borderRadius: 12,
+    borderRadius: 10,
     borderWidth: 1.5,
     borderColor: 'rgba(255,255,255,0.08)',
     height: 50,
@@ -471,7 +471,7 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 16,
     color: '#FFFFFF',
     fontWeight: '400',
   },
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
     gap: 8,
     marginTop: 8,
     height: 52,
-    borderRadius: 14,
+    borderRadius: 16,
     backgroundColor: BRAND,
     shadowColor: BRAND,
     shadowOffset: { width: 0, height: 6 },
@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   downloadText: {
-    fontSize: 13,
+    fontSize: 14,
     color: 'rgba(255,255,255,0.45)',
     fontWeight: '500',
   },
@@ -546,12 +546,12 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(239,68,68,0.10)',
     borderWidth: 1,
     borderColor: 'rgba(239,68,68,0.4)',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 12,
     marginBottom: 16,
   },
   lockTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: '#EF4444',
   },

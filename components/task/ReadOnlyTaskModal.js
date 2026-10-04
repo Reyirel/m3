@@ -285,7 +285,7 @@ const createStyles = (_theme) =>
       marginBottom: 24,
     },
     label: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '700',
       marginBottom: 8,
       textTransform: 'uppercase',
@@ -293,27 +293,27 @@ const createStyles = (_theme) =>
     },
     field: {
       borderWidth: 1,
-      borderRadius: 12,
+      borderRadius: 10,
       padding: 14,
       minHeight: 50,
       justifyContent: 'center',
     },
     fieldLarge: {
       borderWidth: 1,
-      borderRadius: 12,
+      borderRadius: 10,
       padding: 14,
       minHeight: 120,
       justifyContent: 'flex-start',
     },
     fieldText: {
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: '600',
       lineHeight: 22,
     },
     closeButtonBottom: {
       marginHorizontal: 20,
       paddingVertical: 14,
-      borderRadius: 12,
+      borderRadius: 16,
       justifyContent: 'center',
       alignItems: 'center',
       marginTop: 10,
@@ -330,7 +330,7 @@ const createStyles = (_theme) =>
       justifyContent: 'center',
       gap: 8,
       paddingVertical: 14,
-      borderRadius: 14,
+      borderRadius: 16,
       shadowColor: '#34C759',
       shadowOffset: { width: 0, height: 4 },
       shadowOpacity: 0.30,
@@ -339,7 +339,7 @@ const createStyles = (_theme) =>
     },
     confirmBtnText: {
       color: '#FFFFFF',
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: '700',
     },
     confirmedBadge: {
@@ -348,11 +348,11 @@ const createStyles = (_theme) =>
       justifyContent: 'center',
       gap: 8,
       paddingVertical: 14,
-      borderRadius: 14,
+      borderRadius: 16,
       borderWidth: 1,
     },
     confirmedText: {
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: '700',
     },
   });

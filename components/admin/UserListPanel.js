@@ -740,7 +740,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
 const styles = StyleSheet.create({
   sectionCard: {
     padding: 18,
-    borderRadius: 20,
+    borderRadius: 24,
     marginBottom: 24,
     borderWidth: 1.5,
     borderColor: 'rgba(0,0,0,0.08)',
@@ -771,7 +771,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.4)',
   },
   sectionTitle: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '900',
     letterSpacing: -0.6,
     flex: 1,
@@ -784,7 +784,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 2,
     marginBottom: 14,
     minHeight: 48,
@@ -795,7 +795,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   expandButtonText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '800',
     letterSpacing: 0.2,
   },
@@ -814,7 +814,7 @@ const styles = StyleSheet.create({
   },
   searchInput: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     paddingVertical: 0,
   },
   roleSectionHeader: {
@@ -823,26 +823,26 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     borderLeftWidth: 4,
     gap: 12,
   },
   sectionIconWrapper: {
     width: 32,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   roleSectionTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     flex: 1,
   },
   roleSectionBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 16,
     minWidth: 28,
     alignItems: 'center',
   },
@@ -921,7 +921,7 @@ const styles = StyleSheet.create({
   roleOptionChip: {
     paddingHorizontal: 9,
     paddingVertical: 5,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
   },
   roleOptionText: {
@@ -937,7 +937,7 @@ const styles = StyleSheet.create({
     gap: 4,
     paddingHorizontal: 10,
     paddingVertical: 5,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(239, 68, 68, 0.35)',
     backgroundColor: 'rgba(239, 68, 68, 0.07)',
@@ -1012,7 +1012,7 @@ const styles = StyleSheet.create({
   confirmModal: {
     width: '100%',
     maxWidth: 360,
-    borderRadius: 20,
+    borderRadius: 24,
     padding: 24,
     alignItems: 'center',
     shadowColor: '#000',
@@ -1030,14 +1030,14 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   confirmTitle: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     marginBottom: 8,
     textAlign: 'center',
     width: '100%',
   },
   confirmMsg: {
-    fontSize: 13,
+    fontSize: 14,
     textAlign: 'center',
     lineHeight: 20,
     marginBottom: 20,
@@ -1051,7 +1051,7 @@ const styles = StyleSheet.create({
   confirmBtn: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center',
   },
   confirmBtnText: {

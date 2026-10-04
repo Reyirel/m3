@@ -57,11 +57,11 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1,
   },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   badge: {

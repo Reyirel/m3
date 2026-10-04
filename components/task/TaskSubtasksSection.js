@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   sectionTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.3,
     textTransform: 'uppercase',
@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   aiSubtasksBtnText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     flex: 1,
   },
@@ -212,6 +212,6 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 8,
+    borderRadius: 10,
   },
 });

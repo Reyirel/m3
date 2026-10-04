@@ -90,7 +90,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     letterSpacing: -0.3,
   },
   yearText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     marginTop: 2,
   },
@@ -337,7 +337,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     borderWidth: 0,
   },
   legendText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   // Modal con glassmorphism
@@ -435,7 +435,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     gap: 12,
   },
   modalEmptyText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   modalCloseButton: {
@@ -512,7 +512,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   modalTaskStatus: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: isDark ? 'rgba(159, 34, 65, 0.2)' : 'rgba(159, 34, 65, 0.1)',
   },
   modalTaskStatusText: {
@@ -549,7 +549,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   compactTaskTitle: {
     flex: 1,
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   compactStatusBadge: {
@@ -589,12 +589,12 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     fontWeight: '700',
     paddingHorizontal: 5,
     paddingVertical: 1,
-    borderRadius: 8,
+    borderRadius: 10,
     overflow: 'hidden',
   },
   modalCompactToggle: {
     padding: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     marginLeft: 8,
   },
 });

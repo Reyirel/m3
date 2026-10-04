@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#6B7280',
     marginTop: 4,
   },
@@ -291,12 +291,12 @@ const styles = StyleSheet.create({
   summaryCard: {
     flex: 1,
     backgroundColor: '#F3F4F6',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 12,
     alignItems: 'center',
   },
   summaryValue: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     color: '#1F2937',
   },
@@ -313,7 +313,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   sortLabel: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#6B7280',
   },
   sortBtn: {
@@ -338,7 +338,7 @@ const styles = StyleSheet.create({
   },
   userCard: {
     backgroundColor: '#F9FAFB',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 12,
     borderWidth: 1,
     borderColor: '#E5E7EB',
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
   complianceBadge: {
     paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   complianceText: {
     fontSize: 14,
@@ -442,7 +442,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEF2FF',
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 8,
+    borderRadius: 10,
     alignSelf: 'flex-start',
     marginTop: 4,
   },
@@ -496,7 +496,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   emptySubtext: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#9CA3AF',
     marginTop: 4,
     textAlign: 'center',

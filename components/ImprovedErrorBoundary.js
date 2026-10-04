@@ -187,7 +187,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     color: '#333',
     marginTop: 12,
@@ -203,7 +203,7 @@ const styles = StyleSheet.create({
   },
   errorBox: {
     backgroundColor: '#FFE5E5',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderLeftColor: '#FF6B6B',
@@ -215,14 +215,14 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   errorMessage: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#C62828',
     fontFamily: 'Courier New',
     lineHeight: 18,
   },
   detailsBox: {
     backgroundColor: '#f0f0f0',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 16,
   },
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
   },
   suggestionBox: {
     backgroundColor: '#E8F5E9',
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 16,
     marginBottom: 16,
     borderLeftColor: '#4CAF50',
@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   suggestionText: {
-    fontSize: 13,
+    fontSize: 14,
     color: '#2E7D32',
     lineHeight: 18,
   },
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
   },
   primaryButton: {
     backgroundColor: '#4CAF50',
-    borderRadius: 12,
+    borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -277,7 +277,7 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     backgroundColor: '#E0E0E0',
-    borderRadius: 12,
+    borderRadius: 16,
     paddingVertical: 12,
     paddingHorizontal: 20,
     justifyContent: 'center',
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
   },
   dangerButton: {
     backgroundColor: '#FF9800',
-    borderRadius: 12,
+    borderRadius: 16,
     paddingVertical: 14,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
   warningText: {
     flex: 1,
     color: '#E65100',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
   },
 });

@@ -69,11 +69,11 @@ const styles = StyleSheet.create({
     gap: 5,
     paddingHorizontal: 12,
     paddingVertical: 7,
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1.5,
   },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.1,
   },

@@ -273,13 +273,13 @@ export default function SecretarioDashboardScreen({ navigation }) {
           No se pudo conectar. Verifica tu internet.
         </Text>
         <TouchableOpacity
-          style={{ marginTop: 24, backgroundColor: theme.primary, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+          style={{ marginTop: 24, backgroundColor: theme.primary, paddingHorizontal: 28, paddingVertical: 12, borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}
           onPress={() => { setLoading(true); loadInitialData(); }}
           accessibilityLabel="Reintentar"
           accessibilityRole="button"
         >
           <Ionicons name="refresh" size={18} color="#FFF" />
-          <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 15 }}>Reintentar</Text>
+          <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 16 }}>Reintentar</Text>
         </TouchableOpacity>
       </View>
     );
@@ -627,7 +627,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
             
             <TouchableOpacity 
               style={[styles.actionButton, { backgroundColor: theme.infoAlpha }]}
-              onPress={() => navigation.navigate('MyAreaReports')}
+              onPress={() => navigation.navigate('Reports', { tab: 'enviados' })}
             >
               <Ionicons name="document-text" size={28} color={theme.info} />
               <Text style={[styles.actionText, { color: theme.text }]}>Ver Reportes</Text>

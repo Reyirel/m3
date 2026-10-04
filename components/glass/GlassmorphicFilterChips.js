@@ -50,17 +50,17 @@ const GlassmorphicFilterChips = ({
     },
     sort: {
       height: 36,
-      fontSize: 13,
+      fontSize: 14,
       iconSize: 16,
       gap: 10,
-      borderRadius: 8,
+      borderRadius: 10,
     },
     view: {
       height: 40,
       fontSize: 14,
       iconSize: 18,
       gap: 12,
-      borderRadius: 12,
+      borderRadius: 10,
     },
   };
 

@@ -251,7 +251,7 @@ const styles = StyleSheet.create({
   insightCard: {
     width: width * 0.75,
     marginHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     padding: 14,
     paddingVertical: 12
   },
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     marginBottom: 12
   },
   insightTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.5
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.05)'
   },
   trendValue: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700'
   },
   trendLabel: {
@@ -303,11 +303,11 @@ const styles = StyleSheet.create({
   },
   bottleneckItem: {
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 6
   },
   bottleneckArea: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600'
   },
   bottleneckStats: {
@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   },
   predictionItem: {
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     gap: 4
   },
   predictionHeader: {

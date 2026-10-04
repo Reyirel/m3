@@ -270,7 +270,7 @@ export default function HomeScreen({ navigation, onLogout }) {
       <Animated.View style={{ transform: [{ translateX: trans }], flexDirection: 'row', alignItems: 'center' }}>
         <TouchableOpacity
           onPress={() => deleteTask(task.id)}
-          style={{ backgroundColor: theme.error, justifyContent: 'center', alignItems: 'center', width: 80, height: '100%', borderRadius: 14 }}
+          style={{ backgroundColor: theme.error, justifyContent: 'center', alignItems: 'center', width: 80, height: '100%', borderRadius: 16 }}
         >
           <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
           <Text style={{ color: '#FFFFFF', fontSize: 12, marginTop: 3, fontWeight: '600' }}>Eliminar</Text>
@@ -485,8 +485,8 @@ function createStyles(theme, isDark, isDesktop, width, padding) {
       paddingTop: Platform.OS === 'ios' ? 52 : 32,
       paddingBottom: 32,
       paddingHorizontal: 20,
-      borderBottomLeftRadius: 28,
-      borderBottomRightRadius: 28,
+      borderBottomLeftRadius: 32,
+      borderBottomRightRadius: 32,
       gap: 10,
     },
     listContent: {
@@ -500,12 +500,12 @@ function createStyles(theme, isDark, isDesktop, width, padding) {
       paddingBottom: 8,
     },
     listTitle: {
-      fontSize: 17,
+      fontSize: 16,
       fontWeight: '700',
       letterSpacing: -0.3,
     },
     listSub: {
-      fontSize: 13,
+      fontSize: 14,
       marginTop: 2,
     },
   });

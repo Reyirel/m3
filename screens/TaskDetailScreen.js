@@ -777,7 +777,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 10,
     padding: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
     alignItems: 'flex-start',
   },
@@ -785,7 +785,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     gap: 4,
     padding: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1,
   },
   infoCardHeader: {
@@ -795,7 +795,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   infoCardTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.1,
   },
@@ -812,7 +812,7 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   titularName: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   titularMeta: {

@@ -445,7 +445,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   stepCounter: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   skipText: {
@@ -468,7 +468,7 @@ const styles = StyleSheet.create({
     lineHeight: 28,
   },
   description: {
-    fontSize: 15,
+    fontSize: 16,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: 24,
@@ -498,11 +498,11 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 15,
     paddingHorizontal: 20,
-    borderRadius: 14,
+    borderRadius: 16,
   },
   btnPrimaryText: {
     color: '#FFF',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
   btnSecondary: {
@@ -512,11 +512,11 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingVertical: 15,
     paddingHorizontal: 18,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 2,
   },
   btnSecondaryText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
 });

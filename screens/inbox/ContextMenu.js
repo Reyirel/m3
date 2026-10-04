@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   },
   menu: {
     position: 'absolute',
-    borderRadius: 18,
+    borderRadius: 24,
     minWidth: 210,
     borderWidth: 1,
     shadowOffset: { width: 0, height: 12 },
@@ -182,7 +182,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   blurLayer: {
-    borderRadius: 18,
+    borderRadius: 24,
     overflow: 'hidden',
   },
   menuHighlight: {
@@ -195,7 +195,7 @@ const styles = StyleSheet.create({
     zIndex: 3,
   },
   menuRim: {
-    borderRadius: 18,
+    borderRadius: 24,
     borderWidth: 1,
     zIndex: 3,
   },
@@ -213,12 +213,12 @@ const styles = StyleSheet.create({
   actionIconBg: {
     width: 34,
     height: 34,
-    borderRadius: 9,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
   menuText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
     flex: 1,
   },

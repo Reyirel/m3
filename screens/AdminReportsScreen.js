@@ -29,7 +29,8 @@ import { MAX_WIDTHS } from '../theme/tokens';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import EmptyState from '../components/EmptyState';
 
-const AdminReportsScreen = ({ navigation }) => {
+// `embedded`: se muestra como pestaña dentro de Reportes, sin encabezado propio
+const AdminReportsScreen = ({ navigation, embedded = false }) => {
   const { theme, isDark } = useTheme();
   const { isDesktop } = useResponsive();
   const { showSuccess, showError } = useNotification();
@@ -451,11 +452,11 @@ const AdminReportsScreen = ({ navigation }) => {
     statCard: {
       flex: 1,
       padding: 12,
-      borderRadius: 12,
+      borderRadius: 16,
       alignItems: 'center',
     },
     statNumber: {
-      fontSize: 24,
+      fontSize: 22,
       fontWeight: 'bold',
       color: '#fff',
     },
@@ -473,7 +474,7 @@ const AdminReportsScreen = ({ navigation }) => {
     filterButton: {
       paddingHorizontal: 16,
       paddingVertical: 8,
-      borderRadius: 20,
+      borderRadius: 24,
       borderWidth: 1,
     },
     filterButtonActive: {
@@ -481,7 +482,7 @@ const AdminReportsScreen = ({ navigation }) => {
       borderColor: theme.primary,
     },
     filterText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '500',
     },
     groupByRow: {
@@ -492,13 +493,13 @@ const AdminReportsScreen = ({ navigation }) => {
       gap: 8,
     },
     groupByLabel: {
-      fontSize: 13,
+      fontSize: 14,
       color: theme.textSecondary,
     },
     groupByButton: {
       paddingHorizontal: 12,
       paddingVertical: 6,
-      borderRadius: 12,
+      borderRadius: 16,
       backgroundColor: theme.border,
     },
     groupByButtonActive: {
@@ -522,7 +523,7 @@ const AdminReportsScreen = ({ navigation }) => {
     countBadge: {
       paddingHorizontal: 10,
       paddingVertical: 4,
-      borderRadius: 12,
+      borderRadius: 16,
     },
     countText: {
       color: '#fff',
@@ -533,7 +534,7 @@ const AdminReportsScreen = ({ navigation }) => {
       margin: 8,
       marginHorizontal: 16,
       padding: 16,
-      borderRadius: 12,
+      borderRadius: 16,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -560,7 +561,7 @@ const AdminReportsScreen = ({ navigation }) => {
     roleBadge: {
       paddingHorizontal: 8,
       paddingVertical: 4,
-      borderRadius: 8,
+      borderRadius: 10,
     },
     roleBadgeText: {
       color: '#fff',
@@ -616,7 +617,7 @@ const AdminReportsScreen = ({ navigation }) => {
       right: 8,
       paddingHorizontal: 8,
       paddingVertical: 4,
-      borderRadius: 8,
+      borderRadius: 10,
     },
     pendingText: {
       color: '#fff',
@@ -659,8 +660,8 @@ const AdminReportsScreen = ({ navigation }) => {
       justifyContent: 'flex-end',
     },
     modalContent: {
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
       maxHeight: '90%',
     },
     modalHeader: {
@@ -679,7 +680,7 @@ const AdminReportsScreen = ({ navigation }) => {
       padding: 16,
     },
     detailTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: 'bold',
       marginBottom: 16,
     },
@@ -706,7 +707,7 @@ const AdminReportsScreen = ({ navigation }) => {
       fontSize: 14,
     },
     detailDescription: {
-      fontSize: 15,
+      fontSize: 16,
       lineHeight: 22,
     },
     taskLink: {
@@ -714,7 +715,7 @@ const AdminReportsScreen = ({ navigation }) => {
       alignItems: 'center',
       gap: 8,
       padding: 12,
-      borderRadius: 8,
+      borderRadius: 10,
     },
     taskLinkText: {
       fontSize: 14,
@@ -723,7 +724,7 @@ const AdminReportsScreen = ({ navigation }) => {
     previewImage: {
       width: 120,
       height: 120,
-      borderRadius: 8,
+      borderRadius: 10,
       marginRight: 8,
     },
     imageModalOverlay: {
@@ -756,7 +757,7 @@ const AdminReportsScreen = ({ navigation }) => {
       marginBottom: 12,
     },
     dateDetail: {
-      fontSize: 15,
+      fontSize: 16,
     },
     deleteButton: {
       flexDirection: 'row',
@@ -764,7 +765,7 @@ const AdminReportsScreen = ({ navigation }) => {
       justifyContent: 'center',
       gap: 10,
       padding: 14,
-      borderRadius: 12,
+      borderRadius: 16,
       borderWidth: 2,
       borderColor: theme.error,
       backgroundColor: theme.errorAlpha,
@@ -804,7 +805,7 @@ const AdminReportsScreen = ({ navigation }) => {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       <View style={styles.innerContainer}>
-      <ScreenHeader title="Reportes de áreas" onBack={() => navigation.goBack()} />
+      {!embedded && <ScreenHeader title="Reportes de áreas" onBack={() => navigation.goBack()} />}
 
       {/* Stats */}
       <View style={styles.statsRow}>

@@ -230,13 +230,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 20,
+    fontSize: 22,
     fontWeight: '700',
     marginBottom: 8,
     textAlign: 'center',
   },
   titleCompact: {
-    fontSize: 17,
+    fontSize: 16,
     marginBottom: 6,
   },
   message: {
@@ -246,13 +246,13 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   messageCompact: {
-    fontSize: 13,
+    fontSize: 14,
     lineHeight: 18,
   },
   suggestionsContainer: {
     marginTop: 20,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     width: '100%',
     maxWidth: 320,
@@ -263,7 +263,7 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   suggestionText: {
-    fontSize: 13,
+    fontSize: 14,
     marginLeft: 10,
     flex: 1,
     lineHeight: 18,
@@ -274,13 +274,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 14,
     paddingHorizontal: 24,
-    borderRadius: 12,
+    borderRadius: 16,
     marginTop: 20,
     minWidth: 180,
   },
   quickActionText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   actionContainer: {

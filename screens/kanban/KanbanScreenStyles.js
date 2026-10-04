@@ -94,7 +94,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
   priorityOption: {
     flex: 1,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     alignItems: 'center'
   },
   priorityOptionText: {
@@ -110,13 +110,13 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     width: '48%',
     paddingVertical: 12,
     paddingHorizontal: 8,
-    borderRadius: 12,
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8
   },
   statusOptionText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600'
   },
   board: {
@@ -160,7 +160,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
       minWidth: columnWidth,
       marginRight: 0
     }),
-    borderRadius: 20,
+    borderRadius: 24,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: isDark ? 0.30 : 0.07,
@@ -190,7 +190,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     borderRadius: 4,
   },
   columnTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     letterSpacing: -0.1,
   },
@@ -294,7 +294,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
   card: {
     margin: 5,
     marginHorizontal: 8,
-    borderRadius: 14,
+    borderRadius: 16,
     position: 'relative',
   },
   cardTopRow: {
@@ -371,7 +371,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     alignItems: 'center',
     gap: 6,
     padding: 8,
-    borderRadius: 8,
+    borderRadius: 10,
     backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.05)'
   },
   cardInfoText: {
@@ -421,13 +421,13 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     padding: 14,
   },
   statCardCount: {
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: '800',
     letterSpacing: -1,
     lineHeight: 38,
   },
   statCardLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     marginTop: 2,
     marginBottom: 10,
@@ -467,7 +467,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     gap: 6,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 24,
     borderWidth: 1.5,
   },
   filterChipCompactText: {
@@ -541,7 +541,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     alignItems: 'center',
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     gap: 10,
   },
@@ -559,12 +559,12 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     justifyContent: 'center',
     paddingVertical: 12,
     paddingHorizontal: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 2,
     gap: 6,
   },
   priorityButtonText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
   },
   priorityBadge: {
@@ -584,14 +584,14 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     flexDirection: 'row',
     alignItems: 'center',
     padding: 14,
-    borderRadius: 14,
+    borderRadius: 16,
     borderWidth: 1.5,
     gap: 12,
   },
   quickFilterIconBg: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -599,12 +599,12 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     flex: 1,
   },
   quickFilterCardTitle: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     marginBottom: 2,
   },
   quickFilterCardCount: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   filterModalFooter: {
@@ -619,17 +619,17 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     gap: 8,
   },
   filterModalClearText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '600',
   },
   filterModalApplyBtn: {
     flex: 2,
-    borderRadius: 12,
+    borderRadius: 16,
     overflow: 'hidden',
   },
   filterModalApplyGradient: {
@@ -640,7 +640,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     gap: 8,
   },
   filterModalApplyText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     color: '#FFFFFF',
   },

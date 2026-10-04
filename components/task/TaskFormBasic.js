@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   label: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     letterSpacing: 0.3,
     textTransform: 'uppercase',
@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
   descriptionInput: {
     paddingHorizontal: 14,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 10,
     fontSize: 14,
     borderWidth: 1,
     minHeight: 100,

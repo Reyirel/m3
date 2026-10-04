@@ -362,15 +362,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   selectText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
   },
   menu: {
     marginTop: 6,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
     overflow: 'hidden',
   },
@@ -384,7 +384,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(0,0,0,0.05)',
   },
   menuText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '500',
   },
   notifyScroll: {
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     gap: 6,
     paddingHorizontal: 10,
     paddingVertical: 6,
-    borderRadius: 12,
+    borderRadius: 16,
   },
   tagText: {
     fontSize: 12,
@@ -427,10 +427,10 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    borderRadius: 8,
+    borderRadius: 10,
     borderWidth: 1,
   },
   tagPlaceholder: {
-    fontSize: 13,
+    fontSize: 14,
   },
 });

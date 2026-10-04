@@ -426,13 +426,13 @@ const createStyles = (theme, isDark, _compact) => StyleSheet.create({
   light: {
     flex: 1,
     height: 32,
-    borderRadius: 8,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
   lightText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
   },
   progressContainer: {
@@ -463,7 +463,7 @@ const createStyles = (theme, isDark, _compact) => StyleSheet.create({
     marginBottom: 10,
   },
   compactTitle: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
   },
   compactSummary: {
@@ -478,7 +478,7 @@ const createStyles = (theme, isDark, _compact) => StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
     paddingVertical: 8,
-    borderRadius: 8,
+    borderRadius: 10,
   },
   summaryNumber: {
     fontSize: 16,

@@ -182,7 +182,7 @@ export default function AdminScreen({ navigation, onLogout }) {
         <Ionicons name="alert-circle" size={60} color={theme.text} style={{ marginBottom: 16, opacity: 0.5 }} />
         <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600', marginBottom: 24 }}>No hay sesión activa</Text>
         <TouchableOpacity
-          style={{ backgroundColor: theme.primary, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 14 }}
+          style={{ backgroundColor: theme.primary, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 16 }}
           onPress={() => { if (onLogout) onLogout(); }}
         >
           <Text style={{ color: '#FFF', fontWeight: '700', fontSize: 16 }}>Ir a Login</Text>
@@ -208,7 +208,7 @@ export default function AdminScreen({ navigation, onLogout }) {
       color: theme.info,
       title: 'Analytics & Reportes',
       subtitle: 'Métricas globales del sistema',
-      onPress: () => { hapticMedium(); navigation.navigate('Analytics'); },
+      onPress: () => { hapticMedium(); navigation.navigate('Reports', { tab: 'analiticas' }); },
     },
     {
       id: 'reports',
@@ -216,7 +216,7 @@ export default function AdminScreen({ navigation, onLogout }) {
       color: theme.warning,
       title: 'Reportes de Áreas',
       subtitle: 'Directores y secretarías',
-      onPress: () => { hapticMedium(); navigation.navigate('AdminReports'); },
+      onPress: () => { hapticMedium(); navigation.navigate('Reports', { tab: 'enviados' }); },
     },
     {
       id: 'flow',
@@ -461,7 +461,7 @@ export default function AdminScreen({ navigation, onLogout }) {
                       <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                         <Ionicons name={critical ? 'alert-circle' : 'time'} size={22} color={accent} />
                         <View style={{ flex: 1, marginLeft: 10 }}>
-                          <Text style={{ fontSize: 15, fontWeight: '700', color: theme.text }} numberOfLines={2}>
+                          <Text style={{ fontSize: 16, fontWeight: '700', color: theme.text }} numberOfLines={2}>
                             {task.title}
                           </Text>
                           <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
@@ -469,9 +469,9 @@ export default function AdminScreen({ navigation, onLogout }) {
                           </Text>
                         </View>
                       </View>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, padding: 8, borderRadius: 8, backgroundColor: critical ? 'rgba(255,59,48,0.12)' : 'rgba(255,149,0,0.12)' }}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 8, padding: 8, borderRadius: 10, backgroundColor: critical ? 'rgba(255,59,48,0.12)' : 'rgba(255,149,0,0.12)' }}>
                         <Ionicons name="hourglass" size={13} color={accent} />
-                        <Text style={{ fontSize: 13, fontWeight: '700', marginLeft: 6, color: accent }}>
+                        <Text style={{ fontSize: 14, fontWeight: '700', marginLeft: 6, color: accent }}>
                           {hoursLeft}h {minsLeft}m restantes
                         </Text>
                       </View>
@@ -677,7 +677,7 @@ const s = StyleSheet.create({
     overflow: 'hidden', position: 'relative',
   },
   statAccent:   { position: 'absolute', top: 0, left: 0, right: 0, height: 3, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
-  statIconWrap: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 8, marginTop: 4 },
+  statIconWrap: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginBottom: 8, marginTop: 4 },
   statNumber:   { fontSize: 28, fontWeight: '900', letterSpacing: -1, lineHeight: 32 },
   statLabel:    { fontSize: 11, fontWeight: '600', marginTop: 2, textAlign: 'center', letterSpacing: 0.3, textTransform: 'uppercase' },
 
@@ -690,14 +690,14 @@ const s = StyleSheet.create({
   actionRow:    { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 16, gap: 12 },
   actionIconBox: { width: 36, height: 36, borderRadius: 10, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   actionText:   { flex: 1 },
-  actionTitle:  { fontSize: 15, fontWeight: '600' },
+  actionTitle:  { fontSize: 16, fontWeight: '600' },
   actionSub:    { fontSize: 12, marginTop: 1 },
   rowSeparator: { height: StyleSheet.hairlineWidth },
 
   // Info rows (Sistema tab)
   infoRow:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16 },
-  infoLabel:     { fontSize: 15, fontWeight: '500' },
-  infoValue:     { fontSize: 15 },
+  infoLabel:     { fontSize: 16, fontWeight: '500' },
+  infoValue:     { fontSize: 16 },
   statusPill:    { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10 },
   statusDot:     { width: 8, height: 8, borderRadius: 4, marginRight: 6 },
   statusPillText: { fontSize: 12, fontWeight: '700' },
@@ -723,19 +723,19 @@ const s = StyleSheet.create({
   },
   modalHeader:  { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, borderBottomWidth: 1 },
   modalTitle:   { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
-  modalSub:     { fontSize: 13, marginTop: 1 },
-  urgentTask:   { padding: 14, borderRadius: 14, marginBottom: 10, borderWidth: 2 },
-  modalBtn:     { padding: 15, borderRadius: 14, alignItems: 'center' },
+  modalSub:     { fontSize: 14, marginTop: 1 },
+  urgentTask:   { padding: 14, borderRadius: 16, marginBottom: 10, borderWidth: 2 },
+  modalBtn:     { padding: 15, borderRadius: 16, alignItems: 'center' },
   modalBtnText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
 
   // Flow modal internals
-  flowSection:      { borderRadius: 14, padding: 16, marginBottom: 14 },
-  flowSectionTitle: { fontSize: 15, fontWeight: '700', marginBottom: 12 },
+  flowSection:      { borderRadius: 16, padding: 16, marginBottom: 14 },
+  flowSectionTitle: { fontSize: 16, fontWeight: '700', marginBottom: 12 },
   roleBox:    { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10 },
-  roleBoxText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
-  roleBoxSm:   { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, minWidth: 88 },
+  roleBoxText: { color: '#FFF', fontSize: 14, fontWeight: '800' },
+  roleBoxSm:   { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 10, minWidth: 88 },
   roleBoxSmText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
   roleBoxSmDesc: { color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 },
   stepBubble: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
-  stepNum:    { color: '#FFF', fontSize: 13, fontWeight: '800' },
+  stepNum:    { color: '#FFF', fontSize: 14, fontWeight: '800' },
 });

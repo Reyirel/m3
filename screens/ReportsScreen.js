@@ -13,6 +13,7 @@ import {
   Animated,
   ActivityIndicator,
   Alert,
+  StyleSheet,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
@@ -38,11 +39,29 @@ import AreaSections from './reports/AreaSections';
 import ChartsModal, { priorityChartData } from './reports/ChartsModal';
 
 const ComplianceReport = React.lazy(() => import('./reports/ComplianceReport'));
+// Pestañas que antes eran pantallas aparte
+const AdminReportsScreen = React.lazy(() => import('./AdminReportsScreen'));
+const MyAreaReportsScreen = React.lazy(() => import('./MyAreaReportsScreen'));
+const AnalyticsScreen = React.lazy(() => import('./AnalyticsScreen'));
 
 // Las predicciones aún no se calculan; InsightsPanel las recibe vacías
 const NO_PREDICTIONS = {};
 
-export default function ReportsScreen({ navigation }) {
+const tabStyles = StyleSheet.create({
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  tab: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    minHeight: 40,
+    paddingHorizontal: 14,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  label: { fontSize: 14, fontWeight: '600' },
+});
+
+export default function ReportsScreen({ navigation, route }) {
   const { theme, isDark } = useTheme();
   const { width, isDesktop, isTablet, padding } = useResponsive();
   const { showSuccess, showError } = useNotification();
@@ -55,6 +74,12 @@ export default function ReportsScreen({ navigation }) {
   const [filteredAreas, setFilteredAreas] = useState([]);
   const [exporting, setExporting] = useState(false);
   const [showChartsModal, setShowChartsModal] = useState(false);
+  // 'indicadores' | 'enviados' | 'analiticas'. Otra pantalla puede abrir una pestaña con { tab }
+  const requestedTab = route?.params?.tab;
+  const [tab, setTab] = useState(requestedTab || 'indicadores');
+  useEffect(() => {
+    if (requestedTab) setTab(requestedTab);
+  }, [requestedTab]);
 
   const {
     statsByPeriod, dailyCompletions, priorityDistribution,
@@ -139,12 +164,14 @@ export default function ReportsScreen({ navigation }) {
   }
 
   const role = currentUser?.role;
-  // Las demás pantallas de reportes se abren desde aquí
-  const relatedScreens = [
-    role === 'admin' && { name: 'AdminReports', icon: 'document-text-outline', label: 'Reportes enviados por las áreas' },
-    role === 'admin' && { name: 'Analytics', icon: 'analytics-outline', label: 'Analíticas' },
-    (role === 'secretario' || role === 'director') && { name: 'MyAreaReports', icon: 'document-text-outline', label: 'Reportes de mi área' },
+  // Todo lo de reportes vive aquí, en pestañas según el rol
+  const tabs = [
+    { key: 'indicadores', label: 'Indicadores', icon: 'bar-chart-outline' },
+    { key: 'enviados', label: role === 'admin' ? 'Reportes de las áreas' : 'Reportes de mi área', icon: 'document-text-outline' },
+    role === 'admin' && { key: 'analiticas', label: 'Analíticas', icon: 'analytics-outline' },
   ].filter(Boolean);
+  const activeTab = tabs.some((item) => item.key === tab) ? tab : 'indicadores';
+  const tabFallback = <ShimmerEffect width="100%" height={240} borderRadius={12} style={{ margin: 16 }} />;
   const hasAreaData = Object.keys(areaMetrics).length > 0;
   const hasCharts = subtasksStats.completed > 0 || subtasksStats.pending > 0
     || dailyCompletions.length > 0 || priorityData.length > 0;
@@ -165,14 +192,47 @@ export default function ReportsScreen({ navigation }) {
               currentStats.overdue > 0 && `${currentStats.overdue} ${currentStats.overdue === 1 ? 'vencida' : 'vencidas'}`,
             ].filter(Boolean).join(' · ')}
             icon="bar-chart"
-            actions={relatedScreens.map((screen) => ({
-              icon: screen.icon,
-              label: screen.label,
-              onPress: () => navigation.navigate(screen.name),
-            }))}
           />
         </Animated.View>
 
+        <View style={tabStyles.row} accessibilityRole="tablist">
+          {tabs.map((item) => {
+            const selected = item.key === activeTab;
+            return (
+              <TouchableOpacity
+                key={item.key}
+                onPress={() => setTab(item.key)}
+                style={[
+                  tabStyles.tab,
+                  { backgroundColor: selected ? theme.primary : theme.glass, borderColor: selected ? theme.primary : theme.glassBorder },
+                ]}
+                activeOpacity={0.8}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+              >
+                <Ionicons name={item.icon} size={16} color={selected ? '#FFFFFF' : theme.textSecondary} />
+                <Text style={[tabStyles.label, { color: selected ? '#FFFFFF' : theme.text }]} numberOfLines={1}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
+        {activeTab === 'enviados' && (
+          <Suspense fallback={tabFallback}>
+            {role === 'admin'
+              ? <AdminReportsScreen navigation={navigation} embedded />
+              : <MyAreaReportsScreen navigation={navigation} embedded />}
+          </Suspense>
+        )}
+        {activeTab === 'analiticas' && (
+          <Suspense fallback={tabFallback}>
+            <AnalyticsScreen navigation={navigation} embedded />
+          </Suspense>
+        )}
+
+        {activeTab === 'indicadores' && (
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.scrollContent}
@@ -285,7 +345,7 @@ export default function ReportsScreen({ navigation }) {
 
           {areasToReview > 0 && (
             <View style={[styles.alertSection, { marginBottom: 16 }]}>
-              <View style={[styles.alertHeader, { backgroundColor: theme.errorAlpha, borderColor: theme.error + '40', borderWidth: 1, borderRadius: 12, padding: 12 }]}>
+              <View style={[styles.alertHeader, { backgroundColor: theme.errorAlpha, borderColor: theme.error + '40', borderWidth: 1, borderRadius: 16, padding: 12 }]}>
                 <Ionicons name="alert-circle" size={18} color={theme.error} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.alertTitle, { color: theme.error }]}>
@@ -322,6 +382,7 @@ export default function ReportsScreen({ navigation }) {
             isDesktop={isDesktop}
           />
         </ScrollView>
+        )}
       </View>
 
       <ChartsModal

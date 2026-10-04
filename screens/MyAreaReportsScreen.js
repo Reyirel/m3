@@ -26,7 +26,8 @@ import ScreenHeader from '../components/ui/ScreenHeader';
 import { roleLabel } from '../services/permissions';
 import EmptyState from '../components/EmptyState';
 
-const MyAreaReportsScreen = ({ navigation }) => {
+// `embedded`: se muestra como pestaña dentro de Reportes, sin encabezado propio
+const MyAreaReportsScreen = ({ navigation, embedded = false }) => {
   const { theme, isDark } = useTheme();
   const { showError, showSuccess } = useNotification();
   const { currentUser, tasks } = useTasks();
@@ -399,7 +400,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
     statCard: {
       flex: 1,
       padding: 12,
-      borderRadius: 12,
+      borderRadius: 16,
       alignItems: 'center',
     },
     statNumber: {
@@ -421,7 +422,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
     filterButton: {
       paddingHorizontal: 16,
       paddingVertical: 8,
-      borderRadius: 20,
+      borderRadius: 24,
       borderWidth: 1,
     },
     filterButtonActive: {
@@ -429,14 +430,14 @@ const MyAreaReportsScreen = ({ navigation }) => {
       borderColor: theme.primary,
     },
     filterText: {
-      fontSize: 13,
+      fontSize: 14,
       fontWeight: '500',
     },
     reportCard: {
       margin: 8,
       marginHorizontal: 16,
       padding: 16,
-      borderRadius: 12,
+      borderRadius: 16,
       shadowColor: '#000',
       shadowOffset: { width: 0, height: 2 },
       shadowOpacity: 0.1,
@@ -467,7 +468,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
     myBadge: {
       paddingHorizontal: 8,
       paddingVertical: 4,
-      borderRadius: 8,
+      borderRadius: 10,
     },
     myBadgeText: {
       color: '#fff',
@@ -477,7 +478,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
     roleBadge: {
       paddingHorizontal: 8,
       paddingVertical: 4,
-      borderRadius: 8,
+      borderRadius: 10,
     },
     roleBadgeText: {
       color: '#fff',
@@ -533,7 +534,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
       right: 8,
       paddingHorizontal: 8,
       paddingVertical: 4,
-      borderRadius: 8,
+      borderRadius: 10,
     },
     pendingText: {
       color: '#fff',
@@ -551,8 +552,8 @@ const MyAreaReportsScreen = ({ navigation }) => {
       justifyContent: 'flex-end',
     },
     modalContent: {
-      borderTopLeftRadius: 20,
-      borderTopRightRadius: 20,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
       maxHeight: '90%',
     },
     modalHeader: {
@@ -571,7 +572,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
       padding: 16,
     },
     detailTitle: {
-      fontSize: 20,
+      fontSize: 22,
       fontWeight: 'bold',
       marginBottom: 16,
     },
@@ -598,7 +599,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
       fontSize: 14,
     },
     detailDescription: {
-      fontSize: 15,
+      fontSize: 16,
       lineHeight: 22,
     },
     taskLink: {
@@ -606,7 +607,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
       alignItems: 'center',
       gap: 8,
       padding: 12,
-      borderRadius: 8,
+      borderRadius: 10,
     },
     taskLinkText: {
       fontSize: 14,
@@ -615,7 +616,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
     previewImage: {
       width: 120,
       height: 120,
-      borderRadius: 8,
+      borderRadius: 10,
       marginRight: 8,
     },
     ratingDisplay: {
@@ -639,7 +640,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
       justifyContent: 'center',
       gap: 10,
       padding: 14,
-      borderRadius: 12,
+      borderRadius: 16,
       borderWidth: 2,
       borderColor: theme.error,
       backgroundColor: theme.errorAlpha,
@@ -681,11 +682,13 @@ const MyAreaReportsScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <ScreenHeader
-        title="Reportes de mi área"
-        subtitle={roleLabel(currentUser?.role)}
-        onBack={() => navigation.goBack()}
-      />
+      {!embedded && (
+        <ScreenHeader
+          title="Reportes de mi área"
+          subtitle={roleLabel(currentUser?.role)}
+          onBack={() => navigation.goBack()}
+        />
+      )}
 
       {/* Stats */}
       <View style={styles.statsRow}>

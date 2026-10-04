@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
   badge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 16,
     minWidth: 28,
     alignItems: 'center',
     justifyContent: 'center',

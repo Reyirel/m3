@@ -215,7 +215,7 @@ const createStyles = (_theme, _isDark) =>
       flex: 1,
     },
     title: {
-      fontSize: 26,
+      fontSize: 28,
       fontWeight: '800',
       color: '#FFFFFF',
       letterSpacing: -0.5,
@@ -270,7 +270,7 @@ const createStyles = (_theme, _isDark) =>
       flex: 1,
     },
     areaName: {
-      fontSize: 15,
+      fontSize: 16,
       fontWeight: '600',
       marginBottom: 4,
     },
@@ -309,7 +309,7 @@ const createStyles = (_theme, _isDark) =>
       flexDirection: 'row',
       paddingHorizontal: 24,
       paddingVertical: 12,
-      borderRadius: 8,
+      borderRadius: 10,
       alignItems: 'center',
       gap: 8,
     },

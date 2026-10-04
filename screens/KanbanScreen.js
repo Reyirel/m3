@@ -207,11 +207,11 @@ export default function KanbanScreen({ navigation }) {
             </LinearGradient>
             <View style={{ flex: 1, flexDirection: 'row', padding: 10, gap: 10 }}>
               {STATUSES.map((status) => (
-                <View key={status.key} style={[glassCard, { flex: 1, borderRadius: 14, borderWidth: 1, padding: 12, minWidth: 200 }]}>
+                <View key={status.key} style={[glassCard, { flex: 1, borderRadius: 16, borderWidth: 1, padding: 12, minWidth: 200 }]}>
                   <ShimmerEffect width="60%" height={20} style={{ marginBottom: 12 }} />
-                  <ShimmerEffect width="100%" height={80} style={{ marginBottom: 8, borderRadius: 8 }} />
-                  <ShimmerEffect width="100%" height={80} style={{ marginBottom: 8, borderRadius: 8 }} />
-                  <ShimmerEffect width="100%" height={80} style={{ borderRadius: 8 }} />
+                  <ShimmerEffect width="100%" height={80} style={{ marginBottom: 8, borderRadius: 10 }} />
+                  <ShimmerEffect width="100%" height={80} style={{ marginBottom: 8, borderRadius: 10 }} />
+                  <ShimmerEffect width="100%" height={80} style={{ borderRadius: 10 }} />
                 </View>
               ))}
             </View>

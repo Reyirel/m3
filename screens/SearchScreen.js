@@ -249,7 +249,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   resultsLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     marginBottom: 12,
   },

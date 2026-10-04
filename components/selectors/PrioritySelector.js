@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
   },
   pillLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     letterSpacing: 0.1,
   },
