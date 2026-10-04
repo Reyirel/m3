@@ -2,13 +2,7 @@
 // Servicio para calcular progreso de tareas en tiempo real
 // Soporta múltiples asignados y subtareas
 
-import {
-  collection,
-  doc,
-  getDoc,
-  onSnapshot,
-  getDocs
-} from 'firebase/firestore';
+import { collection, doc, getDoc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toMs } from '../utils/dateUtils';
 
@@ -127,118 +121,8 @@ function calculateProgress(taskData, subtasks) {
 }
 
 /**
- * Obtener progreso de una tarea sin tiempo real (one-time)
- * @param {string} taskId 
- * @returns {Promise<Object>} Objeto con progreso
- */
-export async function getTaskProgress(taskId) {
-  try {
-    const taskRef = doc(db, TASKS_COLLECTION, taskId);
-    const taskSnap = await getDoc(taskRef);
-
-    if (!taskSnap.exists()) return null;
-
-    const taskData = taskSnap.data();
-
-    // Obtener subtareas
-    const subtasksRef = collection(db, TASKS_COLLECTION, taskId, SUBTASKS_SUBCOLLECTION);
-    const subtasksSnap = await getDocs(subtasksRef);
-    const subtasks = subtasksSnap.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-
-    return calculateProgress(taskData, subtasks);
-  } catch (error) {
-    if (__DEV__) console.error('Error obteniendo progreso:', error);
-    return null;
-  }
-}
-
-/**
  * Obtener progreso de múltiples tareas (para dashboards)
  * @param {Array} taskIds - Array de IDs de tareas
  * @param {Function} callback - Callback que recibe array de progresos
  * @returns {Function} Unsubscribe
  */
-/**
- * Suscribirse a progreso de múltiples tareas
- * @param {Array} taskIds 
- * @param {Function} callback 
- * @returns {Function} Unsubscribe
- */
-export function subscribeToMultipleTasksProgress(taskIds, callback) {
-  if (!taskIds || taskIds.length === 0) {
-    callback({});
-    return () => {};
-  }
-
-  const unsubscribers = [];
-  const progressMap = {};
-  let _activeSubscriptions = 0;
-
-  // Suscribir a cada tarea
-  taskIds.forEach(taskId => {
-    const unsub = subscribeToTaskProgress(taskId, (progressData) => {
-      if (progressData) {
-        progressMap[taskId] = progressData;
-        _activeSubscriptions = Object.keys(progressMap).length;
-      } else {
-        delete progressMap[taskId];
-        _activeSubscriptions = Object.keys(progressMap).length;
-      }
-      
-      // Enviar mapa actualizado (más eficiente que array)
-      callback(progressMap);
-    });
-
-    if (typeof unsub === 'function') {
-      unsubscribers.push(unsub);
-    }
-  });
-
-  // Retornar unsubscribe general
-  return () => {
-    unsubscribers.forEach(unsub => {
-      if (typeof unsub === 'function') {
-        try {
-          unsub();
-        } catch (e) {
-          if (__DEV__) console.warn('Error al desuscribir:', e);
-        }
-      }
-    });
-    unsubscribers.length = 0;
-  };
-}
-
-/**
- * Obtener estado de salud de un proyecto (RED/AMBER/GREEN)
- * Basado en: tiempo restante vs % completado
- */
-export function getProjectHealth(progressData) {
-  if (!progressData) return 'gray';
-
-  const { overallProgress, estimatedCompletion } = progressData;
-  const now = Date.now();
-  const daysRemaining = (estimatedCompletion - now) / (1000 * 60 * 60 * 24);
-  
-  // Criterios:
-  // GREEN: 80%+ completado O aún hay mucho tiempo
-  // AMBER: 40-79% completado Y tiempo se agota
-  // RED: < 40% completado Y poco tiempo
-
-  if (overallProgress >= 80) return 'green';
-  if (overallProgress >= 40 && daysRemaining < 7) return 'amber';
-  if (overallProgress < 40 && daysRemaining < 7) return 'red';
-  
-  return 'green';
-}
-
-export default {
-  subscribeToTaskProgress,
-  subscribeToMultipleTasksProgress,
-  getTaskProgress,
-  getProjectHealth,
-  calculateProgress
-};

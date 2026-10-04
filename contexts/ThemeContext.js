@@ -3,12 +3,13 @@
 import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Appearance } from 'react-native';
+import { RADIUS, SPACING, TYPOGRAPHY } from '../theme/tokens';
 
-// Usar globalThis para que React.lazy() bundles compartan la misma instancia de contexto
-if (!globalThis.__THEME_CONTEXT__) {
-  globalThis.__THEME_CONTEXT__ = createContext();
-}
-const ThemeContext = globalThis.__THEME_CONTEXT__;
+const ThemeContext = createContext();
+
+const THEME_STORAGE_KEY = 'appTheme';
+// 'system' sigue al dispositivo; 'light' y 'dark' son una elección fija del usuario
+export const THEME_MODES = ['system', 'light', 'dark'];
 
 export const useTheme = () => {
   const context = useContext(ThemeContext);
@@ -16,6 +17,8 @@ export const useTheme = () => {
     // Retornar tema por defecto en lugar de lanzar error
     return {
       isDark: false,
+      themeMode: 'light',
+      setThemeMode: () => {},
       toggleTheme: () => {},
       theme: {
         primary: '#9F2241',
@@ -49,35 +52,36 @@ export const useTheme = () => {
 };
 
 export const ThemeProvider = ({ children }) => {
-  const [isDark, setIsDark] = useState(false);
+  // Sin preferencia guardada se sigue al dispositivo
+  const [themeMode, setThemeModeState] = useState('system');
+  const [systemScheme, setSystemScheme] = useState(() => Appearance.getColorScheme());
 
   useEffect(() => {
-    loadTheme();
+    AsyncStorage.getItem(THEME_STORAGE_KEY)
+      .then((saved) => {
+        if (THEME_MODES.includes(saved)) setThemeModeState(saved);
+      })
+      .catch(() => {});
   }, []);
 
-  const loadTheme = async () => {
-    try {
-      const savedTheme = await AsyncStorage.getItem('appTheme');
-      if (savedTheme !== null) {
-        setIsDark(savedTheme === 'dark');
-      } else {
-        // Sin preferencia guardada → usar tema del sistema operativo
-        setIsDark(Appearance.getColorScheme() === 'dark');
-      }
-    } catch {
-      setIsDark(Appearance.getColorScheme() === 'dark');
-    }
-  };
+  // Seguir al sistema en vivo: si el dispositivo cambia a oscuro al anochecer, la app también
+  useEffect(() => {
+    const subscription = Appearance.addChangeListener(({ colorScheme }) => setSystemScheme(colorScheme));
+    return () => subscription?.remove?.();
+  }, []);
 
-  const toggleTheme = useCallback(async () => {
-    try {
-      const newTheme = !isDark;
-      setIsDark(newTheme);
-      await AsyncStorage.setItem('appTheme', newTheme ? 'dark' : 'light');
-    } catch (error) {
-      // Error saving theme
-    }
-  }, [isDark]);
+  const isDark = themeMode === 'system' ? systemScheme === 'dark' : themeMode === 'dark';
+
+  const setThemeMode = useCallback((mode) => {
+    if (!THEME_MODES.includes(mode)) return;
+    setThemeModeState(mode);
+    AsyncStorage.setItem(THEME_STORAGE_KEY, mode).catch(() => {});
+  }, []);
+
+  // Alterna entre claro y oscuro (deja de seguir al sistema)
+  const toggleTheme = useCallback(() => {
+    setThemeMode(isDark ? 'light' : 'dark');
+  }, [isDark, setThemeMode]);
 
   const theme = useMemo(() => ({
     // ========== COLORES PRINCIPALES ==========
@@ -148,6 +152,12 @@ export const ThemeProvider = ({ children }) => {
     warningLight: isDark ? '#FFE426' : '#FFB340',
     warningDark: isDark ? '#C09200' : '#C07600',
     warningAlpha: isDark ? 'rgba(255, 214, 10, 0.16)' : 'rgba(255, 149, 0, 0.12)',
+    // El ámbar es demasiado claro para texto blanco (contraste < 3:1).
+    // Sobre `warning` va `onWarning`; para texto blanco se usa `warningSolid`.
+    onWarning: '#1C1C1E',
+    warningSolid: '#B35A00',
+    // Texto ámbar legible sobre el fondo de la app
+    warningText: isDark ? '#FFD60A' : '#9A5B00',
 
     info: isDark ? '#0A84FF' : '#007AFF',
     infoLight: isDark ? '#409CFF' : '#47A0FF',
@@ -246,11 +256,16 @@ export const ThemeProvider = ({ children }) => {
 
     // ========== BORDER RADIUS ==========
     // Apple HIG: 10→16 para tarjetas, 20→28 para sheets
-    radiusSm: 10,
-    radiusMd: 16,
-    radiusLg: 24,
-    radiusXl: 32,
-    radiusFull: 999,
+    radiusSm: RADIUS.sm,
+    radiusMd: RADIUS.md,
+    radiusLg: RADIUS.lg,
+    radiusXl: RADIUS.xl,
+    radiusFull: RADIUS.round,
+
+    // ========== ESCALAS (theme/tokens.js) ==========
+    spacing: SPACING,
+    typography: TYPOGRAPHY,
+    radius: RADIUS,
 
     shadowColor: '#000000',
 
@@ -261,8 +276,8 @@ export const ThemeProvider = ({ children }) => {
   }), [isDark]);
 
   const contextValue = useMemo(
-    () => ({ isDark, toggleTheme, theme }),
-    [isDark, toggleTheme, theme]
+    () => ({ isDark, themeMode, setThemeMode, toggleTheme, theme }),
+    [isDark, themeMode, setThemeMode, toggleTheme, theme]
   );
 
   return (

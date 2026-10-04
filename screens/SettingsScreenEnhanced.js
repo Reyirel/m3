@@ -5,35 +5,19 @@
  */
 
 import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Switch,
-  Platform,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  GlassmorphicCard,
-  GlassmorphicToggle,
-  GlassmorphicButton,
-  GlassmorphicDivider,
-  GlassmorphicEmptyState,
-} from '../components';
+import { GlassmorphicCard, GlassmorphicDivider } from '../components';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
 import { hapticMedium } from '../utils/haptics';
 import { confirmAlert, infoAlert } from '../utils/alert';
-import { logoutUser } from '../services/authFirestore';
 import { requestBrowserNotificationPermission } from '../services/notificationsLive';
 import { useResponsive } from '../utils/responsive';
 
 const SettingsScreenEnhanced = ({ navigation, onLogout }) => {
-  const { theme, isDark, toggleTheme } = useTheme();
+  const { theme, isDark, themeMode, setThemeMode } = useTheme();
   const { isTablet, padding } = useResponsive();
   const { currentUser } = useTasks();
   const isAdmin = currentUser?.role === 'admin';
@@ -44,10 +28,16 @@ const SettingsScreenEnhanced = ({ navigation, onLogout }) => {
   const [offlineSync, setOfflineSync] = useState(true);
   const [analyticsEnabled, setAnalyticsEnabled] = useState(false);
 
-  const handleThemeToggle = useCallback(() => {
+  // Automático → Claro → Oscuro. "Automático" sigue al dispositivo.
+  const handleThemeCycle = useCallback(() => {
     hapticMedium();
-    toggleTheme();
-  }, [toggleTheme]);
+    const next = { system: 'light', light: 'dark', dark: 'system' };
+    setThemeMode(next[themeMode] || 'system');
+  }, [themeMode, setThemeMode]);
+
+  const themeModeLabel = themeMode === 'system'
+    ? `Automático (${isDark ? 'oscuro' : 'claro'}, según el dispositivo)`
+    : themeMode === 'dark' ? 'Oscuro' : 'Claro';
 
   const settingGroups = [
     {
@@ -55,10 +45,10 @@ const SettingsScreenEnhanced = ({ navigation, onLogout }) => {
       icon: 'color-palette-outline',
       items: [
         {
-          label: 'Modo oscuro',
-          description: isDark ? 'Activado' : 'Desactivado',
-          icon: isDark ? 'moon' : 'sunny-outline',
-          onPress: handleThemeToggle,
+          label: 'Tema',
+          description: themeModeLabel,
+          icon: themeMode === 'system' ? 'contrast-outline' : isDark ? 'moon' : 'sunny-outline',
+          onPress: handleThemeCycle,
         },
       ],
     },
@@ -176,11 +166,7 @@ const SettingsScreenEnhanced = ({ navigation, onLogout }) => {
             confirmAlert(
               '¿Cerrar sesión?',
               '¿Estás seguro de que deseas salir?',
-              async () => {
-                try { await logoutUser(); } catch {}
-                if (Platform.OS === 'web') { window.location.reload(); return; }
-                onLogout?.();
-              },
+              () => onLogout?.(),
               'Salir'
             );
           },
@@ -453,7 +439,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   copyright: {
-    fontSize: 11,
+    fontSize: 12,
   },
 });
 

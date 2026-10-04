@@ -14,13 +14,13 @@ import {
   FlatList,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
 import ShimmerEffect from '../components/ShimmerEffect';
 import ProgressBar from '../components/ProgressBar';
 import Avatar from '../components/Avatar';
-import WebSafeBlur from '../components/WebSafeBlur';
+import { isInProgress } from '../utils/taskStatus';
+import ScreenHeader from '../components/ui/ScreenHeader';
 
 Dimensions.get('window');
 
@@ -70,7 +70,7 @@ export default function AreaChiefDashboard({ navigation }) {
       }
 
       const fullyCompletedTasks = taskList.filter((t) => t.status === 'cerrada').length;
-      const tasksInProgress = taskList.filter((t) => t.status === 'en_progreso' || t.status === 'en-progreso' || t.status === 'en_proceso').length;
+      const tasksInProgress = taskList.filter((t) => isInProgress(t.status)).length;
       const totalTasks = taskList.length;
       
       // Calcular promedio de progreso de todas las tareas
@@ -100,8 +100,8 @@ export default function AreaChiefDashboard({ navigation }) {
     switch (filter) {
       case 'pendiente':
         return tasks.filter((t) => t.status === 'pendiente');
-      case 'en_progreso':
-        return tasks.filter((t) => t.status === 'en_progreso' || t.status === 'en-progreso' || t.status === 'en_proceso');
+      case 'en_proceso':
+        return tasks.filter((t) => isInProgress(t.status));
       case 'completed':
         return tasks.filter((t) => t.status === 'cerrada');
       default:
@@ -142,7 +142,7 @@ export default function AreaChiefDashboard({ navigation }) {
             backgroundColor:
               task.status === 'cerrada'
                 ? theme.success
-                : task.status === 'en_progreso'
+                : isInProgress(task.status)
                 ? theme.warning
                 : theme.primary,
           },
@@ -182,7 +182,7 @@ export default function AreaChiefDashboard({ navigation }) {
         <View style={styles.statusBadge}>
           <Text
             style={{
-              fontSize: 11,
+              fontSize: 12,
               fontWeight: '600',
               color: theme.textSecondary,
               textTransform: 'capitalize',
@@ -244,33 +244,14 @@ export default function AreaChiefDashboard({ navigation }) {
       style={[styles.container, { backgroundColor: theme.background }, { opacity: fadeAnim }]}
     >
       {/* Header */}
-      <LinearGradient
-        colors={theme.gradientHeader}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { shadowColor: theme.primary }]}
-      >
-        <WebSafeBlur intensity={90} style={[styles.headerBlur, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', justifyContent: 'center', alignItems: 'center' }}
-            accessibilityLabel="Volver"
-            accessibilityRole="button"
-          >
-            <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
-          <View style={{ flex: 1, marginHorizontal: 12 }}>
-            <Text style={styles.title}>Dashboard</Text>
-            <Text style={styles.subtitle}>Tus tareas y equipo</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('MyAreaReports')}
-            style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.14)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.20)', justifyContent: 'center', alignItems: 'center' }}
-          >
-            <Ionicons name="document-text" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        </WebSafeBlur>
-      </LinearGradient>
+      <ScreenHeader
+        title="Panel del área"
+        subtitle="Tus tareas y equipo"
+        onBack={() => navigation.goBack()}
+        actions={[
+          { icon: 'document-text', label: 'Ver reportes de mi área', onPress: () => navigation.navigate('MyAreaReports') },
+        ]}
+      />
 
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
@@ -358,7 +339,7 @@ export default function AreaChiefDashboard({ navigation }) {
 
         {/* Filtros */}
         <View style={styles.filterContainer}>
-          {['all', 'pendiente', 'en_progreso', 'completed'].map((f) => (
+          {['all', 'pendiente', 'en_proceso', 'completed'].map((f) => (
             <TouchableOpacity
               key={f}
               onPress={() => setFilter(f)}
@@ -487,7 +468,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   metricLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     textAlign: 'center',
   },
@@ -616,7 +597,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   moreText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     color: '#FFFFFF',
   },

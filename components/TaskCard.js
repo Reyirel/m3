@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { toMs } from '../utils/dateUtils';
+import { isInProgress, isInReview } from '../utils/taskStatus';
 
 const PRIORITY_CONFIG = {
   baja:    { label: 'Baja',    icon: 'arrow-down' },
@@ -73,8 +74,8 @@ export default function TaskCard({
     : theme.statusPending; // media → orange
 
   const statusColor = isClosed ? theme.success
-    : task.status === 'en_proceso' || task.status === 'en_progreso' ? theme.statusInProgress
-    : task.status === 'en_revision' || task.status === 'revision' ? theme.statusReview
+    : isInProgress(task.status) ? theme.statusInProgress
+    : isInReview(task.status) ? theme.statusReview
     : task.status === 'bloqueado' ? theme.error
     : theme.statusPending;
 
@@ -270,7 +271,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   statusText: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.4,
   },
@@ -301,7 +302,7 @@ const styles = StyleSheet.create({
     borderRadius: 99,
   },
   pillText: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '800',
     letterSpacing: 0.3,
   },

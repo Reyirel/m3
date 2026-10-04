@@ -8,7 +8,6 @@ import {
   ScrollView,
   ActivityIndicator,
   Image,
-  Alert,
   Dimensions,
   TextInput,
   Platform,
@@ -163,7 +162,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       gap: 4,
     },
     connectionText: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '600',
       color: '#fff',
     },
@@ -654,7 +653,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
               <View style={styles.templatesSection}>
                 <View style={styles.templatesHeader}>
                   <Text style={styles.templatesTitle}>📋 Plantillas rápidas</Text>
-                  <TouchableOpacity onPress={() => setShowTemplates(false)}>
+                  <TouchableOpacity onPress={() => setShowTemplates(false)} accessibilityRole="button" accessibilityLabel="Cerrar">
                     <Ionicons name="close-circle-outline" size={20} color={theme.textSecondary} />
                   </TouchableOpacity>
                 </View>
@@ -690,7 +689,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
                 {errors.title ? (
                   <Text style={styles.errorText}>{errors.title}</Text>
                 ) : <View />}
-                <Text style={{ fontSize: 11, color: title.length > 100 ? theme.warning : theme.textTertiary }}>
+                <Text style={{ fontSize: 12, color: title.length > 100 ? theme.warning : theme.textTertiary }}>
                   {title.length}/120
                 </Text>
               </View>
@@ -714,7 +713,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
                 {errors.description ? (
                   <Text style={styles.errorText}>{errors.description}</Text>
                 ) : <View />}
-                <Text style={{ fontSize: 11, color: description.length > 1800 ? theme.warning : theme.textTertiary }}>
+                <Text style={{ fontSize: 12, color: description.length > 1800 ? theme.warning : theme.textTertiary }}>
                   {description.length}/2000
                 </Text>
               </View>
@@ -757,6 +756,8 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
                         style={styles.removeImageButton}
                         onPress={() => handleRemoveImage(image.id)}
                         disabled={uploadingImages}
+                        accessibilityRole="button"
+                        accessibilityLabel="Cerrar"
                       >
                         <Ionicons
                           name="close"
@@ -833,6 +834,8 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
                     ]}
                     onPress={() => setRating(star)}
                     disabled={loading}
+                    accessibilityRole="button"
+                    accessibilityLabel="Calificar"
                   >
                     <Ionicons
                       name={rating >= star ? 'star' : 'star-outline'}

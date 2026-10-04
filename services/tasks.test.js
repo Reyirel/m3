@@ -24,9 +24,6 @@ jest.mock('./analytics', () => ({
 jest.mock('../utils/dataValidation', () => ({
   validateData: jest.fn(() => ({ valid: true, errors: [] })),
 }));
-jest.mock('../utils/productionLogger', () => ({
-  logInfo: jest.fn(), logWarn: jest.fn(), logError: jest.fn(),
-}));
 jest.mock('../utils/errorRecovery', () => ({
   withRetry: jest.fn(async (fn) => fn()),
 }));

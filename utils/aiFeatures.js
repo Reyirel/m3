@@ -445,30 +445,6 @@ export function suggestPriority(title = '', description = '') {
 
 // ─── Feature 7: Detección de tareas estancadas ────────────────────────────────
 
-/**
- * Detecta tareas que llevan muchos días en "en_proceso" sin avanzar.
- * @param {Array}  tasks        - Lista de tareas
- * @param {number} thresholdDays - Días sin movimiento para considerar estancada (default: 5)
- * @returns {Array<{ task: Object, stalledDays: number }>} tareas estancadas, ordenadas por días
- */
-export function detectStalledTasks(tasks, thresholdDays = 5) {
-  if (!tasks?.length) return [];
-
-  const now = Date.now();
-  const _thresholdMs = thresholdDays * 24 * 60 * 60 * 1000;
-
-  return tasks
-    .filter(t => t.status === 'en_proceso')
-    .map(t => {
-      // Usar updatedAt si existe, si no createdAt
-      const lastMovement = toMs(t.updatedAt) || toMs(t.createdAt) || 0;
-      const stalledMs = now - lastMovement;
-      return { task: t, stalledDays: Math.floor(stalledMs / (24 * 60 * 60 * 1000)) };
-    })
-    .filter(({ stalledDays }) => stalledDays >= thresholdDays)
-    .sort((a, b) => b.stalledDays - a.stalledDays);
-}
-
 // ─── Feature 8: Sugerencia de fecha límite ────────────────────────────────────
 
 /**

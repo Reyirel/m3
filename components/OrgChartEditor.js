@@ -1,158 +1,79 @@
 // components/OrgChartEditor.js
 // Editor visual del organigrama municipal — modos: Lista editable + Diagrama jerárquico
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert, ScrollView, Platform,
+  ActivityIndicator, Alert, ScrollView, Platform, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { doc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
-import { SECRETARIAS, getDireccionesBySecretaria } from '../config/areas';
+import {
+  addSecretariaToStructure, getAreaNameError, getOrgStructure, moveDireccionInStructure,
+  moveSecretariaInStructure, renameAreaInStructure, sanitizeOrgStructure,
+} from '../config/areas';
 import { useTheme } from '../contexts/ThemeContext';
+import {
+  applyAreaRename, applyDireccionMove, moveDireccion, removeArea, renameArea, saveOrgStructure,
+} from '../services/orgStructure';
+import { showDialog } from '../utils/alert';
+import OrgDiagramBoard from './OrgDiagramBoard';
 
 const ORG_DOC_REF = () => doc(db, 'metadata', 'orgStructure');
-const COL_WIDTH = 175;
 
-function buildFromConfig() {
-  return {
-    secretarias: SECRETARIAS.map(nombre => ({
-      nombre,
-      direcciones: getDireccionesBySecretaria(nombre),
-    })),
-  };
-}
-
-// ─── Vista Diagrama ────────────────────────────────────────────────────────────
-function DiagramView({ orgData, theme, isDark }) {
-  const [expandedSec, setExpandedSec] = useState({});
-  const borderColor = isDark ? '#2E2E3E' : '#E5E7EB';
-  const cardBg = isDark ? '#1E1E2E' : '#FFFFFF';
-  const subtextCol = isDark ? '#9CA3AF' : '#6B7280';
-
-  return (
-    <ScrollView showsVerticalScrollIndicator={false}>
-      {/* Admin node */}
-      <View style={diag.adminRow}>
-        <View style={diag.adminBox}>
-          <Ionicons name="shield-checkmark" size={18} color="#fff" />
-          <View style={{ marginLeft: 8 }}>
-            <Text style={diag.adminRole}>ADMINISTRADOR</Text>
-            <Text style={diag.adminSub}>Control total del sistema</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Línea vertical desde admin */}
-      <View style={diag.centerConnector}>
-        <View style={diag.vLineLong} />
-      </View>
-
-      {/* Barra horizontal entre secretarías */}
-      <View style={diag.hBarWrap}>
-        <View style={[diag.hBar, { backgroundColor: '#8B0000' }]} />
-      </View>
-
-      {/* ScrollView horizontal para las secretarías */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ paddingBottom: 16 }}>
-        <View style={diag.colsRow}>
-          {orgData.secretarias.map((sec, i) => {
-            const isOpen = !!expandedSec[i];
-            const dirCount = sec.direcciones?.length ?? 0;
-            return (
-              <View key={i} style={diag.column}>
-                {/* Conector vertical desde barra horizontal */}
-                <View style={diag.colTopConnector} />
-
-                {/* Caja de secretaría */}
-                <TouchableOpacity
-                  activeOpacity={0.8}
-                  onPress={() => setExpandedSec(e => ({ ...e, [i]: !e[i] }))}
-                  style={[diag.secBox, { backgroundColor: '#8B0000' }]}
-                >
-                  <Ionicons name="business" size={13} color="#FECACA" />
-                  <Text style={diag.secBoxName} numberOfLines={3}>{sec.nombre}</Text>
-                  <View style={diag.secBoxBadge}>
-                    <Text style={diag.secBoxBadgeText}>{dirCount}</Text>
-                  </View>
-                  <Ionicons
-                    name={isOpen ? 'chevron-up' : 'chevron-down'}
-                    size={12} color="#FECACA" style={{ marginTop: 4 }}
-                  />
-                </TouchableOpacity>
-
-                {/* Direcciones (expandibles) */}
-                {isOpen && (
-                  <View style={diag.dirsCol}>
-                    <View style={[diag.vLineShort, { backgroundColor: '#8B0000' }]} />
-                    {(sec.direcciones || []).map((dir, j) => (
-                      <View key={j}>
-                        <View style={[diag.dirBox, { backgroundColor: cardBg, borderColor }]}>
-                          <View style={diag.dirDot} />
-                          <Text style={[diag.dirBoxName, { color: theme.text }]} numberOfLines={3}>
-                            {dir}
-                          </Text>
-                        </View>
-                        {j < sec.direcciones.length - 1 && (
-                          <View style={[diag.vLineMini, { backgroundColor: borderColor }]} />
-                        )}
-                      </View>
-                    ))}
-                    {dirCount === 0 && (
-                      <Text style={[diag.emptyDirs, { color: subtextCol }]}>Sin direcciones</Text>
-                    )}
-                  </View>
-                )}
-              </View>
-            );
-          })}
-        </View>
-      </ScrollView>
-
-      <Text style={[diag.hint, { color: subtextCol }]}>
-        Toca cada secretaría para ver sus direcciones
-      </Text>
-    </ScrollView>
-  );
-}
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 // ─── Vista Lista (editable) ────────────────────────────────────────────────────
-function ListView({ orgData, setOrgData, persist, theme, isDark }) {
+function ListView({ orgData, setOrgData, persist, onRename, onRemove, theme, isDark }) {
   const [expanded, setExpanded] = useState({});
   const [editingDir, setEditingDir] = useState(null);
   const [addingDir, setAddingDir] = useState(null);
+  // "Enter" y perder el foco confirman los dos: solo cuenta el primero
+  const editingRef = useRef(null);
+  const addingRef = useRef(null);
+  editingRef.current = editingDir;
+  addingRef.current = addingDir;
 
   const cardBg = isDark ? '#1E1E2E' : '#FFFFFF';
   const borderCol = isDark ? '#2E2E3E' : '#E5E7EB';
   const subtextCol = isDark ? '#9CA3AF' : '#6B7280';
 
-  const confirmRename = async (secIdx, dirIdx) => {
-    const name = editingDir?.value?.trim();
-    if (!name) { setEditingDir(null); return; }
-    const newData = JSON.parse(JSON.stringify(orgData));
-    newData.secretarias[secIdx].direcciones[dirIdx] = name;
-    setOrgData(newData);
+  const confirmRename = (secIdx, dirIdx) => {
+    const editing = editingRef.current;
+    if (!editing) return;
+    editingRef.current = null;
     setEditingDir(null);
-    await persist(newData);
+    const oldName = orgData.secretarias[secIdx].direcciones[dirIdx];
+    const name = editing.value.trim();
+    if (!name || name === oldName) return;
+    const error = getAreaNameError(orgData, name, oldName);
+    if (error) {
+      showDialog({ title: 'No se cambió el nombre', message: error });
+      return;
+    }
+    onRename(oldName, name);
   };
 
   const confirmAdd = async (secIdx) => {
-    const name = addingDir?.value?.trim();
+    const adding = addingRef.current;
+    if (!adding) return;
+    addingRef.current = null;
     setAddingDir(null);
+    const name = adding.value.trim();
     if (!name) return;
+    const error = getAreaNameError(orgData, name);
+    if (error) {
+      showDialog({ title: 'No se agregó la dirección', message: error });
+      return;
+    }
     const newData = JSON.parse(JSON.stringify(orgData));
     newData.secretarias[secIdx].direcciones.push(name);
     setOrgData(newData);
     await persist(newData);
   };
 
-  const removeDir = async (secIdx, dirIdx) => {
-    const newData = JSON.parse(JSON.stringify(orgData));
-    newData.secretarias[secIdx].direcciones.splice(dirIdx, 1);
-    setOrgData(newData);
-    await persist(newData);
-  };
+  const removeDir = (secIdx, dirIdx) => onRemove(orgData.secretarias[secIdx].direcciones[dirIdx]);
 
   return (
     <ScrollView showsVerticalScrollIndicator={false}>
@@ -174,7 +95,7 @@ function ListView({ orgData, setOrgData, persist, theme, isDark }) {
         return (
           <View key={secIdx} style={list.secWrapper}>
             <View style={list.leftTrack}>
-              <View style={[list.horzDash, { backgroundColor: '#8B0000' }]} />
+              <View style={[list.horzDash, { backgroundColor: theme.primary }]} />
             </View>
             <View style={[list.secCard, { backgroundColor: cardBg, borderColor: borderCol }]}>
               <TouchableOpacity
@@ -195,7 +116,7 @@ function ListView({ orgData, setOrgData, persist, theme, isDark }) {
                 </View>
                 <Ionicons
                   name={isOpen ? 'chevron-up-circle-outline' : 'chevron-down-circle-outline'}
-                  size={20} color="#8B0000"
+                  size={20} color={theme.primary}
                 />
               </TouchableOpacity>
 
@@ -206,7 +127,7 @@ function ListView({ orgData, setOrgData, persist, theme, isDark }) {
                       <View style={list.dirDot} />
                       {editingDir?.secIdx === secIdx && editingDir?.dirIdx === dirIdx ? (
                         <TextInput
-                          style={[list.dirInput, { color: theme.text, borderColor: '#8B0000', backgroundColor: isDark ? '#2A2A3A' : '#FFF5F5' }]}
+                          style={[list.dirInput, { color: theme.text, borderColor: theme.primary, backgroundColor: isDark ? '#2A2A3A' : '#FFF5F5' }]}
                           value={editingDir.value}
                           onChangeText={v => setEditingDir(e => ({ ...e, value: v }))}
                           autoFocus
@@ -221,13 +142,17 @@ function ListView({ orgData, setOrgData, persist, theme, isDark }) {
                         onPress={() => setEditingDir({ secIdx, dirIdx, value: dir })}
                         style={list.iconBtn}
                         hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Editar"
                       >
-                        <Ionicons name="pencil-outline" size={15} color="#8B0000" />
+                        <Ionicons name="pencil-outline" size={15} color={theme.primary} />
                       </TouchableOpacity>
                       <TouchableOpacity
                         onPress={() => removeDir(secIdx, dirIdx)}
                         style={[list.iconBtn, { marginLeft: 2 }]}
                         hitSlop={{ top: 8, bottom: 8, left: 4, right: 4 }}
+                        accessibilityRole="button"
+                        accessibilityLabel="Eliminar"
                       >
                         <Ionicons name="close-circle-outline" size={15} color={theme.error} />
                       </TouchableOpacity>
@@ -236,9 +161,9 @@ function ListView({ orgData, setOrgData, persist, theme, isDark }) {
 
                   {addingDir?.secIdx === secIdx ? (
                     <View style={[list.dirRow, { borderBottomColor: 'transparent' }]}>
-                      <View style={[list.dirDot, { backgroundColor: '#8B0000' }]} />
+                      <View style={[list.dirDot, { backgroundColor: theme.primary }]} />
                       <TextInput
-                        style={[list.dirInput, { flex: 1, color: theme.text, borderColor: '#8B0000', backgroundColor: isDark ? '#2A2A3A' : '#FFF5F5' }]}
+                        style={[list.dirInput, { flex: 1, color: theme.text, borderColor: theme.primary, backgroundColor: isDark ? '#2A2A3A' : '#FFF5F5' }]}
                         value={addingDir.value}
                         onChangeText={v => setAddingDir(e => ({ ...e, value: v }))}
                         placeholder="Nombre de la nueva dirección..."
@@ -254,7 +179,7 @@ function ListView({ orgData, setOrgData, persist, theme, isDark }) {
                       style={list.addBtn}
                       onPress={() => setAddingDir({ secIdx, value: '' })}
                     >
-                      <Ionicons name="add-circle-outline" size={16} color="#8B0000" />
+                      <Ionicons name="add-circle-outline" size={16} color={theme.primary} />
                       <Text style={list.addBtnText}>Agregar dirección</Text>
                     </TouchableOpacity>
                   )}
@@ -269,29 +194,85 @@ function ListView({ orgData, setOrgData, persist, theme, isDark }) {
   );
 }
 
+// ─── Pedir un nombre (secretaría nueva o renombrada) ───────────────────────────
+function NamePrompt({ prompt, orgData, theme, onClose }) {
+  const [value, setValue] = useState(prompt.currentName || '');
+  const [error, setError] = useState(null);
+
+  const submit = () => {
+    const name = value.trim();
+    const problem = getAreaNameError(orgData, name, prompt.currentName);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    onClose();
+    if (name !== prompt.currentName) prompt.onSubmit(name);
+  };
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <View style={[styles.promptOverlay, { backgroundColor: theme.overlay }]}>
+        <View style={[styles.promptCard, { backgroundColor: theme.card, borderColor: theme.glassBorder }]}>
+          <Text style={[styles.promptTitle, { color: theme.text }]} accessibilityRole="header">
+            {prompt.title}
+          </Text>
+          <TextInput
+            style={[styles.promptInput, { color: theme.text, borderColor: error ? theme.error : theme.primary }]}
+            value={value}
+            onChangeText={(text) => { setValue(text); setError(null); }}
+            placeholder="Nombre de la secretaría"
+            placeholderTextColor={theme.textTertiary}
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={submit}
+            accessibilityLabel="Nombre de la secretaría"
+          />
+          {error && <Text style={[styles.promptError, { color: theme.error }]}>{error}</Text>}
+          <View style={styles.promptButtons}>
+            <TouchableOpacity
+              style={[styles.promptButton, { backgroundColor: theme.surfaceL2 }]}
+              onPress={onClose}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.promptButtonText, { color: theme.text }]}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.promptButton, { backgroundColor: theme.primary }]}
+              onPress={submit}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.promptButtonText, { color: '#fff' }]}>Guardar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 // ─── Componente principal ──────────────────────────────────────────────────────
 export default function OrgChartEditor() {
   const { theme, isDark } = useTheme();
   const [orgData, setOrgData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [viewMode, setViewMode] = useState('list'); // 'list' | 'diagram'
+  const [viewMode, setViewMode] = useState('diagram'); // 'diagram' | 'list'
+  // Resultado del último cambio: { type: 'success' | 'warning', text, retry? }
+  const [notice, setNotice] = useState(null);
+  // Nombre que se está pidiendo: { title, currentName?, onSubmit }
+  const [prompt, setPrompt] = useState(null);
 
   useEffect(() => {
     const unsub = onSnapshot(
       ORG_DOC_REF(),
       (snap) => {
-        if (snap.exists()) {
-          setOrgData(snap.data());
-        } else {
-          const initial = buildFromConfig();
-          setOrgData(initial);
-          setDoc(ORG_DOC_REF(), initial).catch(() => {});
-        }
+        // Sin documento (nunca se ha editado) se muestra el organigrama vigente de la app
+        setOrgData((snap.exists() && sanitizeOrgStructure(snap.data())) || getOrgStructure());
         setLoading(false);
       },
       () => {
-        setOrgData(buildFromConfig());
+        setOrgData(getOrgStructure());
         setLoading(false);
       }
     );
@@ -301,7 +282,7 @@ export default function OrgChartEditor() {
   const persist = useCallback(async (newData) => {
     setSaving(true);
     try {
-      await setDoc(ORG_DOC_REF(), newData);
+      await saveOrgStructure(newData);
     } catch {
       Alert.alert('Error', 'No se pudo guardar el cambio.');
     } finally {
@@ -309,12 +290,191 @@ export default function OrgChartEditor() {
     }
   }, []);
 
+  // Aplicar a usuarios y tareas un cambio cuyo organigrama ya se guardó.
+  // `retry` es la función que lo aplica y devuelve { users, tasks }.
+  const applyPending = useCallback(async (retry) => {
+    setSaving(true);
+    try {
+      const applied = await retry();
+      setNotice({
+        type: 'success',
+        text: `Cambio aplicado: ${plural(applied.users, 'usuario actualizado', 'usuarios actualizados')} y ${plural(applied.tasks, 'tarea actualizada', 'tareas actualizadas')}.`,
+      });
+    } catch {
+      setNotice({
+        type: 'warning',
+        text: 'Aún no se pudo aplicar el cambio a usuarios y tareas. Revisa tu conexión.',
+        retry,
+      });
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  // Renombrar una secretaría o dirección: el nombre nuevo llega también a usuarios y tareas
+  const performRename = useCallback(async (oldName, newName) => {
+    setSaving(true);
+    setNotice(null);
+    setOrgData((prev) => renameAreaInStructure(prev, oldName, newName).structure);
+    try {
+      const result = await renameArea(oldName, newName);
+      setOrgData(getOrgStructure());
+      if (!result.changed) return;
+      if (result.pending) {
+        setNotice({
+          type: 'warning',
+          text: `El organigrama ya dice "${newName}", pero falta cambiar el nombre en usuarios y tareas.`,
+          retry: () => applyAreaRename(oldName, newName),
+        });
+      } else {
+        setNotice({
+          type: 'success',
+          text: `"${oldName}" ahora se llama "${newName}". ${plural(result.users, 'usuario actualizado', 'usuarios actualizados')} y ${plural(result.tasks, 'tarea actualizada', 'tareas actualizadas')}.`,
+        });
+      }
+    } catch {
+      setOrgData(getOrgStructure());
+      Alert.alert('No se pudo renombrar', 'El organigrama no se guardó. Revisa tu conexión e intenta de nuevo.');
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  const performRemove = useCallback(async (name) => {
+    setSaving(true);
+    setNotice(null);
+    try {
+      const { removed, usage } = await removeArea(name);
+      setOrgData(getOrgStructure());
+      if (removed) {
+        setNotice({ type: 'success', text: `"${name}" se eliminó del organigrama.` });
+      } else {
+        showDialog({
+          title: 'No se puede eliminar',
+          message: `"${name}" todavía tiene ${plural(usage.users, 'usuario', 'usuarios')} y ${plural(usage.tasks, 'tarea abierta', 'tareas abiertas')}.\n\nCambia de área a esos usuarios y tareas, o cierra las tareas, y vuelve a intentarlo. Si solo cambió de nombre, renómbrala.`,
+        });
+      }
+    } catch {
+      Alert.alert('No se pudo eliminar', 'No se pudo revisar si el área sigue en uso. Revisa tu conexión e intenta de nuevo.');
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  const handleRemoveDireccion = useCallback((direccion) => {
+    showDialog({
+      title: 'Eliminar dirección',
+      message: `"${direccion}" dejará de aparecer en el organigrama y en los selectores de área.\n\nSolo se elimina si ya no tiene usuarios ni tareas abiertas.`,
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: () => performRemove(direccion) },
+      ],
+    });
+  }, [performRemove]);
+
+  const handleRemoveSecretaria = useCallback((nombre) => {
+    const secretaria = orgData?.secretarias.find((sec) => sec.nombre === nombre);
+    if (!secretaria) return;
+    if (orgData.secretarias.length === 1) {
+      showDialog({ title: 'No se puede eliminar', message: 'El organigrama necesita al menos una secretaría.' });
+      return;
+    }
+    if (secretaria.direcciones.length > 0) {
+      showDialog({
+        title: 'No se puede eliminar',
+        message: `"${nombre}" tiene ${plural(secretaria.direcciones.length, 'dirección', 'direcciones')}. Muévelas a otra secretaría o elimínalas antes.`,
+      });
+      return;
+    }
+    showDialog({
+      title: 'Eliminar secretaría',
+      message: `"${nombre}" dejará de aparecer en el organigrama.\n\nSolo se elimina si ya no tiene usuarios ni tareas abiertas.`,
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: () => performRemove(nombre) },
+      ],
+    });
+  }, [orgData, performRemove]);
+
+  // Cambios que solo tocan el organigrama: el orden de las secretarías y una secretaría nueva
+  const saveStructureChange = useCallback(({ structure, changed }) => {
+    if (!changed) return;
+    setNotice(null);
+    setOrgData(structure);
+    persist(structure);
+  }, [persist]);
+
+  const handleMoveSecretaria = useCallback((nombre, toIndex) => {
+    saveStructureChange(moveSecretariaInStructure(orgData, nombre, toIndex));
+  }, [orgData, saveStructureChange]);
+
+  const handleAddSecretaria = useCallback(() => {
+    setPrompt({
+      title: 'Nueva secretaría',
+      onSubmit: (nombre) => saveStructureChange(addSecretariaToStructure(orgData, nombre)),
+    });
+  }, [orgData, saveStructureChange]);
+
+  const handleRenameSecretaria = useCallback((nombre) => {
+    setPrompt({
+      title: 'Cambiar nombre de la secretaría',
+      currentName: nombre,
+      onSubmit: (nuevo) => performRename(nombre, nuevo),
+    });
+  }, [performRename]);
+
+  const performMove = useCallback(async ({ direccion, fromSecretaria, toSecretaria, toIndex }) => {
+    setSaving(true);
+    setNotice(null);
+    // El diagrama muestra el cambio de inmediato; si no se puede guardar, se revierte
+    setOrgData((prev) => moveDireccionInStructure(prev, direccion, toSecretaria, toIndex).structure);
+    try {
+      const result = await moveDireccion(direccion, toSecretaria, toIndex);
+      setOrgData(getOrgStructure());
+      if (!result.changed || fromSecretaria === toSecretaria) return;
+      if (result.pending) {
+        setNotice({
+          type: 'warning',
+          text: `"${direccion}" ya aparece en ${toSecretaria}, pero falta aplicar el cambio a usuarios y tareas.`,
+          retry: () => applyDireccionMove(direccion, fromSecretaria, toSecretaria),
+        });
+      } else {
+        setNotice({
+          type: 'success',
+          text: `"${direccion}" ahora pertenece a ${toSecretaria}. ${plural(result.users, 'usuario actualizado', 'usuarios actualizados')} y ${plural(result.tasks, 'tarea actualizada', 'tareas actualizadas')}.`,
+        });
+      }
+    } catch {
+      setOrgData(getOrgStructure());
+      Alert.alert('No se pudo mover', 'El organigrama no se guardó. Revisa tu conexión e intenta de nuevo.');
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  // Cambiar el orden dentro de la misma secretaría no afecta permisos: se guarda sin preguntar.
+  // Cambiar de secretaría sí cambia quién ve las tareas: se confirma antes.
+  const handleMove = useCallback((move) => {
+    if (move.fromSecretaria === move.toSecretaria) {
+      performMove(move);
+      return;
+    }
+    showDialog({
+      title: 'Mover dirección',
+      message: `"${move.direccion}" pasará de ${move.fromSecretaria} a ${move.toSecretaria}.\n\nEl secretario de ${move.toSecretaria} verá sus tareas abiertas y podrá delegarle; el de ${move.fromSecretaria} dejará de verlas.`,
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Mover', onPress: () => performMove(move) },
+      ],
+    });
+  }, [performMove]);
+
   const subtextCol = isDark ? '#9CA3AF' : '#6B7280';
 
   if (loading) {
     return (
       <View style={styles.loadingBox}>
-        <ActivityIndicator color="#8B0000" size="large" />
+        <ActivityIndicator color={theme.primary} size="large" />
         <Text style={[styles.loadingText, { color: subtextCol }]}>Cargando organigrama...</Text>
       </View>
     );
@@ -327,21 +487,21 @@ export default function OrgChartEditor() {
       {/* Toggle de vista */}
       <View style={[styles.toggleRow, { borderBottomColor: isDark ? '#2E2E3E' : '#E5E7EB' }]}>
         <TouchableOpacity
-          style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
-          onPress={() => setViewMode('list')}
-        >
-          <Ionicons name="list" size={16} color={viewMode === 'list' ? '#fff' : '#8B0000'} />
-          <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
-            Lista
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
           style={[styles.toggleBtn, viewMode === 'diagram' && styles.toggleBtnActive]}
           onPress={() => setViewMode('diagram')}
         >
-          <Ionicons name="git-network" size={16} color={viewMode === 'diagram' ? '#fff' : '#8B0000'} />
+          <Ionicons name="git-network" size={16} color={viewMode === 'diagram' ? '#fff' : theme.primary} />
           <Text style={[styles.toggleText, viewMode === 'diagram' && styles.toggleTextActive]}>
             Diagrama
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
+          onPress={() => setViewMode('list')}
+        >
+          <Ionicons name="list" size={16} color={viewMode === 'list' ? '#fff' : theme.primary} />
+          <Text style={[styles.toggleText, viewMode === 'list' && styles.toggleTextActive]}>
+            Editar nombres
           </Text>
         </TouchableOpacity>
 
@@ -353,6 +513,43 @@ export default function OrgChartEditor() {
         )}
       </View>
 
+      {notice && (
+        <View
+          style={[
+            styles.notice,
+            {
+              backgroundColor: notice.type === 'success' ? theme.successAlpha : theme.warningAlpha,
+              borderColor: notice.type === 'success' ? theme.success : theme.warning,
+            },
+          ]}
+          accessibilityLiveRegion="polite"
+        >
+          <Ionicons
+            name={notice.type === 'success' ? 'checkmark-circle' : 'alert-circle'}
+            size={18}
+            color={notice.type === 'success' ? theme.success : theme.warningText}
+          />
+          <Text style={[styles.noticeText, { color: theme.text }]}>{notice.text}</Text>
+          {notice.retry && (
+            <TouchableOpacity
+              onPress={() => applyPending(notice.retry)}
+              style={[styles.noticeAction, { backgroundColor: theme.primary }]}
+              accessibilityRole="button"
+            >
+              <Text style={styles.noticeActionText}>Reintentar</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            onPress={() => setNotice(null)}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar aviso"
+          >
+            <Ionicons name="close" size={18} color={theme.textSecondary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Contenido según modo */}
       <View style={styles.content}>
         {viewMode === 'list' ? (
@@ -360,13 +557,28 @@ export default function OrgChartEditor() {
             orgData={orgData}
             setOrgData={setOrgData}
             persist={persist}
+            onRename={performRename}
+            onRemove={handleRemoveDireccion}
             theme={theme}
             isDark={isDark}
           />
         ) : (
-          <DiagramView orgData={orgData} theme={theme} isDark={isDark} />
+          <OrgDiagramBoard
+            orgData={orgData}
+            theme={theme}
+            busy={saving}
+            onMove={handleMove}
+            onMoveSecretaria={handleMoveSecretaria}
+            onRenameSecretaria={handleRenameSecretaria}
+            onRemoveSecretaria={handleRemoveSecretaria}
+            onAddSecretaria={handleAddSecretaria}
+          />
         )}
       </View>
+
+      {prompt && (
+        <NamePrompt prompt={prompt} orgData={orgData} theme={theme} onClose={() => setPrompt(null)} />
+      )}
     </View>
   );
 }
@@ -402,8 +614,24 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(139,0,0,0.8)', borderRadius: 14,
     paddingHorizontal: 10, paddingVertical: 5, marginLeft: 'auto',
   },
-  savingText: { color: '#fff', fontSize: 11, fontWeight: '500' },
+  savingText: { color: '#fff', fontSize: 12, fontWeight: '500' },
   content: { flex: 1, paddingHorizontal: 12, paddingTop: 8 },
+  notice: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginHorizontal: 12, marginTop: 10, paddingHorizontal: 12, paddingVertical: 10,
+    borderRadius: 12, borderWidth: 1,
+  },
+  noticeText: { flex: 1, fontSize: 13, lineHeight: 18 },
+  noticeAction: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 999 },
+  noticeActionText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  promptOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 },
+  promptCard: { width: '100%', maxWidth: 420, borderRadius: 24, borderWidth: StyleSheet.hairlineWidth, padding: 24 },
+  promptTitle: { fontSize: 18, fontWeight: '700', marginBottom: 14 },
+  promptInput: { fontSize: 15, borderWidth: 1.5, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10 },
+  promptError: { fontSize: 13, lineHeight: 18, marginTop: 8 },
+  promptButtons: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  promptButton: { flex: 1, minHeight: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  promptButtonText: { fontSize: 15, fontWeight: '600' },
 });
 
 // ─── Estilos Vista Lista ───────────────────────────────────────────────────────
@@ -416,7 +644,7 @@ const list = StyleSheet.create({
     shadowColor: '#8B0000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
   },
-  adminRole: { color: '#FECACA', fontSize: 9, fontWeight: '700', letterSpacing: 1.5 },
+  adminRole: { color: '#FECACA', fontSize: 11, fontWeight: '700', letterSpacing: 1.5 },
   adminName: { color: '#fff', fontSize: 13, fontWeight: '700' },
   vertConnector: { width: 2, height: 18, backgroundColor: '#8B0000', opacity: 0.4 },
   secWrapper: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 7, paddingLeft: 12 },
@@ -432,7 +660,7 @@ const list = StyleSheet.create({
   secHeader: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 11, paddingVertical: 9 },
   secBadge: { width: 26, height: 26, borderRadius: 6, backgroundColor: '#8B0000', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
   secName: { fontSize: 12, fontWeight: '600', lineHeight: 17 },
-  secMeta: { fontSize: 10, marginTop: 1 },
+  secMeta: { fontSize: 11, marginTop: 1 },
   dirsBox: { borderTopWidth: 1, paddingHorizontal: 11, paddingTop: 4, paddingBottom: 8 },
   dirRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth },
   dirDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#8B0000', opacity: 0.5, marginRight: 7, flexShrink: 0 },
@@ -441,48 +669,4 @@ const list = StyleSheet.create({
   iconBtn: { padding: 3 },
   addBtn: { flexDirection: 'row', alignItems: 'center', paddingTop: 7, gap: 4 },
   addBtnText: { fontSize: 12, color: '#8B0000', fontWeight: '500' },
-});
-
-// ─── Estilos Vista Diagrama ────────────────────────────────────────────────────
-const diag = StyleSheet.create({
-  adminRow: { alignItems: 'center', paddingVertical: 8 },
-  adminBox: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#8B0000', paddingHorizontal: 18, paddingVertical: 10,
-    borderRadius: 10, alignSelf: 'center',
-    shadowColor: '#8B0000', shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, shadowRadius: 8, elevation: 6,
-  },
-  adminRole: { color: '#fff', fontSize: 12, fontWeight: '800', letterSpacing: 0.5 },
-  adminSub: { color: '#FECACA', fontSize: 10 },
-  centerConnector: { alignItems: 'center' },
-  vLineLong: { width: 2, height: 16, backgroundColor: '#8B0000', opacity: 0.5 },
-  hBarWrap: { paddingHorizontal: 16 },
-  hBar: { height: 2, borderRadius: 1, opacity: 0.4 },
-  colsRow: { flexDirection: 'row', paddingHorizontal: 8, paddingTop: 0, gap: 8 },
-  column: { width: COL_WIDTH, alignItems: 'center' },
-  colTopConnector: { width: 2, height: 14, backgroundColor: '#8B0000', opacity: 0.4 },
-  secBox: {
-    width: COL_WIDTH, borderRadius: 8, padding: 10, alignItems: 'center',
-    shadowColor: '#8B0000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25, shadowRadius: 4, elevation: 4,
-  },
-  secBoxName: { color: '#fff', fontSize: 10, fontWeight: '600', textAlign: 'center', marginTop: 4, lineHeight: 14 },
-  secBoxBadge: {
-    backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 8,
-    paddingHorizontal: 6, paddingVertical: 1, marginTop: 5,
-  },
-  secBoxBadgeText: { color: '#fff', fontSize: 9, fontWeight: '700' },
-  dirsCol: { width: COL_WIDTH, alignItems: 'center' },
-  vLineShort: { width: 2, height: 10, opacity: 0.4 },
-  vLineMini: { width: 2, height: 4, alignSelf: 'center', opacity: 0.3 },
-  dirBox: {
-    width: COL_WIDTH - 8, borderRadius: 6, borderWidth: 1,
-    paddingHorizontal: 8, paddingVertical: 6,
-    flexDirection: 'row', alignItems: 'flex-start',
-  },
-  dirDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: '#8B0000', opacity: 0.6, marginRight: 5, marginTop: 4, flexShrink: 0 },
-  dirBoxName: { flex: 1, fontSize: 10, lineHeight: 14 },
-  emptyDirs: { fontSize: 10, fontStyle: 'italic', marginTop: 8 },
-  hint: { textAlign: 'center', fontSize: 10, marginTop: 8, marginBottom: 4 },
 });

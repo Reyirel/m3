@@ -8,6 +8,8 @@ import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from '
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { roleLabel as getRoleLabel } from '../services/permissions';
+import { confirmAlert } from '../utils/alert';
 
 export const SIDEBAR_WIDTH = 220;
 
@@ -29,6 +31,7 @@ export default function DesktopSidebar({
   currentUser,
   overdueCount = 0,
   urgentCount = 0,
+  onLogout,
   stackNavigation,  // navegación de Stack para Profile/Settings
 }) {
   const { theme, isDark } = useTheme();
@@ -41,14 +44,14 @@ export default function DesktopSidebar({
     return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
   })();
 
-  const roleLabel = (() => {
-    switch (currentUser?.role) {
-      case 'admin': return 'ADMINISTRADOR';
-      case 'secretario': return 'SECRETARIO';
-      case 'director': return 'DIRECTOR';
-      default: return 'USUARIO';
-    }
-  })();
+  const roleLabel = getRoleLabel(currentUser?.role).toUpperCase();
+
+  const confirmLogout = () => confirmAlert(
+    'Cerrar sesión',
+    '¿Quieres salir de tu cuenta en este dispositivo?',
+    () => onLogout?.(),
+    'Cerrar sesión'
+  );
 
   return (
     <View style={[styles.sidebar, {
@@ -105,6 +108,9 @@ export default function DesktopSidebar({
                 },
               ]}
               activeOpacity={0.75}
+              accessibilityRole="link"
+              accessibilityLabel={badge > 0 ? `${meta.label}, ${badge} pendientes` : meta.label}
+              accessibilityState={{ selected: isActive }}
               {...(Platform.OS === 'web' ? {
                 onMouseEnter: () => setHovered(route.name),
                 onMouseLeave: () => setHovered(null),
@@ -126,7 +132,7 @@ export default function DesktopSidebar({
               </Text>
               {badge > 0 && (
                 <View style={[styles.badge, {
-                  backgroundColor: route.name === 'Inbox' ? theme.error : theme.warning,
+                  backgroundColor: route.name === 'Inbox' ? theme.error : theme.warningSolid,
                 }]}>
                   <Text style={styles.badgeText}>{badge > 99 ? '99+' : badge}</Text>
                 </View>
@@ -143,10 +149,13 @@ export default function DesktopSidebar({
         {[
           { key: 'settings', label: 'Configuración', icon: 'settings-outline', screen: 'Settings' },
           { key: 'notifications', label: 'Notificaciones', icon: 'notifications-outline', screen: 'Notifications' },
+          { key: 'logout', label: 'Cerrar sesión', icon: 'log-out-outline', onPress: confirmLogout },
         ].map((item) => (
           <TouchableOpacity
             key={item.key}
-            onPress={() => stackNavigation?.navigate(item.screen)}
+            onPress={item.onPress || (() => stackNavigation?.navigate(item.screen))}
+            accessibilityRole="button"
+            accessibilityLabel={item.label}
             style={[
               styles.navItem,
               hovered === item.key && {
@@ -212,7 +221,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.2,
   },
   brandRole: {
-    fontSize: 9,
+    fontSize: 12,
     fontWeight: '600',
     color: 'rgba(255,255,255,0.60)',
     letterSpacing: 1,
@@ -245,7 +254,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   navLabel: {
-    fontSize: 13,
+    fontSize: 14,
     flex: 1,
     letterSpacing: -0.1,
   },
@@ -258,7 +267,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     color: '#FFFFFF',
   },

@@ -166,7 +166,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
                 onChangeText={setUserSearch}
               />
               {userSearch.length > 0 && (
-                <TouchableOpacity onPress={() => setUserSearch('')}>
+                <TouchableOpacity onPress={() => setUserSearch('')} accessibilityRole="button" accessibilityLabel="Borrar búsqueda">
                   <Ionicons
                     name="close-circle"
                     size={16}
@@ -431,6 +431,8 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
                             <TouchableOpacity
                               style={styles.roleEditClose}
                               onPress={() => setEditingRoleUserId(null)}
+                              accessibilityRole="button"
+                              accessibilityLabel="Cerrar"
                             >
                               <Ionicons
                                 name="close"
@@ -620,7 +622,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
                 ]}
               >
                 <Text
-                  style={{ fontSize: 11, color: theme.textSecondary, marginBottom: 4 }}
+                  style={{ fontSize: 12, color: theme.textSecondary, marginBottom: 4 }}
                 >
                   Contraseña actual:
                 </Text>
@@ -686,7 +688,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
                 secureTextEntry={!showTempPass}
                 autoCapitalize="none"
               />
-              <TouchableOpacity onPress={() => setShowTempPass((v) => !v)}>
+              <TouchableOpacity onPress={() => setShowTempPass((v) => !v)} accessibilityRole="button" accessibilityLabel="Mostrar u ocultar contraseña">
                 <Ionicons
                   name={showTempPass ? 'eye-off-outline' : 'eye-outline'}
                   size={18}
@@ -906,7 +908,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   roleChipText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
@@ -924,7 +926,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   roleOptionText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   roleEditClose: {
@@ -942,7 +944,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(239, 68, 68, 0.07)',
   },
   deleteUserBtnText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     color: 'transparent',
   },
@@ -959,7 +961,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   positionText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     flex: 1,
   },
@@ -970,7 +972,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   areaText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     flex: 1,
   },
@@ -987,7 +989,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   phoneText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
   },
   userName: {

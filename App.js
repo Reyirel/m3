@@ -2,11 +2,13 @@
 import './polyfills'; // Debe ser lo primero
 import 'react-native-gesture-handler';
 
-// Filtrar ruido de librerías en web (aplica siempre, dev y prod)
+// Filtrar ruido conocido de librerías en web (aplica siempre, dev y prod).
+// Solo avisos de react-native-web / reanimated que no se pueden corregir en la app:
+// nada genérico como "CORS", que escondería errores reales de red.
 const originalError = console.error;
 const originalWarn  = console.warn;
 const NOISE_PATTERNS = [
-  'CORS', 'favicon', 'transform-origin',
+  'transform-origin',
   'Unexpected text node', 'onStartShouldSetResponder', 'onResponder',
 ];
 console.error = (...args) => {
@@ -28,22 +30,21 @@ if (_isProd) {
   console.debug = () => {};
 }
 
-import React, { useEffect, useState, useRef, Suspense } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
+import React, { useEffect, useMemo, useState, useRef, Suspense } from 'react';
+import { NavigationContainer, getPathFromState as defaultGetPathFromState } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
-import { BlurView } from 'expo-blur';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { TasksProvider, useTasks } from './contexts/TasksContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { getGestureHandlerRootView } from './utils/platformComponents';
 import PremiumTabBar from './components/PremiumTabBar';
-import DesktopSidebar, { SIDEBAR_WIDTH } from './components/DesktopSidebar';
-import { ScreenTransition } from './components';
+import DesktopSidebar from './components/DesktopSidebar';
 import { useResponsive } from './utils/responsive';
 import MeshBackground from './components/MeshBackground';
 
@@ -58,6 +59,7 @@ const AdminExecutiveDashboard = React.lazy(() => import('./screens/AdminExecutiv
 const AdminReportsScreen = React.lazy(() => import('./screens/AdminReportsScreen'));
 const MyAreaReportsScreen = React.lazy(() => import('./screens/MyAreaReportsScreen'));
 const MyInboxScreen = React.lazy(() => import('./screens/MyInboxScreen'));
+const MoreScreen = React.lazy(() => import('./screens/MoreScreen'));
 const TaskDetailScreen = React.lazy(() => import('./screens/TaskDetailScreen'));
 const TaskChatScreen = React.lazy(() => import('./screens/TaskChatScreen'));
 const TaskProgressScreen = React.lazy(() => import('./screens/TaskProgressScreen'));
@@ -71,20 +73,17 @@ const ProfileScreenEnhanced = React.lazy(() => import('./screens/ProfileScreenEn
 const SearchScreenEnhanced = React.lazy(() => import('./screens/SearchScreenEnhanced'));
 const SettingsScreenEnhanced = React.lazy(() => import('./screens/SettingsScreenEnhanced'));
 const TrashScreen = React.lazy(() => import('./screens/TrashScreen'));
-import { getCurrentSession, logoutUser } from './services/authFirestore';
 import { toMs } from './utils/dateUtils';
+import { isClosed } from './utils/taskStatus';
 import { setupNotificationResponseListener } from './services/notifications';
-import { initConnectionListener, clearOfflineData } from './services/offlineSync';
-import OfflineIndicator from './components/OfflineIndicator';
-import OfflineSyncIndicator from './components/OfflineSyncIndicator';
-import OfflineBanner from './components/OfflineBanner';
+import { initConnectionListener } from './services/offlineSync';
+import { startOrgStructureSync } from './services/orgStructure';
+import ConnectionStatus from './components/ConnectionStatus';
 import DialogHost from './components/DialogHost';
 import NotificationWatcher from './components/NotificationWatcher';
 import AnimatedSplash from './components/AnimatedSplash';
-import ErrorBoundary from './components/ErrorBoundary';
 import ImprovedErrorBoundary from './components/ImprovedErrorBoundary';
 import { startAutoCacheCleanup, stopAutoCacheCleanup } from './utils/cacheManager';
-import * as productionLogger from './utils/productionLogger';
 import logger from './services/Logger';
 import { startNetworkMonitoring, stopNetworkMonitoring } from './utils/networkMonitor';
 
@@ -113,123 +112,214 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const GestureHandlerRootView = getGestureHandlerRootView();
 
+const APP_NAME = 'Gestión';
+
+// Direcciones en web: cada pantalla tiene su URL, así se puede compartir el enlace
+// a una tarea y el botón "atrás" del navegador funciona.
+const linking = {
+  prefixes: [],
+  enabled: Platform.OS === 'web',
+  config: {
+    // Al abrir un enlace directo (p. ej. /tarea/abc) las pestañas quedan debajo,
+    // para que "volver" tenga a dónde regresar
+    initialRouteName: 'Main',
+    screens: {
+      Login: 'login',
+      Main: {
+        path: '',
+        screens: {
+          Home: '',
+          Kanban: 'tablero',
+          Calendar: 'calendario',
+          Inbox: 'bandeja',
+          More: 'mas',
+          Reports: 'reportes',
+          SecretarioDashboard: 'panel',
+          ExecutiveDashboard: 'dashboard',
+          Admin: 'administracion',
+        },
+      },
+      TaskDetail: 'tarea/:taskId?',
+      TaskChat: 'tarea/:taskId/chat',
+      TaskProgress: 'tarea/:taskId/avance',
+      TaskReportsAndActivity: 'tarea/:taskId/reportes',
+      Notifications: 'notificaciones',
+      Profile: 'perfil',
+      Settings: 'configuracion',
+      Search: 'buscar',
+      Trash: 'papelera',
+      Analytics: 'analiticas',
+      AdminReports: 'reportes-generales',
+      MyAreaReports: 'reportes-area',
+      AreaManagement: 'areas',
+      AreaChiefDashboard: 'panel-area',
+    },
+  },
+  // Los parámetros que no forman parte de la ruta (el objeto de la tarea, títulos)
+  // no se escriben en la URL: se resuelven con el identificador al abrir el enlace.
+  getPathFromState: (state, options) => defaultGetPathFromState(state, options).split('?')[0],
+};
+
+const documentTitle = {
+  formatter: (options) => (options?.title ? `${options.title} · ${APP_NAME}` : APP_NAME),
+};
+
 // 🔄 Componente de carga para lazy-loaded screens
 function ScreenFallback() {
   const { theme } = useTheme();
   return (
-    <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+    <View
+      style={[styles.centered, { backgroundColor: theme.background }]}
+      accessibilityRole="progressbar"
+      accessibilityLabel="Cargando"
+    >
       <ActivityIndicator size="large" color={theme.primary} />
     </View>
   );
 }
 
+// Envuelve una pantalla cargada bajo demanda. Se crea una sola vez por pantalla
+// (fuera del render) para que React Navigation no la vuelva a montar en cada cambio.
+const lazyScreen = (Component) => function LazyScreen(props) {
+  return (
+    <Suspense fallback={<ScreenFallback />}>
+      <Component {...props} />
+    </Suspense>
+  );
+};
+
+const Screens = {
+  Kanban: lazyScreen(KanbanScreen),
+  Calendar: lazyScreen(CalendarScreen),
+  Inbox: lazyScreen(MyInboxScreen),
+  Reports: lazyScreen(ReportsScreen),
+  SecretarioDashboard: lazyScreen(SecretarioDashboardScreen),
+  ExecutiveDashboard: lazyScreen(AdminExecutiveDashboard),
+  TaskChat: lazyScreen(TaskChatScreen),
+  TaskProgress: lazyScreen(TaskProgressScreen),
+  AreaManagement: lazyScreen(AreaManagementScreen),
+  Notifications: lazyScreen(NotificationsScreen),
+  AreaChiefDashboard: lazyScreen(AreaChiefDashboard),
+  Analytics: lazyScreen(AnalyticsScreen),
+  TaskReportsAndActivity: lazyScreen(TaskReportsAndActivityScreen),
+  AdminReports: lazyScreen(AdminReportsScreen),
+  MyAreaReports: lazyScreen(MyAreaReportsScreen),
+  Search: lazyScreen(SearchScreenEnhanced),
+  Trash: lazyScreen(TrashScreen),
+};
+
+// Detalle de tarea. Acepta la tarea completa (navegación dentro de la app) o solo su
+// identificador (enlace en web / recarga de página): en ese caso espera a que las
+// tareas del usuario estén cargadas y la busca ahí.
+function TaskDetailRoute(props) {
+  const { theme } = useTheme();
+  const { tasks, isLoading } = useTasks();
+  const { route, navigation } = props;
+  const { task, taskId } = route.params || {};
+  const needsLookup = !task && !!taskId;
+
+  // Se resuelve una sola vez por tarea: el formulario no debe reiniciarse con cada
+  // actualización en tiempo real (TaskDetailScreen ya sigue los cambios por su cuenta)
+  const resolvedRef = useRef(null);
+  if (needsLookup && resolvedRef.current?.id !== taskId) {
+    resolvedRef.current = tasks.find(t => t.id === taskId) || null;
+  }
+  const resolved = needsLookup ? resolvedRef.current : null;
+
+  const resolvedRoute = useMemo(
+    () => (resolved ? { ...route, params: { ...route.params, task: resolved } } : route),
+    [route, resolved]
+  );
+
+  if (needsLookup && !resolved) {
+    if (isLoading) return <ScreenFallback />;
+    return (
+      <View style={[styles.centered, { backgroundColor: theme.background, padding: 24 }]}>
+        <Ionicons name="document-outline" size={48} color={theme.textTertiary} />
+        <Text style={[styles.notFoundTitle, { color: theme.text }]}>No se encontró la tarea</Text>
+        <Text style={[styles.notFoundText, { color: theme.textSecondary }]}>
+          Puede que se haya eliminado o que ya no esté asignada a ti.
+        </Text>
+        <TouchableOpacity
+          style={[styles.notFoundButton, { backgroundColor: theme.primary }]}
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Main'))}
+          accessibilityRole="button"
+        >
+          <Text style={[styles.notFoundButtonText, { color: theme.buttonPrimaryText }]}>Volver al inicio</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <Suspense fallback={<ScreenFallback />}>
+      <TaskDetailScreen {...props} route={resolvedRoute} />
+    </Suspense>
+  );
+}
+
 // Tab Navigator con todas las pantallas
-function MainTabs({ onLogout, initialSession, navigation }) {
+function MainTabs({ onLogout, navigation }) {
   const { theme, isDark } = useTheme();
   const insets = useSafeAreaInsets();
   const { tasks: contextTasks } = useTasks();
+  const { user: currentUser, isAdmin, isSecretario, isDirector } = useAuth();
   const { isDesktop, isTablet } = useResponsive();
   const usesSidebar = isDesktop || isTablet;
-  // Usar initialSession para evitar flash de tabs condicionales en primer render
-  const [currentUser, setCurrentUser] = useState(initialSession || null);
-  const [overdueCount, setOverdueCount] = useState(0);
-  const [urgentCount, setUrgentCount] = useState(0); // 🔔 Tareas urgentes (vencidas + próximas <24h)
-  const unsubPushRef = useRef(null);
   const tabNavRef = useRef(null);
   const [activeRouteName, setActiveRouteName] = useState('Home');
 
-  // Obtener sesión actual solo una vez al montar
+  // Notificaciones locales y push: una vez por usuario
+  const userId = currentUser?.userId;
   useEffect(() => {
-    let mounted = true;
-    getCurrentSession().then((result) => {
-      if (result.success && mounted) {
-        setCurrentUser(result.session);
-        // Inicializar notificaciones locales
-        const { configureNotifications } = require('./services/notificationsAdvanced');
-        configureNotifications().catch(console.error);
+    if (!userId) return undefined;
 
-        // Registrar push notification token para FCM
-        const { registerPushToken, setupPushNotificationListener } = require('./services/pushNotifications');
-        registerPushToken(result.session.userId).catch((err) => {
-          console.warn('Push token registration skipped (non-critical):', err.message);
-        });
+    const { configureNotifications } = require('./services/notificationsAdvanced');
+    configureNotifications().catch(console.error);
 
-        // Setup push notification listener
-        unsubPushRef.current = setupPushNotificationListener((notification) => {
-          // Toast de notificación
-          Toast.show({
-            type: 'success',
-            text1: notification.title,
-            text2: notification.body,
-            position: 'top'
-          });
-        });
-      }
+    const { registerPushToken, setupPushNotificationListener } = require('./services/pushNotifications');
+    registerPushToken(userId).catch((err) => {
+      console.warn('Push token registration skipped (non-critical):', err.message);
     });
-    return () => {
-      mounted = false;
-      unsubPushRef.current?.();
-    };
-  }, []);
 
-  // Calcular badges de vencidas/urgentes desde el context (ya filtrado por rol)
-  useEffect(() => {
+    const unsubscribePush = setupPushNotificationListener((notification) => {
+      Toast.show({
+        type: 'success',
+        text1: notification.title,
+        text2: notification.body,
+        position: 'top'
+      });
+    });
+    return () => unsubscribePush?.();
+  }, [userId]);
+
+  // Badges de vencidas/urgentes desde el context (ya filtrado por rol)
+  const { overdueCount, urgentCount } = useMemo(() => {
     const now = Date.now();
     const tomorrow = now + 24 * 60 * 60 * 1000;
-
-    const overdueNow = contextTasks.filter(t => toMs(t.dueAt) < now && t.status !== 'cerrada');
-    const urgent = contextTasks.filter(t => t.status !== 'cerrada' && toMs(t.dueAt) < tomorrow);
-
-    setOverdueCount(overdueNow.length);
-    setUrgentCount(urgent.length);
-
-    if (Platform.OS !== 'web') {
-      try {
-        const Notifications = require('expo-notifications');
-        Notifications.default?.setBadgeCountAsync(overdueNow.length).catch(() => {});
-      } catch {
-        // no-op
-      }
-    }
+    const open = contextTasks.filter(t => !isClosed(t.status));
+    return {
+      overdueCount: open.filter(t => toMs(t.dueAt) < now).length,
+      // Vencidas + las que vencen en menos de 24 h
+      urgentCount: open.filter(t => toMs(t.dueAt) < tomorrow).length,
+    };
   }, [contextTasks]);
 
-  const isAdmin = currentUser?.role === 'admin';
-  const isSecretario = currentUser?.role === 'secretario';
-  const isDirector = currentUser?.role === 'director';
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    try {
+      const Notifications = require('expo-notifications');
+      Notifications.default?.setBadgeCountAsync(overdueCount).catch(() => {});
+    } catch {
+      // no-op
+    }
+  }, [overdueCount]);
+
   const canSeeReports = isAdmin || isSecretario || isDirector;
 
-  // Función para obtener el label del rol
-  const getRoleLabel = (role) => {
-    switch (role) {
-      case 'admin': return 'Admin';
-      case 'secretario': return 'Secretario';
-      case 'director': return 'Director';
-      default: return 'Director';
-    }
-  };
-
-  // Función para obtener el color del badge por rol
-  const getRoleBadgeColor = (role) => {
-    switch (role) {
-      case 'admin': return theme.error;
-      case 'secretario': return theme.primary;
-      case 'director': return theme.success;
-      default: return theme.info;
-    }
-  };
-
-  // Función para obtener el icono del rol
-  const getRoleIcon = (role) => {
-    switch (role) {
-      case 'admin': return 'shield-checkmark';
-      case 'secretario': return 'briefcase';
-      case 'director': return 'business';
-      default: return 'person';
-    }
-  };
-
-  // Rutas del sidebar calculadas según rol del usuario
-  const sidebarRoutes = React.useMemo(() => {
+  // Rutas del sidebar según el rol. "Más" solo existe en la barra del celular:
+  // en pantallas anchas todo está a la vista en la barra lateral.
+  const sidebarRoutes = useMemo(() => {
     const routes = [
       { name: 'Home' },
       { name: 'Kanban' },
@@ -242,6 +332,17 @@ function MainTabs({ onLogout, initialSession, navigation }) {
     if (isAdmin) routes.push({ name: 'Admin' });
     return routes;
   }, [isAdmin, isSecretario, canSeeReports]);
+
+  const badgeStyle = (backgroundColor) => ({
+    backgroundColor,
+    fontSize: 11,
+    fontWeight: '700',
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    borderWidth: 2,
+    borderColor: theme.card,
+  });
 
   return (
     <View style={{ flex: 1, flexDirection: usesSidebar ? 'row' : 'column' }}>
@@ -259,202 +360,234 @@ function MainTabs({ onLogout, initialSession, navigation }) {
         />
       )}
       <View style={{ flex: 1 }}>
-      <Tab.Navigator
-        tabBar={(props) => {
-          tabNavRef.current = props.navigation;
-          if (usesSidebar) return null;
-          return <PremiumTabBar {...props} isDark={isDark} insets={insets} />;
-        }}
-        screenListeners={({ route }) => ({
-          focus: () => setActiveRouteName(route.name),
-        })}
-        screenOptions={({ route }) => ({
-          headerShown: false,
-          tabBarIcon: ({ focused, color, size }) => {
-            let iconName;
-            if (route.name === 'Home') iconName = focused ? 'home' : 'home-outline';
-            else if (route.name === 'Kanban') iconName = focused ? 'apps' : 'apps-outline';
-            else if (route.name === 'Calendar') iconName = focused ? 'calendar' : 'calendar-outline';
-            else if (route.name === 'Reports') iconName = focused ? 'bar-chart' : 'bar-chart-outline';
-            else if (route.name === 'Admin') iconName = focused ? 'settings' : 'settings-outline';
-            else if (route.name === 'Inbox') iconName = focused ? 'file-tray-full' : 'file-tray-outline';
-            return <Ionicons name={iconName} size={size} color={color} />;
-          },
-          tabBarActiveTintColor: theme.primary,
-          tabBarInactiveTintColor: theme.iconInactive,
-          isDark: isDark,
-          insets: insets,
-        })}
-      >
-      <Tab.Screen 
-        name="Home" 
-        options={{ 
-          title: 'Inicio',
-          tabBarBadge: urgentCount > 0 ? urgentCount : undefined,
-          tabBarBadgeStyle: {
-            backgroundColor: urgentCount > 3 ? theme.error : theme.warning,
-            color: '#FFFFFF',
-            fontSize: 10,
-            fontWeight: '800',
-            minWidth: 18,
-            height: 18,
-            borderRadius: 9,
-            borderWidth: 2,
-            borderColor: theme.card,
-          },
-        }}
-      >
-        {(props) => (
-          <Suspense fallback={<ScreenFallback />}>
-            <HomeScreen {...props} onLogout={onLogout} />
-          </Suspense>
-        )}
-      </Tab.Screen>
-      
-      <Tab.Screen 
-        name="Kanban" 
-        options={{ title: 'Tablero' }} 
-      >
-        {(props) => (
-          <Suspense fallback={<ScreenFallback />}>
-            <KanbanScreen {...props} />
-          </Suspense>
-        )}
-      </Tab.Screen>
-      
-      <Tab.Screen 
-        name="Calendar" 
-        options={{ title: 'Calendario' }} 
-      >
-        {(props) => (
-          <Suspense fallback={<ScreenFallback />}>
-            <CalendarScreen {...props} />
-          </Suspense>
-        )}
-      </Tab.Screen>
-      
-      <Tab.Screen 
-        name="Inbox" 
-        options={{ 
-          title: 'Bandeja',
-          tabBarBadge: overdueCount > 0 ? overdueCount : undefined,
-          tabBarBadgeStyle: {
-            backgroundColor: theme.error,
-            color: '#FFFFFF',
-            fontSize: 11,
-            fontWeight: '700',
-            minWidth: 20,
-            height: 20,
-            borderRadius: 10,
-            borderWidth: 2,
-            borderColor: theme.card,
-            top: -2
-          }
-        }} 
-      >
-        {(props) => (
-          <Suspense fallback={<ScreenFallback />}>
-            <MyInboxScreen {...props} />
-          </Suspense>
-        )}
-      </Tab.Screen>
-      
-      {canSeeReports && (
-        <Tab.Screen 
-          name="Reports" 
-          options={{ title: 'Reportes' }} 
-        >
-          {(props) => (
-            <Suspense fallback={<ScreenFallback />}>
-              <ReportsScreen {...props} />
-            </Suspense>
-          )}
-        </Tab.Screen>
-      )}
-      
-      {isSecretario && (
-        <Tab.Screen 
-          name="SecretarioDashboard" 
-          options={{ 
-            title: 'Mi Dashboard',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="briefcase" size={size} color={color} />
-            ),
+        <Tab.Navigator
+          tabBar={(props) => {
+            tabNavRef.current = props.navigation;
+            if (usesSidebar) return null;
+            return <PremiumTabBar {...props} isDark={isDark} insets={insets} />;
           }}
+          screenListeners={({ route }) => ({
+            focus: () => setActiveRouteName(route.name),
+          })}
+          screenOptions={{ headerShown: false }}
         >
-          {(props) => (
-            <Suspense fallback={<ScreenFallback />}>
-              <SecretarioDashboardScreen {...props} />
-            </Suspense>
+          {/* Las cinco pestañas de la barra inferior */}
+          <Tab.Screen
+            name="Home"
+            options={{
+              title: 'Inicio',
+              tabBarBadge: urgentCount > 0 ? urgentCount : undefined,
+              tabBarBadgeStyle: badgeStyle(urgentCount > 3 ? theme.error : theme.warningSolid),
+            }}
+          >
+            {(props) => (
+              <Suspense fallback={<ScreenFallback />}>
+                <HomeScreen {...props} onLogout={onLogout} />
+              </Suspense>
+            )}
+          </Tab.Screen>
+          <Tab.Screen name="Kanban" options={{ title: 'Tablero' }} component={Screens.Kanban} />
+          <Tab.Screen name="Calendar" options={{ title: 'Calendario' }} component={Screens.Calendar} />
+          <Tab.Screen
+            name="Inbox"
+            options={{
+              title: 'Bandeja',
+              tabBarBadge: overdueCount > 0 ? overdueCount : undefined,
+              tabBarBadgeStyle: badgeStyle(theme.error),
+            }}
+            component={Screens.Inbox}
+          />
+          <Tab.Screen name="More" options={{ title: 'Más' }}>
+            {(props) => (
+              <Suspense fallback={<ScreenFallback />}>
+                <MoreScreen {...props} onLogout={onLogout} />
+              </Suspense>
+            )}
+          </Tab.Screen>
+
+          {/* Se abren desde "Más" en el celular y desde la barra lateral en escritorio */}
+          {canSeeReports && (
+            <Tab.Screen name="Reports" options={{ title: 'Reportes' }} component={Screens.Reports} />
           )}
-        </Tab.Screen>
-      )}
-      
-      {isAdmin && (
-        <Tab.Screen 
-          name="ExecutiveDashboard" 
-          options={{ 
-            title: 'Dashboard',
-            tabBarIcon: ({ color, size }) => (
-              <Ionicons name="speedometer" size={size} color={color} />
-            ),
-          }}
-        >
-          {(props) => (
-            <Suspense fallback={<ScreenFallback />}>
-              <AdminExecutiveDashboard {...props} />
-            </Suspense>
+          {isSecretario && (
+            <Tab.Screen
+              name="SecretarioDashboard"
+              options={{ title: 'Panel de mi secretaría' }}
+              component={Screens.SecretarioDashboard}
+            />
           )}
-        </Tab.Screen>
-      )}
-      
-      {isAdmin && (
-        <Tab.Screen 
-          name="Admin" 
-          options={{ title: 'Admin' }}
-        >
-          {(props) => (
-            <Suspense fallback={<ScreenFallback />}>
-              <AdminScreen {...props} onLogout={onLogout} />
-            </Suspense>
+          {isAdmin && (
+            <Tab.Screen
+              name="ExecutiveDashboard"
+              options={{ title: 'Panel ejecutivo' }}
+              component={Screens.ExecutiveDashboard}
+            />
           )}
-        </Tab.Screen>
-      )}
-    </Tab.Navigator>
+          {isAdmin && (
+            <Tab.Screen name="Admin" options={{ title: 'Administración' }}>
+              {(props) => (
+                <Suspense fallback={<ScreenFallback />}>
+                  <AdminScreen {...props} onLogout={onLogout} />
+                </Suspense>
+              )}
+            </Tab.Screen>
+          )}
+        </Tab.Navigator>
       </View>
     </View>
   );
 }
 
-export default function App() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [initialSession, setInitialSession] = useState(null);
-  const [forceUpdate, setForceUpdate] = useState(0);
+const REVOKED_MESSAGES = {
+  disabled: 'Tu cuenta fue desactivada. Contacta al administrador.',
+  deleted: 'Tu cuenta ya no existe. Contacta al administrador.',
+  'permission-denied': 'Tu sesión ya no es válida. Inicia sesión de nuevo.',
+};
+
+const cardScreen = { presentation: 'card', animation: 'slide_from_right' };
+
+// Navegación de la app. La pantalla de inicio de sesión y las pantallas internas se
+// alternan según el estado de AuthContext: no hace falta reiniciar el árbol a mano.
+function AppNavigator({ navigationRef }) {
+  const { isAuthenticated, reload, signOut, revokedReason } = useAuth();
+
+  const handleLogout = async () => {
+    await signOut();
+    Toast.show({ type: 'success', text1: 'Sesión cerrada', position: 'top' });
+  };
+
+  // Organigrama vigente: lo que el administrador edita se aplica a permisos y selectores
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    return startOrgStructureSync();
+  }, [isAuthenticated]);
+
+  // El servidor cerró la sesión (cuenta desactivada o eliminada): explicar por qué
+  useEffect(() => {
+    if (!revokedReason) return;
+    Toast.show({
+      type: 'error',
+      text1: 'Sesión cerrada',
+      text2: REVOKED_MESSAGES[revokedReason] || REVOKED_MESSAGES['permission-denied'],
+      position: 'top',
+      visibilityTime: 6000,
+    });
+  }, [revokedReason]);
+
+  return (
+    <NotificationProvider>
+      <TasksProvider>
+        {/* Campana en tiempo real y aviso al llegar una notificación */}
+        <NotificationWatcher />
+        {isAuthenticated && <ConnectionStatus />}
+        <NavigationContainer ref={navigationRef} linking={linking} documentTitle={documentTitle}>
+          <Stack.Navigator
+            screenOptions={{
+              headerShown: false,
+              animation: Platform.OS === 'web' ? 'fade' : 'slide_from_right',
+              animationDuration: Platform.OS === 'web' ? 300 : 400,
+            }}
+          >
+            {!isAuthenticated ? (
+              <Stack.Screen name="Login" options={{ animation: 'fade', title: 'Iniciar sesión' }}>
+                {(props) => (
+                  <Suspense fallback={<ScreenFallback />}>
+                    <LoginScreen {...props} onLogin={reload} />
+                  </Suspense>
+                )}
+              </Stack.Screen>
+            ) : (
+              <>
+                <Stack.Screen name="Main" options={{ animation: 'fade' }}>
+                  {(props) => <MainTabs {...props} onLogout={handleLogout} />}
+                </Stack.Screen>
+                <Stack.Screen name="TaskDetail" options={{ ...cardScreen, title: 'Tarea' }} component={TaskDetailRoute} />
+                <Stack.Screen
+                  name="TaskChat"
+                  options={{ presentation: 'modal', animation: 'slide_from_bottom', title: 'Chat de la tarea' }}
+                  component={Screens.TaskChat}
+                />
+                <Stack.Screen name="TaskProgress" options={{ ...cardScreen, title: 'Avance' }} component={Screens.TaskProgress} />
+                <Stack.Screen name="AreaManagement" options={{ ...cardScreen, title: 'Áreas' }} component={Screens.AreaManagement} />
+                <Stack.Screen name="Notifications" options={{ ...cardScreen, title: 'Notificaciones' }} component={Screens.Notifications} />
+                <Stack.Screen name="AreaChiefDashboard" options={{ ...cardScreen, title: 'Panel del área' }} component={Screens.AreaChiefDashboard} />
+                <Stack.Screen name="Analytics" options={{ ...cardScreen, title: 'Analíticas' }} component={Screens.Analytics} />
+                <Stack.Screen
+                  name="TaskReportsAndActivity"
+                  options={{ ...cardScreen, title: 'Reportes de la tarea' }}
+                  component={Screens.TaskReportsAndActivity}
+                />
+                <Stack.Screen name="AdminReports" options={{ ...cardScreen, title: 'Reportes generales' }} component={Screens.AdminReports} />
+                <Stack.Screen name="MyAreaReports" options={{ ...cardScreen, title: 'Reportes de mi área' }} component={Screens.MyAreaReports} />
+                <Stack.Screen name="Profile" options={{ ...cardScreen, title: 'Mi perfil' }}>
+                  {(props) => (
+                    <Suspense fallback={<ScreenFallback />}>
+                      <ProfileScreenEnhanced {...props} onLogout={handleLogout} />
+                    </Suspense>
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="Search" options={{ ...cardScreen, title: 'Buscar' }} component={Screens.Search} />
+                <Stack.Screen name="Settings" options={{ ...cardScreen, title: 'Configuración' }}>
+                  {(props) => (
+                    <Suspense fallback={<ScreenFallback />}>
+                      <SettingsScreenEnhanced {...props} onLogout={handleLogout} />
+                    </Suspense>
+                  )}
+                </Stack.Screen>
+                <Stack.Screen name="Trash" options={{ ...cardScreen, title: 'Papelera' }} component={Screens.Trash} />
+              </>
+            )}
+          </Stack.Navigator>
+        </NavigationContainer>
+      </TasksProvider>
+    </NotificationProvider>
+  );
+}
+
+// La app se dibuja debajo de la pantalla de inicio animada, que se desvanece
+// cuando la sesión ya se restauró.
+function AppShell({ navigationRef }) {
+  const { isLoading } = useAuth();
   // Pantalla de inicio animada: solo al abrir la app, no al cerrar o iniciar sesión
   const [splashVisible, setSplashVisible] = useState(true);
-  const navigationRef = useRef(null);
-  
-  // Función de logout que maneja todo el proceso
-  const handleLogout = async () => {
-    // Siempre cerrar sesión aunque algo falle
-    try { await logoutUser(); } catch {}
-    try { await clearOfflineData(); } catch {}
-    setIsAuthenticated(false);
-    setIsLoading(false);
-    setForceUpdate(prev => prev + 1);
-    try {
-      Toast.show({ type: 'success', text1: 'Sesión cerrada', position: 'top' });
-    } catch {}
-  };
-  
+  // Tope de seguridad: si restaurar la sesión tarda, se muestra la app de todos modos
+  const [timedOut, setTimedOut] = useState(false);
   useEffect(() => {
-    let mounted = true;
-    
+    const timeout = setTimeout(() => setTimedOut(true), 4000);
+    return () => clearTimeout(timeout);
+  }, []);
+  const ready = !isLoading || timedOut;
+
+  return (
+    <View style={{ flex: 1 }}>
+      {ready && (
+        <GestureHandlerRootView style={{ flex: 1 }}>
+          <MeshBackground>
+            <AppNavigator navigationRef={navigationRef} />
+            <Toast />
+            {/* Confirmaciones y avisos con el diseño de la app (utils/alert.js) */}
+            <DialogHost />
+            {/* Vercel Analytics - Solo en web */}
+            {Platform.OS === 'web' && Analytics && <Analytics />}
+            {Platform.OS === 'web' && SpeedInsights && <SpeedInsights />}
+          </MeshBackground>
+        </GestureHandlerRootView>
+      )}
+      {splashVisible && (
+        <AnimatedSplash ready={ready} onFinish={() => setSplashVisible(false)} />
+      )}
+    </View>
+  );
+}
+
+export default function App() {
+  const navigationRef = useRef(null);
+
+  useEffect(() => {
     // 🚀 Inicializar logger de producción
-    productionLogger.logInfo('App starting');
+    logger.info('App', 'App starting');
     logger.info('App', 'Application starting', { platform: Platform.OS });
-    
+
     // ✅ OPTIMIZACIÓN: Inicializar Performance Monitoring
     if (Platform.OS === 'web') {
       try {
@@ -475,388 +608,69 @@ export default function App() {
         console.warn('Performance monitoring failed:', e.message);
       }
     }
-    
+
     // 💾 Inicializar auto-limpieza de cache
     startAutoCacheCleanup();
-    
+
     // 🌐 Inicializar network quality monitor
     startNetworkMonitoring();
-    
+
     // 🌐 Inicializar listener de conexión para sincronización offline-first
     const unsubscribeConnection = initConnectionListener();
-    
+
     // 🔔 Setup del listener de respuestas de notificaciones
     const notificationSubscription = setupNotificationResponseListener();
-    
-    // Timeout de seguridad
-    const timeout = setTimeout(() => {
-      if (mounted) {
-        setIsLoading(false);
-      }
-    }, 2000);
-    
-    getCurrentSession()
-      .then((result) => {
-        if (mounted) {
-          setIsAuthenticated(result.success);
-          setIsLoading(false);
-          clearTimeout(timeout);
-          if (result.success) {
-            setInitialSession(result.session);
-            productionLogger.logInfo('User authenticated', { userId: result.session?.userId });
-          }
-        }
-      })
-      .catch((error) => {
-        productionLogger.logError('Auth error', error);
-        if (mounted) {
-          setIsAuthenticated(false);
-          setIsLoading(false);
-          clearTimeout(timeout);
-        }
-      });
-    
+
     return () => {
-      mounted = false;
-      clearTimeout(timeout);
       if (unsubscribeConnection) unsubscribeConnection();
       if (notificationSubscription) notificationSubscription.remove();
       stopAutoCacheCleanup();
       stopNetworkMonitoring();
     };
   }, []);
-  
-  // La app se dibuja debajo de la pantalla de inicio animada, que se desvanece
-  // cuando la sesión ya se restauró (isLoading === false).
-  return (
-    <View style={{ flex: 1 }}>
-    {!isLoading && (
-    <ImprovedErrorBoundary navigation={navigationRef}>
-      <ErrorBoundary>
-        <ThemeProvider>
-          <GestureHandlerRootView style={{ flex: 1 }}>
-            <MeshBackground>
-        {/* Indicador de estado offline */}
-        {isAuthenticated && <OfflineIndicator />}
-        {/* Indicador de reportes pendientes de sincronizar */}
-        {isAuthenticated && <OfflineSyncIndicator compact={true} />}
 
-        <NotificationProvider>
-        <TasksProvider key={forceUpdate}>
-        <OfflineBanner />
-        {/* Campana en tiempo real y aviso al llegar una notificación */}
-        <NotificationWatcher />
-        <NavigationContainer ref={navigationRef} key={`navigation-${forceUpdate}`}>
-          <Stack.Navigator
-            screenOptions={{
-              headerShown: false,
-              animation: Platform.OS === 'web' ? 'fade' : 'slide_from_right',
-              animationDuration: Platform.OS === 'web' ? 300 : 400,
-              animationEnabled: true,
-            }}
-          >
-            {!isAuthenticated ? (
-              <Stack.Screen
-                name="Login"
-                options={{ animation: 'fade' }}
-              >
-                {(props) => (
-                  <Suspense fallback={<ScreenFallback />}>
-                    <LoginScreen
-                      {...props}
-                      onLogin={() => {
-                        setIsAuthenticated(true);
-                        setForceUpdate(prev => prev + 1);
-                      }}
-                    />
-                  </Suspense>
-                )}
-              </Stack.Screen>
-            ) : (
-              <>
-                <Stack.Screen
-                  name="Main"
-                  options={{ animation: 'fade' }}
-                >
-                  {(props) => (
-                    <MainTabs
-                      {...props}
-                      onLogout={handleLogout}
-                      initialSession={initialSession}
-                    />
-                  )}
-                </Stack.Screen>
-                <Stack.Screen 
-                  name="TaskDetail" 
-                  options={{ 
-                    presentation: 'card',
-                    animation: 'slide_from_right'
-                  }}
-                >
-                  {(props) => (
-                    <Suspense fallback={<ScreenFallback />}>
-                      <TaskDetailScreen {...props} />
-                    </Suspense>
-                  )}
-                </Stack.Screen>
-                <Stack.Screen 
-                  name="TaskChat" 
-                  options={{ 
-                    presentation: 'modal',
-                    animation: 'slide_from_bottom'
-                  }}
-                >
-                  {(props) => (
-                    <Suspense fallback={<ScreenFallback />}>
-                      <TaskChatScreen {...props} />
-                    </Suspense>
-                  )}
-                </Stack.Screen>
-                <Stack.Screen 
-                  name="TaskProgress" 
-                  options={{ 
-                    presentation: 'card',
-                    animation: 'slide_from_right'
-                  }}
-                >
-                  {(props) => (
-                    <Suspense fallback={<ScreenFallback />}>
-                      <TaskProgressScreen {...props} />
-                    </Suspense>
-                  )}
-                </Stack.Screen>
-                <Stack.Screen 
-                  name="AreaManagement" 
-                  options={{ 
-                    presentation: 'card',
-                    animation: 'slide_from_right'
-                  }}
-                >
-                  {(props) => (
-                    <Suspense fallback={<ScreenFallback />}>
-                      <AreaManagementScreen {...props} />
-                    </Suspense>
-                  )}
-                </Stack.Screen>
-                <Stack.Screen 
-                  name="Notifications" 
-                  options={{ 
-                    presentation: 'card',
-                    animation: 'slide_from_right'
-                  }}
-                >
-                  {(props) => (
-                    <Suspense fallback={<ScreenFallback />}>
-                      <NotificationsScreen {...props} />
-                    </Suspense>
-                  )}
-                </Stack.Screen>
-                <Stack.Screen 
-                  name="AreaChiefDashboard" 
-                  options={{ 
-                    presentation: 'card',
-                    animation: 'slide_from_right'
-                  }}
-                >
-                  {(props) => (
-                    <Suspense fallback={<ScreenFallback />}>
-                      <AreaChiefDashboard {...props} />
-                    </Suspense>
-                  )}
-                </Stack.Screen>
-                <Stack.Screen 
-                  name="Analytics" 
-                  options={{ 
-                    presentation: 'card',
-                    animation: 'slide_from_right'
-                  }}
-                >
-                  {(props) => (
-                    <Suspense fallback={<ScreenFallback />}>
-                      <AnalyticsScreen {...props} />
-                    </Suspense>
-                  )}
-                </Stack.Screen>
-                <Stack.Screen 
-                  name="TaskReportsAndActivity" 
-                  options={{ 
-                    presentation: 'card',
-                    animation: 'slide_from_right'
-                  }}
-                >
-                  {(props) => (
-                    <Suspense fallback={<ScreenFallback />}>
-                      <TaskReportsAndActivityScreen {...props} />
-                    </Suspense>
-                  )}
-                </Stack.Screen>
-                <Stack.Screen 
-                  name="AdminReports" 
-                  options={{ 
-                    headerShown: false,
-                    presentation: 'card',
-                    animation: 'slide_from_right'
-                  }}
-                >
-                  {(props) => (
-                    <Suspense fallback={<ScreenFallback />}>
-                      <AdminReportsScreen {...props} />
-                    </Suspense>
-                  )}
-                </Stack.Screen>
-                <Stack.Screen
-                  name="MyAreaReports"
-                  options={{
-                    headerShown: false,
-                    presentation: 'card',
-                    animation: 'slide_from_right'
-                  }}
-                >
-                  {(props) => (
-                    <Suspense fallback={<ScreenFallback />}>
-                      <MyAreaReportsScreen {...props} />
-                    </Suspense>
-                  )}
-                </Stack.Screen>
-                <Stack.Screen
-                  name="Profile"
-                  options={{
-                    presentation: 'card',
-                    animation: 'slide_from_right'
-                  }}
-                >
-                  {(props) => (
-                    <Suspense fallback={<ScreenFallback />}>
-                      <ProfileScreenEnhanced {...props} onLogout={handleLogout} />
-                    </Suspense>
-                  )}
-                </Stack.Screen>
-                <Stack.Screen
-                  name="Search"
-                  options={{
-                    presentation: 'card',
-                    animation: 'slide_from_right'
-                  }}
-                >
-                  {(props) => (
-                    <Suspense fallback={<ScreenFallback />}>
-                      <SearchScreenEnhanced {...props} />
-                    </Suspense>
-                  )}
-                </Stack.Screen>
-                <Stack.Screen
-                  name="Settings"
-                  options={{
-                    presentation: 'card',
-                    animation: 'slide_from_right'
-                  }}
-                >
-                  {(props) => (
-                    <Suspense fallback={<ScreenFallback />}>
-                      <SettingsScreenEnhanced {...props} onLogout={handleLogout} />
-                    </Suspense>
-                  )}
-                </Stack.Screen>
-                <Stack.Screen
-                  name="Trash"
-                  options={{
-                    headerShown: false,
-                    presentation: 'card',
-                    animation: 'slide_from_right'
-                  }}
-                >
-                  {(props) => (
-                    <Suspense fallback={<ScreenFallback />}>
-                      <TrashScreen {...props} />
-                    </Suspense>
-                  )}
-                </Stack.Screen>
-              </>
-            )}
-          </Stack.Navigator>
-        </NavigationContainer>
-        </TasksProvider>
-        </NotificationProvider>
-        <Toast />
-        {/* Confirmaciones y avisos con el diseño de la app (utils/alert.js) */}
-        <DialogHost />
-        {/* Vercel Analytics - Solo en web */}
-        {Platform.OS === 'web' && Analytics && <Analytics />}
-        {Platform.OS === 'web' && SpeedInsights && <SpeedInsights />}
-            </MeshBackground>
-          </GestureHandlerRootView>
-        </ThemeProvider>
-      </ErrorBoundary>
-    </ImprovedErrorBoundary>
-    )}
-    {splashVisible && (
-      <AnimatedSplash ready={!isLoading} onFinish={() => setSplashVisible(false)} />
-    )}
-    </View>
+  return (
+    <ThemeProvider>
+      <ImprovedErrorBoundary navigation={navigationRef}>
+        {/* Márgenes seguros para lo que se dibuja fuera de los navegadores (ConnectionStatus) */}
+        <SafeAreaProvider>
+          <AuthProvider>
+            <AppShell navigationRef={navigationRef} />
+          </AuthProvider>
+        </SafeAreaProvider>
+      </ImprovedErrorBoundary>
+    </ThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
-  loadingContainer: {
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8F9FA'
   },
-  loadingText: {
-    marginTop: 16,
-    fontSize: 16,
-    color: '#9F2241',
-    fontWeight: '600'
-  },
-  userHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingBottom: 10,
-    // backgroundColor y borderBottomColor se aplican inline con theme
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  userInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    marginRight: 12
-  },
-  roleBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    marginRight: 8
-  },
-  roleBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '700',
-    textTransform: 'uppercase'
-  },
-  userName: {
-    fontSize: 14,
+  notFoundTitle: {
+    fontSize: 18,
     fontWeight: '600',
-    flex: 1
-    // color se aplica inline con theme.text
+    marginTop: 16,
+    textAlign: 'center',
   },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+  notFoundText: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 8,
+    textAlign: 'center',
+    maxWidth: 320,
+  },
+  notFoundButton: {
+    marginTop: 24,
+    paddingHorizontal: 24,
+    minHeight: 44,
     borderRadius: 12,
-    gap: 4,
-    minHeight: 44, // touch target mínimo
-    minWidth: 44,
+    justifyContent: 'center',
   },
-  logoutText: {
-    fontSize: 12,
-    fontWeight: '700'
-    // color se aplica inline con theme.error
-  }
+  notFoundButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
 });

@@ -15,7 +15,6 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getCurrentSession } from '../authFirestore';
-import { toMs } from '../../utils/dateUtils';
 
 const log = __DEV__ ? console.log : () => {};
 
@@ -293,76 +292,6 @@ export const subscribeToAreas = (callback) => {
 };
 
 /**
- * Obtener todas las áreas de una vez (sin real-time)
- * @returns {Promise<Array>} - Array de áreas
- */
-export const getAllAreas = async () => {
-  try {
-    const areasRef = collection(db, AREAS_COLLECTION);
-    const q = query(areasRef, where('activa', '==', true));
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs
-      .map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
-      .sort((a, b) => (a.orden ?? 999) - (b.orden ?? 999));
-  } catch (error) {
-    if (__DEV__) console.error('Error obteniendo áreas:', error);
-    return [];
-  }
-};
-
-/**
- * Asignar jefe a un área
- * @param {String} areaId - ID del área
- * @param {String} userId - ID del nuevo jefe
- * @returns {Promise<Object>} - { success, error }
- */
-export const assignAreaChief = async (areaId, userId) => {
-  try {
-    const { session } = await getCurrentSession();
-    
-    if (!session || session.role !== 'admin') {
-      return {
-        success: false,
-        error: 'Solo administradores pueden asignar jefes'
-      };
-    }
-
-    const areaRef = doc(db, AREAS_COLLECTION, areaId);
-    const oldData = await getAreaById(areaId);
-
-    if (!oldData) {
-      return {
-        success: false,
-        error: 'Área no encontrada'
-      };
-    }
-
-    // Actualizar
-    await updateDoc(areaRef, {
-      jefeId: userId,
-      updatedAt: serverTimestamp(),
-      updatedBy: session.userId,
-    });
-
-    // Auditoría
-    await logAreaAudit(areaId, 'chief_assigned', oldData, { jefeId: userId }, session.userId);
-
-    log(`✅ Jefe asignado a área: ${areaId}`);
-    return { success: true };
-  } catch (error) {
-    if (__DEV__) console.error('Error asignando jefe:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-};
-
-/**
  * Registrar cambios en auditoría
  * @private
  */
@@ -382,25 +311,3 @@ async function logAreaAudit(areaId, action, oldData, newData, userId) {
   }
 }
 
-/**
- * Obtener historial de cambios de un área
- * @param {String} areaId - ID del área
- * @returns {Promise<Array>} - Array de cambios
- */
-export const getAreaAuditLog = async (areaId) => {
-  try {
-    const auditRef = collection(db, AUDIT_COLLECTION);
-    const q = query(auditRef, where('areaId', '==', areaId));
-    const snapshot = await getDocs(q);
-
-    return snapshot.docs
-      .map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }))
-      .sort((a, b) => (toMs(b.timestamp) || 0) - (toMs(a.timestamp) || 0));
-  } catch (error) {
-    if (__DEV__) console.error('Error obteniendo auditoría:', error);
-    return [];
-  }
-};

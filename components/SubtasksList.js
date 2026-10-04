@@ -255,11 +255,13 @@ function SubtasksList({
           <TouchableOpacity
             onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}
             style={styles.expandButton}
+            accessibilityRole="button"
+            accessibilityLabel="Contraer"
           >
             <Ionicons
               name={expandedId === item.id ? 'chevron-up' : 'chevron-down'}
               size={20}
-              color="#666"
+              color={theme.textSecondary}
             />
           </TouchableOpacity>
         </View>
@@ -397,6 +399,8 @@ function SubtasksList({
               onPress={() => !loading && setShowAddForm(false)}
               style={styles.closeButton}
               disabled={loading}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
             >
               <Ionicons name="close" size={24} color={loading ? '#ccc' : '#333'} />
             </TouchableOpacity>
@@ -420,7 +424,7 @@ function SubtasksList({
               <TextInput
                 style={[styles.input, loading && styles.inputDisabled]}
                 placeholder="Ej: Investigar requisitos"
-                placeholderTextColor="#999"
+                placeholderTextColor={theme.textTertiary}
                 value={newSubtaskTitle}
                 onChangeText={setNewSubtaskTitle}
                 editable={!loading}
@@ -432,7 +436,7 @@ function SubtasksList({
               <TextInput
                 style={[styles.input, styles.textArea, loading && styles.inputDisabled]}
                 placeholder="Detalles de la subtarea"
-                placeholderTextColor="#999"
+                placeholderTextColor={theme.textTertiary}
                 value={newSubtaskDesc}
                 onChangeText={setNewSubtaskDesc}
                 multiline
@@ -456,14 +460,14 @@ function SubtasksList({
           <View style={styles.delegateModalContent}>
             <View style={styles.delegateModalHeader}>
               <Text style={styles.delegateModalTitle}>Delegar Subtarea</Text>
-              <TouchableOpacity onPress={() => setShowDelegateModal(false)}>
-                <Ionicons name="close" size={24} color="#333" />
+              <TouchableOpacity onPress={() => setShowDelegateModal(false)} accessibilityRole="button" accessibilityLabel="Cerrar">
+                <Ionicons name="close" size={24} color={theme.text} />
               </TouchableOpacity>
             </View>
 
             {selectedSubtask && (
               <View style={styles.selectedSubtaskInfo}>
-                <Ionicons name="checkbox-outline" size={16} color="#666" />
+                <Ionicons name="checkbox-outline" size={16} color={theme.textSecondary} />
                 <Text style={styles.selectedSubtaskTitle} numberOfLines={2}>
                   {selectedSubtask.title}
                 </Text>
@@ -477,7 +481,7 @@ function SubtasksList({
             <ScrollView style={styles.delegateUsersList}>
               {delegateUsers.length === 0 ? (
                 <View style={styles.noDelegateUsers}>
-                  <Ionicons name="people-outline" size={40} color="#999" />
+                  <Ionicons name="people-outline" size={40} color={theme.textTertiary} />
                   <Text style={styles.noDelegateUsersText}>
                     No hay directores disponibles
                   </Text>
@@ -650,7 +654,7 @@ const styles = StyleSheet.create({
     textDecorationLine: 'line-through',
   },
   completedTime: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#4CAF50',
     marginTop: 4,
     fontWeight: '500',
@@ -748,7 +752,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   metadataLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#999',
     textTransform: 'uppercase',
   },

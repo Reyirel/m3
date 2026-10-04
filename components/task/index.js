@@ -7,9 +7,6 @@
 
 // Main form components
 export { default as TaskFormBasic } from './TaskFormBasic';
-export { default as TaskFormExtended } from './TaskFormExtended';
-export { default as TaskMetadata } from './TaskMetadata';
-export { default as TaskAssignees } from './TaskAssignees';
 export { default as TaskAdvancedOptions } from './TaskAdvancedOptions';
 export { default as TaskAISuggestions } from './TaskAISuggestions';
 

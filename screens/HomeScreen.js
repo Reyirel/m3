@@ -1,8 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
-  RefreshControl, Animated, Platform, Modal, ScrollView,
-  Easing,
+  RefreshControl, Animated, Platform, Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
@@ -15,7 +14,6 @@ import EmptyState from '../components/EmptyState';
 import ConfettiCelebration from '../components/ConfettiCelebration';
 import HomeHeader from '../components/ui/HomeHeader';
 import OverdueAlert from '../components/OverdueAlert';
-import SyncIndicator from '../components/SyncIndicator';
 import QuickTip, { TIPS } from '../components/QuickTip';
 import OnboardingTour from '../components/OnboardingTour';
 import QuickActionButton from '../components/QuickActionButton';
@@ -30,10 +28,10 @@ import { deleteTask as deleteTaskFirebase, updateTask, restoreTask } from '../se
 import { hapticLight, hapticMedium, hapticHeavy } from '../utils/haptics';
 import { canChangeTaskStatus, canDeleteTask } from '../services/permissions';
 import { toMs } from '../utils/dateUtils';
-import { generateDailySummary, detectStalledTasks } from '../utils/aiFeatures';
 import { deleteManager } from '../utils/deleteManager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MAX_WIDTHS } from '../theme/tokens';
+import { countByStatus, matchesStatusFilter, statusLabel, isClosed } from '../utils/taskStatus';
 
 const Swipeable = getSwipeable();
 
@@ -47,11 +45,8 @@ export default function HomeScreen({ navigation, onLogout }) {
   const isLoading = tasksLoading;
   const [searchText, setSearchText] = useState('');
   const [quickStatusFilter, setQuickStatusFilter] = useState('todas');
-  const [showHelpModal, setShowHelpModal] = useState(false);
-  const [showBriefingModal, setShowBriefingModal] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
-  const [showUrgentModal, setShowUrgentModal] = useState(false);
   const [isUndoing, setIsUndoing] = useState(false);
 
   // Persistent search per user
@@ -107,17 +102,6 @@ export default function HomeScreen({ navigation, onLogout }) {
       if (fadeAnim._value !== 1) {
         Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
       }
-      if (fadeAnim._value === 0) {
-        setTimeout(() => {
-          const now = Date.now();
-          const urgent = tasks.filter(t => {
-            if (t.status === 'cerrada') return false;
-            const timeLeft = toMs(t.dueAt) - now;
-            return timeLeft > 0 && timeLeft < 6 * 60 * 60 * 1000;
-          });
-          if (urgent.length > 0) setShowUrgentModal(true);
-        }, 1200);
-      }
     }
   }, [tasksLoading, tasks, fadeAnim]);
 
@@ -128,7 +112,7 @@ export default function HomeScreen({ navigation, onLogout }) {
   }, []);
 
   const openDetail = useCallback((task) => {
-    navigation.navigate('TaskDetail', { task });
+    navigation.navigate('TaskDetail', { task, taskId: task.id });
   }, [navigation]);
 
   const deleteTask = useCallback((taskId) => {
@@ -289,40 +273,20 @@ export default function HomeScreen({ navigation, onLogout }) {
           style={{ backgroundColor: theme.error, justifyContent: 'center', alignItems: 'center', width: 80, height: '100%', borderRadius: 14 }}
         >
           <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
-          <Text style={{ color: '#FFFFFF', fontSize: 11, marginTop: 3, fontWeight: '600' }}>Eliminar</Text>
+          <Text style={{ color: '#FFFFFF', fontSize: 12, marginTop: 3, fontWeight: '600' }}>Eliminar</Text>
         </TouchableOpacity>
       </Animated.View>
     );
   }, [deleteTask, theme.error]);
 
   // Memos
-  const urgentTasks = useMemo(() => {
-    const now = Date.now();
-    return tasks.filter(t => {
-      if (t.status === 'cerrada') return false;
-      const timeLeft = toMs(t.dueAt) - now;
-      return timeLeft > 0 && timeLeft <= 48 * 60 * 60 * 1000;
-    });
-  }, [tasks]);
-
-  const smartBriefing = useMemo(() => generateDailySummary(tasks, currentUser), [tasks, currentUser]);
-  const stalledTasks = useMemo(() => detectStalledTasks(tasks, 5).slice(0, 3), [tasks]);
-
   const statusCounts = useMemo(() => ({
     todas: tasks.length,
-    pendiente: tasks.filter(t => t.status === 'pendiente').length,
-    'en-progreso': tasks.filter(t => ['en_proceso', 'en_progreso', 'en-progreso'].includes(t.status)).length,
-    revision: tasks.filter(t => ['en_revision', 'revision'].includes(t.status)).length,
-    cerrada: tasks.filter(t => t.status === 'cerrada').length,
+    ...countByStatus(tasks),
   }), [tasks]);
 
   const filteredTasks = useMemo(() => tasks.filter(task => {
-    if (quickStatusFilter !== 'todas') {
-      if (quickStatusFilter === 'en-progreso' && !['en_progreso', 'en_proceso', 'en-progreso'].includes(task.status)) return false;
-      if (quickStatusFilter === 'revision' && !['en_revision', 'revision'].includes(task.status)) return false;
-      if (quickStatusFilter === 'pendiente' && task.status !== 'pendiente') return false;
-      if (quickStatusFilter === 'cerrada' && task.status !== 'cerrada') return false;
-    }
+    if (!matchesStatusFilter(task.status, quickStatusFilter)) return false;
     if (searchText) {
       const q = searchText.toLowerCase();
       const matchTitle = task.title?.toLowerCase().includes(q);
@@ -382,7 +346,6 @@ export default function HomeScreen({ navigation, onLogout }) {
           quickStatusFilter={quickStatusFilter}
           onFilterChange={setQuickStatusFilter}
           statusCounts={statusCounts}
-          onLogout={onLogout}
           onProfilePress={() => navigation.navigate('Profile')}
           onNotificationsPress={() => navigation.navigate('Notifications')}
           searchRef={searchRef}
@@ -392,67 +355,8 @@ export default function HomeScreen({ navigation, onLogout }) {
           tasks={tasks}
           currentUserEmail={currentUser?.email}
           role={currentUser?.role}
-          onTaskPress={(task) => navigation.navigate('TaskDetail', { task })}
+          onTaskPress={(task) => navigation.navigate('TaskDetail', { task, taskId: task.id })}
         />
-
-        {/* Modal: tareas urgentes */}
-        <Modal
-          visible={showUrgentModal}
-          animationType="fade"
-          transparent
-          onRequestClose={() => setShowUrgentModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { backgroundColor: isDark ? 'rgba(15,10,25,0.97)' : '#FFFFFF', borderColor: theme.glassBorder }]}>
-              <View style={styles.modalHeader}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Ionicons name="alarm" size={24} color={theme.error} style={{ marginRight: 10 }} />
-                  <View>
-                    <Text style={[styles.modalTitle, { color: theme.text }]}>Tareas Urgentes</Text>
-                    <Text style={[styles.modalSub, { color: theme.textSecondary }]}>Vencen en menos de 6 horas</Text>
-                  </View>
-                </View>
-                <TouchableOpacity onPress={() => setShowUrgentModal(false)}>
-                  <Ionicons name="close-circle" size={26} color={theme.textSecondary} />
-                </TouchableOpacity>
-              </View>
-              <ScrollView style={{ maxHeight: 280 }}>
-                {urgentTasks
-                  .filter(t => toMs(t.dueAt) - Date.now() < 6 * 60 * 60 * 1000)
-                  .map(task => {
-                    const timeLeft = toMs(task.dueAt) - Date.now();
-                    const h = Math.floor(timeLeft / (1000 * 60 * 60));
-                    const m = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-                    return (
-                      <TouchableOpacity
-                        key={task.id}
-                        style={[styles.urgentRow, { backgroundColor: theme.glass, borderColor: h < 2 ? theme.error : theme.warning }]}
-                        onPress={() => { setShowUrgentModal(false); navigation.navigate('TaskDetail', { task }); }}
-                      >
-                        <Ionicons
-                          name={h < 2 ? 'alert-circle' : 'time'}
-                          size={20}
-                          color={h < 2 ? theme.error : theme.warning}
-                        />
-                        <View style={{ flex: 1, marginLeft: 10 }}>
-                          <Text style={[styles.urgentTitle, { color: theme.text }]} numberOfLines={2}>{task.title}</Text>
-                          <Text style={{ color: theme.textSecondary, fontSize: 12, marginTop: 2 }}>
-                            {task.area} · {h}h {m}m restantes
-                          </Text>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-              </ScrollView>
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: theme.primary }]}
-                onPress={() => setShowUrgentModal(false)}
-              >
-                <Text style={styles.modalBtnText}>Entendido</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
 
         {/* Lista de tareas */}
         <Animated.View style={{ flex: 1, opacity: listOpacity, transform: [{ translateY: listSlide }] }}>
@@ -483,52 +387,10 @@ export default function HomeScreen({ navigation, onLogout }) {
             contentContainerStyle={styles.listContent}
             ListHeaderComponent={
               <View>
-                {/* Quick stats strip — solo en vista "todas" */}
-                {quickStatusFilter === 'todas' && tasks.length > 0 && (() => {
-                  const overdue = tasks.filter(t => t.dueAt && toMs(t.dueAt) < Date.now() && t.status !== 'cerrada').length;
-                  const stats = [
-                    { label: 'Pendientes', count: statusCounts.pendiente, color: theme.warning, filter: 'pendiente', icon: 'time-outline' },
-                    { label: 'En proceso', count: statusCounts['en-progreso'], color: theme.info, filter: 'en-progreso', icon: 'play-circle-outline' },
-                    overdue > 0 && { label: 'Vencidas', count: overdue, color: theme.error, filter: null, icon: 'alert-circle-outline' },
-                    { label: 'Cerradas', count: statusCounts.cerrada, color: theme.success, filter: 'cerrada', icon: 'checkmark-done-circle-outline' },
-                  ].filter(Boolean);
-                  return (
-                    <ScrollView
-                      horizontal
-                      showsHorizontalScrollIndicator={false}
-                      contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingVertical: 10 }}
-                    >
-                      {stats.map((s, i) => (
-                        <TouchableOpacity
-                          key={i}
-                          onPress={() => s.filter && (hapticLight(), setQuickStatusFilter(s.filter))}
-                          activeOpacity={s.filter ? 0.65 : 1}
-                          style={[{
-                            flexDirection: 'row', alignItems: 'center', gap: 5,
-                            paddingHorizontal: 12, paddingVertical: 7,
-                            borderRadius: 99, borderWidth: 1,
-                          }, {
-                            backgroundColor: s.color + '18',
-                            borderColor: s.color + (s.filter ? '55' : '33'),
-                          }]}
-                        >
-                          <Ionicons name={s.icon} size={13} color={s.color} />
-                          <Text style={{ fontSize: 14, fontWeight: '800', color: s.color }}>{s.count}</Text>
-                          <Text style={{ fontSize: 12, fontWeight: '500', color: s.color + 'CC' }}>{s.label}</Text>
-                          {s.filter && <Ionicons name="chevron-forward" size={11} color={s.color + '88'} />}
-                        </TouchableOpacity>
-                      ))}
-                    </ScrollView>
-                  );
-                })()}
               <View style={styles.listHeader}>
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.listTitle, { color: theme.text }]}>
-                    {quickStatusFilter === 'todas' ? 'Mis tareas'
-                      : quickStatusFilter === 'pendiente' ? 'Pendientes'
-                      : quickStatusFilter === 'en-progreso' ? 'En progreso'
-                      : quickStatusFilter === 'revision' ? 'En revisión'
-                      : 'Cerradas'}
+                    {quickStatusFilter === 'todas' ? 'Mis tareas' : statusLabel(quickStatusFilter)}
                   </Text>
                   <Text style={[styles.listSub, { color: theme.textSecondary }]}>
                     {filteredTasks.length === tasks.length
@@ -536,14 +398,6 @@ export default function HomeScreen({ navigation, onLogout }) {
                       : `${filteredTasks.length} de ${tasks.length} tareas`}
                   </Text>
                 </View>
-                {smartBriefing.urgentCount > 0 && (
-                  <View style={[styles.urgentBadge, { backgroundColor: theme.warningAlpha, borderColor: theme.warning }]}>
-                    <Ionicons name="time" size={11} color={theme.warning} />
-                    <Text style={[styles.urgentBadgeText, { color: theme.warning }]}>
-                      {smartBriefing.urgentCount} urgente{smartBriefing.urgentCount !== 1 ? 's' : ''}
-                    </Text>
-                  </View>
-                )}
               </View>
               </View>
             }
@@ -556,7 +410,7 @@ export default function HomeScreen({ navigation, onLogout }) {
                     onLongPress={() => {
                       if (currentUser?.role === 'admin') {
                         hapticMedium();
-                        if (item.status === 'completado') reopenTask(item);
+                        if (isClosed(item.status)) reopenTask(item);
                         else toggleComplete(item);
                       }
                     }}
@@ -583,148 +437,29 @@ export default function HomeScreen({ navigation, onLogout }) {
                 message={
                   searchText || quickStatusFilter !== 'todas'
                     ? 'No hay tareas con los filtros aplicados'
-                    : 'No tienes tareas pendientes. Toca + para crear una nueva.'
+                    : currentUser?.role === 'admin'
+                      ? 'Aún no hay tareas. Crea la primera para asignarla a un área.'
+                      : 'No tienes tareas asignadas por ahora.'
                 }
-                quickAction={{
+                quickAction={currentUser?.role === 'admin' && !searchText && quickStatusFilter === 'todas' ? {
                   label: 'Crear tarea',
                   icon: 'add-circle-outline',
                   onPress: () => { hapticMedium(); navigation.navigate('TaskDetail', {}); },
-                }}
+                } : undefined}
               />
             }
           />
         </Animated.View>
 
-        {/* Modal: briefing */}
-        <Modal
-          visible={showBriefingModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowBriefingModal(false)}
-        >
-          <TouchableOpacity style={styles.modalOverlay} activeOpacity={1} onPress={() => setShowBriefingModal(false)}>
-            <TouchableOpacity activeOpacity={1} style={[styles.modalCard, { backgroundColor: isDark ? 'rgba(15,10,25,0.97)' : '#FFFFFF', borderColor: theme.glassBorder }]}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-                <View style={{
-                  width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center',
-                  backgroundColor: smartBriefing.overdueCount > 0 ? theme.errorAlpha : smartBriefing.urgentCount > 0 ? theme.warningAlpha : theme.successAlpha,
-                }}>
-                  <Ionicons
-                    name={smartBriefing.overdueCount > 0 ? 'warning' : smartBriefing.urgentCount > 0 ? 'time' : 'sparkles'}
-                    size={18}
-                    color={smartBriefing.overdueCount > 0 ? theme.error : smartBriefing.urgentCount > 0 ? theme.warning : theme.success}
-                  />
-                </View>
-                <Text style={{ flex: 1, fontSize: 15, fontWeight: '700', color: theme.text }}>{smartBriefing.headline}</Text>
-                <TouchableOpacity onPress={() => setShowBriefingModal(false)}>
-                  <Ionicons name="close" size={20} color={theme.textSecondary} />
-                </TouchableOpacity>
-              </View>
-              {smartBriefing.details.map((detail, i) => (
-                <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 8, paddingVertical: 5, borderTopWidth: i === 0 ? 1 : 0, borderTopColor: theme.border }}>
-                  <Ionicons name="ellipse" size={6} color={theme.textSecondary} style={{ marginTop: 5 }} />
-                  <Text style={{ fontSize: 13, color: theme.textSecondary, flex: 1, lineHeight: 19 }}>{detail}</Text>
-                </View>
-              ))}
-              {stalledTasks.length > 0 && (
-                <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: theme.border }}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                    <Ionicons name="pause-circle" size={13} color={theme.warning} />
-                    <Text style={{ fontSize: 12, fontWeight: '700', color: theme.warning }}>
-                      Tareas estancadas ({stalledTasks.length})
-                    </Text>
-                  </View>
-                  {stalledTasks.map(({ task, stalledDays }) => (
-                    <View key={task.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 3 }}>
-                      <Ionicons name="ellipse" size={5} color={theme.warning} style={{ marginTop: 1 }} />
-                      <Text style={{ fontSize: 12, color: theme.textSecondary, flex: 1 }} numberOfLines={1}>
-                        {task.title} · {stalledDays}d sin movimiento
-                      </Text>
-                    </View>
-                  ))}
-                </View>
-              )}
-            </TouchableOpacity>
-          </TouchableOpacity>
-        </Modal>
-
-        {/* Modal: ayuda */}
-        <Modal
-          visible={showHelpModal}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setShowHelpModal(false)}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={[styles.modalCard, { backgroundColor: isDark ? 'rgba(15,10,25,0.97)' : '#FFFFFF', borderColor: theme.glassBorder }]}>
-              <View style={[styles.modalHeader, { borderBottomWidth: 1, borderBottomColor: theme.border, paddingBottom: 12 }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                  <Ionicons name="help-circle" size={24} color={theme.primary} />
-                  <View>
-                    <Text style={[styles.modalTitle, { color: theme.text }]}>Guía de la pantalla</Text>
-                    <Text style={[styles.modalSub, { color: theme.textSecondary }]}>Funciones y novedades de esta vista</Text>
-                  </View>
-                </View>
-                <TouchableOpacity onPress={() => setShowHelpModal(false)}>
-                  <Ionicons name="close-circle" size={24} color={theme.textSecondary} />
-                </TouchableOpacity>
-              </View>
-              <ScrollView style={{ maxHeight: 320 }} showsVerticalScrollIndicator={false}>
-                {[
-                  { icon: 'person-circle-outline', color: theme.primary, title: 'Avatar y saludo', desc: 'El encabezado te saluda por hora (buenos días/tardes/noches). Toca tu avatar para ir a tu perfil.' },
-                  { icon: 'stats-chart', color: theme.info, title: 'Chips de estadísticas', desc: 'Los chips de colores muestran conteos en vivo. Tócalos para filtrar la lista al instante.' },
-                  { icon: 'search', color: '#8B5CF6', title: 'Búsqueda inteligente', desc: 'Busca por título, descripción, responsable o etiqueta. La búsqueda se guarda entre sesiones.' },
-                  { icon: 'calendar-outline', color: theme.warning, title: 'Fechas relativas', desc: 'Las tarjetas muestran "Hoy", "Mañana" o "en 3d" para ver de un vistazo qué vence pronto.' },
-                  { icon: 'notifications-outline', color: '#FF9500', title: 'Notificaciones', desc: 'El badge rojo en la campana indica cuántas tienes sin leer. Tócala para verlas.' },
-                  { icon: 'hand-left', color: theme.success, title: 'Swipe para eliminar', desc: 'En móvil arrastra una tarjeta hacia la izquierda para eliminar la tarea.' },
-                  { icon: 'add-circle', color: theme.primary, title: 'Crear tarea', desc: 'Usa el botón + en la esquina inferior derecha. La IA sugiere subtareas según el título.' },
-                ].map((item, i) => (
-                  <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 10, borderBottomWidth: i < 6 ? 1 : 0, borderBottomColor: theme.border }}>
-                    <View style={{ width: 32, height: 32, borderRadius: 16, backgroundColor: item.color + '20', justifyContent: 'center', alignItems: 'center' }}>
-                      <Ionicons name={item.icon} size={16} color={item.color} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={{ fontSize: 14, fontWeight: '700', color: theme.text, marginBottom: 2 }}>{item.title}</Text>
-                      <Text style={{ fontSize: 12, color: theme.textSecondary, lineHeight: 17 }}>{item.desc}</Text>
-                    </View>
-                  </View>
-                ))}
-              </ScrollView>
-              <TouchableOpacity
-                style={[styles.modalBtn, { backgroundColor: theme.primary, marginTop: 16 }]}
-                onPress={() => setShowHelpModal(false)}
-              >
-                <Text style={styles.modalBtnText}>Entendido</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
         <ConfettiCelebration trigger={showConfetti} />
-        <SyncIndicator />
       </View>
 
-      {/* FAB admin */}
+      {/* Botón flotante: crear tarea (solo administrador) */}
       {currentUser?.role === 'admin' && (
         <QuickActionButton
           actions={[
             { icon: 'add-circle', label: 'Nueva tarea', color: theme.primary, onPress: () => navigation.navigate('TaskDetail', {}) },
-            { icon: 'notifications', label: 'Notificaciones', color: theme.info, onPress: () => navigation.navigate('Notifications') },
-            { icon: 'stats-chart', label: 'Estadísticas', color: theme.success, onPress: () => navigation.navigate('ExecutiveDashboard') },
-            { icon: 'search', label: 'Buscar', color: theme.warning, onPress: () => navigation.navigate('Search') },
-            { icon: 'settings', label: 'Ajustes', color: theme.textSecondary, onPress: () => navigation.navigate('Settings') },
-          ]}
-          position="bottom-right"
-        />
-      )}
-
-      {/* FAB secretario / director */}
-      {(currentUser?.role === 'secretario' || currentUser?.role === 'director') && (
-        <QuickActionButton
-          actions={[
-            { icon: 'notifications', label: 'Notificaciones', color: theme.info, onPress: () => navigation.navigate('Notifications') },
-            { icon: 'search', label: 'Buscar', color: theme.warning, onPress: () => navigation.navigate('Search') },
-            { icon: 'settings', label: 'Ajustes', color: theme.textSecondary, onPress: () => navigation.navigate('Settings') },
+            { icon: 'search', label: 'Buscar', color: theme.info, onPress: () => navigation.navigate('Search') },
           ]}
           position="bottom-right"
         />
@@ -800,7 +535,7 @@ function createStyles(theme, isDark, isDesktop, width, padding) {
       borderWidth: 1,
     },
     urgentBadgeText: {
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '600',
     },
     modalOverlay: {

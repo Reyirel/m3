@@ -64,13 +64,20 @@ class ImprovedErrorBoundary extends React.Component {
 
   // Forzar cierre de pantalla problemática
   goToHome = () => {
-    this.resetError();
-    if (this.props.navigation) {
-      this.props.navigation.reset({
-        index: 0,
-        routes: [{ name: 'Home' }],
-      });
+    // `navigation` es la ref del NavigationContainer. Mientras se muestra esta pantalla
+    // el contenedor no está montado: en web basta con volver a la raíz para que, al
+    // reconstruirse, no reabra la pantalla que falló.
+    const nav = this.props.navigation?.current || this.props.navigation;
+    try {
+      if (nav?.isReady?.()) {
+        nav.reset({ index: 0, routes: [{ name: 'Main' }] });
+      } else if (typeof window !== 'undefined' && window.history?.replaceState) {
+        window.history.replaceState(null, '', '/');
+      }
+    } catch (_e) {
+      // Sin navegación disponible: al reintentar se abre la pantalla inicial
     }
+    this.resetError();
   };
 
   toggleDetails = () => {

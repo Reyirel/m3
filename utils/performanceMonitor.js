@@ -285,50 +285,6 @@ export const perfMeasure = (name, startMark, endMark) => {
 };
 
 /**
- * Get all collected metrics
- * @returns {Object} Metrics store
- */
-export const getMetrics = () => {
-  return { ...metricsStore };
-};
-
-/**
- * Get summary of performance
- * @returns {Object} Summary with averages and status
- */
-export const getPerformanceSummary = () => {
-  const lcpAvg = metricsStore.lcp.length > 0 
-    ? metricsStore.lcp.reduce((sum, m) => sum + m.value, 0) / metricsStore.lcp.length
-    : 0;
-
-  const fidAvg = metricsStore.fid.length > 0
-    ? metricsStore.fid.reduce((sum, m) => sum + m.value, 0) / metricsStore.fid.length
-    : 0;
-
-  const clsValue = metricsStore.cls.length > 0 ? metricsStore.cls[metricsStore.cls.length - 1].value : 0;
-
-  return {
-    lcp: { average: lcpAvg.toFixed(0), status: lcpAvg <= VITALS_THRESHOLDS.LCP ? '✓' : '⚠' },
-    fid: { average: fidAvg.toFixed(0), status: fidAvg <= VITALS_THRESHOLDS.FID ? '✓' : '⚠' },
-    cls: { value: clsValue.toFixed(3), status: clsValue <= VITALS_THRESHOLDS.CLS ? '✓' : '⚠' },
-    tti: { value: metricsStore.tti[0]?.value?.toFixed(0) || 'N/A', status: '?' },
-    timestamp: new Date().toISOString(),
-  };
-};
-
-/**
- * Log performance summary to console
- */
-export const logPerformanceSummary = () => {
-  if (Platform.OS !== 'web') return;
-
-  const summary = getPerformanceSummary();
-  console.group('📊 Performance Summary');
-  console.table(summary);
-  console.groupEnd();
-};
-
-/**
  * Report Web Vitals
  * Integration with common analytics services
  * 
@@ -350,30 +306,3 @@ export const reportWebVitals = (callback) => {
   });
 };
 
-/**
- * Clear all metrics
- * Useful for resetting between page loads or navigations
- */
-export const clearMetrics = () => {
-  metricsStore = {
-    lcp: [],
-    fid: [],
-    cls: [],
-    ttfb: [],
-    tti: [],
-    custom: {},
-    navigation: {},
-  };
-};
-
-export default {
-  initPerformanceMonitoring,
-  reportWebVitals,
-  perfMark,
-  perfMeasure,
-  getMetrics,
-  getPerformanceSummary,
-  logPerformanceSummary,
-  clearMetrics,
-  VITALS_THRESHOLDS,
-};

@@ -50,20 +50,3 @@ export const hapticWarning = () => {
   }
 };
 
-export const hapticError = () => {
-  if (isWeb) return;
-  try {
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
-  } catch (e) {
-    // Haptic no disponible
-  }
-};
-
-export const hapticSelection = () => {
-  if (isWeb) return;
-  try {
-    Haptics.selectionAsync();
-  } catch (e) {
-    // Haptic no disponible
-  }
-};

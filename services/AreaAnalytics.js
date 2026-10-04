@@ -64,55 +64,6 @@ export function calculateMonthlyComparative(allTasks) {
 }
 
 /**
- * Predecir tendencia basada en datos históricos simples
- * Usa regresión lineal simple
- */
-export function predictCompletionTrend(areaMetrics, allTasks, area) {
-  const areaMetric = areaMetrics[area];
-  if (!areaMetric) return null;
-
-  // Obtener últimos 30 días de tareas completadas
-  const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const recentTasks = allTasks.filter(t => 
-    t.area === area && 
-    t.completedAt && 
-    toMs(t.completedAt) > thirtyDaysAgo
-  );
-
-  if (recentTasks.length < 3) return null;
-
-  // Agrupar por semana
-  const weeklyData = {};
-  recentTasks.forEach(task => {
-    const week = Math.floor((Date.now() - toMs(task.completedAt)) / (7 * 24 * 60 * 60 * 1000));
-    weeklyData[week] = (weeklyData[week] || 0) + 1;
-  });
-
-  const weeks = Object.keys(weeklyData).map(Number).sort((a, b) => a - b);
-  const completedCounts = weeks.map(w => weeklyData[w]);
-
-  if (completedCounts.length < 2) return null;
-
-  // Regresión lineal simple: y = mx + b
-  const n = completedCounts.length;
-  const x = Array.from({ length: n }, (_, i) => i);
-  const meanX = x.reduce((a, b) => a + b) / n;
-  const meanY = completedCounts.reduce((a, b) => a + b) / n;
-
-  const slope = x.reduce((sum, xi, i) => sum + (xi - meanX) * (completedCounts[i] - meanY), 0) /
-                x.reduce((sum, xi) => sum + Math.pow(xi - meanX, 2), 0);
-
-  const nextWeekPrediction = Math.max(0, Math.round(meanY + slope * n));
-
-  return {
-    currentRate: areaMetric.completionRate,
-    predictedRate: Math.min(100, nextWeekPrediction),
-    trend: slope > 0 ? 'up' : slope < 0 ? 'down' : 'stable',
-    confidence: Math.round((recentTasks.length / (4 * 7)) * 100) // % de datos disponibles
-  };
-}
-
-/**
  * Detectar cuellos de botella
  * Identifica áreas donde tarda más completar tareas
  */
@@ -263,9 +214,3 @@ export function getCachedAnalytics(key, computeFn) {
   return result;
 }
 
-/**
- * Limpiar caché
- */
-export function clearAnalyticsCache() {
-  analyticsCache = { timestamp: 0, data: {} };
-}

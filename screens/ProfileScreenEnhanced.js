@@ -23,7 +23,6 @@ import {
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
-import { logoutUser } from '../services/authFirestore';
 import { toMs } from '../utils/dateUtils';
 import { isInProgress } from '../utils/taskStatus';
 import { hapticMedium } from '../utils/haptics';
@@ -65,12 +64,7 @@ const ProfileScreenEnhanced = ({ navigation, onLogout }) => {
     confirmAlert(
       'Cerrar sesión',
       '¿Estás seguro de que deseas cerrar sesión?',
-      async () => {
-        try {
-          await logoutUser();
-        } catch (_) {}
-        if (onLogout) onLogout();
-      },
+      () => onLogout?.(),
       'Cerrar sesión'
     );
   }, [onLogout]);
@@ -329,7 +323,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.25)',
   },
   heroRoleText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.92)',
     letterSpacing: 1,

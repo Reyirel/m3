@@ -18,6 +18,18 @@ desplegar la app antes de migrar sin que nadie pierda acceso.
 
 ## Pasos
 
+### 0. Entrar con una cuenta que tenga acceso al proyecto
+
+El proyecto es `infra-sublime-464215-m5` (ya está como predeterminado en `.firebaserc`).
+
+```bash
+firebase login
+firebase projects:list
+```
+
+Si el proyecto no aparece en la lista, esa cuenta no tiene acceso: entra con la cuenta
+dueña del proyecto (`firebase logout` y `firebase login` de nuevo) antes de seguir.
+
 ### 1. Activar el proveedor
 
 Consola de Firebase → Authentication → Sign-in method → activar

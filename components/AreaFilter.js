@@ -144,7 +144,7 @@ export default function AreaFilter({
                 <Text style={[styles.expandedTitle, { color: theme.text }]}>
                   Selecciona las áreas a mostrar
                 </Text>
-                <TouchableOpacity onPress={handleToggleExpand}>
+                <TouchableOpacity onPress={handleToggleExpand} accessibilityRole="button" accessibilityLabel="Expandir o contraer">
                   <Ionicons name="close" size={20} color={theme.textSecondary} />
                 </TouchableOpacity>
               </View>
@@ -340,7 +340,7 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   emptyStateCaption: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
   },
 });

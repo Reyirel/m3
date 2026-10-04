@@ -85,6 +85,8 @@ export default function AlertsPanel({
                   setDismissedAlerts(new Set([...dismissedAlerts, alert.id]));
                   onDismiss(alert.id);
                 }}
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar"
               >
                 <Ionicons name="close" size={20} color={theme.error} />
               </TouchableOpacity>
@@ -157,6 +159,8 @@ export default function AlertsPanel({
               </View>
               <TouchableOpacity
                 onPress={() => setDismissedAlerts(new Set([...dismissedAlerts, alert.id]))}
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar"
               >
                 <Ionicons name="close" size={18} color={theme.warning} />
               </TouchableOpacity>
@@ -179,7 +183,7 @@ export default function AlertsPanel({
                 Sugerencias de optimización
               </Text>
               <View style={[styles.suggestionsBadge, { backgroundColor: theme.warningAlpha }]}>
-                <Text style={{ color: theme.warning, fontSize: 11, fontWeight: '700' }}>{suggestions.length}</Text>
+                <Text style={{ color: theme.warning, fontSize: 12, fontWeight: '700' }}>{suggestions.length}</Text>
               </View>
             </View>
             <Ionicons
@@ -269,7 +273,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.05)'
   },
   statLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     marginBottom: 4
   },

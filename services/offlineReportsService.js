@@ -135,25 +135,6 @@ export const getSyncedReports = async () => {
 };
 
 /**
- * Actualizar imágenes de un reporte pendiente
- */
-export const updatePendingReportImages = async (reportId, imageUris) => {
-  try {
-    const pending = await getPendingReports();
-    const report = pending.find(r => r.id === reportId);
-    
-    if (report) {
-      report.images = imageUris;
-      report.imageCount = imageUris.length;
-      await AsyncStorage.setItem(PENDING_REPORTS_KEY, JSON.stringify(pending));
-      log('🖼️ Imágenes actualizadas para reporte:', reportId);
-    }
-  } catch (error) {
-    if (__DEV__) console.error('Error actualizando imágenes:', error);
-  }
-};
-
-/**
  * Actualizar campos de un reporte pendiente (p. ej. el ID que ya recibió en el servidor
  * o las fotos que todavía faltan por subir)
  */
@@ -166,43 +147,6 @@ export const updatePendingReport = async (reportId, changes) => {
     await AsyncStorage.setItem(PENDING_REPORTS_KEY, JSON.stringify(pending));
   } catch (error) {
     if (__DEV__) console.error('Error actualizando reporte pendiente:', error);
-  }
-};
-
-/**
- * Eliminar reporte pendiente
- */
-export const deletePendingReport = async (reportId) => {
-  try {
-    const pending = await getPendingReports();
-    const updated = pending.filter(r => r.id !== reportId);
-    await AsyncStorage.setItem(PENDING_REPORTS_KEY, JSON.stringify(updated));
-    log('🗑️ Reporte eliminado:', reportId);
-  } catch (error) {
-    if (__DEV__) console.error('Error eliminando reporte:', error);
-  }
-};
-
-/**
- * Limpiar reportes sincronizados antiguos (más de 30 días)
- */
-export const cleanupOldSyncedReports = async () => {
-  try {
-    const synced = await getSyncedReports();
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    
-    const filtered = synced.filter(r => {
-      const syncDate = new Date(r.syncedAt);
-      return syncDate > thirtyDaysAgo;
-    });
-    
-    const removed = synced.length - filtered.length;
-    if (removed > 0) {
-      await AsyncStorage.setItem(SYNCED_REPORTS_KEY, JSON.stringify(filtered));
-      log(`🧹 Limpiados ${removed} reportes antiguos`);
-    }
-  } catch (error) {
-    if (__DEV__) console.error('Error limpiando reportes antiguos:', error);
   }
 };
 
@@ -257,46 +201,3 @@ export const retryFailedReports = async () => {
   }
 };
 
-/**
- * Estimar espacio de almacenamiento usado
- */
-export const estimateStorageUsage = async () => {
-  try {
-    const pending = await getPendingReports();
-    const synced = await getSyncedReports();
-    
-    let totalSize = 0;
-    
-    const calculateSize = (obj) => JSON.stringify(obj).length;
-    totalSize += calculateSize(pending);
-    totalSize += calculateSize(synced);
-    
-    const sizeInMB = (totalSize / (1024 * 1024)).toFixed(2);
-    
-    return {
-      bytes: totalSize,
-      kilobytes: (totalSize / 1024).toFixed(2),
-      megabytes: sizeInMB,
-      pendingCount: pending.length,
-      syncedCount: synced.length,
-    };
-  } catch (error) {
-    if (__DEV__) console.error('Error estimando almacenamiento:', error);
-    return { bytes: 0 };
-  }
-};
-
-export default {
-  savePendingReport,
-  getPendingReports,
-  getFailedReports,
-  markReportAsSynced,
-  markReportAsFailed,
-  getSyncedReports,
-  updatePendingReportImages,
-  deletePendingReport,
-  cleanupOldSyncedReports,
-  getSyncStats,
-  retryFailedReports,
-  estimateStorageUsage,
-};

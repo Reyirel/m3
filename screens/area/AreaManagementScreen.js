@@ -2,25 +2,15 @@
 // Pantalla para gestionar áreas dinámicamente
 
 import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  RefreshControl,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { showDialog } from '../../utils/alert';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../../contexts/ThemeContext';
 import { subscribeToAreas, deleteArea } from '../../services/area/areaManagement';
 import { useNotification } from '../../contexts/NotificationContext';
 import AreaFormModal from './AreaFormModal';
-import WebSafeBlur from '../../components/WebSafeBlur';
 import ShimmerEffect from '../../components/ShimmerEffect';
+import ScreenHeader from '../../components/ui/ScreenHeader';
 
 export default function AreaManagementScreen({ navigation }) {
   const { theme, isDark } = useTheme();
@@ -121,6 +111,8 @@ export default function AreaManagementScreen({ navigation }) {
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: theme.primary + '20' }]}
             onPress={() => handleEditArea(area)}
+            accessibilityRole="button"
+            accessibilityLabel="Editar"
           >
             <Ionicons name="pencil" size={18} color={theme.primary} />
           </TouchableOpacity>
@@ -128,6 +120,8 @@ export default function AreaManagementScreen({ navigation }) {
           <TouchableOpacity
             style={[styles.actionBtn, { backgroundColor: theme.errorAlpha }]}
             onPress={() => handleDeleteArea(area)}
+            accessibilityRole="button"
+            accessibilityLabel="Eliminar"
           >
             <Ionicons name="trash" size={18} color={theme.error} />
           </TouchableOpacity>
@@ -139,21 +133,7 @@ export default function AreaManagementScreen({ navigation }) {
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-        <LinearGradient colors={theme.gradientHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { shadowColor: theme.primary }]}>
-          <WebSafeBlur intensity={90} style={styles.headerBlur}>
-            <View style={styles.headerContent}>
-              <View style={styles.headerLeft}>
-                <TouchableOpacity
-                  style={styles.backBtn}
-                  onPress={() => navigation.goBack()}
-                >
-                  <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
-                </TouchableOpacity>
-                <Text style={styles.title}>Gestión de Áreas</Text>
-              </View>
-            </View>
-          </WebSafeBlur>
-        </LinearGradient>
+        <ScreenHeader title="Gestión de áreas" onBack={() => navigation.goBack()} />
         <View style={{ flex: 1, padding: 16 }}>
           {[1,2,3,4,5].map(i => (
             <View key={i} style={{ marginBottom: 12 }}>
@@ -167,35 +147,12 @@ export default function AreaManagementScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: 'transparent' }]}>
-      <LinearGradient
-        colors={theme.gradientHeader}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { shadowColor: theme.primary }]}
-      >
-        <WebSafeBlur intensity={90} style={styles.headerBlur}>
-          <View style={styles.headerContent}>
-            <View style={styles.headerLeft}>
-              <TouchableOpacity
-                style={styles.backBtn}
-                onPress={() => navigation.goBack()}
-              >
-                <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
-              </TouchableOpacity>
-              <View>
-                <Text style={styles.title}>Gestión de Áreas</Text>
-                <Text style={styles.subtitle}>{areas.length} áreas registradas</Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={[styles.createBtn, { backgroundColor: '#FFFFFF' + '20' }]}
-              onPress={handleCreateArea}
-            >
-              <Ionicons name="add" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        </WebSafeBlur>
-      </LinearGradient>
+      <ScreenHeader
+        title="Gestión de áreas"
+        subtitle={`${areas.length} áreas registradas`}
+        onBack={() => navigation.goBack()}
+        actions={[{ icon: 'add', label: 'Crear área', onPress: handleCreateArea }]}
+      />
 
       <ScrollView
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}

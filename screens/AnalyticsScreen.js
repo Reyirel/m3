@@ -16,7 +16,7 @@ import ShimmerEffect from '../components/ShimmerEffect';
 import { getReportStatistics } from '../services/reportsService';
 import { getOverallTaskMetrics } from '../services/tasks';
 import { useTasks } from '../contexts/TasksContext';
-import { GlassmorphicSummaryCard, GlassmorphicTabs, GlassmorphicEmptyState } from '../components';
+import { GlassmorphicTabs } from '../components';
 import ScreenHeader from '../components/ui/ScreenHeader';
 
 const { width } = Dimensions.get('window');
@@ -184,7 +184,7 @@ const AnalyticsScreen = ({ navigation }) => {
       letterSpacing: -1,
     },
     metricSubvalue: {
-      fontSize: 11,
+      fontSize: 12,
       color: 'rgba(255,255,255,0.6)',
       marginTop: 4,
       fontWeight: '500',

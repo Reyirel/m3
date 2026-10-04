@@ -93,19 +93,19 @@ const EmptyState = memo(function EmptyState({
       case 'success':
         return {
           bgColor: theme.statusClosedBg || 'rgba(16, 185, 129, 0.1)',
-          iconColor: theme.statusClosed || '#10B981',
+          iconColor: theme.statusClosed || theme.success,
           pulseColor: 'rgba(16, 185, 129, 0.3)',
         };
       case 'info':
         return {
           bgColor: theme.infoAlpha || 'rgba(59, 130, 246, 0.1)',
-          iconColor: theme.info || '#3B82F6',
+          iconColor: theme.info || theme.info,
           pulseColor: 'rgba(59, 130, 246, 0.3)',
         };
       case 'warning':
         return {
           bgColor: theme.statusPendingBg || 'rgba(245, 158, 11, 0.1)',
-          iconColor: theme.statusPending || '#F59E0B',
+          iconColor: theme.statusPending || theme.warning,
           pulseColor: 'rgba(245, 158, 11, 0.3)',
         };
       default:

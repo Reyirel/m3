@@ -8,7 +8,7 @@
  *   title="Total Tasks"
  *   value={42}
  *   change={+5}
- *   color="#3b82f6"
+ *   color={theme.info}
  */
 
 import React from 'react';
@@ -99,13 +99,13 @@ const GlassmorphicStatsCard = ({
             <Ionicons
               name={isPositive ? 'arrow-up' : 'arrow-down'}
               size={compact ? 10 : 12}
-              color={isPositive ? '#10b981' : '#ef4444'}
+              color={isPositive ? theme.success : theme.error}
             />
             <Text
               style={[
                 styles.changeText,
                 {
-                  color: isPositive ? '#10b981' : '#ef4444',
+                  color: isPositive ? theme.success : theme.error,
                   fontSize: compact ? 9 : 11,
                 },
               ]}

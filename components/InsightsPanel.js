@@ -94,7 +94,7 @@ const InsightsPanel = React.memo(function InsightsPanel({
                 styles.trendLabel,
                 {
                   color: theme.textSecondary,
-                  fontSize: 11
+                  fontSize: 12
                 }
               ]}
             >
@@ -325,7 +325,7 @@ const styles = StyleSheet.create({
     borderRadius: 6
   },
   severityText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600'
   },
   predictionItem: {
@@ -348,7 +348,7 @@ const styles = StyleSheet.create({
     fontWeight: '700'
   },
   confidenceText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500'
   },
   workloadItem: {
@@ -370,7 +370,7 @@ const styles = StyleSheet.create({
     borderRadius: 3
   },
   workloadPercent: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600'
   }
 });

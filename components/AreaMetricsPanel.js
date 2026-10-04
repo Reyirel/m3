@@ -417,7 +417,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: SPACING.lg,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.md,
     marginBottom: SPACING.md,
     ...SHADOWS.sm,
   },
@@ -447,7 +447,7 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 80,
     padding: SPACING.md,
-    borderRadius: RADIUS.md,
+    borderRadius: RADIUS.sm,
     alignItems: 'center',
     ...SHADOWS.sm,
   },
@@ -462,7 +462,7 @@ const styles = StyleSheet.create({
   },
   avgCard: {
     padding: SPACING.lg,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.md,
     marginBottom: SPACING.md,
     ...SHADOWS.sm,
   },
@@ -520,7 +520,7 @@ const styles = StyleSheet.create({
   },
   emptyState: {
     padding: SPACING.xl,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.md,
     alignItems: 'center',
   },
   emptyText: {
@@ -529,7 +529,7 @@ const styles = StyleSheet.create({
   },
   directorCard: {
     padding: SPACING.md,
-    borderRadius: RADIUS.lg,
+    borderRadius: RADIUS.md,
     marginBottom: SPACING.sm,
     ...SHADOWS.sm,
   },

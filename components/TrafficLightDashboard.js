@@ -361,7 +361,7 @@ const createStyles = (theme, isDark, _compact) => StyleSheet.create({
     borderRadius: 4,
   },
   legendText: {
-    fontSize: 11,
+    fontSize: 12,
   },
   scrollView: {
     flex: 1,

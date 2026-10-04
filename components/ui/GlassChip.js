@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
   },
 });

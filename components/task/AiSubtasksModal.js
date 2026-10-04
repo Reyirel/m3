@@ -77,7 +77,7 @@ export default function AiSubtasksModal({
                 Selecciona las que quieras agregar
               </Text>
             </View>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Cerrar">
               <Ionicons name="close" size={22} color={theme.textSecondary} />
             </TouchableOpacity>
           </View>

@@ -10,7 +10,6 @@ import {
   Image,
   ScrollView,
   Dimensions,
-  Alert,
   RefreshControl,
   Animated,
   Platform,
@@ -26,6 +25,7 @@ import { useTasks } from '../contexts/TasksContext';
 import ExportReportModal from '../components/ExportReportModal';
 import { useNotification } from '../contexts/NotificationContext';
 import ShimmerEffect from '../components/ShimmerEffect';
+import EmptyState from '../components/EmptyState';
 
 const { width } = Dimensions.get('window');
 
@@ -138,7 +138,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     emptyText: {
       fontSize: 16,
       fontWeight: '600',
-      color: isDark ? '#fff' : '#333',
+      color: theme.text,
       marginBottom: 8,
       textAlign: 'center',
     },
@@ -208,7 +208,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     },
     ratingText: {
       fontSize: 12,
-      color: isDark ? '#fff' : '#333',
+      color: theme.text,
       fontWeight: '600',
     },
     reportContent: {
@@ -500,6 +500,8 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
                       onPressIn={() => setHoverRating({ ...hoverRating, [item.id]: star })}
                       onPressOut={() => setHoverRating({ ...hoverRating, [item.id]: 0 })}
                       activeOpacity={0.7}
+                      accessibilityRole="button"
+                      accessibilityLabel="Calificar"
                     >
                       <Ionicons
                         name={isHovered ? 'star' : 'star-outline'}
@@ -588,6 +590,8 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
           onPress={() => navigation.goBack()}
           style={styles.backButton}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
         >
           <Ionicons name="chevron-back" size={24} color="#FFFFFF" />
         </TouchableOpacity>
@@ -614,6 +618,8 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
               borderWidth: 1,
               borderColor: 'rgba(255,255,255,0.25)',
             }}
+            accessibilityRole="button"
+            accessibilityLabel="Descargar"
           >
             <Ionicons name="download" size={18} color="#fff" />
           </TouchableOpacity>
@@ -748,18 +754,11 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
               />
             }
             ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons
-                  name="time-outline"
-                  size={48}
-                  color={isDark ? '#333' : '#ddd'}
-                  style={styles.emptyIcon}
-                />
-                <Text style={styles.emptyText}>Sin Actividad Aún</Text>
-                <Text style={styles.emptySubtext}>
-                  El historial de actividad aparecerá aquí
-                </Text>
-              </View>
+              <EmptyState
+                icon="time-outline"
+                title="Sin actividad aún"
+                message="El historial de actividad aparecerá aquí."
+              />
             }
           />
         )}

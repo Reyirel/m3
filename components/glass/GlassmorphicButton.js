@@ -5,7 +5,7 @@
  * Soporta loading, disabled, icons, y efectos visuales
  */
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import {
   TouchableOpacity,
   Text,

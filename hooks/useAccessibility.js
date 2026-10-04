@@ -9,7 +9,7 @@
  * - Asegurar touch targets de 48x48dp
  */
 
-import { useCallback, useMemo } from 'react';
+import { useCallback } from 'react';
 import { AccessibilityInfo, Platform } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
 

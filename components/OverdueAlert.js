@@ -154,7 +154,7 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
                   </Text>
                 </View>
               </View>
-              <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <TouchableOpacity onPress={() => setModalVisible(false)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityRole="button" accessibilityLabel="Cerrar">
                 <Ionicons name="close-circle" size={30} color={theme.textSecondary} />
               </TouchableOpacity>
             </View>
@@ -394,7 +394,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   priorityText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   timeBadge: {
@@ -406,7 +406,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   timeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   modalFooter: {

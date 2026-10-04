@@ -1,7 +1,7 @@
 // components/task/AssigneeChangeConfirmModal.js
 // Modal de confirmación cuando se detectan cambios en los asignados de una tarea.
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import GlassmorphicButton from '../glass/GlassmorphicButton';
 
@@ -75,7 +75,7 @@ export default function AssigneeChangeConfirmModal({
 
             {/* Advertencia */}
             <View style={[styles.warningBox, { backgroundColor: isDark ? '#333' : '#FFF9E6' }]}>
-              <Ionicons name="information-circle" size={20} color={isDark ? '#FFA500' : '#FF9800'} />
+              <Ionicons name="information-circle" size={20} color={isDark ? theme.warning : '#FF9800'} />
               <Text style={[styles.warningText, { color: isDark ? '#FFB84D' : '#E65100', marginLeft: 10 }]}>
                 Las personas removidas dejarán de ver esta tarea
               </Text>

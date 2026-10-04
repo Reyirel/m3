@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import { confirmAlert } from '../utils/alert';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import { toMs } from '../utils/dateUtils';
 import { subscribeToMyNotifications, markNotificationsRead, deleteNotifications } from '../services/notificationsLive';
@@ -28,6 +27,7 @@ const Swipeable = getSwipeable();
 import { useNotification } from '../contexts/NotificationContext';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
+import ScreenHeader from '../components/ui/ScreenHeader';
 
 // Filtros de la lista. `match` decide qué notificaciones entran en cada uno.
 const FILTERS = [
@@ -220,7 +220,7 @@ export default function NotificationsScreen({ navigation }) {
       if (type === 'new_message') {
         navigation.navigate('TaskChat', { taskId, taskTitle: task.title || 'Chat de tarea' });
       } else {
-        navigation.navigate('TaskDetail', { task });
+        navigation.navigate('TaskDetail', { task, taskId: task.id });
       }
       return;
     }
@@ -441,27 +441,15 @@ export default function NotificationsScreen({ navigation }) {
 
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       {/* Header */}
-      <LinearGradient
-        colors={theme.gradientHeader}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.header, { shadowColor: theme.primary }]}
-      >
-        <View style={styles.headerContent}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.title}>Notificaciones</Text>
-            <Text style={styles.subtitle}>
-              {notifications.length} {notifications.length === 1 ? 'notificación' : 'notificaciones'}
-              {unreadCount > 0 ? ` · ${unreadCount} sin leer` : ''}
-            </Text>
-          </View>
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            {unreadCount > 0 && headerButton('checkmark-done', 'Marcar todas como leídas', handleMarkAllAsRead)}
-            {readCount > 0 && headerButton('trash-outline', 'Eliminar las notificaciones leídas', handleDeleteRead, 18)}
-            {headerButton('close', 'Cerrar notificaciones', () => navigation.goBack(), 24)}
-          </View>
-        </View>
-      </LinearGradient>
+      <ScreenHeader
+        title="Notificaciones"
+        subtitle={`${notifications.length} ${notifications.length === 1 ? 'notificación' : 'notificaciones'}${unreadCount > 0 ? ` · ${unreadCount} sin leer` : ''}`}
+        onBack={() => navigation.goBack()}
+        actions={[
+          unreadCount > 0 && { icon: 'checkmark-done', label: 'Marcar todas como leídas', onPress: handleMarkAllAsRead },
+          readCount > 0 && { icon: 'trash-outline', label: 'Eliminar las notificaciones leídas', onPress: handleDeleteRead },
+        ].filter(Boolean)}
+      />
 
       {/* Filtros */}
       <ScrollView
@@ -649,7 +637,7 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   notificationTime: {
-    fontSize: 11,
+    fontSize: 12,
   },
   unreadBadge: {
     width: 10,
@@ -719,7 +707,7 @@ const styles = StyleSheet.create({
   },
   unreadBadgeFilterText: {
     color: '#fff',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
   },
 });
@@ -760,7 +748,7 @@ const cardStyles = StyleSheet.create({
     fontSize: 12,
   },
   notificationTime: {
-    fontSize: 11,
+    fontSize: 12,
   },
   unreadBadge: {
     width: 10,

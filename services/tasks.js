@@ -31,7 +31,6 @@ import { notifyTaskAssigned } from './emailNotifications';
 import { notifyAssignment } from './notifications';
 import { getGeneralMetrics } from './analytics';
 import { validateData } from '../utils/dataValidation';
-import * as productionLogger from '../utils/productionLogger';
 import { withRetry } from '../utils/errorRecovery';
 import { checkRateLimit } from '../utils/rateLimiter';
 import {
@@ -150,15 +149,16 @@ export function applyPendingOperations(tasks, pendingOps) {
 
 /**
  * Suscribirse a cambios en tiempo real de las tareas del usuario autenticado
- * SIMPLE VERSION: Solo Firestore, sin caché
+ * @param {Function} callback - Recibe la lista de tareas visibles para el usuario
+ * @param {Object} [knownSession] - Sesión ya resuelta (AuthContext); evita esperar a leerla
  */
-export async function subscribeToTasks(callback) {
+export async function subscribeToTasks(callback, knownSession) {
   try {
     logger.debug('TasksService', 'subscribeToTasks called');
     logger.perfStart('subscribeToTasks');
     _activeSubscriptions++;
 
-    const session = await waitForSession();
+    const session = knownSession?.email ? knownSession : await waitForSession();
     
     if (!session) {
       _activeSubscriptions--;
@@ -339,7 +339,7 @@ export async function createTask(task) {
     // 🔍 Validar datos antes de procesar
     const validation = validateData(task, 'task');
     if (!validation.valid) {
-      productionLogger.logWarn('Invalid task data', { errors: validation.errors });
+      logger.warn('TasksService', 'Invalid task data', { errors: validation.errors });
       const error = new Error(`Datos inválidos: ${validation.errors.join(', ')}`);
       error.code = 'INVALID_DATA';
       throw error;
@@ -416,14 +416,14 @@ export async function createTask(task) {
               });
           }
         } catch (notifErr) {
-          productionLogger.logWarn('Error sending notifications', { 
+          logger.warn('TasksService', 'Error sending notifications', { 
             taskId: docRef.id, 
             error: notifErr.message 
           });
         }
       }
       
-      productionLogger.logInfo('Task created', { taskId: docRef.id });
+      logger.info('TasksService', 'Task created', { taskId: docRef.id });
       return docRef.id;
     } else {
       // MODO OFFLINE: Guardar localmente y encolar para sincronización
@@ -444,7 +444,7 @@ export async function createTask(task) {
       // Encolar para sincronización
       await queueOperation(OPERATION_TYPES.CREATE, taskData, tempId, currentUserEmail);
 
-      productionLogger.logInfo('Task queued offline', { tempId });
+      logger.info('TasksService', 'Task queued offline', { tempId });
       return tempId;
     }
   } catch (error) {

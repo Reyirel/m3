@@ -15,7 +15,7 @@
  */
 
 import React, { useMemo, useState } from 'react';
-import { View, StyleSheet, Platform, Animated, PanResponder } from 'react-native';
+import { View, StyleSheet, Platform, Animated } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../contexts/ThemeContext';
 

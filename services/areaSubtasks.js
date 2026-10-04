@@ -187,30 +187,6 @@ export const updateParentTaskProgress = async (parentTaskId) => {
 };
 
 /**
- * Obtener resumen de progreso por área
- * @param {string} parentTaskId - ID de la tarea padre
- * @returns {Promise<Array<{area: string, status: string, assignees: Array, progress: number}>>}
- */
-export const getAreaProgressSummary = async (parentTaskId) => {
-  try {
-    const subtasks = await getAreaSubtasks(parentTaskId);
-    
-    return subtasks.map(st => ({
-      subtaskId: st.id,
-      area: st.area,
-      status: st.status,
-      statusLabel: getStatusLabel(st.status),
-      assignees: st.assignedToNames || st.assignedTo || [],
-      isCompleted: ['en_revision', 'cerrada'].includes(normalizeStatus(st.status)),
-      updatedAt: st.updatedAt
-    }));
-  } catch (error) {
-    if (__DEV__) console.error('Error obteniendo resumen de progreso:', error);
-    return [];
-  }
-};
-
-/**
  * Helper para obtener label de estado
  */
 const getStatusLabel = (status) => {
@@ -224,46 +200,3 @@ const getStatusLabel = (status) => {
   return labels[status] || status;
 };
 
-/**
- * Marcar subtarea de un área como completada
- * @param {string} subtaskId - ID de la subtarea
- * @param {object} user - Usuario que completa
- */
-export const completeAreaSubtask = async (subtaskId, user) => {
-  try {
-    const subtaskRef = doc(db, 'tasks', subtaskId);
-    
-    await updateDoc(subtaskRef, {
-      status: 'completada',
-      completedBy: user.email,
-      completedByName: user.displayName || user.email,
-      completedAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
-    });
-    
-    // Obtener la subtarea para saber el parentTaskId
-    const subtaskDoc = await getDoc(doc(db, 'tasks', subtaskId));
-
-    if (subtaskDoc.exists()) {
-      const subtask = subtaskDoc.data();
-      if (subtask.parentTaskId) {
-        // Actualizar progreso del padre
-        await updateParentTaskProgress(subtask.parentTaskId);
-      }
-    }
-    
-    return { success: true };
-  } catch (error) {
-    if (__DEV__) console.error('Error completando subtarea:', error);
-    throw error;
-  }
-};
-
-export default {
-  createAreaSubtasks,
-  getAreaSubtasks,
-  subscribeToAreaSubtasks,
-  updateParentTaskProgress,
-  getAreaProgressSummary,
-  completeAreaSubtask
-};

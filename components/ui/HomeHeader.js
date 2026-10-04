@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Platform, Modal, ActivityIndicator, useWindowDimensions,
+  Platform, useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import GlassChip from './GlassChip';
 import SearchBar from '../SearchBar';
-import { logoutUser } from '../../services/authFirestore';
 import { subscribeToUnreadCount } from '../../services/notificationsLive';
 
 const FILTERS = [
   { id: 'todas',       label: 'Todas',       icon: 'list'                          },
   { id: 'pendiente',   label: 'Pendiente',   icon: 'time-outline'                  },
-  { id: 'en-progreso', label: 'En progreso', icon: 'play-circle-outline'           },
-  { id: 'revision',    label: 'Revisión',    icon: 'eye-outline'                   },
+  { id: 'en_proceso',  label: 'En proceso',  icon: 'play-circle-outline'           },
+  { id: 'en_revision', label: 'Revisión',    icon: 'eye-outline'                   },
   { id: 'cerrada',     label: 'Completadas', icon: 'checkmark-done-circle-outline' },
 ];
 
@@ -41,7 +40,6 @@ export default function HomeHeader({
   quickStatusFilter = 'todas',
   onFilterChange,
   statusCounts = {},
-  onLogout,
   onProfilePress,
   onNotificationsPress,
   searchRef,
@@ -49,26 +47,10 @@ export default function HomeHeader({
   const { theme, isDark, toggleTheme } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
   const isWide = screenWidth >= 768;
-  const [showModal, setShowModal] = useState(false);
-  const [loggingOut, setLoggingOut] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   // Contador en tiempo real (lo alimenta NotificationWatcher en App.js)
   useEffect(() => subscribeToUnreadCount(setUnreadCount), []);
-
-  const confirmLogout = async () => {
-    setLoggingOut(true);
-    try {
-      await logoutUser();
-    } catch {}
-
-    if (Platform.OS === 'web') {
-      window.location.reload();
-      return;
-    }
-    setShowModal(false);
-    onLogout?.();
-  };
 
   const initials = getInitials(userName);
 
@@ -142,16 +124,6 @@ export default function HomeHeader({
                 )}
               </TouchableOpacity>
             )}
-
-            {/* Logout */}
-            <TouchableOpacity
-              onPress={() => setShowModal(true)}
-              style={styles.iconBtn}
-              accessibilityLabel="Cerrar sesión"
-              accessibilityRole="button"
-            >
-              <Ionicons name="log-out-outline" size={20} color="rgba(255,255,255,0.82)" />
-            </TouchableOpacity>
           </View>
         </View>
       </LinearGradient>
@@ -186,51 +158,6 @@ export default function HomeHeader({
           />
         ))}
       </ScrollView>
-
-      {/* ─── Logout confirmation modal ─── */}
-      <Modal visible={showModal} transparent animationType="fade" onRequestClose={() => setShowModal(false)}>
-        <View style={styles.overlay}>
-          <View style={[
-            styles.card,
-            {
-              backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
-              shadowColor: theme.shadowColor,
-              borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-            },
-          ]}>
-            <View style={[styles.iconCircle, { backgroundColor: 'rgba(159,34,65,0.12)' }]}>
-              <Ionicons name="log-out-outline" size={28} color={theme.primary} />
-            </View>
-            <Text style={[styles.modalTitle, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>
-              Cerrar sesión
-            </Text>
-            <Text style={[styles.modalSub, { color: isDark ? 'rgba(255,255,255,0.55)' : '#6B6B6B' }]}>
-              ¿Estás seguro de que deseas salir de tu cuenta?
-            </Text>
-            <View style={styles.btnRow}>
-              <TouchableOpacity
-                onPress={() => setShowModal(false)}
-                style={[styles.btn, styles.btnCancel, { borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.12)' }]}
-                disabled={loggingOut}
-              >
-                <Text style={[styles.btnText, { color: isDark ? 'rgba(255,255,255,0.70)' : '#555' }]}>
-                  Cancelar
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={confirmLogout}
-                style={[styles.btn, styles.btnConfirm, { backgroundColor: theme.primary }]}
-                disabled={loggingOut}
-              >
-                {loggingOut
-                  ? <ActivityIndicator size="small" color="#FFF" />
-                  : <Text style={[styles.btnText, { color: '#FFF', fontWeight: '700' }]}>Salir</Text>
-                }
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
     </View>
   );
 }
@@ -318,7 +245,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.22)',
   },
   roleText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.90)',
     letterSpacing: 1,
@@ -354,7 +281,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.9)',
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '800',
     color: '#FFFFFF',
   },
@@ -372,55 +299,4 @@ const styles = StyleSheet.create({
   },
   chipsScroll: { marginTop: 12 },
   chipsRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingBottom: 4 },
-
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  card: {
-    width: '100%',
-    maxWidth: 340,
-    borderRadius: 24,
-    borderWidth: 1,
-    padding: 28,
-    alignItems: 'center',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
-    shadowRadius: 32,
-    elevation: 16,
-  },
-  iconCircle: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '800',
-    letterSpacing: -0.3,
-    marginBottom: 8,
-  },
-  modalSub: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 28,
-  },
-  btnRow: { flexDirection: 'row', gap: 12, width: '100%' },
-  btn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  btnCancel: { borderWidth: 1.5 },
-  btnConfirm: {},
-  btnText: { fontSize: 15 },
 });
