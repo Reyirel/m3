@@ -2,7 +2,7 @@
 // Sistema de autenticación.
 // Usa Firebase Auth para los usuarios ya migrados (ver docs/MIGRACION_FIREBASE_AUTH.md)
 // y cae al esquema anterior (hash en Firestore) para los que aún no lo están.
-import { collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, addDoc, setDoc, updateDoc, doc, onSnapshot } from 'firebase/firestore';
 import { initializeApp, deleteApp } from 'firebase/app';
 import {
   getAuth,
@@ -23,7 +23,7 @@ const normalizeEmailForAuth = (email) =>
 export const isFirebaseAuthSession = () => !!auth?.currentUser;
 
 // Construir y guardar la sesión local a partir del documento de usuario
-const saveSession = async (userId, userData) => {
+const saveSession = async (userId, userData, provider) => {
   // 🧹 LIMPIAR TODO EL CACHÉ de tareas al iniciar sesión
   // Asegurar que se carguen datos frescos de Firestore sin contaminación
   try {
@@ -33,19 +33,85 @@ const saveSession = async (userId, userData) => {
     if (__DEV__) console.error('Error limpiando caché en login:', cleanupError);
   }
 
-  const session = {
-    userId,
-    email: (userData.email || '').toLowerCase().trim(),
-    displayName: userData.displayName,
-    role: userData.role,
-    department: userData.department || '',
-    area: userData.area || userData.department || '',
-    direcciones: userData.direcciones || [], // Direcciones a cargo del secretario
-    areasPermitidas: userData.areasPermitidas || [] // Todas las áreas permitidas
-  };
+  const session = buildSession(userId, userData, provider);
 
   await AsyncStorage.setItem('userSession', JSON.stringify(session));
   return session;
+};
+
+// Sesión a partir del documento del usuario. El rol y las áreas SIEMPRE salen del
+// documento en Firestore; la copia en AsyncStorage solo sirve para abrir la app sin red.
+const buildSession = (userId, userData, provider) => ({
+  userId,
+  email: normalizeEmailForAuth(userData.email),
+  displayName: userData.displayName,
+  role: userData.role,
+  department: userData.department || '',
+  area: userData.area || userData.department || '',
+  direcciones: userData.direcciones || [], // Direcciones a cargo del secretario
+  areasPermitidas: userData.areasPermitidas || [], // Todas las áreas permitidas
+  // 'firebase' = contraseña validada por Firebase Auth; 'legacy' = hash en Firestore
+  authProvider: provider,
+});
+
+// Firebase Auth restaura su sesión de forma asíncrona al abrir la app
+let authReadyPromise = null;
+const waitForAuthReady = () => {
+  if (!authReadyPromise) {
+    authReadyPromise = typeof auth?.authStateReady === 'function'
+      ? auth.authStateReady().catch(() => {})
+      : Promise.resolve();
+  }
+  return authReadyPromise;
+};
+
+/**
+ * ¿La sesión guardada corresponde a la cuenta autenticada en Firebase Auth?
+ * Evita que alguien cambie el usuario o el rol editando la copia local:
+ *   - si hay cuenta de Firebase Auth, la sesión debe ser de ese mismo uid
+ *   - si la sesión dice venir de Firebase Auth pero ya no hay cuenta activa, no vale
+ */
+const isSessionConsistentWithAuth = async (session) => {
+  await waitForAuthReady();
+  const uid = auth?.currentUser?.uid;
+  if (uid) return session.userId === uid;
+  return session.authProvider !== 'firebase';
+};
+
+/**
+ * Mantiene la sesión igual al documento del usuario en Firestore, en tiempo real.
+ * Si el admin cambia el rol o el área, la app lo refleja sin volver a iniciar sesión;
+ * si desactiva o borra al usuario, se cierra la sesión.
+ *
+ * @param {Object} session - Sesión actual ({ userId, authProvider })
+ * @param {(session: Object) => void} onChange - Sesión con los datos del servidor
+ * @param {(reason: string) => void} onRevoked - El usuario ya no puede usar la app
+ * @returns {() => void} Función para cancelar la suscripción
+ */
+export const subscribeToSessionUser = (session, onChange, onRevoked) => {
+  if (!session?.userId) return () => {};
+  return onSnapshot(
+    doc(db, 'users', session.userId),
+    (snapshot) => {
+      // Sin red y sin copia en cache no se sabe nada: se conserva la sesión guardada
+      if (!snapshot.exists()) {
+        if (!snapshot.metadata?.fromCache) onRevoked('deleted');
+        return;
+      }
+      const userData = snapshot.data();
+      if (userData.active === false) {
+        onRevoked('disabled');
+        return;
+      }
+      const fresh = buildSession(session.userId, userData, session.authProvider);
+      AsyncStorage.setItem('userSession', JSON.stringify(fresh)).catch(() => {});
+      onChange(fresh);
+    },
+    (error) => {
+      // Con las reglas seguras, un usuario desactivado o sin cuenta ya no puede leer su documento
+      if (error?.code === 'permission-denied') onRevoked('permission-denied');
+    }
+  );
 };
 
 // Crear la cuenta en Firebase Auth sin cerrar la sesión del admin:
@@ -134,7 +200,7 @@ export const loginUser = async (email, password) => {
         await signOut(auth).catch(() => {});
         return { success: false, error: 'Usuario desactivado' };
       }
-      const session = await saveSession(firebaseUser.uid, userData);
+      const session = await saveSession(firebaseUser.uid, userData, 'firebase');
       return { success: true, user: session };
     }
 
@@ -190,7 +256,7 @@ export const loginUser = async (email, password) => {
       return { success: false, error: 'Usuario desactivado', code: 'user-disabled' };
     }
 
-    const session = await saveSession(userDoc.id, userData);
+    const session = await saveSession(userDoc.id, userData, 'legacy');
 
     return { success: true, user: session };
   } catch (error) {
@@ -267,6 +333,13 @@ export const getCurrentSession = async () => {
       const session = JSON.parse(sessionData);
       // Normalizar email: quitar espacios, caracteres invisibles y no-ASCII
       session.email = normalizeEmailForAuth(session.email);
+
+      // La copia local no se da por buena si no coincide con la cuenta de Firebase Auth
+      if (!(await isSessionConsistentWithAuth(session))) {
+        await AsyncStorage.removeItem('userSession');
+        if (auth?.currentUser) await signOut(auth).catch(() => {});
+        return { success: false, error: 'La sesión ya no es válida' };
+      }
       await AsyncStorage.setItem('userSession', JSON.stringify(session));
 
       // Sin conexión, o si se refrescó hace poco, se usa la sesión guardada.
@@ -371,68 +444,3 @@ export const isDirector = async () => {
   return false;
 };
 
-// Verificar si puede crear tareas (admin)
-export const canCreateTasks = async () => {
-  const result = await getCurrentSession();
-  if (result.success) {
-    return ['admin'].includes(result.session.role);
-  }
-  return false;
-};
-
-// Verificar si puede ver reportes (admin, secretario, director)
-export const canViewReports = async () => {
-  const result = await getCurrentSession();
-  if (result.success) {
-    return ['admin', 'secretario', 'director'].includes(result.session.role);
-  }
-  return false;
-};
-
-// Obtener datos del usuario actual
-export const getCurrentUserData = async () => {
-  const result = await getCurrentSession();
-  if (result.success) {
-    return { success: true, data: result.session };
-  }
-  return { success: false, error: 'No hay sesión activa' };
-};
-
-// Refrescar sesión desde Firestore (útil cuando el perfil se actualiza)
-export const refreshSession = async () => {
-  try {
-    const sessionResult = await getCurrentSession();
-    if (!sessionResult.success) {
-      return { success: false, error: 'No hay sesión activa' };
-    }
-
-    const usersRef = collection(db, 'users');
-    const q = query(usersRef, where('email', '==', sessionResult.session.email));
-    const querySnapshot = await getDocs(q);
-
-    if (querySnapshot.empty) {
-      return { success: false, error: 'Usuario no encontrado' };
-    }
-
-    const userDoc = querySnapshot.docs[0];
-    const userData = userDoc.data();
-
-    // Actualizar sesión con datos frescos de Firestore
-    const updatedSession = {
-      userId: userDoc.id,
-      email: normalizeEmailForAuth(userData.email),
-      displayName: userData.displayName,
-      role: userData.role,
-      department: userData.department || '',
-      area: userData.area || userData.department || '',
-      direcciones: userData.direcciones || [],
-      areasPermitidas: userData.areasPermitidas || []
-    };
-
-    await AsyncStorage.setItem('userSession', JSON.stringify(updatedSession));
-    
-    return { success: true, session: updatedSession };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-};

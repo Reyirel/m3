@@ -26,7 +26,12 @@ const ROUTE_META = {
   Admin:                { label: 'Admin',     icon: 'settings',     iconOff: 'settings-outline' },
   SecretarioDashboard:  { label: 'Panel',     icon: 'briefcase',    iconOff: 'briefcase-outline' },
   ExecutiveDashboard:   { label: 'Panel',     icon: 'speedometer',  iconOff: 'speedometer-outline' },
+  More:                 { label: 'Más',       icon: 'ellipsis-horizontal-circle', iconOff: 'ellipsis-horizontal-circle-outline' },
 };
+
+// La barra muestra como máximo cinco pestañas. Las demás (reportes, paneles, admin)
+// siguen registradas en el navegador, se abren desde "Más" y la dejan resaltada.
+const PRIMARY_TABS = ['Home', 'Kanban', 'Calendar', 'Inbox', 'More'];
 
 // Margen lateral de la fila de pestañas (debe coincidir con tabsContainer.paddingHorizontal)
 const BAR_PADDING = 8;
@@ -39,7 +44,16 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
   const { width: screenWidth } = useWindowDimensions();
 
   const isWide = screenWidth >= 768;
-  const tabCount   = state.routes.length;
+  const hasMore = state.routes.some(route => route.name === 'More');
+  const visibleRoutes = hasMore
+    ? state.routes.filter(route => PRIMARY_TABS.includes(route.name))
+    : state.routes;
+  const focusedName = state.routes[state.index]?.name;
+  const focusedVisibleIndex = visibleRoutes.findIndex(route => route.name === focusedName);
+  const activeIndex = focusedVisibleIndex >= 0
+    ? focusedVisibleIndex
+    : Math.max(visibleRoutes.findIndex(route => route.name === 'More'), 0);
+  const tabCount   = visibleRoutes.length;
   // Ancho real de cada pestaña: la fila tiene margen lateral, así que no es pantalla / pestañas.
   // Con el cálculo anterior la píldora quedaba desplazada entre dos pestañas.
   const tabWidth   = (screenWidth - BAR_PADDING * 2) / tabCount;
@@ -47,7 +61,7 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
   const pillScale    = useSharedValue(1);
 
   useEffect(() => {
-    pillPosition.value = withSpring(state.index * tabWidth, {
+    pillPosition.value = withSpring(activeIndex * tabWidth, {
       damping: 18,
       mass: 0.8,
       stiffness: 200,
@@ -56,7 +70,7 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
     pillScale.value = withTiming(0.92, { duration: 80 }, () => {
       pillScale.value = withSpring(1, { damping: 12, stiffness: 300 });
     });
-  }, [state.index, tabWidth]);
+  }, [activeIndex, tabWidth]);
 
   const pillAnimatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -134,9 +148,9 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>
-        {state.routes.map((route, index) => {
+        {visibleRoutes.map((route, index) => {
           const { options } = descriptors[route.key];
-          const isFocused = state.index === index;
+          const isFocused = activeIndex === index;
           const meta = ROUTE_META[route.name] || { label: route.name, icon: 'ellipse', iconOff: 'ellipse-outline' };
           const iconName = isFocused ? meta.icon : meta.iconOff;
           const badge = options.tabBarBadge;
@@ -147,7 +161,8 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
               target: route.key,
               canPreventDefault: true,
             });
-            if (!isFocused && !event.defaultPrevented) {
+            // "Más" resaltada con otra pantalla abierta: tocarla vuelve al menú
+            if (route.name !== focusedName && !event.defaultPrevented) {
               navigation.navigate(route.name, route.params);
             }
           };
@@ -158,8 +173,8 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
               onPress={onPress}
               style={styles.tab}
               activeOpacity={0.75}
-              accessibilityRole="button"
-              accessibilityLabel={meta.label}
+              accessibilityRole="tab"
+              accessibilityLabel={typeof badge === 'number' && badge > 0 ? `${meta.label}, ${badge} pendientes` : meta.label}
               accessibilityState={{ selected: isFocused }}
             >
               <View style={styles.tabContent}>
@@ -185,7 +200,7 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
                       color: isFocused ? '#FFFFFF' : isDark ? theme.textMuted : theme.textSecondary,
                       fontWeight: isFocused ? '700' : '500',
                       opacity: isFocused ? 1 : 0.7,
-                      fontSize: isWide ? 12 : 10,
+                      fontSize: isWide ? 12 : 11,
                     },
                   ]}
                   numberOfLines={1}
@@ -240,7 +255,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   tabLabel: {
-    fontSize: 10,
+    fontSize: 12,
     letterSpacing: 0.1,
     marginTop: 1,
   },
@@ -279,7 +294,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 3,
   },
   badgeText: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '700',
     color: '#FFFFFF',
   },
