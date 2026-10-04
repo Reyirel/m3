@@ -63,7 +63,7 @@ export default function DelegateTaskModal({
         <View style={[styles.container, { backgroundColor: theme.card }]}>
           <View style={styles.header}>
             <Text style={[styles.title, { color: theme.text }]}>Delegar Tarea</Text>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Cerrar">
               <Ionicons name="close" size={28} color={theme.text} />
             </TouchableOpacity>
           </View>

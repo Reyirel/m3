@@ -11,6 +11,9 @@ export const SPACING = {
   xxxl: 48,
 };
 
+// Escala tipográfica. El texto de lectura va de `bodySmall` (14) hacia arriba;
+// `caption` (12) es el mínimo para texto y `overline` (11) solo para etiquetas
+// cortas en mayúsculas y contadores. Nada por debajo de 11.
 export const TYPOGRAPHY = {
   h1: {
     fontSize: 28,
@@ -42,6 +45,12 @@ export const TYPOGRAPHY = {
     fontWeight: '400',
     lineHeight: 16,
   },
+  overline: {
+    fontSize: 11,
+    fontWeight: '600',
+    lineHeight: 14,
+    letterSpacing: 0.6,
+  },
   button: {
     fontSize: 16,
     fontWeight: '600',
@@ -49,7 +58,7 @@ export const TYPOGRAPHY = {
   },
   // Tamaños de fuente para uso directo
   sizes: {
-    xs: 10,
+    xs: 11,
     sm: 12,
     md: 14,
     lg: 16,
@@ -66,12 +75,14 @@ export const TYPOGRAPHY = {
   },
 };
 
+// Radios (Apple HIG): controles 10, tarjetas 16, hojas y modales 24.
+// Es la misma escala que expone el tema como theme.radiusSm / radiusMd / radiusLg / radiusXl.
 export const RADIUS = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 20,
+  xs: 6,
+  sm: 10,
+  md: 16,
+  lg: 24,
+  xl: 32,
   round: 9999,
 };
 

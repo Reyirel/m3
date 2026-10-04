@@ -276,11 +276,11 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   statText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
   },
   statSeparator: {
-    fontSize: 10,
+    fontSize: 11,
     marginHorizontal: 2,
   },
   statusContainer: {
@@ -298,7 +298,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   percentageLabel: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '500',
   },
   divider: {
@@ -322,7 +322,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   statBoxLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     marginBottom: 4,
   },
@@ -335,7 +335,7 @@ const styles = StyleSheet.create({
     gap: 2,
   },
   bestPerformerName: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   bestPerformerRate: {

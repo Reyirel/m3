@@ -11,12 +11,10 @@ import {
   RefreshControl,
   Modal,
   ScrollView,
-  Alert,
   Platform,
 } from 'react-native';
 import { confirmAlert } from '../utils/alert';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import ShimmerEffect from '../components/ShimmerEffect';
 import { subscribeToReports, rateTaskReport, deleteTaskReport } from '../services/reportsService';
@@ -24,6 +22,9 @@ import { hapticSuccess, hapticWarning } from '../utils/haptics';
 import { filterVisibleReports } from '../utils/taskVisibility';
 import { useNotification } from '../contexts/NotificationContext';
 import { useTasks } from '../contexts/TasksContext';
+import ScreenHeader from '../components/ui/ScreenHeader';
+import { roleLabel } from '../services/permissions';
+import EmptyState from '../components/EmptyState';
 
 const MyAreaReportsScreen = ({ navigation }) => {
   const { theme, isDark } = useTheme();
@@ -153,6 +154,8 @@ const MyAreaReportsScreen = ({ navigation }) => {
             key={star}
             disabled={!interactive}
             onPress={() => interactive && onRate && onRate(star)}
+            accessibilityRole="button"
+            accessibilityLabel="Calificar"
           >
             <Ionicons
               name={star <= (rating || 0) ? 'star' : 'star-outline'}
@@ -265,7 +268,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
               <Text style={[styles.modalTitle, { color: theme.text }]}>
                 Detalle del Reporte
               </Text>
-              <TouchableOpacity onPress={() => setShowModal(false)}>
+              <TouchableOpacity onPress={() => setShowModal(false)} accessibilityRole="button" accessibilityLabel="Cerrar">
                 <Ionicons name="close" size={28} color={theme.text} />
               </TouchableOpacity>
             </View>
@@ -431,7 +434,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
       borderRadius: 12,
     },
     roleText: {
-      fontSize: 11,
+      fontSize: 12,
       color: '#fff',
       fontWeight: '600',
       marginLeft: 4,
@@ -453,7 +456,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
       color: '#fff',
     },
     statLabel: {
-      fontSize: 11,
+      fontSize: 12,
       color: '#fff',
       opacity: 0.9,
     },
@@ -516,7 +519,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
     },
     myBadgeText: {
       color: '#fff',
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '600',
     },
     roleBadge: {
@@ -526,7 +529,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
     },
     roleBadgeText: {
       color: '#fff',
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '600',
     },
     reportDescription: {
@@ -561,7 +564,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
       flex: 1,
     },
     dateText: {
-      fontSize: 11,
+      fontSize: 12,
     },
     imagesPreview: {
       flexDirection: 'row',
@@ -582,7 +585,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
     },
     pendingText: {
       color: '#fff',
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '600',
     },
     starsContainer: {
@@ -756,23 +759,11 @@ const MyAreaReportsScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={theme.gradientHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { shadowColor: theme.primary }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} accessibilityLabel="Volver" accessibilityRole="button">
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Reportes de Mi Área</Text>
-        <View style={[styles.roleInfo, { backgroundColor: getRoleBadgeColor(currentUser?.role) }]}>
-          <Ionicons
-            name={currentUser?.role === 'secretario' ? 'briefcase' : 'person'}
-            size={12}
-            color="#fff"
-          />
-          <Text style={styles.roleText}>
-            {currentUser?.role === 'secretario' ? 'Secretario' :
-             currentUser?.role === 'director' ? 'Director' : 'Usuario'}
-          </Text>
-        </View>
-      </LinearGradient>
+      <ScreenHeader
+        title="Reportes de mi área"
+        subtitle={roleLabel(currentUser?.role)}
+        onBack={() => navigation.goBack()}
+      />
 
       {/* Stats */}
       <View style={styles.statsRow}>
@@ -821,29 +812,22 @@ const MyAreaReportsScreen = ({ navigation }) => {
 
       {/* Reports List */}
       {loadError ? (
-        <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIconWrapper, { backgroundColor: theme.errorAlpha }]}>
-            <Ionicons name="cloud-offline-outline" size={48} color={theme.error} />
-          </View>
-          <Text style={[styles.emptyTitle, { color: theme.text }]}>Error de conexión</Text>
-          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No se pudieron cargar los reportes.</Text>
-        </View>
+        <EmptyState
+          icon="cloud-offline-outline"
+          variant="warning"
+          title="No se pudieron cargar los reportes"
+          message="Revisa tu conexión e intenta de nuevo."
+        />
       ) : filteredReports.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}>
-            <Ionicons name="document-text-outline" size={48} color={theme.textMuted} />
-          </View>
-          <Text style={[styles.emptyTitle, { color: theme.text }]}>
-            {filter === 'mine' ? 'Sin reportes propios' :
-             filter === 'team' ? 'Sin reportes del equipo' :
-             'Sin reportes'}
-          </Text>
-          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-            {filter === 'mine' ? 'Aún no has enviado reportes.\nCrea uno desde una tarea asignada.' :
-             filter === 'team' ? 'Tu equipo no ha enviado reportes aún.' :
-             'No hay reportes disponibles.\nAjusta los filtros para ver más resultados.'}
-          </Text>
-        </View>
+        <EmptyState
+          icon="document-text-outline"
+          title={filter === 'mine' ? 'Sin reportes propios' : filter === 'team' ? 'Sin reportes del equipo' : 'Sin reportes'}
+          message={filter === 'mine'
+            ? 'Aún no has enviado reportes. Crea uno desde una tarea asignada.'
+            : filter === 'team'
+              ? 'Tu equipo no ha enviado reportes aún.'
+              : 'No hay reportes disponibles. Ajusta los filtros para ver más resultados.'}
+        />
       ) : (
         <FlatList
           data={filteredReports}

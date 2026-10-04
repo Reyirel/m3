@@ -6,17 +6,8 @@
  */
 
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
-  Platform,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { View, Text, StyleSheet, TextInput } from 'react-native';
 import { useTheme } from '../../contexts/ThemeContext';
-import ShakeInput from '../ShakeInput';
 import GlassmorphicInput from '../glass/GlassmorphicInput';
 import GlassmorphicSection from '../glass/GlassmorphicSection';
 
@@ -114,7 +105,7 @@ const styles = StyleSheet.create({
     minHeight: 100,
   },
   charCount: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     textAlign: 'right',
   },

@@ -55,12 +55,12 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
     title: {
       fontSize: 18,
       fontWeight: 'bold',
-      color: isDark ? '#fff' : '#000',
+      color: theme.text,
       marginBottom: 4,
     },
     subtitle: {
       fontSize: 13,
-      color: isDark ? '#888' : '#666',
+      color: theme.textTertiary,
     },
     section: {
       marginBottom: 24,
@@ -68,7 +68,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
     sectionTitle: {
       fontSize: 14,
       fontWeight: '600',
-      color: isDark ? '#fff' : '#000',
+      color: theme.text,
       marginBottom: 12,
     },
     optionCard: {
@@ -92,12 +92,12 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
     optionLabel: {
       fontSize: 13,
       fontWeight: '600',
-      color: isDark ? '#fff' : '#000',
+      color: theme.text,
       marginBottom: 2,
     },
     optionDescription: {
-      fontSize: 11,
-      color: isDark ? '#888' : '#666',
+      fontSize: 12,
+      color: theme.textTertiary,
     },
     optionIcon: {
       width: 40,
@@ -118,7 +118,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
     toggleLabel: {
       fontSize: 13,
       fontWeight: '500',
-      color: isDark ? '#fff' : '#000',
+      color: theme.text,
     },
     statsCard: {
       backgroundColor: isDark ? 'rgba(59,130,246,0.12)' : 'rgba(59,130,246,0.06)',
@@ -135,11 +135,11 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
       fontSize: 12,
     },
     statLabel: {
-      color: isDark ? '#888' : '#666',
+      color: theme.textTertiary,
     },
     statValue: {
       fontWeight: '600',
-      color: isDark ? '#fff' : '#000',
+      color: theme.text,
     },
     buttonRow: {
       flexDirection: 'row',
@@ -169,7 +169,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
       fontSize: 14,
     },
     cancelText: {
-      color: isDark ? '#fff' : '#000',
+      color: theme.text,
     },
     exportText: {
       color: '#fff',
@@ -384,7 +384,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
                 marginBottom: 12,
               }}
             >
-              <Text style={{ fontSize: 12, color: isDark ? '#888' : '#666' }}>
+              <Text style={{ fontSize: 12, color: theme.textTertiary }}>
                 ℹ️ El PDF incluirá fecha, hora, descripción y todas las fotos
                 adjuntas. Puedes compartir o descargar después.
               </Text>

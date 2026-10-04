@@ -15,6 +15,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import OverdueAlert from '../components/OverdueAlert';
 import ShimmerEffect from '../components/ShimmerEffect';
 import OrgChartEditor from '../components/OrgChartEditor';
+import { SECRETARIAS, DIRECCIONES } from '../config/areas';
 import { toMs } from '../utils/dateUtils';
 import { hapticMedium, hapticLight } from '../utils/haptics';
 import { useTasks } from '../contexts/TasksContext';
@@ -24,6 +25,8 @@ import { confirmAlert } from '../utils/alert';
 import CreateUserForm from '../components/admin/CreateUserForm';
 import PasswordResetForm from '../components/admin/PasswordResetForm';
 import UserListPanel from '../components/admin/UserListPanel';
+import { invalidateUsersDirectory } from '../services/usersDirectory';
+import ScreenHeader from '../components/ui/ScreenHeader';
 
 const TABS = [
   { id: 'resumen',  label: 'Resumen',  icon: 'grid-outline'       },
@@ -97,6 +100,9 @@ export default function AdminScreen({ navigation, onLogout }) {
 
   const loadAllUsers = async () => {
     try {
+      // Se llama al abrir la pantalla y tras cada alta, baja o cambio de usuario:
+      // el resto de la app debe dejar de usar la lista anterior
+      invalidateUsersDirectory();
       const snap = await getDocs(collection(db, 'users'));
       if (snap.empty) { setAllUsers([]); return; }
       setAllUsers(snap.docs.map(doc => ({
@@ -226,7 +232,7 @@ export default function AdminScreen({ navigation, onLogout }) {
     },
   ];
 
-  const cardBg    = isDark ? '#1C1C1E' : '#FFFFFF';
+  const cardBg    = theme.card;
   const cardBorder = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
   const sepColor  = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
 
@@ -246,7 +252,7 @@ export default function AdminScreen({ navigation, onLogout }) {
         <Ionicons name={icon} size={20} color="#FFFFFF" />
       </View>
       <View style={s.actionText}>
-        <Text style={[s.actionTitle, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>{title}</Text>
+        <Text style={[s.actionTitle, { color: theme.text }]}>{title}</Text>
         {subtitle ? <Text style={[s.actionSub, { color: theme.textSecondary }]}>{subtitle}</Text> : null}
       </View>
       {right ?? <Ionicons name="chevron-forward" size={16} color={theme.textMuted} />}
@@ -266,7 +272,7 @@ export default function AdminScreen({ navigation, onLogout }) {
             <View style={[s.statIconWrap, { backgroundColor: item.color + '20' }]}>
               <Ionicons name={item.icon} size={20} color={item.color} />
             </View>
-            <Text style={[s.statNumber, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>{item.count}</Text>
+            <Text style={[s.statNumber, { color: theme.text }]}>{item.count}</Text>
             <Text style={[s.statLabel, { color: theme.textSecondary }]}>{item.label}</Text>
           </View>
         ))}
@@ -296,7 +302,7 @@ export default function AdminScreen({ navigation, onLogout }) {
   // --- Areas tab ---
   const renderAreas = () => {
     const infoItems = [
-      { icon: 'briefcase',    color: theme.primary, title: 'Secretarías',  value: '7 áreas registradas'       },
+      { icon: 'briefcase',    color: theme.primary, title: 'Secretarías',  value: `${SECRETARIAS.length} secretarías · ${DIRECCIONES.length} direcciones` },
       { icon: 'people',       color: theme.success, title: 'Directores',         value: `${userCounts.directores} en total`  },
       { icon: 'person',       color: theme.info,    title: 'Secretarios',        value: `${userCounts.secretarios} activos`  },
     ];
@@ -308,7 +314,7 @@ export default function AdminScreen({ navigation, onLogout }) {
             icon="folder-open"
             color={theme.primary}
             title="Gestión de Áreas"
-            subtitle="Editar organigrama municipal"
+            subtitle="Mover direcciones entre secretarías y editar nombres"
             onPress={() => { hapticMedium(); setShowOrgModal(true); }}
           />
         </GroupCard>
@@ -321,7 +327,7 @@ export default function AdminScreen({ navigation, onLogout }) {
                 <View style={[s.actionIconBox, { backgroundColor: item.color }]}>
                   <Ionicons name={item.icon} size={20} color="#FFFFFF" />
                 </View>
-                <Text style={[s.actionTitle, { color: isDark ? '#FFFFFF' : '#1C1C1E', flex: 1 }]}>{item.title}</Text>
+                <Text style={[s.actionTitle, { color: theme.text, flex: 1 }]}>{item.title}</Text>
                 <Text style={[s.actionSub, { color: theme.textSecondary }]}>{item.value}</Text>
               </View>
               {i < infoItems.length - 1 && <Separator />}
@@ -368,14 +374,14 @@ export default function AdminScreen({ navigation, onLogout }) {
         <GroupCard>
           {/* Version */}
           <View style={s.infoRow}>
-            <Text style={[s.infoLabel, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>Versión</Text>
+            <Text style={[s.infoLabel, { color: theme.text }]}>Versión</Text>
             <Text style={[s.infoValue, { color: theme.textSecondary }]}>1.0.0</Text>
           </View>
           <Separator indent={16} />
 
           {/* Firebase */}
           <View style={s.infoRow}>
-            <Text style={[s.infoLabel, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>Firebase Auth</Text>
+            <Text style={[s.infoLabel, { color: theme.text }]}>Firebase Auth</Text>
             <View style={[s.statusPill, { backgroundColor: theme.successAlpha }]}>
               <View style={[s.statusDot, { backgroundColor: theme.success }]} />
               <Text style={[s.statusPillText, { color: theme.successDark }]}>Activo</Text>
@@ -385,7 +391,7 @@ export default function AdminScreen({ navigation, onLogout }) {
 
           {/* Firestore */}
           <View style={s.infoRow}>
-            <Text style={[s.infoLabel, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>Firestore</Text>
+            <Text style={[s.infoLabel, { color: theme.text }]}>Firestore</Text>
             <View style={[s.statusPill, { backgroundColor: theme.successAlpha }]}>
               <View style={[s.statusDot, { backgroundColor: theme.success }]} />
               <Text style={[s.statusPillText, { color: theme.successDark }]}>Conectado</Text>
@@ -395,14 +401,14 @@ export default function AdminScreen({ navigation, onLogout }) {
 
           {/* Dark mode toggle */}
           <View style={s.infoRow}>
-            <Text style={[s.infoLabel, { color: isDark ? '#FFFFFF' : '#1C1C1E' }]}>Modo Oscuro</Text>
+            <Text style={[s.infoLabel, { color: theme.text }]}>Modo Oscuro</Text>
             <TouchableOpacity
               style={[s.toggle, isDark && { backgroundColor: theme.primary }]}
               onPress={() => { hapticMedium(); toggleTheme(); }}
               activeOpacity={0.8}
             >
               <View style={[s.toggleKnob, isDark && s.toggleKnobOn]}>
-                <Ionicons name={isDark ? 'moon' : 'sunny'} size={14} color={isDark ? '#FFF' : '#FFA500'} />
+                <Ionicons name={isDark ? 'moon' : 'sunny'} size={14} color={isDark ? '#FFF' : theme.warning} />
               </View>
             </TouchableOpacity>
           </View>
@@ -429,16 +435,16 @@ export default function AdminScreen({ navigation, onLogout }) {
         {/* ── Urgent tasks modal ── */}
         <Modal visible={showUrgentModal} animationType="fade" transparent onRequestClose={() => setShowUrgentModal(false)}>
           <View style={s.overlay}>
-            <View style={[s.modalCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+            <View style={[s.modalCard, { backgroundColor: theme.card }]}>
               <View style={[s.modalHeader, { borderBottomColor: sepColor }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <Ionicons name="warning" size={26} color={theme.error} style={{ marginRight: 10 }} />
                   <View>
-                    <Text style={[s.modalTitle, { color: isDark ? '#FFF' : '#1C1C1E' }]}>¡Alerta Urgente!</Text>
+                    <Text style={[s.modalTitle, { color: theme.text }]}>¡Alerta Urgente!</Text>
                     <Text style={[s.modalSub, { color: theme.textSecondary }]}>Tareas críticas próximas a vencer</Text>
                   </View>
                 </View>
-                <TouchableOpacity onPress={() => setShowUrgentModal(false)}>
+                <TouchableOpacity onPress={() => setShowUrgentModal(false)} accessibilityRole="button" accessibilityLabel="Cerrar">
                   <Ionicons name="close-circle" size={26} color={theme.textSecondary} />
                 </TouchableOpacity>
               </View>
@@ -459,7 +465,7 @@ export default function AdminScreen({ navigation, onLogout }) {
                       <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>
                         <Ionicons name={critical ? 'alert-circle' : 'time'} size={22} color={accent} />
                         <View style={{ flex: 1, marginLeft: 10 }}>
-                          <Text style={{ fontSize: 15, fontWeight: '700', color: isDark ? '#FFF' : '#1C1C1E' }} numberOfLines={2}>
+                          <Text style={{ fontSize: 15, fontWeight: '700', color: theme.text }} numberOfLines={2}>
                             {task.title}
                           </Text>
                           <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>
@@ -490,18 +496,18 @@ export default function AdminScreen({ navigation, onLogout }) {
         {/* ── Flow modal ── */}
         <Modal visible={showFlowModal} animationType="slide" transparent onRequestClose={() => setShowFlowModal(false)}>
           <View style={s.overlay}>
-            <View style={[s.flowModalCard, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+            <View style={[s.flowModalCard, { backgroundColor: theme.card }]}>
               <View style={[s.modalHeader, { borderBottomColor: sepColor }]}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   <View style={[s.actionIconBox, { backgroundColor: theme.primary, marginRight: 10 }]}>
                     <Ionicons name="git-network" size={20} color="#FFF" />
                   </View>
                   <View>
-                    <Text style={[s.modalTitle, { color: isDark ? '#FFF' : '#1C1C1E' }]}>Flujo del Sistema</Text>
+                    <Text style={[s.modalTitle, { color: theme.text }]}>Flujo del Sistema</Text>
                     <Text style={[s.modalSub, { color: theme.textSecondary }]}>Guía de funcionamiento</Text>
                   </View>
                 </View>
-                <TouchableOpacity onPress={() => setShowFlowModal(false)}>
+                <TouchableOpacity onPress={() => setShowFlowModal(false)} accessibilityRole="button" accessibilityLabel="Cerrar">
                   <Ionicons name="close-circle" size={26} color={theme.textSecondary} />
                 </TouchableOpacity>
               </View>
@@ -509,7 +515,7 @@ export default function AdminScreen({ navigation, onLogout }) {
               <ScrollView style={{ flex: 1, padding: 16 }} showsVerticalScrollIndicator={false}>
                 {/* Jerarquia */}
                 <View style={[s.flowSection, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}>
-                  <Text style={[s.flowSectionTitle, { color: isDark ? '#FFF' : '#1C1C1E' }]}>
+                  <Text style={[s.flowSectionTitle, { color: theme.text }]}>
                     \👥 Jerarquía de Roles
                   </Text>
                   <View style={{ alignItems: 'center' }}>
@@ -540,7 +546,7 @@ export default function AdminScreen({ navigation, onLogout }) {
 
                 {/* Flujo de tareas */}
                 <View style={[s.flowSection, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}>
-                  <Text style={[s.flowSectionTitle, { color: isDark ? '#FFF' : '#1C1C1E' }]}>
+                  <Text style={[s.flowSectionTitle, { color: theme.text }]}>
                     📋 Flujo de Tareas
                   </Text>
                   {[
@@ -556,7 +562,7 @@ export default function AdminScreen({ navigation, onLogout }) {
                           <Text style={s.stepNum}>{step.n}</Text>
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 14, fontWeight: '700', color: isDark ? '#FFF' : '#1C1C1E' }}>{step.title}</Text>
+                          <Text style={{ fontSize: 14, fontWeight: '700', color: theme.text }}>{step.title}</Text>
                           <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 1 }}>{step.desc}</Text>
                         </View>
                       </View>
@@ -577,37 +583,11 @@ export default function AdminScreen({ navigation, onLogout }) {
         </Modal>
 
         {/* ── Header ── */}
-        <LinearGradient
-          colors={theme.gradientHeader}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0.7, y: 1 }}
-          style={s.header}
-        >
-          <View style={s.headerHighlight} />
-          <View style={s.headerRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.headerGreeting}>
-                {currentUser?.displayName ? `Hola, ${currentUser.displayName.split(' ')[0]}` : 'Hola!'}
-              </Text>
-              <Text style={s.headerTitle}>Administración</Text>
-            </View>
-            <TouchableOpacity
-              style={s.logoutBtn}
-              onPress={() => {
-                hapticMedium();
-                confirmAlert(
-                  'Cerrar Sesión',
-                  '¿Estás seguro que deseas cerrar sesión?',
-                  async () => { if (onLogout) await onLogout(); },
-                  'Cerrar Sesión'
-                );
-              }}
-              accessibilityLabel="Cerrar sesión"
-            >
-              <Ionicons name="log-out-outline" size={20} color="rgba(255,255,255,0.85)" />
-            </TouchableOpacity>
-          </View>
-        </LinearGradient>
+        <ScreenHeader
+          title="Administración"
+          subtitle="Usuarios, áreas y contraseñas"
+          icon="people"
+        />
 
         {/* ── Tab bar ── */}
         <View style={[s.tabBar, { backgroundColor: isDark ? 'rgba(28,28,30,0.98)' : '#FFFFFF', borderBottomColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)' }]}>
@@ -654,12 +634,12 @@ export default function AdminScreen({ navigation, onLogout }) {
               colors={theme.gradientHeader}
               style={{ paddingTop: Platform.OS === 'ios' ? 52 : 24, paddingBottom: 16, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' }}
             >
-              <TouchableOpacity onPress={() => setShowOrgModal(false)} style={{ marginRight: 12, padding: 4 }}>
+              <TouchableOpacity onPress={() => setShowOrgModal(false)} style={{ marginRight: 12, padding: 4 }} accessibilityRole="button" accessibilityLabel="Cerrar">
                 <Ionicons name="close" size={24} color="#fff" />
               </TouchableOpacity>
               <View style={{ flex: 1 }}>
                 <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Organigrama Municipal</Text>
-                <Text style={{ color: 'rgba(254,202,202,0.9)', fontSize: 11, marginTop: 1 }}>
+                <Text style={{ color: 'rgba(254,202,202,0.9)', fontSize: 12, marginTop: 1 }}>
                   Cambios guardados en tiempo real
                 </Text>
               </View>
@@ -710,7 +690,7 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
   tabItem:      { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10, gap: 3, position: 'relative' },
-  tabLabel:     { fontSize: 10, letterSpacing: 0.2 },
+  tabLabel:     { fontSize: 11, letterSpacing: 0.2 },
   tabIndicator: { position: 'absolute', bottom: 0, left: '15%', right: '15%', height: 2.5, borderRadius: 2 },
 
   // Content
@@ -727,10 +707,10 @@ const s = StyleSheet.create({
   statAccent:   { position: 'absolute', top: 0, left: 0, right: 0, height: 3, borderTopLeftRadius: 16, borderTopRightRadius: 16 },
   statIconWrap: { width: 40, height: 40, borderRadius: 12, justifyContent: 'center', alignItems: 'center', marginBottom: 8, marginTop: 4 },
   statNumber:   { fontSize: 28, fontWeight: '900', letterSpacing: -1, lineHeight: 32 },
-  statLabel:    { fontSize: 10, fontWeight: '600', marginTop: 2, textAlign: 'center', letterSpacing: 0.3, textTransform: 'uppercase' },
+  statLabel:    { fontSize: 11, fontWeight: '600', marginTop: 2, textAlign: 'center', letterSpacing: 0.3, textTransform: 'uppercase' },
 
   // Group sections
-  groupHeader: { fontSize: 11, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8, marginLeft: 4 },
+  groupHeader: { fontSize: 12, fontWeight: '700', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 8, marginLeft: 4 },
   groupCard: {
     borderRadius: 16, borderWidth: 1, marginBottom: 24, overflow: 'hidden',
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.07, shadowRadius: 8, elevation: 3,
@@ -782,8 +762,8 @@ const s = StyleSheet.create({
   roleBox:    { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 10, paddingHorizontal: 20, borderRadius: 10 },
   roleBoxText: { color: '#FFF', fontSize: 13, fontWeight: '800' },
   roleBoxSm:   { alignItems: 'center', paddingVertical: 8, paddingHorizontal: 12, borderRadius: 8, minWidth: 88 },
-  roleBoxSmText: { color: '#FFF', fontSize: 11, fontWeight: '800' },
-  roleBoxSmDesc: { color: 'rgba(255,255,255,0.7)', fontSize: 9, marginTop: 2 },
+  roleBoxSmText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
+  roleBoxSmDesc: { color: 'rgba(255,255,255,0.7)', fontSize: 11, marginTop: 2 },
   stepBubble: { width: 30, height: 30, borderRadius: 15, justifyContent: 'center', alignItems: 'center', flexShrink: 0 },
   stepNum:    { color: '#FFF', fontSize: 13, fontWeight: '800' },
 });

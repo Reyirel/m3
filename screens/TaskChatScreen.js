@@ -406,6 +406,8 @@ export default function TaskChatScreen({ route, navigation }) {
           <TouchableOpacity
             style={styles.imageModalClose}
             onPress={() => setSelectedImageUrl(null)}
+            accessibilityRole="button"
+            accessibilityLabel="Cerrar"
           >
             <Ionicons name="close" size={26} color="#FFFFFF" />
           </TouchableOpacity>
@@ -504,7 +506,7 @@ const createStyles = (theme, isDark) => StyleSheet.create({
     backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)',
   },
   separatorLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     letterSpacing: 0.5,
     color: isDark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.35)',
@@ -573,7 +575,7 @@ const createStyles = (theme, isDark) => StyleSheet.create({
     color: theme.text,
   },
   bubbleTime: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
     marginTop: 5,
     textAlign: 'right',

@@ -66,7 +66,7 @@ export default function AreaCoordinationProgress({ parentTaskId, onSubtaskPress,
           <Ionicons name="git-branch-outline" size={20} color={theme.primary} />
           <Text style={[styles.title, { color: theme.text }]}>Coordinación entre Áreas</Text>
         </View>
-        <View style={[styles.progressBadge, { backgroundColor: progress === 100 ? '#34C759' : theme.primary }]}>
+        <View style={[styles.progressBadge, { backgroundColor: progress === 100 ? theme.success : theme.primary }]}>
           <Text style={styles.progressText}>{progress}%</Text>
         </View>
       </View>
@@ -78,7 +78,7 @@ export default function AreaCoordinationProgress({ parentTaskId, onSubtaskPress,
             styles.progressFill, 
             { 
               width: `${progress}%`,
-              backgroundColor: progress === 100 ? '#34C759' : theme.primary 
+              backgroundColor: progress === 100 ? theme.success : theme.primary 
             }
           ]} 
         />
@@ -136,7 +136,7 @@ export default function AreaCoordinationProgress({ parentTaskId, onSubtaskPress,
       
       {/* Mensaje informativo */}
       <View style={[styles.infoBox, { backgroundColor: isDark ? 'rgba(0,122,255,0.12)' : 'rgba(0,122,255,0.08)', borderWidth: 1, borderColor: isDark ? 'rgba(0,122,255,0.25)' : 'rgba(0,122,255,0.15)' }]}>
-        <Ionicons name="information-circle-outline" size={16} color="#007AFF" />
+        <Ionicons name="information-circle-outline" size={16} color={theme.info} />
         <Text style={[styles.infoText, { color: theme.textSecondary }]}>
           Cada área debe completar su parte. La tarea general se completará cuando todas las áreas terminen.
         </Text>
@@ -215,7 +215,7 @@ const styles = StyleSheet.create({
   },
   yourAreaText: {
     color: '#FFF',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '600',
   },
   areaStatus: {

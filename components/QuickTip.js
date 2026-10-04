@@ -171,6 +171,8 @@ const QuickTip = ({
         style={styles.closeButton}
         onPress={dismissTip}
         hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        accessibilityRole="button"
+        accessibilityLabel="Cerrar"
       >
         <Ionicons name="close" size={20} color={theme.textSecondary} />
       </TouchableOpacity>

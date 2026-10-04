@@ -3,7 +3,20 @@
 // Lógica de filtros → hooks/useKanbanFilters.js
 // Estilos → screens/kanban/KanbanScreenStyles.js
 import React, { useEffect, useState, useCallback, useRef, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, RefreshControl, Animated, Dimensions, Platform, Modal, InteractionManager, TextInput } from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  FlatList,
+  RefreshControl,
+  Animated,
+  Dimensions,
+  Platform,
+  Modal,
+  InteractionManager,
+  TextInput,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getGestureHandlerRootView } from '../utils/platformComponents';
@@ -15,12 +28,10 @@ import { getGestureHandlerRootView } from '../utils/platformComponents';
 //   runOnJS,
 // } from 'react-native-reanimated';
 import ShimmerEffect from '../components/ShimmerEffect';
-import SpringCard from '../components/SpringCard';
 import BottomSheet from '../components/BottomSheet';
 import FadeInView from '../components/FadeInView';
 
 const GestureHandlerRootView = getGestureHandlerRootView();
-import CircularProgress from '../components/CircularProgress';
 import PulsingDot from '../components/PulsingDot';
 import { updateTask } from '../services/tasks';
 import { useTasks } from '../contexts/TasksContext';
@@ -31,7 +42,6 @@ import { useTheme } from '../contexts/ThemeContext';
 import { canChangeTaskStatus } from '../services/permissions';
 import { toMs } from '../utils/dateUtils';
 import QuickTip, { TIPS } from '../components/QuickTip';
-import SyncIndicator from '../components/SyncIndicator';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
 import { useKanbanFilters } from '../hooks/useKanbanFilters';
@@ -220,7 +230,7 @@ export default function KanbanScreen({ navigation }) {
   const openDetail = useCallback((task) => {
     // Todos pueden ver detalles, pero con permisos limitados según rol
     // El TaskDetailScreen se encarga de mostrar las opciones correctas
-    navigation.navigate('TaskDetail', { task });
+    navigation.navigate('TaskDetail', { task, taskId: task.id });
   }, [navigation]);
 
 
@@ -636,6 +646,8 @@ export default function KanbanScreen({ navigation }) {
               <TouchableOpacity
                 onPress={() => setShowStats(!showStats)}
                 style={styles.iconButton}
+                accessibilityRole="button"
+                accessibilityLabel="Ver estadísticas"
               >
                 <Ionicons name="stats-chart" size={20} color="#FFFFFF" />
               </TouchableOpacity>
@@ -644,6 +656,8 @@ export default function KanbanScreen({ navigation }) {
               <TouchableOpacity
                 onPress={() => { hapticLight(); setShowHelpModal(true); }}
                 style={styles.iconButton}
+                accessibilityRole="button"
+                accessibilityLabel="Ayuda"
               >
                 <Ionicons name="help-circle-outline" size={20} color="#FFFFFF" />
               </TouchableOpacity>
@@ -699,7 +713,7 @@ export default function KanbanScreen({ navigation }) {
                 <Text style={[styles.filterChipCompactText, { color: '#FFFFFF' }]}>
                   {filters.priority === 'alta' ? 'Urgente' : filters.priority === 'media' ? 'Media' : 'Baja'}
                 </Text>
-                <TouchableOpacity onPress={() => setFilters({ ...filters, priority: '' })}>
+                <TouchableOpacity onPress={() => setFilters({ ...filters, priority: '' })} accessibilityRole="button" accessibilityLabel="Quitar filtro">
                   <Ionicons name="close-circle" size={14} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
@@ -712,7 +726,7 @@ export default function KanbanScreen({ navigation }) {
                 <Text style={[styles.filterChipCompactText, { color: '#FFFFFF' }]} numberOfLines={1}>
                   "{filters.searchText.substring(0, 15)}"
                 </Text>
-                <TouchableOpacity onPress={() => setFilters({ ...filters, searchText: '' })}>
+                <TouchableOpacity onPress={() => setFilters({ ...filters, searchText: '' })} accessibilityRole="button" accessibilityLabel="Borrar búsqueda">
                   <Ionicons name="close-circle" size={14} color="#FFFFFF" />
                 </TouchableOpacity>
               </View>
@@ -726,6 +740,8 @@ export default function KanbanScreen({ navigation }) {
               hapticLight();
             }}
             style={[styles.filterModalButton, { borderColor: theme.border }]}
+            accessibilityRole="button"
+            accessibilityLabel="Opciones"
           >
             <Ionicons name="options" size={20} color={theme.textSecondary} />
           </TouchableOpacity>
@@ -755,6 +771,8 @@ export default function KanbanScreen({ navigation }) {
                   <TouchableOpacity
                     onPress={() => setShowFiltersModal(false)}
                     style={styles.filterModalCloseBtn}
+                    accessibilityRole="button"
+                    accessibilityLabel="Cerrar"
                   >
                     <Ionicons name="close" size={24} color="#FFFFFF" />
                   </TouchableOpacity>
@@ -782,7 +800,7 @@ export default function KanbanScreen({ navigation }) {
                       autoCorrect={false}
                     />
                     {filters.searchText ? (
-                      <TouchableOpacity onPress={() => setFilters(prev => ({ ...prev, searchText: '' }))}>
+                      <TouchableOpacity onPress={() => setFilters(prev => ({ ...prev, searchText: '' }))} accessibilityRole="button" accessibilityLabel="Borrar búsqueda">
                         <Ionicons name="close-circle" size={20} color={theme.textSecondary} />
                       </TouchableOpacity>
                     ) : null}
@@ -1028,19 +1046,19 @@ export default function KanbanScreen({ navigation }) {
                     <Text style={styles.filterModalTitle}>Guía del Tablero Kanban</Text>
                     <Text style={styles.filterModalSubtitle}>Cómo usar cada elemento</Text>
                   </View>
-                  <TouchableOpacity onPress={() => setShowHelpModal(false)} style={styles.filterModalCloseBtn}>
+                  <TouchableOpacity onPress={() => setShowHelpModal(false)} style={styles.filterModalCloseBtn} accessibilityRole="button" accessibilityLabel="Cerrar">
                     <Ionicons name="close" size={24} color="#FFFFFF" />
                   </TouchableOpacity>
                 </View>
               </LinearGradient>
               <ScrollView style={styles.filterModalBody} showsVerticalScrollIndicator={false}>
                 {[
-                  { icon: 'grid', color: '#9F2241', title: 'Columnas de estado', desc: 'Cada columna representa un estado: Pendiente → En proceso → En revisión → Cerrada. Las tareas se muestran en su columna actual.' },
+                  { icon: 'grid', color: theme.primary, title: 'Columnas de estado', desc: 'Cada columna representa un estado: Pendiente → En proceso → En revisión → Cerrada. Las tareas se muestran en su columna actual.' },
                   { icon: 'options', color: '#6366F1', title: 'Filtros avanzados', desc: 'Toca el ícono ⊞ para filtrar por búsqueda, área, responsable, prioridad, vencidas o fecha.' },
-                  { icon: 'person', color: '#3B82F6', title: 'Mis tareas', desc: 'El chip "Mis tareas" en la barra de filtros muestra solo las tareas asignadas a ti.' },
-                  { icon: 'warning', color: '#F59E0B', title: 'Riesgo de retraso (IA)', desc: 'Cada tarea muestra un badge de riesgo bajo/medio/alto calculado con IA basado en el historial del área.' },
-                  { icon: 'time-outline', color: '#EF4444', title: 'Ordenamiento', desc: 'Cambia entre ordenar por fecha (⏱) o por prioridad (⚑) con el botón en el encabezado.' },
-                  { icon: 'stats-chart', color: '#10B981', title: 'Estadísticas', desc: 'Activa el panel de estadísticas para ver tasas de completitud, tareas vencidas y prioridad por columna.' },
+                  { icon: 'person', color: theme.info, title: 'Mis tareas', desc: 'El chip "Mis tareas" en la barra de filtros muestra solo las tareas asignadas a ti.' },
+                  { icon: 'warning', color: theme.warning, title: 'Riesgo de retraso (IA)', desc: 'Cada tarea muestra un badge de riesgo bajo/medio/alto calculado con IA basado en el historial del área.' },
+                  { icon: 'time-outline', color: theme.error, title: 'Ordenamiento', desc: 'Cambia entre ordenar por fecha (⏱) o por prioridad (⚑) con el botón en el encabezado.' },
+                  { icon: 'stats-chart', color: theme.success, title: 'Estadísticas', desc: 'Activa el panel de estadísticas para ver tasas de completitud, tareas vencidas y prioridad por columna.' },
                 ].map((item, i) => (
                   <View key={i} style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingVertical: 12, borderBottomWidth: i < 5 ? 1 : 0, borderBottomColor: theme.border }}>
                     <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: item.color + '20', justifyContent: 'center', alignItems: 'center' }}>
@@ -1118,6 +1136,8 @@ export default function KanbanScreen({ navigation }) {
               hapticMedium();
               navigation.navigate('TaskDetail', { task: null });
             }}
+            accessibilityRole="button"
+            accessibilityLabel="Agregar"
           >
             <Ionicons name="add" size={28} color="#FFFFFF" />
           </TouchableOpacity>
@@ -1224,7 +1244,6 @@ export default function KanbanScreen({ navigation }) {
           position="bottom"
           delay={2500}
         />
-        <SyncIndicator />
         </View>{/* contentWrapper */}
       </View>
     </GestureHandlerRootView>

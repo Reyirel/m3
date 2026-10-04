@@ -15,7 +15,6 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
-import GlassCard from './GlassCard';
 
 // ── componente principal ───────────────────────────────────────────────────
 const AreaStatsCard = memo(function AreaStatsCard({
@@ -134,7 +133,7 @@ const AreaStatsCard = memo(function AreaStatsCard({
                       <Text style={[styles.badgeText, { color: status.color }]}>{status.label}</Text>
                     </View>
                   </View>
-                  <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
+                  <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn} accessibilityRole="button" accessibilityLabel="Cerrar">
                     <Ionicons name="close" size={20} color={theme.textSecondary} />
                   </TouchableOpacity>
                 </View>
@@ -282,7 +281,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 0.3,
@@ -377,7 +376,7 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   metricLbl: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '600',
     letterSpacing: 0.5,
   },

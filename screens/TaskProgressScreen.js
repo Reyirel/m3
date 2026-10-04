@@ -11,10 +11,8 @@ import {
   SafeAreaView,
   RefreshControl,
   Alert,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { subscribeToTaskProgress } from '../services/taskProgress';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
@@ -23,6 +21,7 @@ import ShimmerEffect from '../components/ShimmerEffect';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
 import { toMs } from '../utils/dateUtils';
+import ScreenHeader from '../components/ui/ScreenHeader';
 
 Dimensions.get('window');
 
@@ -75,7 +74,7 @@ export default function TaskProgressScreen({ route, navigation }) {
       Alert.alert('Sin permisos', 'Solo administradores pueden editar tareas');
       return;
     }
-    navigation.navigate('TaskDetail', { task });
+    navigation.navigate('TaskDetail', { task, taskId });
   };
 
   if (loading) {
@@ -118,31 +117,20 @@ export default function TaskProgressScreen({ route, navigation }) {
     <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       {/* Header */}
-      <LinearGradient colors={theme.gradientHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.headerBar, { shadowColor: theme.primary }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.closeButton, Platform.OS === 'web' && { cursor: 'pointer' }]} accessibilityLabel="Volver" accessibilityRole="button">
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <View style={styles.headerTitleContainer}>
-          <Ionicons name="trending-up" size={20} color="#FFFFFF" style={{ marginRight: 8 }} />
-          <Text style={styles.headerTitle}>Progreso de Tarea</Text>
-        </View>
-        <TouchableOpacity onPress={onRefresh} style={[styles.headerButton, Platform.OS === 'web' && { cursor: 'pointer' }]} accessibilityLabel="Actualizar" accessibilityRole="button">
-          <Ionicons name="refresh" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-        {currentUser && (currentUser.role === 'admin') && (
-          <TouchableOpacity onPress={handleEdit} style={[styles.headerButton, Platform.OS === 'web' && { cursor: 'pointer' }]} accessibilityLabel="Editar tarea" accessibilityRole="button">
-            <Ionicons name="pencil" size={20} color="#FFFFFF" />
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity
-          onPress={() => navigation.navigate('TaskReportsAndActivity', { taskId, taskTitle: progressData?.titulo })}
-          style={[styles.headerButton, Platform.OS === 'web' && { cursor: 'pointer' }]}
-          accessibilityLabel="Ver reportes"
-          accessibilityRole="button"
-        >
-          <Ionicons name="document-text" size={20} color="#FFFFFF" />
-        </TouchableOpacity>
-      </LinearGradient>
+      <ScreenHeader
+        title="Avance de la tarea"
+        subtitle={progressData?.titulo}
+        onBack={() => navigation.goBack()}
+        actions={[
+          { icon: 'refresh', label: 'Actualizar', onPress: onRefresh },
+          currentUser?.role === 'admin' && { icon: 'pencil', label: 'Editar tarea', onPress: handleEdit },
+          {
+            icon: 'document-text',
+            label: 'Ver reportes',
+            onPress: () => navigation.navigate('TaskReportsAndActivity', { taskId, taskTitle: progressData?.titulo }),
+          },
+        ].filter(Boolean)}
+      />
 
       <Animated.ScrollView
         style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}

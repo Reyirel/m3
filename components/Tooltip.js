@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   dismissHint: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#9CA3AF',
     marginTop: 8,
     textAlign: 'center',

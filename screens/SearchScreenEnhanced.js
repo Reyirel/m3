@@ -17,18 +17,12 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  GlassmorphicInput,
-  GlassmorphicTabs,
-  GlassmorphicChip,
-  GlassmorphicEmptyState,
-  GlassmorphicFilterChips,
-  TaskCard,
-} from '../components';
+import { GlassmorphicInput, GlassmorphicTabs, GlassmorphicFilterChips, TaskCard } from '../components';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
 import { useResponsive } from '../utils/responsive';
+import EmptyState from '../components/EmptyState';
 
 const SearchScreenEnhanced = ({ navigation }) => {
   const { theme, isDark } = useTheme();
@@ -86,7 +80,7 @@ const SearchScreenEnhanced = ({ navigation }) => {
   const renderSearchResult = useCallback(({ item }) => (
     <TouchableOpacity
       activeOpacity={0.7}
-      onPress={() => navigation.navigate('TaskDetail', { task: item })}
+      onPress={() => navigation.navigate('TaskDetail', { task: item, taskId: item.id })}
       style={Platform.OS === 'web' ? { cursor: 'pointer' } : undefined}
     >
       <TaskCard task={item} />
@@ -204,18 +198,18 @@ const SearchScreenEnhanced = ({ navigation }) => {
                   ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
                 />
               ) : (
-                <GlassmorphicEmptyState
+                <EmptyState
                   icon="search-outline"
-                  title="No hay resultados"
-                  message={`No encontramos tareas que coincidan con "${searchQuery}"`}
-                  action={{
+                  title="Sin resultados"
+                  message={`No encontramos tareas que coincidan con "${searchQuery}".`}
+                  quickAction={{
                     label: 'Limpiar búsqueda',
+                    icon: 'close-circle-outline',
                     onPress: () => {
                       setSearchQuery('');
                       setSelectedFilters([]);
                     },
                   }}
-                  fullScreen={false}
                 />
               )}
             </View>
@@ -223,15 +217,11 @@ const SearchScreenEnhanced = ({ navigation }) => {
         )}
 
         {!searchQuery.trim() && (
-          <GlassmorphicEmptyState
+          <EmptyState
             icon="search-outline"
-            title="Comienza tu búsqueda"
-            message="Escribe una palabra clave para encontrar tareas"
-            action={{
-              label: 'Ver todas las tareas',
-              onPress: () => navigation.navigate('Home'),
-            }}
-            fullScreen={false}
+            variant="info"
+            title="Busca una tarea"
+            message="Escribe una palabra del título, la descripción o el área."
           />
         )}
       </ScrollView>

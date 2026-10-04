@@ -6,14 +6,7 @@
  */
 
 import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ActivityIndicator,
-  ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import GlassCard from '../GlassCard';
@@ -411,7 +404,7 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     color: 'white',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
   tabs: {
@@ -432,7 +425,7 @@ const styles = StyleSheet.create({
     borderBottomColor: 'transparent',
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   tabContent: {
@@ -500,7 +493,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   suggestionMeta: {
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 2,
   },
 });

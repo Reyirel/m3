@@ -2,7 +2,20 @@
 // "Mi bandeja" - lista de tareas asignadas al usuario actual, ordenadas por fecha de vencimiento.
 // Acciones rápidas: marcar cerrada y posponer 1 día. Abre detalle y chat.
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, RefreshControl, Modal, ScrollView, TextInput, Animated, Easing, Platform, InteractionManager } from 'react-native';
+import {
+  View,
+  Text,
+  FlatList,
+  TouchableOpacity,
+  RefreshControl,
+  Modal,
+  ScrollView,
+  TextInput,
+  Animated,
+  Easing,
+  Platform,
+  InteractionManager,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,16 +31,16 @@ import { useNotification } from '../contexts/NotificationContext';
 import { isTaskAssignedToUser } from '../utils/taskHelpers';
 import { canChangeTaskStatus } from '../services/permissions';
 import { deleteManager } from '../utils/deleteManager';
-import { confirmTaskCompletion, hasUserConfirmed } from '../services/taskConfirmations';
+import { confirmTaskCompletion } from '../services/taskConfirmations';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
 import { scheduleOverdueTasksNotification, scheduleMultipleDailyOverdueNotifications } from '../services/notifications';
 import { useResponsive } from '../utils/responsive';
-import { SPACING, RADIUS, SHADOWS, MAX_WIDTHS } from '../theme/tokens';
+import { MAX_WIDTHS } from '../theme/tokens';
 import { isOverdue, toMs } from '../utils/dateUtils';
-import { statusLabel } from '../utils/taskStatus';
-import SyncIndicator from '../components/SyncIndicator';
+import { statusLabel, normalizeStatus } from '../utils/taskStatus';
 import { getDireccionesBySecretaria } from '../config/areas';
+import { createStyles } from './inbox/MyInboxScreenStyles';
 
 
 export default function MyInboxScreen({ navigation }) {
@@ -258,10 +271,7 @@ export default function MyInboxScreen({ navigation }) {
       
       // Filtro de estado (normalizar variantes de en_proceso)
       if (filters.status.length > 0) {
-        const normalized = task.status === 'en_progreso' || task.status === 'en-progreso' || task.status === 'en progreso'
-          ? 'en_proceso'
-          : task.status;
-        if (!filters.status.includes(normalized)) return false;
+        if (!filters.status.includes(normalizeStatus(task.status))) return false;
       }
       
       // Filtro de prioridad
@@ -633,7 +643,7 @@ export default function MyInboxScreen({ navigation }) {
       showInfo('No tienes permisos para editar tareas');
       return;
     }
-    navigation.navigate('TaskDetail', { task });
+    navigation.navigate('TaskDetail', { task, taskId: task.id });
   };
   
   const openChat = (task) => navigation.navigate('TaskChat', { taskId: task.id, taskTitle: task.title });
@@ -792,12 +802,14 @@ export default function MyInboxScreen({ navigation }) {
               <TouchableOpacity
                 style={styles.headerIconBtn}
                 onPress={() => { hapticLight(); setShowHelpModal(true); }}
+                accessibilityRole="button"
+                accessibilityLabel="Ayuda"
               >
                 <Ionicons name="help-circle-outline" size={22} color="#FFFFFF" />
               </TouchableOpacity>
 
               {/* Botón crear */}
-              <TouchableOpacity style={styles.addButton} onPress={goToCreate}>
+              <TouchableOpacity style={styles.addButton} onPress={goToCreate} accessibilityRole="button" accessibilityLabel="Agregar">
                 <Ionicons name="add" size={26} color={theme.primary} />
               </TouchableOpacity>
             </View>
@@ -817,7 +829,7 @@ export default function MyInboxScreen({ navigation }) {
             onChangeText={setSearchText}
           />
           {searchText !== '' && (
-            <TouchableOpacity onPress={() => setSearchText('')}>
+            <TouchableOpacity onPress={() => setSearchText('')} accessibilityRole="button" accessibilityLabel="Borrar búsqueda">
               <Ionicons name="close-circle" size={18} color={theme.textSecondary} />
             </TouchableOpacity>
           )}
@@ -825,6 +837,8 @@ export default function MyInboxScreen({ navigation }) {
           <TouchableOpacity 
             style={[styles.filterIconBtn, showFilters && { backgroundColor: theme.primary }]}
             onPress={() => setShowFilters(!showFilters)}
+            accessibilityRole="button"
+            accessibilityLabel="Opciones"
           >
             <Ionicons name="options" size={18} color={showFilters ? '#FFFFFF' : theme.textSecondary} />
           </TouchableOpacity>
@@ -916,7 +930,7 @@ export default function MyInboxScreen({ navigation }) {
                 <Ionicons name="funnel" size={24} color={theme.primary} style={{ marginRight: 10 }} />
                 <Text style={[styles.modalTitle, { color: theme.text }]}>Filtros Avanzados</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowFilters(false)}>
+              <TouchableOpacity onPress={() => setShowFilters(false)} accessibilityRole="button" accessibilityLabel="Cerrar">
                 <Ionicons name="close-circle" size={28} color={theme.text} />
               </TouchableOpacity>
             </View>
@@ -1273,12 +1287,16 @@ export default function MyInboxScreen({ navigation }) {
             <TouchableOpacity
               style={[styles.bulkActionBtn, { backgroundColor: theme.error }]}
               onPress={deleteSelectedTasks}
+              accessibilityRole="button"
+              accessibilityLabel="Eliminar"
             >
               <Ionicons name="trash" size={16} color="#FFFFFF" />
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.bulkActionBtn, { backgroundColor: theme.textSecondary }]}
               onPress={() => setSelectedTaskIds(new Set())}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
             >
               <Ionicons name="close" size={16} color="#FFFFFF" />
             </TouchableOpacity>
@@ -1326,7 +1344,7 @@ export default function MyInboxScreen({ navigation }) {
                 <Ionicons name="chatbubbles" size={24} color="#DAA520" style={{ marginRight: 8 }} />
                 <Text style={[styles.modalTitle, { color: theme.text }]}>Mensajes Recientes</Text>
               </View>
-              <TouchableOpacity onPress={() => setShowMessagesModal(false)}>
+              <TouchableOpacity onPress={() => setShowMessagesModal(false)} accessibilityRole="button" accessibilityLabel="Cerrar">
                 <Ionicons name="close-circle" size={28} color={theme.text} />
               </TouchableOpacity>
             </View>
@@ -1344,7 +1362,7 @@ export default function MyInboxScreen({ navigation }) {
                   }}
                 >
                   <View style={styles.messageHeader}>
-                    <Ionicons name="document-text-outline" size={14} color={isDark ? '#AAA' : '#666'} style={{ marginRight: 6 }} />
+                    <Ionicons name="document-text-outline" size={14} color={theme.textSecondary} style={{ marginRight: 6 }} />
                     <Text style={[styles.messageTaskTitle, { color: theme.text }]} numberOfLines={1}>
                       {msg.taskTitle || 'Sin título'}
                     </Text>
@@ -1352,10 +1370,10 @@ export default function MyInboxScreen({ navigation }) {
                   <Text style={[styles.messageAuthor, { color: theme.primary }]}>
                     {msg.author || 'Anónimo'}
                   </Text>
-                  <Text style={[styles.messageText, { color: isDark ? '#AAA' : '#666' }]} numberOfLines={2}>
+                  <Text style={[styles.messageText, { color: theme.textSecondary }]} numberOfLines={2}>
                     {msg.text || ''}
                   </Text>
-                  <Text style={[styles.messageTime, { color: isDark ? '#888' : '#999' }]}>
+                  <Text style={[styles.messageTime, { color: theme.textTertiary }]}>
                     {(() => {
                       try {
                         if (msg.createdAt?.toDate) {
@@ -1402,8 +1420,8 @@ export default function MyInboxScreen({ navigation }) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            tintColor="#9F2241"
-            colors={['#9F2241']}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
           />
         }
         ListEmptyComponent={
@@ -1415,1021 +1433,8 @@ export default function MyInboxScreen({ navigation }) {
           />
         }
       />
-      <SyncIndicator />
       </View>
 
     </View>
   );
 }
-
-const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: theme.background,
-  },
-  contentWrapper: {
-    flex: 1,
-    alignSelf: 'center',
-    width: '100%'
-  },
-  headerGradient: {
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    shadowColor: '#9F2241',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    elevation: 12,
-    overflow: 'hidden',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: padding,
-    paddingTop: isDesktop ? 32 : 48,
-    paddingBottom: 24,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerIconWrapper: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  greeting: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: 'rgba(255,255,255,0.72)',
-    letterSpacing: 0.3,
-  },
-  heading: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -0.5,
-    textShadowColor: 'rgba(0,0,0,0.20)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  overdueBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,59,48,0.32)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 99,
-    gap: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(255,100,100,0.45)',
-  },
-  overdueBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  headerIconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.20)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  msgBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: theme.warning,
-    borderRadius: 10,
-    minWidth: 18,
-    height: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: theme.primary,
-  },
-  msgBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: '800',
-  },
-  addButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
-    borderWidth: 1,
-    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: theme.glassShadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  // Búsqueda compacta
-  searchCompact: {
-    paddingHorizontal: padding,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-  },
-  // Tarjeta usuario y búsqueda unificada
-  userSearchCard: {
-    marginHorizontal: padding,
-    marginTop: -12,
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    shadowColor: theme.glassShadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  userRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  userAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userName: {
-    fontSize: 15,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  userRole: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 12,
-    gap: 10,
-  },
-  searchDivider: {
-    width: 1,
-    height: 20,
-  },
-  filterIconBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  // Barra de acciones
-  actionsBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginHorizontal: padding,
-    marginTop: 16,
-    marginBottom: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
-  },
-  actionsBarLeft: {
-    flex: 1,
-  },
-  counterInfo: {
-    flexDirection: 'row',
-    alignItems: 'baseline',
-    gap: 6,
-  },
-  counterNumber: {
-    fontSize: 22,
-    fontWeight: '800',
-  },
-  counterLabel: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
-  selectionInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  selectionBadge: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  selectionBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '800',
-  },
-  selectionText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  bulkActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  bulkActionBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  // Item wrapper para selección + card
-  itemWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-    paddingHorizontal: 4,
-    borderRadius: 18,
-  },
-  selectionCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexShrink: 0,
-    marginLeft: 8,
-  },
-  // Quick Stats
-  quickStatsContainer: {
-    marginTop: 12,
-    paddingHorizontal: padding,
-  },
-  quickStatsScroll: {
-    flexDirection: 'row',
-    gap: 10,
-    paddingRight: 16,
-  },
-  quickStatItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    minWidth: 80,
-  },
-  quickStatOverdue: {
-    backgroundColor: theme.errorAlpha,
-    borderColor: theme.error,
-  },
-  quickStatValue: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: theme.error,
-  },
-  quickStatLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: theme.errorDark,
-  },
-  // Active Filters Chips
-  activeFiltersContainer: {
-    marginTop: 10,
-    paddingHorizontal: padding,
-  },
-  activeFiltersScroll: {
-    flexDirection: 'row',
-    gap: 8,
-    paddingRight: 16,
-  },
-  activeFilterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-  },
-  activeFilterChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    maxWidth: 100,
-  },
-  clearAllChip: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    backgroundColor: 'transparent',
-  },
-  clearAllChipText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  messagesButton: {
-    borderRadius: RADIUS.xl,
-    overflow: 'hidden',
-    ...SHADOWS.md
-  },
-  messageBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    backgroundColor: theme.error,
-    borderRadius: 12,
-    minWidth: 24,
-    height: 24,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 3,
-    borderColor: theme.card,
-    shadowColor: theme.error,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
-    elevation: 5
-  },
-  messageBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 0.2
-  },
-  addButtonGradient: {
-    width: isDesktop ? 56 : isTablet ? 54 : 60,
-    height: isDesktop ? 56 : isTablet ? 54 : 60,
-    borderRadius: isDesktop ? 28 : isTablet ? 27 : 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 4
-  },
-  addButtonText: {
-    color: theme.primary,
-    fontSize: 32,
-    fontWeight: '300',
-    marginTop: -2
-  },
-  userSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: padding,
-    marginTop: isDesktop ? SPACING.xxxl : isTablet ? SPACING.xxl : SPACING.xxl,
-    marginBottom: isDesktop ? SPACING.lg : isTablet ? SPACING.md : SPACING.md,
-    padding: isDesktop ? SPACING.lg : isTablet ? SPACING.md : SPACING.md,
-    borderRadius: RADIUS.xl,
-    borderWidth: 2,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.primary,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.15,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  userIconBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.primary,
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.3,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  userInfoContent: {
-    flex: 1,
-  },
-  userLabelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4
-  },
-  userLabel: {
-    fontSize: isDesktop ? 10 : 11,
-    color: theme.primary,
-    fontWeight: '800',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 4,
-  },
-  currentUserName: {
-    fontSize: isDesktop ? 18 : isTablet ? 17 : 18,
-    fontWeight: '800',
-    marginBottom: 2,
-    flexShrink: 1,
-    letterSpacing: -0.3,
-  },
-  currentUserHint: {
-    fontSize: isDesktop ? 13 : 14,
-    fontWeight: '600',
-    flexShrink: 1,
-    letterSpacing: 0.1
-  },
-  listContent: {
-    padding: isDesktop ? 20 : isTablet ? 16 : 16,
-    paddingTop: isDesktop ? 32 : 24,
-    paddingBottom: 80
-  },
-  messagesSection: {
-    marginHorizontal: isDesktop ? 20 : isTablet ? 16 : 16,
-    marginBottom: 20,
-    padding: 16,
-    borderRadius: 18,
-    borderWidth: 2,
-    borderColor: 'rgba(218, 165, 32, 0.5)',
-    backgroundColor: isDark ? 'rgba(218, 165, 32, 0.15)' : 'rgba(218, 165, 32, 0.1)',
-    shadowColor: theme.warning,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 3
-  },
-  messagesSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  messagesSectionTitle: {
-    fontSize: 16,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    color: theme.warning,
-    textShadowColor: 'rgba(0,0,0,0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
-  },
-  messageCard: {
-    padding: 14,
-    borderRadius: 16,
-    marginBottom: 12,
-    borderWidth: 2,
-    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF',
-    borderColor: isDark ? 'rgba(255,255,255,0.15)' : '#E9D5FF',
-    shadowColor: theme.glassShadow,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3
-  },
-  messageHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  messageTaskTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    flex: 1,
-    color: theme.text,
-    letterSpacing: -0.3,
-    textShadowColor: 'rgba(0,0,0,0.08)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1
-  },
-  messageAuthor: {
-    fontSize: 13,
-    fontWeight: '800',
-    marginBottom: 8,
-    color: theme.primary,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-    textShadowColor: 'rgba(0,0,0,0.08)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 1
-  },
-  messageText: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 8,
-    color: theme.textSecondary,
-    fontWeight: '600',
-    letterSpacing: -0.2
-  },
-  messageTime: {
-    fontSize: 11,
-    fontStyle: 'italic',
-    color: isDark ? '#888' : '#999',
-    fontWeight: '500'
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end'
-  },
-  modalContent: {
-    borderTopLeftRadius: RADIUS.xxl || 32,
-    borderTopRightRadius: RADIUS.xxl || 32,
-    maxHeight: '85%',
-    padding: 0,
-    paddingBottom: 32,
-    ...SHADOWS.xl,
-    backgroundColor: theme.surface,
-    shadowColor: theme.glassShadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: isDesktop ? SPACING.xl : SPACING.lg,
-    paddingBottom: SPACING.xl,
-    borderBottomWidth: 2,
-    borderBottomColor: isDark ? 'rgba(255,255,255,0.15)' : '#F3E5F5'
-  },
-  modalTitle: {
-    fontSize: isDesktop ? 24 : 26,
-    fontWeight: '900',
-    color: theme.text,
-    letterSpacing: -0.6,
-    textShadowColor: 'rgba(0,0,0,0.1)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
-  },
-  modalScroll: {
-    padding: isDesktop ? SPACING.xl : SPACING.lg
-  },
-  actionsRow: { 
-    flexDirection: 'row', 
-    flexWrap: isTablet ? 'nowrap' : 'wrap',
-    marginTop: 18,
-    gap: isDesktop ? 14 : isTablet ? 12 : 10,
-    justifyContent: 'space-between'
-  },
-  actionBtn: {
-    flex: isTablet ? 1 : 0.48,
-    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#FFFAF0',
-    paddingVertical: isDesktop ? SPACING.md : isTablet ? 12 : 12,
-    paddingHorizontal: isDesktop ? SPACING.md : isTablet ? SPACING.sm : SPACING.sm,
-    borderRadius: RADIUS.lg,
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: isDark ? 'rgba(255,255,255,0.3)' : '#F5DEB3',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    minHeight: isDesktop ? 48 : isTablet ? 44 : 44,
-    marginBottom: isTablet ? 0 : 8,
-    shadowColor: theme.glassShadow,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 4
-  },
-  actionBtnPrimary: {
-    backgroundColor: theme.primary,
-    borderColor: theme.primary
-  },
-  actionBtnDanger: {
-    backgroundColor: theme.error,
-    borderColor: theme.error
-  },
-  actionText: {
-    fontSize: isDesktop ? 13 : isTablet ? 12 : 11,
-    fontWeight: '800',
-    color: theme.text,
-    letterSpacing: 0.2,
-    flexShrink: 0,
-    textAlign: 'center',
-  },
-  emptyContainer: {
-    alignItems: 'center',
-    marginTop: isDesktop ? 140 : 120,
-    paddingHorizontal: isDesktop ? 80 : 60
-  },
-  emptyText: {
-    fontSize: isDesktop ? 32 : 30,
-    fontWeight: '900',
-    color: theme.text,
-    marginBottom: 18,
-    letterSpacing: -1,
-    textShadowColor: 'rgba(0,0,0,0.15)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2
-  },
-  emptySubtext: {
-    fontSize: isDesktop ? 17 : 16,
-    color: theme.textSecondary,
-    textAlign: 'center',
-    lineHeight: 26,
-    fontWeight: '700',
-    letterSpacing: -0.3
-  },
-  // 🔍 ESTILOS DE BÚSQUEDA Y FILTROS
-  filterSection: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginHorizontal: padding,
-    marginBottom: SPACING.md,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    gap: SPACING.sm,
-    borderRadius: RADIUS.xl,
-    borderWidth: 1.5,
-    ...Platform.select({
-      ios: {
-        shadowColor: theme.glassShadow,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 4,
-      },
-    }),
-  },
-  searchContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: RADIUS.lg,
-    gap: SPACING.sm,
-  },
-  searchInput: {
-    flex: 1,
-    paddingVertical: 10,
-    fontSize: 16,
-    fontWeight: '500',
-    color: theme.text,
-  },
-  filterButton: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.lg,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: theme.border,
-  },
-  filtersPanel: {
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.md,
-    gap: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  filterGroupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginBottom: SPACING.sm,
-  },
-  filterBadge: {
-    minWidth: 24,
-    height: 24,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 'auto',
-  },
-  filterBadgeText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  filterSeparator: {
-    height: 1,
-    marginVertical: SPACING.md,
-  },
-  filterTitle: {
-    fontSize: 12,
-    fontWeight: '800',
-    letterSpacing: 1,
-    opacity: 0.8,
-    textTransform: 'uppercase',
-  },
-  filterOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-  },
-  filterGroup: {
-    marginBottom: SPACING.md,
-    gap: SPACING.sm,
-  },
-  filterOption: {
-    paddingVertical: 12,
-    paddingHorizontal: SPACING.lg,
-    borderRadius: RADIUS.xl,
-    borderWidth: 1,
-    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
-    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
-    shadowColor: theme.glassShadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-  filterOptionLarge: {
-    paddingVertical: 14,
-    paddingHorizontal: SPACING.lg,
-    marginVertical: SPACING.sm,
-  },
-  filterOptionActive: {
-    borderColor: 'transparent',
-    shadowColor: theme.primary,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  filterOptionText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: theme.text,
-    letterSpacing: 0.3,
-  },
-  filterOptionLargeText: {
-    fontSize: 14,
-    fontWeight: '800',
-  },
-  clearFiltersBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: SPACING.lg,
-    borderRadius: RADIUS.xl,
-    borderWidth: 2,
-    marginTop: SPACING.md,
-    backgroundColor: 'transparent',
-    shadowColor: theme.glassShadow,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  clearFiltersBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  counterSection: {
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.lg,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  counterText: {
-    fontSize: 12,
-    fontWeight: '600',
-    opacity: 0.7,
-  },
-  deleteSelectedBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: SPACING.md,
-    borderRadius: RADIUS.lg,
-    backgroundColor: theme.error,
-  },
-  // 🎨 ESTILOS DEL FOOTER DEL MODAL
-  modalFooter: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.lg,
-    borderTopWidth: 1,
-    backgroundColor: theme.card,
-    borderTopColor: theme.border,
-  },
-  modalFooterBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: SPACING.lg,
-    borderRadius: RADIUS.xl,
-    borderWidth: 2,
-    shadowColor: theme.glassShadow,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  modalFooterBtnSecondary: {
-    backgroundColor: 'transparent',
-    borderColor: theme.textSecondary,
-  },
-  modalFooterBtnPrimary: {
-    backgroundColor: theme.primary,
-    borderColor: theme.primary,
-  },
-  modalFooterBtnText: {
-    fontSize: 13,
-    fontWeight: '800',
-    letterSpacing: 0.6,
-    textTransform: 'uppercase',
-  },
-  // 🎨 ESTILOS MODAL CONFIRMACIÓN CERRAR
-  confirmModalContent: {
-    width: isDesktop ? 400 : '85%',
-    borderRadius: RADIUS.xl,
-    padding: SPACING.xl,
-    alignItems: 'center',
-  },
-  confirmModalIcon: {
-    marginBottom: SPACING.md,
-  },
-  confirmModalTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    marginBottom: SPACING.xs,
-    textAlign: 'center',
-  },
-  confirmModalSubtitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    marginBottom: SPACING.sm,
-    textAlign: 'center',
-  },
-  confirmModalDesc: {
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: SPACING.lg,
-    lineHeight: 18,
-  },
-  confirmModalButtons: {
-    flexDirection: 'row',
-    gap: SPACING.md,
-    width: '100%',
-  },
-  confirmModalBtn: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: RADIUS.lg,
-    gap: SPACING.xs,
-  },
-  confirmModalBtnCancel: {
-    borderWidth: 1,
-    backgroundColor: 'transparent',
-  },
-  confirmModalBtnConfirm: {
-    backgroundColor: theme.success,
-  },
-  confirmModalBtnText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  confirmModalBtnTextWhite: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  // 🎨 ESTILOS MODAL AYUDA
-  helpModalContent: {
-    width: isDesktop ? 420 : '90%',
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-  },
-  helpModalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginBottom: SPACING.lg,
-    paddingBottom: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: theme.border,
-  },
-  helpModalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-  },
-  helpModalItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: SPACING.md,
-    marginBottom: SPACING.md,
-    paddingVertical: SPACING.xs,
-  },
-  helpModalIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  helpModalTextContainer: {
-    flex: 1,
-  },
-  helpModalItemTitle: {
-    fontSize: 15,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  helpModalItemDesc: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  helpModalCloseBtn: {
-    marginTop: SPACING.md,
-    paddingVertical: 14,
-    borderRadius: RADIUS.lg,
-    alignItems: 'center',
-  },
-  helpModalCloseBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  // Estilos para filtros rápidos
-  quickFiltersScroll: {
-    paddingVertical: 8,
-  },
-  quickFiltersContent: {
-    paddingHorizontal: 16,
-    gap: 8,
-    alignItems: 'center',
-  },
-  quickFilterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    gap: 6,
-  },
-  quickFilterLabel: {
-    fontSize: 13,
-    fontWeight: '600',
-  },
-  quickFilterBadge: {
-    minWidth: 20,
-    height: 20,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  quickFilterBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-  },
-  compactToggleBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 8,
-  },
-});

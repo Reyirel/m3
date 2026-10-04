@@ -52,7 +52,7 @@ export default function DialogHost() {
             styles.card,
             {
               transform: [{ scale }],
-              backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+              backgroundColor: theme.card,
               borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
             },
           ]}

@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   ratio: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
   },
   legend: {
@@ -279,7 +279,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   legendText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
   },
   emptyContainer: {

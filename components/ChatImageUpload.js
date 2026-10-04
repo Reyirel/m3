@@ -235,7 +235,7 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
         <SafeAreaView style={styles.previewContainer}>
           {/* Header */}
           <View style={styles.previewHeader}>
-            <TouchableOpacity onPress={cancel} disabled={uploading} style={styles.previewHeaderBtn}>
+            <TouchableOpacity onPress={cancel} disabled={uploading} style={styles.previewHeaderBtn} accessibilityRole="button" accessibilityLabel="Cerrar">
               <Ionicons name="close" size={24} color="#FFF" />
             </TouchableOpacity>
             <Text style={styles.previewTitle}>Vista previa</Text>

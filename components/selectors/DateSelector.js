@@ -132,7 +132,7 @@ export default function DateSelector({
     <View style={styles.wrapper}>
       {/* Etiqueta */}
       <View style={styles.labelRow}>
-        <Ionicons name="calendar" size={13} color="#FF9500" />
+        <Ionicons name="calendar" size={13} color={theme.warning} />
         <Text style={[styles.label, { color: isDark ? 'rgba(235,235,245,0.50)' : 'rgba(60,60,67,0.50)' }]}>
           {label}
         </Text>
@@ -142,7 +142,7 @@ export default function DateSelector({
         {/* Fecha */}
         <TouchableOpacity onPress={() => openPicker('date')} activeOpacity={0.75} style={rowStyle(pickerMode === 'date')}>
           <View style={[styles.iconWrap, { backgroundColor: '#FF950018' }]}>
-            <Ionicons name="calendar-outline" size={17} color="#FF9500" />
+            <Ionicons name="calendar-outline" size={17} color={theme.warning} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={[styles.rowLabel, { color: isDark ? 'rgba(235,235,245,0.45)' : 'rgba(60,60,67,0.45)' }]}>Fecha</Text>
@@ -156,7 +156,7 @@ export default function DateSelector({
         {showTime && (
           <TouchableOpacity onPress={() => openPicker('time')} activeOpacity={0.75} style={rowStyle(pickerMode === 'time')}>
             <View style={[styles.iconWrap, { backgroundColor: '#007AFF18' }]}>
-              <Ionicons name="time-outline" size={17} color="#007AFF" />
+              <Ionicons name="time-outline" size={17} color={theme.info} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.rowLabel, { color: isDark ? 'rgba(235,235,245,0.45)' : 'rgba(60,60,67,0.45)' }]}>Hora</Text>
@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   iconWrap: { width: 34, height: 34, borderRadius: 10, justifyContent: 'center', alignItems: 'center' },
-  rowLabel: { fontSize: 11, fontWeight: '600', letterSpacing: 0.2 },
+  rowLabel: { fontSize: 12, fontWeight: '600', letterSpacing: 0.2 },
   rowValue: { fontSize: 14, fontWeight: '600', marginTop: 1 },
   todayBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

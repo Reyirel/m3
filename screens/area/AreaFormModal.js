@@ -126,7 +126,7 @@ export default function AreaFormModal({
                 <Text style={[styles.title, { color: theme.text }]}>
                   {editingArea ? `Editar "${editingArea.nombre}"` : 'Nueva Área'}
                 </Text>
-                <TouchableOpacity onPress={onClose} disabled={saving}>
+                <TouchableOpacity onPress={onClose} disabled={saving} accessibilityRole="button" accessibilityLabel="Cerrar">
                   <Ionicons name="close" size={24} color={theme.text} />
                 </TouchableOpacity>
               </View>

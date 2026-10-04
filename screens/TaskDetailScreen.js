@@ -16,7 +16,6 @@ import {
   TouchableOpacity,
   Text,
   Platform,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
@@ -37,13 +36,7 @@ import {
 } from '../components/task';
 
 // Importar selectores avanzados
-import {
-  PrioritySelector,
-  StatusSelector,
-  AreaSelector,
-  AssigneeSelector,
-  DateSelector,
-} from '../components';
+import { PrioritySelector, StatusSelector, AreaSelector, DateSelector } from '../components';
 
 // Importar hooks
 import useTaskPermissions from '../hooks/useTaskPermissions';
@@ -52,7 +45,7 @@ import { confirmAlert, showDialog } from '../utils/alert';
 
 // Importar servicios y utilidades
 import { toMs } from '../utils/dateUtils';
-import { AREAS, getSecretariasForAreas } from '../config/areas';
+import { getSecretariasForAreas } from '../config/areas';
 import { getTitularesByAreas, isDirectorOfSecretario, isTitularOfArea } from '../services/roles';
 import { canChangeTaskStatus } from '../services/permissions';
 import { updateTask } from '../services/tasks';
@@ -195,23 +188,21 @@ export default function TaskDetailScreen({ route, navigation }) {
     let cancelled = false;
     (async () => {
       try {
-        const { getDocs, collection, query, where } = await import('firebase/firestore');
-        const { db } = await import('../firebase');
-        const snap = await getDocs(
-          query(collection(db, 'users'), where('active', '==', true))
-        );
+        const { getAllUsers } = await import('../services/usersDirectory');
+        // Misma condición que antes (active == true): los usuarios sin el campo no aparecen
+        const activeUsers = (await getAllUsers()).filter(u => u.active === true);
         if (cancelled) return;
-        const allUsers = snap.docs.map(d => ({
-          id: d.id,
-          name: d.data().displayName || d.data().email || d.id,
-          displayName: d.data().displayName || d.data().email || d.id,
-          email: d.data().email || '',
-          avatar: d.data().photoURL || null,
-          role: d.data().role || '',
-          area: d.data().area || '',
-          secretaria: d.data().secretaria || '',
-          direcciones: d.data().direcciones || [],
-          areasPermitidas: d.data().areasPermitidas || [],
+        const allUsers = activeUsers.map(u => ({
+          id: u.id,
+          name: u.displayName || u.email || u.id,
+          displayName: u.displayName || u.email || u.id,
+          email: u.email || '',
+          avatar: u.photoURL || null,
+          role: u.role || '',
+          area: u.area || '',
+          secretaria: u.secretaria || '',
+          direcciones: u.direcciones || [],
+          areasPermitidas: u.areasPermitidas || [],
         }));
 
         const userRole = currentUser?.role;
@@ -631,7 +622,7 @@ export default function TaskDetailScreen({ route, navigation }) {
             {/* ÁREAS SIN RESPONSABLE: nadie recibiría la tarea por esa área */}
             {permissions.canEdit && areasSinResponsable.length > 0 && (
               <View style={[styles.infoCard, { backgroundColor: '#FF95000D', borderColor: '#FF950040' }]}>
-                <Ionicons name="warning-outline" size={16} color="#FF9500" />
+                <Ionicons name="warning-outline" size={16} color={theme.warning} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.infoCardTitle, { color: '#B36B00' }]}>
                     {areasSinResponsable.length === 1 ? 'Área sin responsable' : 'Áreas sin responsable'}
@@ -646,9 +637,9 @@ export default function TaskDetailScreen({ route, navigation }) {
             {/* AVISO DE TAREA COORDINADA */}
             {permissions.canEdit && !isEditing && selectedAreas.length > 1 && (
               <View style={[styles.infoCard, { backgroundColor: '#007AFF0D', borderColor: '#007AFF30' }]}>
-                <Ionicons name="git-branch-outline" size={16} color="#007AFF" />
+                <Ionicons name="git-branch-outline" size={16} color={theme.info} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.infoCardTitle, { color: '#007AFF' }]}>Tarea coordinada</Text>
+                  <Text style={[styles.infoCardTitle, { color: theme.info }]}>Tarea coordinada</Text>
                   <Text style={[styles.infoCardDesc, { color: theme.textSecondary }]}>
                     Se creará una subtarea por cada área ({selectedAreas.length} en total). Cada responsable podrá gestionarla de forma independiente.
                   </Text>
@@ -831,7 +822,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   titularMeta: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '400',
     marginTop: 1,
   },

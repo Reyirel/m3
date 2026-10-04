@@ -44,7 +44,7 @@ export default function AreaSelectorModal({
 
   // Colores por tipo de área
   const getAreaColor = useCallback((areaType) => {
-    if (areaType === 'secretaria') return '#9F2241';
+    if (areaType === 'secretaria') return theme.primary;
     return '#0EA5E9';
   }, []);
 
@@ -84,7 +84,7 @@ export default function AreaSelectorModal({
     if (!areaList || areaList.length === 0) return null;
 
     const color = getAreaColor(type);
-    const badgeColor = type === 'secretaria' ? '#9F2241' : '#0EA5E9';
+    const badgeColor = type === 'secretaria' ? theme.primary : '#0EA5E9';
 
     return (
       <View key={type} style={styles.section}>
@@ -170,6 +170,8 @@ export default function AreaSelectorModal({
               <TouchableOpacity 
                 onPress={onClose}
                 style={[styles.closeButton, { backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#F5F5F5' }]}
+                accessibilityRole="button"
+                accessibilityLabel="Cerrar"
               >
                 <Ionicons name="close" size={24} color={theme.text} />
               </TouchableOpacity>
@@ -196,7 +198,7 @@ export default function AreaSelectorModal({
           {/* Search Box Mejorado */}
           <View style={[styles.searchContainer, { backgroundColor: theme.cardBackground }]}>
             <View style={[styles.searchBox, { 
-              backgroundColor: isDark ? '#2C2C2E' : '#F5F5F5',
+              backgroundColor: theme.surfaceL2,
               borderColor: theme.border 
             }]}>
               <Ionicons name="search" size={18} color={theme.textSecondary} style={styles.searchIcon} />
@@ -213,6 +215,8 @@ export default function AreaSelectorModal({
                 <TouchableOpacity 
                   onPress={() => setSearchQuery('')}
                   style={styles.clearButton}
+                  accessibilityRole="button"
+                  accessibilityLabel="Cerrar"
                 >
                   <Ionicons name="close-circle-outline" size={18} color={theme.textSecondary} />
                 </TouchableOpacity>
@@ -445,7 +449,7 @@ const createStyles = (theme, isDark) => StyleSheet.create({
     marginRight: 10,
     minWidth: 110,
     justifyContent: 'center',
-    shadowColor: '#9F2241',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
@@ -594,7 +598,7 @@ const createStyles = (theme, isDark) => StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     gap: 8,
-    shadowColor: '#9F2241',
+    shadowColor: theme.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 10,

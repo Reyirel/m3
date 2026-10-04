@@ -138,7 +138,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     lineHeight: 14,
   },
   overdueHeaderLabel: {
-    fontSize: 7,
+    fontSize: 11,
     fontWeight: '700',
     color: 'rgba(255,255,255,0.85)',
     textTransform: 'uppercase',
@@ -198,7 +198,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     maxWidth: 120
   },
   areaText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600'
   },
   contextMenuContent: {
@@ -446,7 +446,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     borderRadius: 6
   },
   statusAgeText: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '600'
   },
   filterToggleBar: {
@@ -506,7 +506,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     fontWeight: '600',
   },
   columnCountText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
   card: {
@@ -574,7 +574,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     borderColor: 'rgba(255,255,255,0.15)'
   },
   priorityChipText: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.4,
@@ -602,7 +602,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     borderColor: 'rgba(255,255,255,0.2)'
   },
   overdueChipText: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.4,
@@ -630,7 +630,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
   },
   cardInfoText: {
     color: theme.textSecondary,
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
     flex: 1,
     letterSpacing: -0.1
@@ -647,11 +647,11 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     borderRadius: 6
   },
   cardTagText: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '600'
   },
   cardTagMore: {
-    fontSize: 9,
+    fontSize: 11,
     fontWeight: '600',
     paddingVertical: 2
   },
@@ -722,7 +722,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     borderRadius: 3,
   },
   statCardPct: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   statItem: {
@@ -900,7 +900,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     marginLeft: 4,
   },
   priorityBadgeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
   quickFilterGrid: {

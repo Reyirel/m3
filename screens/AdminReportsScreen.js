@@ -16,7 +16,6 @@ import {
 } from 'react-native';
 import { confirmAlert } from '../utils/alert';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useTheme } from '../contexts/ThemeContext';
 import ShimmerEffect from '../components/ShimmerEffect';
 import { subscribeToAllReports, rateTaskReport, deleteTaskReport } from '../services/reportsService';
@@ -27,6 +26,8 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useTasks } from '../contexts/TasksContext';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
+import ScreenHeader from '../components/ui/ScreenHeader';
+import EmptyState from '../components/EmptyState';
 
 const AdminReportsScreen = ({ navigation }) => {
   const { theme, isDark } = useTheme();
@@ -185,6 +186,8 @@ const AdminReportsScreen = ({ navigation }) => {
             key={star}
             disabled={!interactive}
             onPress={() => interactive && onRate && onRate(star)}
+            accessibilityRole="button"
+            accessibilityLabel="Calificar"
           >
             <Ionicons
               name={star <= (rating || 0) ? 'star' : 'star-outline'}
@@ -595,7 +598,7 @@ const AdminReportsScreen = ({ navigation }) => {
     },
     roleBadgeText: {
       color: '#fff',
-      fontSize: 11,
+      fontSize: 12,
       fontWeight: '600',
     },
     reportDescription: {
@@ -630,7 +633,7 @@ const AdminReportsScreen = ({ navigation }) => {
       flex: 1,
     },
     dateText: {
-      fontSize: 11,
+      fontSize: 12,
     },
     imagesPreview: {
       flexDirection: 'row',
@@ -651,7 +654,7 @@ const AdminReportsScreen = ({ navigation }) => {
     },
     pendingText: {
       color: '#fff',
-      fontSize: 10,
+      fontSize: 11,
       fontWeight: '600',
     },
     starsContainer: {
@@ -840,12 +843,7 @@ const AdminReportsScreen = ({ navigation }) => {
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
       <View style={styles.innerContainer}>
-      <LinearGradient colors={theme.gradientHeader} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.header, { shadowColor: theme.primary }]}>
-        <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()} accessibilityLabel="Volver" accessibilityRole="button">
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Reportes de Áreas</Text>
-      </LinearGradient>
+      <ScreenHeader title="Reportes de áreas" onBack={() => navigation.goBack()} />
 
       {/* Stats */}
       <View style={styles.statsRow}>
@@ -942,15 +940,11 @@ const AdminReportsScreen = ({ navigation }) => {
             />
           }
           ListEmptyComponent={
-            <View style={{ alignItems: 'center', paddingVertical: 60, gap: 12 }}>
-              <Ionicons name="document-text-outline" size={52} color={theme.textMuted} />
-              <Text style={{ fontSize: 17, fontWeight: '700', color: theme.text }}>
-                Sin reportes
-              </Text>
-              <Text style={{ fontSize: 14, color: theme.textSecondary, textAlign: 'center', paddingHorizontal: 40 }}>
-                No hay reportes que coincidan con los filtros seleccionados
-              </Text>
-            </View>
+            <EmptyState
+              icon="document-text-outline"
+              title="Sin reportes"
+              message="No hay reportes que coincidan con los filtros seleccionados."
+            />
           }
           windowSize={5}
           maxToRenderPerBatch={4}

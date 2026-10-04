@@ -9,6 +9,7 @@ import { useTasks } from '../contexts/TasksContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { subscribeToTrash, restoreTask } from '../services/tasks';
 import { hapticMedium } from '../utils/haptics';
+import EmptyState from '../components/EmptyState';
 
 const formatDate = (ms) =>
   ms ? new Date(ms).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', year: 'numeric' }) : 'fecha desconocida';
@@ -83,17 +84,13 @@ export default function TrashScreen({ navigation }) {
   );
 
   const renderEmpty = () => (
-    <View style={styles.empty}>
-      <Ionicons name={isAdmin ? 'trash-outline' : 'lock-closed'} size={48} color={theme.textMuted || theme.textSecondary} />
-      <Text style={[styles.emptyTitle, { color: theme.text }]}>
-        {isAdmin ? 'La papelera está vacía' : 'Sin acceso'}
-      </Text>
-      <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-        {isAdmin
-          ? 'Las tareas que elimines aparecerán aquí y podrás restaurarlas.'
-          : 'Solo el administrador puede ver la papelera.'}
-      </Text>
-    </View>
+    <EmptyState
+      icon={isAdmin ? 'trash-outline' : 'lock-closed'}
+      title={isAdmin ? 'La papelera está vacía' : 'Sin acceso'}
+      message={isAdmin
+        ? 'Las tareas que elimines aparecerán aquí y podrás restaurarlas.'
+        : 'Solo el administrador puede ver la papelera.'}
+    />
   );
 
   return (

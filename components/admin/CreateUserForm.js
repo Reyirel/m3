@@ -247,7 +247,7 @@ export default function CreateUserForm({ onUserCreated, isUserAdmin }) {
         }}
       >
         <LinearGradient
-          colors={['#34C759', '#30B351']}
+          colors={[theme.success, '#30B351']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.buttonGradient}

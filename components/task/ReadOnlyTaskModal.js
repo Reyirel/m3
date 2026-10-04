@@ -90,6 +90,8 @@ export default function ReadOnlyTaskModal({
             <TouchableOpacity
               onPress={() => navigation.goBack()}
               style={styles.closeButton}
+              accessibilityRole="button"
+              accessibilityLabel="Cerrar"
             >
               <Ionicons name="close" size={28} color={theme.text} />
             </TouchableOpacity>
@@ -146,7 +148,7 @@ export default function ReadOnlyTaskModal({
                   parentTaskId={task.id}
                   currentUserArea={currentUser?.area}
                   onSubtaskPress={(subtask) => {
-                    navigation.navigate('TaskDetail', { task: subtask });
+                    navigation.navigate('TaskDetail', { task: subtask, taskId: subtask.id });
                   }}
                 />
               </View>
@@ -190,14 +192,14 @@ export default function ReadOnlyTaskModal({
                 {/* Confirmar avance — solo directores asignados */}
                 {alreadyConfirmed ? (
                   <View style={[styles.confirmedBadge, { backgroundColor: '#34C75918', borderColor: '#34C75940' }]}>
-                    <Ionicons name="checkmark-circle" size={18} color="#34C759" />
-                    <Text style={[styles.confirmedText, { color: '#34C759' }]}>
+                    <Ionicons name="checkmark-circle" size={18} color={theme.success} />
+                    <Text style={[styles.confirmedText, { color: theme.success }]}>
                       Avance confirmado
                     </Text>
                   </View>
                 ) : canConfirm ? (
                   <TouchableOpacity
-                    style={[styles.confirmBtn, { backgroundColor: '#34C759' }]}
+                    style={[styles.confirmBtn, { backgroundColor: theme.success }]}
                     onPress={handleConfirmProgress}
                     disabled={confirming}
                     activeOpacity={0.8}

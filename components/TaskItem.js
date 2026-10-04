@@ -2,7 +2,6 @@
 // TaskItem moderno con animaciones y glassmorphism - Compatible con web
 import React, { useEffect, useState, memo, useRef, useMemo } from 'react';
 import { TouchableOpacity, View, Text, StyleSheet, Animated, Platform, ActivityIndicator } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { GlassView } from '../utils/GlassView';
@@ -18,6 +17,7 @@ import { toMs } from '../utils/dateUtils';
 import { useTasks } from '../contexts/TasksContext';
 import { useChatUnread } from '../hooks/useChatUnread';
 import { predictDelayRisk, riskLevelDisplay } from '../utils/aiFeatures';
+import { isInProgress, statusLabel } from '../utils/taskStatus';
 
 const Swipeable = getSwipeable();
 
@@ -110,7 +110,7 @@ const TaskItem = memo(function TaskItem({
   
   // Pulsing dot for in-process tasks
   useEffect(() => {
-    if (task.status !== 'en_proceso' && task.status !== 'en-progreso') return;
+    if (!isInProgress(task.status)) return;
     const loop = Animated.loop(
       Animated.sequence([
         Animated.timing(statusDotAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
@@ -262,7 +262,7 @@ const TaskItem = memo(function TaskItem({
 
   const statusAccentColor = task.status === 'cerrada'
     ? theme.success
-    : task.status === 'en_proceso' || task.status === 'en-progreso'
+    : isInProgress(task.status)
       ? theme.info
       : task.status === 'en_revision'
         ? theme.secondary
@@ -287,7 +287,7 @@ const TaskItem = memo(function TaskItem({
     container: { paddingVertical: 10, paddingHorizontal: 12, marginHorizontal: 12, marginVertical: 4 },
     title: { fontSize: 14 },
     avatar: { width: 28, height: 28 },
-    meta: { fontSize: 11 },
+    meta: { fontSize: 12 },
     hideCoordination: true,
     hideButtons: true, // Ocultar botones de acción en vista compacta
   } : {};
@@ -377,7 +377,7 @@ const TaskItem = memo(function TaskItem({
                   onLongPress={handleLongPress}
                   delayLongPress={500}
                   activeOpacity={0.9}
-                  accessibilityLabel={`Tarea: ${task.title}. Área: ${task.area || 'Sin área'}. Estado: ${task.status === 'cerrada' ? 'Completada' : task.status === 'en_proceso' ? 'En progreso' : task.status === 'en_revision' ? 'En revisión' : 'Pendiente'}.`}
+                  accessibilityLabel={`Tarea: ${task.title}. Área: ${task.area || 'Sin área'}. Estado: ${statusLabel(task.status)}.`}
                   accessibilityRole="button"
                   accessibilityHint="Toca para ver el detalle de la tarea"
                 >
@@ -391,7 +391,7 @@ const TaskItem = memo(function TaskItem({
                         showBorder
                       />
                     )}
-                    {(task.status === 'en_proceso' || task.status === 'en-progreso') && (
+                    {isInProgress(task.status) && (
                       <Animated.View style={[styles.statusDot, { backgroundColor: theme.info, shadowColor: theme.info, opacity: statusDotAnim }]} />
                     )}
                     {task.status === 'en_revision' && (
@@ -415,12 +415,12 @@ const TaskItem = memo(function TaskItem({
                     style={[
                       styles.meta,
                       { color: theme.textSecondary },
-                      compact && { fontSize: 11, marginTop: 2 }
+                      compact && { fontSize: 12, marginTop: 2 }
                     ]}
                     numberOfLines={1}
                   >
                     {compact
-                      ? `${task.area || 'Sin área'} • ${task.status === 'cerrada' ? '✓ Completada' : task.status === 'en_progreso' ? '▶ En progreso' : task.status === 'en_revision' ? '👁 Revisión' : '⏳ Pendiente'}`
+                      ? `${task.area || 'Sin área'} • ${statusLabel(task.status)}`
                       : `${task.area || 'Sin área'} • ${task.assignedToNames?.length > 0 ? task.assignedToNames.join(', ') : 'Sin asignar'}`
                     }
                   </Text>
@@ -438,7 +438,7 @@ const TaskItem = memo(function TaskItem({
                   {/* Fila 3: Estado - Oculto en compacto */}
                   {!compact && (
                     <Text style={[styles.statusText, { color: theme.textTertiary }]} numberOfLines={1}>
-                      {task.status === 'en_progreso' ? 'En progreso' : task.status === 'en_revision' ? 'En revisión' : task.status === 'cerrada' ? 'Completada' : 'Pendiente'}
+                      {statusLabel(task.status)}
                     </Text>
                   )}
 
@@ -482,7 +482,7 @@ const TaskItem = memo(function TaskItem({
                         <Text style={[styles.quickActionText, { color: theme.info }]}>Iniciar</Text>
                       </TouchableOpacity>
                     )}
-                    {(task.status === 'pendiente' || task.status === 'en_proceso' || task.status === 'en-progreso') && (
+                    {(task.status === 'pendiente' || isInProgress(task.status)) && (
                       <TouchableOpacity
                         style={[styles.quickActionBtn, { backgroundColor: theme.secondaryDark + '20', borderColor: theme.secondary }]}
                         onPress={() => { hapticMedium(); onChangeStatus(task, 'en_revision'); }}
@@ -494,7 +494,7 @@ const TaskItem = memo(function TaskItem({
                         <Text style={[styles.quickActionText, { color: theme.secondary }]}>Revisión</Text>
                       </TouchableOpacity>
                     )}
-                    {currentUserRole === 'admin' && (task.status === 'en_proceso' || task.status === 'en-progreso' || task.status === 'en_revision') && (
+                    {currentUserRole === 'admin' && (isInProgress(task.status) || task.status === 'en_revision') && (
                       <TouchableOpacity
                         style={[styles.quickActionBtn, { backgroundColor: theme.successAlpha, borderColor: theme.success }]}
                         onPress={() => { hapticMedium(); onChangeStatus(task, 'cerrada'); }}
@@ -558,6 +558,8 @@ const TaskItem = memo(function TaskItem({
                     hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
                     activeOpacity={isDeleting ? 0.3 : 0.7}
                     disabled={isDeleting}
+                    accessibilityRole="button"
+                    accessibilityLabel="Eliminar"
                   >
                     <Ionicons name="trash-outline" size={isSmallDevice ? 18 : 22} color={isDeleting ? "#CCC" : theme.error} />
                   </TouchableOpacity>
@@ -655,7 +657,7 @@ const styles = StyleSheet.create({
   },
   dueAlertText: {
     color: '#FFF',
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
@@ -695,7 +697,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 8,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: '800',
     minWidth: 60,
     textAlign: 'center',
@@ -778,11 +780,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   tagText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600',
   },
   tagMore: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     paddingVertical: 3,
   },
@@ -842,7 +844,7 @@ const styles = StyleSheet.create({
   },
   actionText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
     marginTop: 4,
     textTransform: 'uppercase',
@@ -946,7 +948,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   deletingTextSmall: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '500',
     color: '#FFFFFF',
     marginTop: 2,
@@ -989,7 +991,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
   },
   riskBadgeText: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '700',
   },
 });

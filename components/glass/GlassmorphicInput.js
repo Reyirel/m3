@@ -6,14 +6,7 @@
  */
 
 import React, { useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  Animated,
-  Platform,
-} from 'react-native';
+import { View, Text, TextInput, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { PremiumGlassCard } from '../index';
@@ -177,7 +170,7 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   charCount: {
-    fontSize: 11,
+    fontSize: 12,
     marginTop: 4,
     textAlign: 'right',
   },

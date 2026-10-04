@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   summaryLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B7280',
     marginTop: 2,
   },
@@ -373,7 +373,7 @@ const styles = StyleSheet.create({
     color: '#1F2937',
   },
   userEmail: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B7280',
   },
   userMetrics: {
@@ -390,7 +390,7 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
   complianceLabel: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#6B7280',
     marginTop: 2,
   },
@@ -412,7 +412,7 @@ const styles = StyleSheet.create({
     borderRadius: 3,
   },
   progressText: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B7280',
     minWidth: 70,
     textAlign: 'right',
@@ -479,7 +479,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
   },
   legendText: {
-    fontSize: 11,
+    fontSize: 12,
     color: '#6B7280',
   },
   emptyContainer: {
