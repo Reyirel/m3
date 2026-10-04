@@ -120,7 +120,7 @@ const BottomSheet = ({
             {
               height,
               transform: [{ translateY }],
-              backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.88)',
+              backgroundColor: theme.glass,
               borderTopColor: isDark ? theme.glassBorder : theme.glassBorderSubtle,
               shadowColor: theme.glassShadow,
             },

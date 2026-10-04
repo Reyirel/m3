@@ -145,7 +145,7 @@ export default function TaskProgressScreen({ route, navigation }) {
         showsVerticalScrollIndicator={false}
       >
         {/* CARD PROGRESO GENERAL */}
-        <View style={[styles.card, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+        <View style={[styles.card, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
           <View style={styles.cardHeader}>
             <Text style={[styles.cardTitle, { color: theme.text }]}>Progreso General</Text>
             {isComplete && (
@@ -202,7 +202,7 @@ export default function TaskProgressScreen({ route, navigation }) {
         </View>
 
         {/* CARD PROGRESO POR ASIGNADO */}
-        <View style={[styles.card, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+        <View style={[styles.card, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
           <Text style={[styles.cardTitle, { color: theme.text, marginBottom: 16 }]}>
             Progreso por Asignado
           </Text>
@@ -275,7 +275,7 @@ export default function TaskProgressScreen({ route, navigation }) {
 
         {/* CARD SUBTAREAS */}
         {progressData.subtasks && progressData.subtasks.length > 0 && (
-          <View style={[styles.card, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+          <View style={[styles.card, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="checklist" size={20} color={theme.primary} />
               <Text style={[styles.cardTitle, { color: theme.text, marginLeft: 8, flex: 1 }]}>
@@ -378,7 +378,7 @@ export default function TaskProgressScreen({ route, navigation }) {
 
         {/* TIMELINE DE ACTIVIDADES */}
         {progressData.lastActivity && (
-          <View style={[styles.card, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+          <View style={[styles.card, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
             <View style={styles.cardHeader}>
               <Ionicons name="time" size={20} color={theme.primary} />
               <Text style={[styles.cardTitle, { color: theme.text, marginLeft: 8 }]}>

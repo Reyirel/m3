@@ -62,7 +62,7 @@ export default function ChartsModal({
                     { label: 'Pendientes', value: subtasksStats.pending, color: theme.warning },
                     { label: 'Completado', value: `${subtasksStats.completionRate}%`, color: theme.primary },
                   ].map((stat) => (
-                    <View key={stat.label} style={{ flex: 1, backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }}>
+                    <View key={stat.label} style={{ flex: 1, backgroundColor: theme.glass, borderRadius: 12, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: theme.glassBorder }}>
                       <Text style={{ fontSize: 22, fontWeight: '800', color: stat.color }}>{stat.value}</Text>
                       <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>{stat.label}</Text>
                     </View>

@@ -63,6 +63,7 @@ export default function MoreScreen({ navigation, onLogout }) {
     const work = [
       (isAdmin || isSecretario || isDirector) && { icon: 'bar-chart-outline', label: 'Reportes', description: 'Avance y cumplimiento', onPress: go('Reports') },
       isSecretario && { icon: 'briefcase-outline', label: 'Panel de mi secretaría', description: 'Tareas de tus direcciones', onPress: go('SecretarioDashboard') },
+      isDirector && { icon: 'briefcase-outline', label: 'Panel de mi área', description: 'Tus tareas y tu equipo', onPress: go('AreaChiefDashboard') },
       isAdmin && { icon: 'speedometer-outline', label: 'Panel ejecutivo', description: 'Indicadores de todas las áreas', onPress: go('ExecutiveDashboard') },
       isAdmin && { icon: 'people-outline', label: 'Administración', description: 'Usuarios, áreas y contraseñas', onPress: go('Admin') },
     ].filter(Boolean);

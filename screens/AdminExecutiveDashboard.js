@@ -356,10 +356,10 @@ export default function AdminExecutiveDashboard({ navigation }) {
   const renderOverview = () => (
     <View>
       {/* KPIs principales + tasas en una sola card */}
-      <View style={[styles.section, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+      <View style={[styles.section, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
         <View style={styles.kpiGrid}>
           {[
-            { label: 'Total', value: globalMetrics.totalTasks, color: theme.text, bg: isDark ? theme.glass : 'rgba(255,255,255,0.85)', icon: 'document-text', iconColor: theme.info },
+            { label: 'Total', value: globalMetrics.totalTasks, color: theme.text, bg: theme.glass, icon: 'document-text', iconColor: theme.info },
             { label: 'Completadas', value: globalMetrics.completedTasks, color: theme.success, bg: theme.successAlpha, icon: 'checkmark-circle', iconColor: theme.success },
             { label: 'En progreso', value: globalMetrics.inProgressTasks, color: theme.info, bg: theme.infoAlpha, icon: 'sync', iconColor: theme.info },
             { label: 'Vencidas', value: globalMetrics.overdueTasks, color: theme.error, bg: theme.errorAlpha, icon: 'alert-circle', iconColor: theme.error },
@@ -414,7 +414,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
 
       {/* Áreas con más vencidas */}
       {topOverdueAreas.length > 0 && (
-        <View style={[styles.section, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+        <View style={[styles.section, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
           <View style={styles.sectionHeader}>
             <Ionicons name="warning" size={18} color={theme.error} />
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Áreas con más retrasos</Text>
@@ -437,7 +437,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
 
       {/* Botón para ver evolución histórica */}
       <TouchableOpacity
-        style={[styles.evolutionButton, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}
+        style={[styles.evolutionButton, { backgroundColor: theme.glass, borderColor: theme.glassBorder }]}
         onPress={() => setShowEvolutionModal(true)}
       >
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -456,7 +456,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
 
   // Sección: Evolución
   const renderEvolution = () => (
-    <View style={[styles.section, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+    <View style={[styles.section, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
       <View style={styles.sectionHeader}>
         <Ionicons name="analytics" size={20} color={theme.info} />
         <Text style={[styles.sectionTitle, { color: theme.text }]}>Evolución</Text>
@@ -541,7 +541,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
       : (secretariaMetrics.length > 0 ? Math.round(secretariaMetrics.reduce((a, b) => a + b.completionRate, 0) / secretariaMetrics.length) : 0);
 
     return (
-      <View style={[styles.section, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+      <View style={[styles.section, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
         {/* Toggle Directores / Secretarías */}
         <View style={[styles.segmentToggle, { backgroundColor: isDark ? theme.surfaceL2 : theme.surfaceL3 }]}>
           {[
@@ -550,7 +550,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
           ].map(seg => (
             <TouchableOpacity
               key={seg.key}
-              style={[styles.segmentBtn, complianceView === seg.key && { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.9)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)', shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 }]}
+              style={[styles.segmentBtn, complianceView === seg.key && { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 }]}
               onPress={() => setComplianceView(seg.key)}
             >
               <Ionicons name={seg.icon} size={14} color={complianceView === seg.key ? theme.primary : theme.textSecondary} />
@@ -561,7 +561,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
 
         {/* Resumen en 3 chips */}
         <View style={[styles.complianceSummary, { marginTop: 14 }]}>
-          <View style={[styles.complianceCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+          <View style={[styles.complianceCard, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
             <Text style={[styles.complianceValue, { color: theme.text }]}>{activeMetrics.length}</Text>
             <Text style={[styles.complianceLabel, { color: theme.textSecondary }]}>Total</Text>
           </View>
@@ -703,7 +703,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
       </LinearGradient>
 
       {/* Tabs de navegación — 3 tabs */}
-      <View style={[styles.tabsContainer, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderBottomColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+      <View style={[styles.tabsContainer, { backgroundColor: theme.glass, borderBottomColor: theme.glassBorder }]}>
         <View style={styles.tabsScroll}>
           <TabButton id="overview" label="Resumen" icon="grid" />
           <TabButton id="compliance" label="Personas" icon="people" />

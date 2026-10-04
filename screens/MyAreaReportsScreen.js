@@ -180,7 +180,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
       <TouchableOpacity
         style={[
           styles.reportCard,
-          { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' },
+          { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder },
           isMyReport && styles.myReportCard
         ]}
         onPress={() => {
@@ -263,7 +263,7 @@ const MyAreaReportsScreen = ({ navigation }) => {
         onRequestClose={() => setShowModal(false)}
       >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: isDark ? 'rgba(15,10,25,0.97)' : 'rgba(255,255,255,0.98)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)', borderWidth: 1 }]}>
+          <View style={[styles.modalContent, { backgroundColor: isDark ? 'rgba(15,10,25,0.97)' : 'rgba(255,255,255,0.98)', borderColor: theme.glassBorder, borderWidth: 1 }]}>
             <View style={styles.modalHeader}>
               <Text style={[styles.modalTitle, { color: theme.text }]}>
                 Detalle del Reporte

@@ -183,7 +183,7 @@ export function KanbanFiltersModal({ visible, onClose, filters, setFilters, task
             </View>
           </ScrollView>
 
-          <View style={[styles.filterModalFooter, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.9)', borderTopColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+          <View style={[styles.filterModalFooter, { backgroundColor: theme.glass, borderTopColor: theme.glassBorder }]}>
             <TouchableOpacity
               onPress={() => {
                 setFilters(EMPTY_KANBAN_FILTERS);

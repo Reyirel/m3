@@ -3,13 +3,14 @@
  * Barra lateral de navegación para tablet y escritorio (ancho ≥ 768px)
  */
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { roleLabel as getRoleLabel } from '../services/permissions';
 import { confirmAlert } from '../utils/alert';
+import { subscribeToUnreadCount } from '../services/notificationsLive';
 
 export const SIDEBAR_WIDTH = 220;
 
@@ -19,9 +20,11 @@ const ROUTE_META = {
   Calendar:            { icon: 'calendar',       iconOff: 'calendar-outline',       label: 'Calendario' },
   Inbox:               { icon: 'file-tray-full', iconOff: 'file-tray-outline',      label: 'Bandeja'    },
   Reports:             { icon: 'bar-chart',      iconOff: 'bar-chart-outline',      label: 'Reportes'   },
-  SecretarioDashboard: { icon: 'briefcase',      iconOff: 'briefcase-outline',      label: 'Panel'      },
-  ExecutiveDashboard:  { icon: 'speedometer',    iconOff: 'speedometer-outline',    label: 'Dashboard'  },
-  Admin:               { icon: 'settings',       iconOff: 'settings-outline',       label: 'Admin'      },
+  // Mismos nombres que en la pestaña "Más" del celular
+  SecretarioDashboard: { icon: 'briefcase',      iconOff: 'briefcase-outline',      label: 'Panel de mi secretaría' },
+  AreaChiefDashboard:  { icon: 'briefcase',      iconOff: 'briefcase-outline',      label: 'Panel de mi área' },
+  ExecutiveDashboard:  { icon: 'speedometer',    iconOff: 'speedometer-outline',    label: 'Panel ejecutivo' },
+  Admin:               { icon: 'people',         iconOff: 'people-outline',         label: 'Administración' },
 };
 
 export default function DesktopSidebar({
@@ -36,6 +39,9 @@ export default function DesktopSidebar({
 }) {
   const { theme, isDark } = useTheme();
   const [hovered, setHovered] = useState(null);
+  // Contador en tiempo real (lo alimenta NotificationWatcher en App.js)
+  const [unreadCount, setUnreadCount] = useState(0);
+  useEffect(() => subscribeToUnreadCount(setUnreadCount), []);
 
   const initials = (() => {
     const name = currentUser?.displayName || currentUser?.name || '';
@@ -99,7 +105,8 @@ export default function DesktopSidebar({
           return (
             <TouchableOpacity
               key={route.name}
-              onPress={() => onNavigate(route.name)}
+              // `stack`: pantalla que se abre encima de las pestañas, no una pestaña
+              onPress={() => (route.stack ? stackNavigation?.navigate(route.name) : onNavigate(route.name))}
               style={[
                 styles.navItem,
                 isActive && { backgroundColor: theme.primaryAlpha },
@@ -147,15 +154,17 @@ export default function DesktopSidebar({
         borderTopColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)',
       }]}>
         {[
+          { key: 'notifications', label: 'Notificaciones', icon: 'notifications-outline', screen: 'Notifications', badge: unreadCount },
+          { key: 'search', label: 'Buscar tareas', icon: 'search-outline', screen: 'Search' },
+          currentUser?.role === 'admin' && { key: 'trash', label: 'Papelera', icon: 'trash-outline', screen: 'Trash' },
           { key: 'settings', label: 'Configuración', icon: 'settings-outline', screen: 'Settings' },
-          { key: 'notifications', label: 'Notificaciones', icon: 'notifications-outline', screen: 'Notifications' },
           { key: 'logout', label: 'Cerrar sesión', icon: 'log-out-outline', onPress: confirmLogout },
-        ].map((item) => (
+        ].filter(Boolean).map((item) => (
           <TouchableOpacity
             key={item.key}
             onPress={item.onPress || (() => stackNavigation?.navigate(item.screen))}
             accessibilityRole="button"
-            accessibilityLabel={item.label}
+            accessibilityLabel={item.badge > 0 ? `${item.label}, ${item.badge} sin leer` : item.label}
             style={[
               styles.navItem,
               hovered === item.key && {
@@ -170,6 +179,11 @@ export default function DesktopSidebar({
           >
             <Ionicons name={item.icon} size={18} color={theme.textSecondary} />
             <Text style={[styles.navLabel, { color: theme.textSecondary }]}>{item.label}</Text>
+            {item.badge > 0 && (
+              <View style={[styles.badge, { backgroundColor: theme.error }]}>
+                <Text style={styles.badgeText}>{item.badge > 99 ? '99+' : item.badge}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         ))}
       </View>

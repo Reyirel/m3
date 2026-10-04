@@ -68,9 +68,9 @@ export default function HierarchySummary({ metricsByType, filteredAreas, onFilte
   if (!(secretaria.total > 0 || direccion.total > 0)) return null;
 
   const glassCard = {
-    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+    backgroundColor: theme.glass,
     borderWidth: 1,
-    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+    borderColor: theme.glassBorder,
   };
 
   return (

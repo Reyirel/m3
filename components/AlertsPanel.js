@@ -193,7 +193,7 @@ export default function AlertsPanel({
             />
           </TouchableOpacity>
           {suggestionsExpanded && suggestions.map((suggestion, index) => (
-            <View key={index} style={[styles.suggestionItem, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+            <View key={index} style={[styles.suggestionItem, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
               <Ionicons
                 name={
                   suggestion.priority === 'critical' ? 'alert' :

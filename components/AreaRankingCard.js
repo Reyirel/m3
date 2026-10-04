@@ -67,7 +67,7 @@ export default function AreaRankingCard({
 
   if (ranking.length === 0) {
     return (
-      <View style={[styles.empty, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+      <View style={[styles.empty, { backgroundColor: theme.glass, borderColor: theme.glassBorder }]}>
         <Ionicons name="podium-outline" size={48} color={theme.textSecondary} />
         <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
           Sin datos de clasificación
@@ -183,7 +183,7 @@ export default function AreaRankingCard({
       </View>
 
       {/* Estadísticas generales */}
-      <View style={[styles.generalStats, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+      <View style={[styles.generalStats, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
         <View style={styles.statBox}>
           <Text style={[styles.statBoxLabel, { color: theme.textSecondary }]}>
             Promedio General

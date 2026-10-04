@@ -139,7 +139,7 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
         <View style={styles.modalOverlay}>
           <View style={[styles.modalSheet, {
             backgroundColor: isDark ? 'rgba(15,10,25,0.96)' : 'rgba(255,255,255,0.97)',
-            borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+            borderColor: theme.glassBorder,
             borderWidth: 1,
             borderBottomWidth: 0,
           }]}>

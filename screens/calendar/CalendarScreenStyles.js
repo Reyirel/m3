@@ -185,7 +185,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     marginBottom: SPACING.lg,
     backgroundColor: isDark ? theme.card : '#FFFFFF',
     borderWidth: 0.5,
-    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.06)',
+    borderColor: theme.glassBorder,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: isDark ? 0.30 : 0.08,

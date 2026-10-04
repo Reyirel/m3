@@ -218,10 +218,10 @@ export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact
                 style={[
                   styles.areaCard,
                   {
-                    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+                    backgroundColor: theme.glass,
                     borderLeftColor: config.color,
                     borderWidth: 1,
-                    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+                    borderColor: theme.glassBorder,
                   }
                 ]}
                 onPress={() => onAreaPress?.(metric.area)}
@@ -312,9 +312,9 @@ const createStyles = (theme, isDark, _compact) => StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+    backgroundColor: theme.glass,
     borderBottomWidth: 1,
-    borderBottomColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+    borderBottomColor: theme.glassBorder,
   },
   headerLeft: {
     flexDirection: 'row',
@@ -346,9 +346,9 @@ const createStyles = (theme, isDark, _compact) => StyleSheet.create({
     justifyContent: 'center',
     gap: 16,
     paddingVertical: 10,
-    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+    backgroundColor: theme.glass,
     borderBottomWidth: 1,
-    borderBottomColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+    borderBottomColor: theme.glassBorder,
   },
   legendItem: {
     flexDirection: 'row',
@@ -451,10 +451,10 @@ const createStyles = (theme, isDark, _compact) => StyleSheet.create({
   // Estilos compactos
   compactContainer: {
     padding: 12,
-    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+    backgroundColor: theme.glass,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+    borderColor: theme.glassBorder,
   },
   compactHeader: {
     flexDirection: 'row',

@@ -87,7 +87,7 @@ export default function AreaManagementScreen({ navigation }) {
   const direcciones = areas.filter((a) => a.tipo === 'direccion');
 
   const renderAreaCard = (area) => (
-    <View key={area.id} style={[styles.areaCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+    <View key={area.id} style={[styles.areaCard, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
       <View style={styles.areaCardContent}>
         <View style={styles.areaInfo}>
           <View

@@ -73,8 +73,8 @@ const AreaStatsCard = memo(function AreaStatsCard({
         style={[
           styles.card,
           {
-            backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
-            borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.06)',
+            backgroundColor: theme.glass,
+            borderColor: theme.glassBorder,
             borderLeftColor: status.color,
             opacity: opacityAnim,
             transform: [{ translateY: slideAnim }],

@@ -125,7 +125,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
         <TouchableOpacity
           style={[
             styles.expandButton,
-            { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' },
+            { backgroundColor: theme.glass, borderColor: theme.glassBorder },
           ]}
           onPress={() => {
             hapticLight();

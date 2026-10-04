@@ -730,7 +730,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     borderRadius: 14,
     padding: 12,
     borderWidth: 1,
-    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+    borderColor: theme.glassBorder,
   },
   statHeader: {
     flexDirection: 'row',

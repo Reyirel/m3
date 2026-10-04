@@ -335,11 +335,11 @@ const AnalyticsScreen = ({ navigation }) => {
     },
     // ✨ Top Tasks Premium
     topTasksContainer: {
-      backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+      backgroundColor: theme.glass,
       borderRadius: 20,
       overflow: 'hidden',
       borderWidth: 1,
-      borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+      borderColor: theme.glassBorder,
     },
     topTasksHeader: {
       padding: 18,
@@ -637,8 +637,8 @@ const AnalyticsScreen = ({ navigation }) => {
         transform: [{ translateY: headerSlide }]
       }}>
         <ScreenHeader
-          title="Analytics"
-          subtitle="Insights y métricas de rendimiento"
+          title="Analíticas"
+          subtitle="Indicadores de rendimiento"
           icon="analytics"
           onBack={() => navigation.goBack()}
         />

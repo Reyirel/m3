@@ -96,9 +96,9 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     },
     tabsContainer: {
       flexDirection: 'row',
-      backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+      backgroundColor: theme.glass,
       borderBottomWidth: 1,
-      borderBottomColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+      borderBottomColor: theme.glassBorder,
     },
     tab: {
       flex: 1,
@@ -164,9 +164,9 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     },
     // Report styles
     reportCard: {
-      backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+      backgroundColor: theme.glass,
       borderWidth: 1,
-      borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+      borderColor: theme.glassBorder,
       marginHorizontal: 12,
       marginVertical: 8,
       borderRadius: 16,
@@ -274,8 +274,8 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
       paddingHorizontal: 12,
       paddingVertical: 12,
       borderBottomWidth: 1,
-      borderBottomColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
-      backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
+      borderBottomColor: theme.glassBorder,
+      backgroundColor: theme.glass,
     },
     activityIcon: {
       width: 40,

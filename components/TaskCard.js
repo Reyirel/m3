@@ -118,7 +118,7 @@ export default function TaskCard({
               ? theme.error + '40'
               : isClosed
               ? theme.success + '30'
-              : isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+              : theme.glassBorder,
             shadowColor: isOverdue ? theme.error : hovered ? accentColor : theme.shadowColor,
             shadowOpacity: hovered ? 0.18 : 0.09,
             shadowRadius: hovered ? 20 : 12,
@@ -165,7 +165,7 @@ export default function TaskCard({
           )}
 
           {/* Meta row */}
-          <View style={[styles.footer, { borderTopColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.06)' }]}>
+          <View style={[styles.footer, { borderTopColor: theme.glassBorder }]}>
             {/* Priority / overdue pill */}
             <View style={[styles.pill, { backgroundColor: accentColor + '18', borderColor: accentColor + '55' }]}>
               <View style={[styles.dot, { backgroundColor: accentColor }]} />

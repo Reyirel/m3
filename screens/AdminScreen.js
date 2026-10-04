@@ -459,7 +459,7 @@ export default function AdminScreen({ navigation, onLogout }) {
                   return (
                     <TouchableOpacity
                       key={task.id}
-                      style={[s.urgentTask, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: accent }]}
+                      style={[s.urgentTask, { backgroundColor: theme.glass, borderColor: accent }]}
                       onPress={() => { setShowUrgentModal(false); navigation.navigate('Home'); }}
                     >
                       <View style={{ flexDirection: 'row', alignItems: 'flex-start' }}>

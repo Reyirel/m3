@@ -33,7 +33,7 @@ const InsightsPanel = React.memo(function InsightsPanel({
     >
       {/* Comparativa mensual */}
       {monthlyComparative && (
-        <SpringCard style={[styles.insightCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+        <SpringCard style={[styles.insightCard, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
           <View style={styles.insightHeader}>
             <Ionicons name="trending-up" size={20} color={theme.info} />
             <Text style={[styles.insightTitle, { color: theme.text }]}>Comparativa Mensual</Text>
@@ -108,7 +108,7 @@ const InsightsPanel = React.memo(function InsightsPanel({
 
       {/* Cuellos de botella */}
       {bottlenecks.length > 0 && (
-        <SpringCard style={[styles.insightCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+        <SpringCard style={[styles.insightCard, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
           <View style={styles.insightHeader}>
             <Ionicons name="git-network" size={20} color={theme.warning} />
             <Text style={[styles.insightTitle, { color: theme.text }]}>Cuellos de Botella</Text>
@@ -158,7 +158,7 @@ const InsightsPanel = React.memo(function InsightsPanel({
 
       {/* Predicción de tendencia */}
       {Object.values(predictions).some(p => p) && (
-        <SpringCard style={[styles.insightCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+        <SpringCard style={[styles.insightCard, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
           <View style={styles.insightHeader}>
             <Ionicons name="sparkles" size={20} color="#8B5CF6" />
             <Text style={[styles.insightTitle, { color: theme.text }]}>Predicción</Text>
@@ -196,7 +196,7 @@ const InsightsPanel = React.memo(function InsightsPanel({
 
       {/* Distribución de carga */}
       {Object.keys(workloadDistribution).length > 0 && (
-        <SpringCard style={[styles.insightCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+        <SpringCard style={[styles.insightCard, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
           <View style={styles.insightHeader}>
             <Ionicons name="layers" size={20} color="#EC4899" />
             <Text style={[styles.insightTitle, { color: theme.text }]}>Carga de Trabajo</Text>

@@ -411,7 +411,7 @@ export default function NotificationsScreen({ navigation }) {
       }[filter];
       return (
         <View style={styles.emptyContainer}>
-          <View style={[styles.emptyIconWrapper, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+          <View style={[styles.emptyIconWrapper, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
             <Ionicons name="notifications-off-outline" size={48} color={theme.textMuted} />
           </View>
           <Text style={[styles.emptyTitle, { color: theme.text }]}>
@@ -472,7 +472,7 @@ export default function NotificationsScreen({ navigation }) {
                 styles.filterButton,
                 active
                   ? { backgroundColor: theme.primary, borderColor: theme.primary }
-                  : { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' },
+                  : { backgroundColor: theme.glass, borderColor: theme.glassBorder },
                 Platform.OS === 'web' && { cursor: 'pointer' },
               ]}
             >

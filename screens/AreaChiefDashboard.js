@@ -347,7 +347,7 @@ export default function AreaChiefDashboard({ navigation }) {
                 styles.filterButton,
                 filter === f
                   ? { backgroundColor: theme.primary, borderColor: theme.primary }
-                  : { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' },
+                  : { backgroundColor: theme.glass, borderColor: theme.glassBorder },
               ]}
               activeOpacity={0.7}
             >

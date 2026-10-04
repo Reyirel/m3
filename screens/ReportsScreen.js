@@ -88,12 +88,12 @@ export default function ReportsScreen({ navigation }) {
     try {
       const result = await exportAreaReport(areaMetrics, tasks, period);
       if (result.success) {
-        notify(true, `✅ Reporte Descargado: ${result.filename}`, '✅ Éxito', `Reporte guardado: ${result.filename}`);
+        notify(true, `Reporte descargado: ${result.filename}`, 'Reporte guardado', result.filename);
       } else {
-        notify(false, `❌ Error: ${result.error || 'No se pudo exportar'}`, '❌ Error', result.error);
+        notify(false, result.error || 'No se pudo exportar el reporte', 'No se pudo exportar', result.error || 'Intenta de nuevo.');
       }
     } catch {
-      notify(false, '❌ Error: No se pudo exportar el reporte', '❌ Error', 'No se pudo exportar el reporte');
+      notify(false, 'No se pudo exportar el reporte', 'No se pudo exportar', 'Intenta de nuevo.');
     } finally {
       setExporting(false);
     }
@@ -142,8 +142,8 @@ export default function ReportsScreen({ navigation }) {
   const hasCharts = subtasksStats.completed > 0 || subtasksStats.pending > 0
     || dailyCompletions.length > 0 || priorityData.length > 0;
   const glassCard = {
-    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
-    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+    backgroundColor: theme.glass,
+    borderColor: theme.glassBorder,
   };
   const areasToReview = displayed.areasNeedingAttention.length;
 

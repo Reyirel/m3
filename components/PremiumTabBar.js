@@ -125,7 +125,7 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
       <View
         style={[
           styles.topBorder,
-          { backgroundColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.08)' },
+          { backgroundColor: theme.glassBorder },
         ]}
       />
 

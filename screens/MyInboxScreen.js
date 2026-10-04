@@ -207,8 +207,8 @@ export default function MyInboxScreen({ navigation }) {
   };
 
   const glassCard = {
-    backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)',
-    borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)',
+    backgroundColor: theme.glass,
+    borderColor: theme.glassBorder,
   };
 
   // Mientras se cargan las tareas
@@ -316,7 +316,7 @@ export default function MyInboxScreen({ navigation }) {
         </Animated.View>
 
         {/* Búsqueda */}
-        <View style={[styles.searchCompact, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.75)', borderBottomColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+        <View style={[styles.searchCompact, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.75)', borderBottomColor: theme.glassBorder }]}>
           <View style={[styles.searchRow, { backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)' }]}>
             <Ionicons name="search" size={18} color={theme.textSecondary} />
             <TextInput

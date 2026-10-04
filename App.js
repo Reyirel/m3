@@ -69,13 +69,13 @@ const AreaChiefDashboard = React.lazy(() => import('./screens/AreaChiefDashboard
 const AreaManagementScreen = React.lazy(() => import('./screens/area/AreaManagementScreen'));
 const AnalyticsScreen = React.lazy(() => import('./screens/AnalyticsScreen'));
 const TaskReportsAndActivityScreen = React.lazy(() => import('./screens/TaskReportsAndActivityScreen'));
-const ProfileScreenEnhanced = React.lazy(() => import('./screens/ProfileScreenEnhanced'));
-const SearchScreenEnhanced = React.lazy(() => import('./screens/SearchScreenEnhanced'));
-const SettingsScreenEnhanced = React.lazy(() => import('./screens/SettingsScreenEnhanced'));
+const ProfileScreen = React.lazy(() => import('./screens/ProfileScreen'));
+const SearchScreen = React.lazy(() => import('./screens/SearchScreen'));
+const SettingsScreen = React.lazy(() => import('./screens/SettingsScreen'));
 const TrashScreen = React.lazy(() => import('./screens/TrashScreen'));
 import { toMs } from './utils/dateUtils';
 import { isClosed } from './utils/taskStatus';
-import { setupNotificationResponseListener } from './services/notifications';
+import { ensurePermissions, setupNotificationResponseListener } from './services/notifications';
 import { initConnectionListener } from './services/offlineSync';
 import { startOrgStructureSync } from './services/orgStructure';
 import ConnectionStatus from './components/ConnectionStatus';
@@ -204,7 +204,7 @@ const Screens = {
   TaskReportsAndActivity: lazyScreen(TaskReportsAndActivityScreen),
   AdminReports: lazyScreen(AdminReportsScreen),
   MyAreaReports: lazyScreen(MyAreaReportsScreen),
-  Search: lazyScreen(SearchScreenEnhanced),
+  Search: lazyScreen(SearchScreen),
   Trash: lazyScreen(TrashScreen),
 };
 
@@ -274,8 +274,7 @@ function MainTabs({ onLogout, navigation }) {
   useEffect(() => {
     if (!userId) return undefined;
 
-    const { configureNotifications } = require('./services/notificationsAdvanced');
-    configureNotifications().catch(console.error);
+    ensurePermissions().catch(console.error);
 
     const { registerPushToken, setupPushNotificationListener } = require('./services/pushNotifications');
     registerPushToken(userId).catch((err) => {
@@ -328,10 +327,12 @@ function MainTabs({ onLogout, navigation }) {
     ];
     if (canSeeReports) routes.push({ name: 'Reports' });
     if (isSecretario) routes.push({ name: 'SecretarioDashboard' });
+    // El panel del director no es una pestaña: se abre encima, como en el celular
+    if (isDirector) routes.push({ name: 'AreaChiefDashboard', stack: true });
     if (isAdmin) routes.push({ name: 'ExecutiveDashboard' });
     if (isAdmin) routes.push({ name: 'Admin' });
     return routes;
-  }, [isAdmin, isSecretario, canSeeReports]);
+  }, [isAdmin, isSecretario, isDirector, canSeeReports]);
 
   const badgeStyle = (backgroundColor) => ({
     backgroundColor,
@@ -522,7 +523,7 @@ function AppNavigator({ navigationRef }) {
                 <Stack.Screen name="Profile" options={{ ...cardScreen, title: 'Mi perfil' }}>
                   {(props) => (
                     <Suspense fallback={<ScreenFallback />}>
-                      <ProfileScreenEnhanced {...props} onLogout={handleLogout} />
+                      <ProfileScreen {...props} onLogout={handleLogout} />
                     </Suspense>
                   )}
                 </Stack.Screen>
@@ -530,7 +531,7 @@ function AppNavigator({ navigationRef }) {
                 <Stack.Screen name="Settings" options={{ ...cardScreen, title: 'Configuración' }}>
                   {(props) => (
                     <Suspense fallback={<ScreenFallback />}>
-                      <SettingsScreenEnhanced {...props} onLogout={handleLogout} />
+                      <SettingsScreen {...props} onLogout={handleLogout} />
                     </Suspense>
                   )}
                 </Stack.Screen>

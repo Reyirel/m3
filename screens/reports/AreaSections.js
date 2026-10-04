@@ -72,7 +72,7 @@ function QuickMetricCard({ area, metrics, onPress, styles, theme, isDark }) {
 
   return (
     <TouchableOpacity
-      style={[styles.quickMetricCard, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.85)', borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}
+      style={[styles.quickMetricCard, { backgroundColor: theme.glass, borderColor: theme.glassBorder }]}
       onPress={onPress}
       activeOpacity={0.7}
     >

@@ -306,7 +306,7 @@ const TaskItem = memo(function TaskItem({
                 backgroundColor: task.status === 'cerrada'
                   ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)')
                   : (isDark ? theme.card : '#FFFFFF'),
-                borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.06)',
+                borderColor: theme.glassBorder,
                 shadowColor: '#000000',
                 opacity: isDeleteProp ? 0.6 : 1,
               },

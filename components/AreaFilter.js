@@ -139,7 +139,7 @@ export default function AreaFilter({
 
           {/* Expanded selector */}
           {isExpanded && (
-            <View style={[styles.expandedContainer, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.95)', borderWidth: 1, borderColor: isDark ? theme.glassBorder : 'rgba(0,0,0,0.07)' }]}>
+            <View style={[styles.expandedContainer, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.95)', borderWidth: 1, borderColor: theme.glassBorder }]}>
               <View style={styles.expandedHeader}>
                 <Text style={[styles.expandedTitle, { color: theme.text }]}>
                   Selecciona las áreas a mostrar
