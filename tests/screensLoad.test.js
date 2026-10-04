@@ -72,8 +72,8 @@ const SCREENS = [
   'ReportsScreen', 'SecretarioDashboardScreen', 'AdminExecutiveDashboard', 'AdminScreen',
   'AdminReportsScreen', 'MyAreaReportsScreen', 'TaskDetailScreen', 'TaskChatScreen',
   'TaskProgressScreen', 'NotificationsScreen', 'AreaChiefDashboard', 'area/AreaManagementScreen',
-  'AnalyticsScreen', 'TaskReportsAndActivityScreen', 'ProfileScreenEnhanced',
-  'SearchScreenEnhanced', 'SettingsScreenEnhanced', 'TrashScreen',
+  'AnalyticsScreen', 'TaskReportsAndActivityScreen', 'ProfileScreen',
+  'SearchScreen', 'SettingsScreen', 'TrashScreen',
 ];
 
 describe('las pantallas se pueden cargar', () => {

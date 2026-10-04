@@ -14,7 +14,7 @@ const log = __DEV__ ? console.log : () => {};
  * Obtener token de push notification del dispositivo
  * @returns {Promise<string>} FCM token o Expo push token
  */
-export const getPushNotificationToken = async () => {
+const getPushNotificationToken = async () => {
   try {
     if (Platform.OS === 'web') {
       // Web no soporta push notifications igual
@@ -70,29 +70,6 @@ export const registerPushToken = async (userId) => {
 };
 
 /**
- * Enviar push notification a un usuario
- * @param {string} userId - Recipient user ID
- * @param {Object} notification - { title, body, data? }
- * @returns {Promise<void>}
- */
-export const sendPushNotification = async (userId, notification) => {
-  try {
-    // Guardar en historial (para usar después con FCM backend)
-    await addDoc(collection(db, 'push_notifications_queue'), {
-      userId,
-      title: notification.title,
-      body: notification.body,
-      data: notification.data || {},
-      status: 'pending',
-      createdAt: serverTimestamp(),
-      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
-    });
-  } catch (error) {
-    if (__DEV__) console.error('Error sending push notification:', error);
-  }
-};
-
-/**
  * Configurar handler para push notifications
  * @param {Function} onNotificationReceived - Callback cuando notificación llega
  * @returns {Function} Unsubscribe function
@@ -124,49 +101,3 @@ export const setupPushNotificationListener = (onNotificationReceived) => {
 
   return () => subscription.remove();
 };
-
-/**
- * Batch send push notifications
- * @param {Array<string>} userIds - Array de user IDs
- * @param {Object} notification - Notification data
- * @returns {Promise<void>}
- */
-export const batchSendPushNotifications = async (userIds = [], notification) => {
-  try {
-    const promises = userIds.map((userId) =>
-      sendPushNotification(userId, notification)
-    );
-
-    await Promise.all(promises);
-    log(`Sent notifications to ${userIds.length} users`);
-  } catch (error) {
-    if (__DEV__) console.error('Error batch sending notifications:', error);
-  }
-};
-
-/**
- * Crear notificación para completación de subtarea
- * @param {string} taskId - Task ID
- * @param {string} subtaskTitle - Subtask title
- * @param {Array<string>} teamMemberIds - Team members to notify
- * @param {string} completedBy - User who completed
- * @returns {Promise<void>}
- */
-export const notifySubtaskCompletion = async (taskId, subtaskTitle, teamMemberIds = [], completedBy) => {
-  try {
-    const notification = {
-      title: '✅ Subtarea Completada',
-      body: subtaskTitle,
-      data: {
-        type: 'subtask_completed',
-        taskId,
-        completedBy,
-      },
-    };
-
-    await batchSendPushNotifications(teamMemberIds, notification);
-  } catch (error) {
-    if (__DEV__) console.error('Error notifying subtask completion:', error);
-  }
-};
-

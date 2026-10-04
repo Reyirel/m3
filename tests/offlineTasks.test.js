@@ -10,7 +10,6 @@ jest.mock('../services/Logger', () => ({
 jest.mock('../services/authFirestore', () => ({
   getCurrentSession: jest.fn(async () => ({ success: false })),
 }));
-jest.mock('../services/emailNotifications', () => ({ notifyTaskAssigned: jest.fn(async () => {}) }));
 jest.mock('../services/notifications', () => ({ notifyAssignment: jest.fn(async () => {}) }));
 jest.mock('../services/analytics', () => ({ getGeneralMetrics: jest.fn(async () => ({})) }));
 

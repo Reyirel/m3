@@ -7,13 +7,11 @@ const log = _isDev ? console.log : () => {};
 import logger from './Logger';
 import { toMs } from '../utils/dateUtils';
 import { normalizeStatus } from '../utils/taskHelpers';
-import { filterVisibleTasks, getUserSecretaria, getTaskAreas } from '../utils/taskVisibility';
-import { getSecretariasForAreas } from '../config/areas';
+import { filterVisibleTasks, getUserSecretaria } from '../utils/taskVisibility';
 import { updateParentTaskProgress } from './areaSubtasks';
 
 import {
   collection,
-  addDoc,
   updateDoc,
   doc,
   onSnapshot, 
@@ -27,12 +25,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getCurrentSession } from './authFirestore';
-import { notifyTaskAssigned } from './emailNotifications';
-import { notifyAssignment } from './notifications';
 import { getGeneralMetrics } from './analytics';
-import { validateData } from '../utils/dataValidation';
-import { withRetry } from '../utils/errorRecovery';
-import { checkRateLimit } from '../utils/rateLimiter';
 import {
   cacheTasksLocally,
   getCachedTasks,
@@ -41,6 +34,7 @@ import {
   queueOperation,
   subscribeToCacheChanges,
   isPermanentError,
+  isOperationOfUser,
   OPERATION_TYPES
 } from './offlineSync';
 
@@ -206,8 +200,10 @@ export async function subscribeToTasks(callback, knownSession) {
     //   - cambios pendientes en la cola (estado, confirmaciones, papelera)
     // Si Firestore aún no entrega nada (app abierta sin red), se usa la última copia guardada.
     const emit = async ({ skipIfEmpty = false } = {}) => {
-      const [cached, pendingOps] = await Promise.all([getCachedTasks(userEmail), getPendingOperations()]);
+      const [cached, allPendingOps] = await Promise.all([getCachedTasks(userEmail), getPendingOperations()]);
       if (!isSubscribed) return;
+      // La cola se conserva al cerrar sesión: aquí solo cuentan los cambios de este usuario
+      const pendingOps = allPendingOps.filter(op => isOperationOfUser(op, userEmail));
       const tempTasks = cached
         .filter(isTempTask)
         .map(t => ({
@@ -316,161 +312,6 @@ export async function subscribeToTasks(callback, knownSession) {
     _activeSubscriptions--;
     callback([]);
     return () => {};
-  }
-}
-
-/**
- * Crear una nueva tarea en Firebase con información del usuario
- * OFFLINE-FIRST: Si no hay conexión, guarda localmente y sincroniza después
- * @param {Object} task - Objeto con datos de la tarea
- * @returns {Promise<string>} ID de la tarea creada
- */
-export async function createTask(task) {
-  let currentUserEmail = '';
-  try {
-    // ⏱️ Rate limiting check
-    const rateCheck = await checkRateLimit('createTask');
-    if (!rateCheck.allowed) {
-      const error = new Error(rateCheck.message);
-      error.code = 'RATE_LIMIT_EXCEEDED';
-      throw error;
-    }
-
-    // 🔍 Validar datos antes de procesar
-    const validation = validateData(task, 'task');
-    if (!validation.valid) {
-      logger.warn('TasksService', 'Invalid task data', { errors: validation.errors });
-      const error = new Error(`Datos inválidos: ${validation.errors.join(', ')}`);
-      error.code = 'INVALID_DATA';
-      throw error;
-    }
-
-    // Obtener información del usuario actual
-    const sessionResult = await getCurrentSession();
-    const currentUserUID = sessionResult.success ? sessionResult.session.userId : 'anonymous';
-    const currentUserName = sessionResult.success ? sessionResult.session.displayName : 'Usuario Anónimo';
-    currentUserEmail = sessionResult.success ? sessionResult.session.email : '';
-
-    const taskData = {
-      ...task,
-      createdBy: currentUserEmail || currentUserUID,
-      createdByName: currentUserName,
-      department: task.department || '',
-      // Secretarías que pueden ver la tarea (visibilidad del secretario)
-      secretarias: Array.isArray(task.secretarias) && task.secretarias.length > 0
-        ? task.secretarias
-        : getSecretariasForAreas(getTaskAreas(task)),
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-      dueAt: task.dueAt != null ? task.dueAt : Date.now(),
-      tags: task.tags || [],
-      estimatedHours: task.estimatedHours || null
-    };
-
-    // Si hay conexión, crear directamente en Firebase
-    if (getConnectionState()) {
-      const firestoreData = {
-        ...taskData,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-        dueAt: Timestamp.fromMillis(task.dueAt || Date.now())
-      };
-
-      // 🔄 Retry automático con backoff exponencial
-      const docRef = await withRetry(
-        async () => {
-          return await addDoc(collection(db, COLLECTION_NAME), firestoreData);
-        },
-        'createTask',
-        { maxRetries: 3 }
-      );
-      
-      // 🔔 Enviar notificaciones a los asignados
-      // Soporta tanto string como array
-      if (task.assignedTo) {
-        try {
-          // Usar notifyAssignment para notificaciones in-app/FCM (soporta arrays)
-          // Esto crea notificaciones en Firestore que se sincronizarán con los usuarios
-          await notifyAssignment({
-            id: docRef.id,
-            title: task.title,
-            description: task.description || '',
-            dueAt: task.dueAt,
-            assignedTo: task.assignedTo,
-            priority: task.priority,
-            area: task.area
-          }).catch(err => {
-            log('⚠️ Error en notifyAssignment:', err.message);
-          });
-          
-          // También intentar enviar email (backcompat con string o array)
-          if (task.assignedTo && Array.isArray(task.assignedTo) && task.assignedTo.length > 0) {
-            notifyTaskAssigned({...task, id: docRef.id}, task.assignedTo)
-              .catch(err => {
-                log('⚠️ Error notificación email:', err.message);
-              });
-          } else if (task.assignedTo && typeof task.assignedTo === 'string') {
-            notifyTaskAssigned({...task, id: docRef.id}, task.assignedTo)
-              .catch(err => {
-                log('⚠️ Error notificación email:', err.message);
-              });
-          }
-        } catch (notifErr) {
-          logger.warn('TasksService', 'Error sending notifications', { 
-            taskId: docRef.id, 
-            error: notifErr.message 
-          });
-        }
-      }
-      
-      logger.info('TasksService', 'Task created', { taskId: docRef.id });
-      return docRef.id;
-    } else {
-      // MODO OFFLINE: Guardar localmente y encolar para sincronización
-      log('📴 Creando tarea offline');
-
-      const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      const offlineTask = {
-        ...taskData,
-        id: tempId,
-        isOffline: true
-      };
-
-      // Agregar al cache local (con clave por usuario)
-      const cached = await getCachedTasks(currentUserEmail);
-      cached.unshift(offlineTask);
-      await cacheTasksLocally(cached, currentUserEmail);
-
-      // Encolar para sincronización
-      await queueOperation(OPERATION_TYPES.CREATE, taskData, tempId, currentUserEmail);
-
-      logger.info('TasksService', 'Task queued offline', { tempId });
-      return tempId;
-    }
-  } catch (error) {
-    // Rate limit, datos inválidos y errores permanentes (permisos, etc.) no se
-    // reintentan offline: se propagan al caller
-    if (error.code === 'RATE_LIMIT_EXCEEDED' || error.code === 'INVALID_DATA' || isPermanentError(error)) throw error;
-
-    // Si falla por un error transitorio, intentar modo offline
-    log('⚠️ Error creando tarea, guardando offline:', error.message);
-
-    const tempId = `temp_${Date.now()}`;
-    const taskData = {
-      ...task,
-      id: tempId,
-      isOffline: true,
-      createdBy: currentUserEmail,
-      createdAt: Date.now(),
-      updatedAt: Date.now()
-    };
-
-    const cached = await getCachedTasks(currentUserEmail);
-    cached.unshift(taskData);
-    await cacheTasksLocally(cached, currentUserEmail);
-    await queueOperation(OPERATION_TYPES.CREATE, taskData, tempId, currentUserEmail);
-
-    return tempId;
   }
 }
 
