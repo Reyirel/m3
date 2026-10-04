@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import TaskItem from './inbox/TaskItem';
 import EmptyState from '../components/EmptyState';
 import ShimmerEffect from '../components/ShimmerEffect';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import { updateTask } from '../services/tasks';
 import { hapticMedium, hapticLight } from '../utils/haptics';
 import { useNotification } from '../contexts/NotificationContext';
@@ -252,67 +253,28 @@ export default function MyInboxScreen({ navigation }) {
     <View style={styles.container}>
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
         <Animated.View style={{ opacity: headerOpacity, transform: [{ translateY: headerSlide }] }}>
-          <LinearGradient
-            colors={theme.gradientHeader}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.headerGradient}
-          >
-            <View style={styles.header}>
-              <View style={styles.headerLeft}>
-                <View style={styles.headerIconWrapper}>
-                  <Ionicons name="file-tray-full" size={22} color="#FFFFFF" />
-                </View>
-                <View>
-                  <Text style={styles.greeting}>Mi Bandeja</Text>
-                  <Text style={styles.heading}>
-                    {filtered.length} {filtered.length === 1 ? 'tarea' : 'tareas'}
-                  </Text>
-                </View>
-              </View>
-
-              <View style={styles.headerRight}>
-                {/* Vencidas: tocar activa o quita el filtro */}
-                {overdueCount > 0 && (
-                  <TouchableOpacity
-                    style={styles.overdueBadge}
-                    onPress={() => setFilters((prev) => ({ ...prev, overdue: !prev.overdue }))}
-                  >
-                    <Ionicons name="warning" size={14} color="#FFFFFF" />
-                    <Text style={styles.overdueBadgeText}>{overdueCount}</Text>
-                  </TouchableOpacity>
-                )}
-
-                {recentMessages.length > 0 && (
-                  <TouchableOpacity
-                    style={styles.headerIconBtn}
-                    onPress={() => {
-                      hapticMedium();
-                      setShowMessagesModal(true);
-                    }}
-                  >
-                    <Ionicons name="chatbubbles" size={20} color="#FFFFFF" />
-                    <View style={styles.msgBadge}>
-                      <Text style={styles.msgBadgeText}>{recentMessages.length}</Text>
-                    </View>
-                  </TouchableOpacity>
-                )}
-
-                <TouchableOpacity
-                  style={styles.headerIconBtn}
-                  onPress={() => { hapticLight(); setShowHelpModal(true); }}
-                  accessibilityRole="button"
-                  accessibilityLabel="Ayuda"
-                >
-                  <Ionicons name="help-circle-outline" size={22} color="#FFFFFF" />
-                </TouchableOpacity>
-
-                <TouchableOpacity style={styles.addButton} onPress={goToCreate} accessibilityRole="button" accessibilityLabel="Agregar">
-                  <Ionicons name="add" size={26} color={theme.primary} />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </LinearGradient>
+          <ScreenHeader
+            title="Mi Bandeja"
+            subtitle={`${filtered.length} ${filtered.length === 1 ? 'tarea' : 'tareas'}`}
+            actions={[
+              // Vencidas: tocar activa o quita el filtro
+              overdueCount > 0 && {
+                icon: 'warning',
+                label: filters.overdue ? 'Quitar filtro de vencidas' : 'Ver solo vencidas',
+                badge: overdueCount,
+                active: filters.overdue,
+                onPress: () => setFilters((prev) => ({ ...prev, overdue: !prev.overdue })),
+              },
+              recentMessages.length > 0 && {
+                icon: 'chatbubbles',
+                label: 'Mensajes recientes',
+                badge: recentMessages.length,
+                onPress: () => { hapticMedium(); setShowMessagesModal(true); },
+              },
+              { icon: 'help-circle-outline', label: 'Ayuda', onPress: () => { hapticLight(); setShowHelpModal(true); } },
+              currentUser?.role === 'admin' && { icon: 'add', label: 'Nueva tarea', primary: true, onPress: goToCreate },
+            ].filter(Boolean)}
+          />
         </Animated.View>
 
         {/* Búsqueda */}

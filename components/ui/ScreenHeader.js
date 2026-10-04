@@ -4,8 +4,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 
+// Encabezado común de las pantallas.
+//   actions: [{ icon, label, onPress, disabled?, color?, badge?, active?, primary? }]
+//     badge   → contador sobre el botón (vencidas, mensajes sin leer)
+//     active  → botón resaltado (un filtro o una vista que está encendida)
+//     primary → acción principal de la pantalla (crear)
 export default function ScreenHeader({ title, subtitle, icon, actions = [], onBack }) {
   const { theme } = useTheme();
+  // Con muchas acciones los botones se hacen un poco más chicos para dejarle lugar al título
+  const compact = actions.length > 3;
 
   return (
     <LinearGradient
@@ -33,27 +40,40 @@ export default function ScreenHeader({ title, subtitle, icon, actions = [], onBa
             </View>
           )}
           <View style={styles.textBlock}>
-            <Text style={styles.title}>{title}</Text>
-            {!!subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+            <Text style={styles.title} numberOfLines={1} accessibilityRole="header">{title}</Text>
+            {!!subtitle && <Text style={styles.subtitle} numberOfLines={1}>{subtitle}</Text>}
           </View>
         </View>
 
         {actions.length > 0 && (
-          <View style={styles.actionsRow}>
+          <View style={[styles.actionsRow, compact && styles.actionsRowCompact]}>
             {actions.map((action, i) => (
               <TouchableOpacity
                 key={i}
                 onPress={action.onPress}
                 disabled={action.disabled}
-                style={[styles.actionBtn, action.disabled && { opacity: 0.4 }]}
+                style={[
+                  styles.actionBtn,
+                  compact && styles.actionBtnCompact,
+                  action.active && styles.actionBtnActive,
+                  action.primary && styles.actionBtnPrimary,
+                  action.disabled && { opacity: 0.4 },
+                ]}
+                hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
                 accessibilityRole="button"
-                accessibilityLabel={action.label}
+                accessibilityLabel={action.badge > 0 ? `${action.label}, ${action.badge}` : action.label}
+                accessibilityState={action.active === undefined ? undefined : { selected: !!action.active }}
               >
                 <Ionicons
                   name={action.icon}
-                  size={20}
-                  color={action.color || 'rgba(255,255,255,0.90)'}
+                  size={action.primary ? 24 : 20}
+                  color={action.primary ? theme.primary : action.color || 'rgba(255,255,255,0.90)'}
                 />
+                {action.badge > 0 && (
+                  <View style={[styles.badge, { backgroundColor: theme.error }]}>
+                    <Text style={styles.badgeText}>{action.badge > 99 ? '99+' : action.badge}</Text>
+                  </View>
+                )}
               </TouchableOpacity>
             ))}
           </View>
@@ -128,4 +148,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  actionsRowCompact: { gap: 6 },
+  actionBtnCompact: { width: 36, height: 36, borderRadius: 18 },
+  actionBtnActive: { backgroundColor: 'rgba(255,255,255,0.32)', borderColor: 'rgba(255,255,255,0.55)' },
+  actionBtnPrimary: { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  badgeText: { color: '#FFFFFF', fontSize: 11, fontWeight: '700' },
 });

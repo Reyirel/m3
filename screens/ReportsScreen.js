@@ -21,6 +21,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useResponsive } from '../utils/responsive';
 import { useTasks } from '../contexts/TasksContext';
 import ShimmerEffect from '../components/ShimmerEffect';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import AreaFilter from './reports/AreaFilter';
 import AlertsPanel from './reports/AlertsPanel';
 import InsightsPanel from './reports/InsightsPanel';
@@ -138,6 +139,12 @@ export default function ReportsScreen({ navigation }) {
   }
 
   const role = currentUser?.role;
+  // Las demás pantallas de reportes se abren desde aquí
+  const relatedScreens = [
+    role === 'admin' && { name: 'AdminReports', icon: 'document-text-outline', label: 'Reportes enviados por las áreas' },
+    role === 'admin' && { name: 'Analytics', icon: 'analytics-outline', label: 'Analíticas' },
+    (role === 'secretario' || role === 'director') && { name: 'MyAreaReports', icon: 'document-text-outline', label: 'Reportes de mi área' },
+  ].filter(Boolean);
   const hasAreaData = Object.keys(areaMetrics).length > 0;
   const hasCharts = subtasksStats.completed > 0 || subtasksStats.pending > 0
     || dailyCompletions.length > 0 || priorityData.length > 0;
@@ -151,43 +158,19 @@ export default function ReportsScreen({ navigation }) {
     <View style={[styles.container, Platform.OS === 'web' && { minHeight: '100vh' }]}>
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }, Platform.OS === 'web' && { width: '100%', paddingHorizontal: padding }]}>
         <Animated.View style={anim.header}>
-          <LinearGradient
-            colors={theme.gradientHeader}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0.8 }}
-            style={styles.headerGradientInner}
-          >
-            <View style={styles.header}>
-              <View style={styles.headerLeftSection}>
-                <TouchableOpacity
-                  onPress={() => navigation.goBack()}
-                  style={styles.backButton}
-                  activeOpacity={0.7}
-                  accessibilityLabel="Volver"
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="chevron-back" size={22} color="#FFFFFF" />
-                </TouchableOpacity>
-                <View style={styles.headerTitleGroup}>
-                  <Text style={styles.headerLabel}>REPORTES</Text>
-                  <Text style={styles.heading}>Evolución</Text>
-                </View>
-              </View>
-
-              <View style={styles.headerRightSection}>
-                {currentStats.overdue > 0 && (
-                  <View style={styles.headerAlertBadge}>
-                    <Ionicons name="alert" size={14} color="#FFFFFF" />
-                    <Text style={styles.headerAlertText}>{currentStats.overdue}</Text>
-                  </View>
-                )}
-                <View style={styles.headerStatMini}>
-                  <Text style={styles.headerStatMiniValue}>{tasks.length}</Text>
-                  <Text style={styles.headerStatMiniLabel}>tareas</Text>
-                </View>
-              </View>
-            </View>
-          </LinearGradient>
+          <ScreenHeader
+            title="Reportes"
+            subtitle={[
+              `${tasks.length} ${tasks.length === 1 ? 'tarea' : 'tareas'}`,
+              currentStats.overdue > 0 && `${currentStats.overdue} ${currentStats.overdue === 1 ? 'vencida' : 'vencidas'}`,
+            ].filter(Boolean).join(' · ')}
+            icon="bar-chart"
+            actions={relatedScreens.map((screen) => ({
+              icon: screen.icon,
+              label: screen.label,
+              onPress: () => navigation.navigate(screen.name),
+            }))}
+          />
         </Animated.View>
 
         <ScrollView

@@ -25,6 +25,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { canChangeTaskStatus, canEditTask } from '../services/permissions';
 import QuickTip, { TIPS } from '../components/QuickTip';
+import ScreenHeader from '../components/ui/ScreenHeader';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
 import { useKanbanFilters } from '../hooks/useKanbanFilters';
@@ -243,88 +244,33 @@ export default function KanbanScreen({ navigation }) {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
-          <LinearGradient
-            colors={theme.gradientHeader}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.headerGradient}
-          >
-            <View style={[styles.headerHighlight, { backgroundColor: 'rgba(255,255,255,0.07)' }]} />
-            <View style={styles.header}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.heading}>Tablero Kanban</Text>
-              </View>
-
-              {/* Vencidas: tocar activa o quita el filtro */}
-              {taskStats.overdueCount > 0 && (
-                <TouchableOpacity
-                  onPress={() => {
-                    setFilters({ ...filters, overdue: !filters.overdue });
-                    hapticLight();
-                  }}
-                  style={[styles.overdueHeaderBadge, filters.overdue && styles.overdueHeaderBadgeActive]}
-                  activeOpacity={0.8}
-                >
-                  <View style={styles.overdueHeaderPulse}>
-                    <Ionicons name="warning" size={16} color="#FFFFFF" />
-                  </View>
-                  <View style={styles.overdueHeaderContent}>
-                    <Text style={styles.overdueHeaderCount}>{taskStats.overdueCount}</Text>
-                    <Text style={styles.overdueHeaderLabel}>vencidas</Text>
-                  </View>
-                  {filters.overdue && (
-                    <View style={styles.overdueHeaderCheck}>
-                      <Ionicons name="checkmark" size={12} color="#FFFFFF" />
-                    </View>
-                  )}
-                </TouchableOpacity>
-              )}
-
-              <View style={styles.headerActions}>
-                <TouchableOpacity
-                  onPress={() => {
-                    setCompactView(!compactView);
-                    hapticLight();
-                  }}
-                  style={[styles.iconButton, compactView && styles.iconButtonActive]}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  accessibilityLabel={compactView ? 'Vista normal' : 'Vista compacta'}
-                  accessibilityRole="button"
-                >
-                  <Ionicons name={compactView ? 'list' : 'grid-outline'} size={18} color="#FFFFFF" />
-                </TouchableOpacity>
-
-                {/* Ordenar por fecha o por prioridad */}
-                <TouchableOpacity accessibilityRole="button" accessibilityLabel={sortBy === 'date' ? 'Ordenar por prioridad' : 'Ordenar por fecha'}
-                  onPress={() => {
-                    setSortBy(sortBy === 'date' ? 'priority' : 'date');
-                    hapticLight();
-                  }}
-                  style={styles.iconButton}
-                >
-                  <Ionicons name={sortBy === 'date' ? 'time-outline' : 'flag-outline'} size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => setShowStats(!showStats)}
-                  style={styles.iconButton}
-                  accessibilityRole="button"
-                  accessibilityLabel="Ver estadísticas"
-                >
-                  <Ionicons name="stats-chart" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  onPress={() => { hapticLight(); setShowHelpModal(true); }}
-                  style={styles.iconButton}
-                  accessibilityRole="button"
-                  accessibilityLabel="Ayuda"
-                >
-                  <Ionicons name="help-circle-outline" size={20} color="#FFFFFF" />
-                </TouchableOpacity>
-              </View>
-            </View>
-          </LinearGradient>
+          <ScreenHeader
+            title="Tablero"
+            subtitle={taskStats.overdueCount > 0 ? `${taskStats.overdueCount} vencidas` : undefined}
+            actions={[
+              // Vencidas: tocar activa o quita el filtro
+              taskStats.overdueCount > 0 && {
+                icon: 'warning',
+                label: filters.overdue ? 'Quitar filtro de vencidas' : 'Ver solo vencidas',
+                badge: taskStats.overdueCount,
+                active: filters.overdue,
+                onPress: () => { setFilters({ ...filters, overdue: !filters.overdue }); hapticLight(); },
+              },
+              {
+                icon: compactView ? 'list' : 'grid-outline',
+                label: compactView ? 'Vista normal' : 'Vista compacta',
+                active: compactView,
+                onPress: () => { setCompactView(!compactView); hapticLight(); },
+              },
+              {
+                icon: sortBy === 'date' ? 'time-outline' : 'flag-outline',
+                label: sortBy === 'date' ? 'Ordenar por prioridad' : 'Ordenar por fecha',
+                onPress: () => { setSortBy(sortBy === 'date' ? 'priority' : 'date'); hapticLight(); },
+              },
+              { icon: 'stats-chart', label: 'Ver estadísticas', onPress: () => setShowStats(!showStats) },
+              { icon: 'help-circle-outline', label: 'Ayuda', onPress: () => { hapticLight(); setShowHelpModal(true); } },
+            ].filter(Boolean)}
+          />
 
           {/* Filtros activos */}
           <View style={[styles.filterCompactBar, { backgroundColor: isDark ? theme.glass : 'rgba(255,255,255,0.75)', borderBottomColor: glassCard.borderColor }]}>
