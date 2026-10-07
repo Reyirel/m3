@@ -492,6 +492,8 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
 
       // PASO 2: Subir imágenes una por una
       const failedImages = [];
+      // Fotos que no caben en el reporte: reintentar no lo arregla, no se guardan para después
+      const rejectedImages = [];
       if (images.length > 0) {
         setUploadingImages(true);
 
@@ -513,7 +515,8 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
               [img.id]: { status: 'success', progress: 100 }
             }));
           } catch (imgError) {
-            failedImages.push(img);
+            if (imgError?.code === 'failed-precondition') rejectedImages.push(img);
+            else failedImages.push(img);
             if (__DEV__) console.error('⚠️ Error subiendo foto:', imgError);
             setUploadProgress(prev => ({
               ...prev,
@@ -529,6 +532,12 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       // existe, así que se guarda su ID: el reintento solo sube las fotos, no lo duplica.
       if (failedImages.length > 0) {
         await saveForLater({ cloudId: reportId, pendingImages: failedImages, userId: currentUser.userId });
+      }
+      if (rejectedImages.length > 0) {
+        showWarning(
+          `Reporte enviado, pero ${rejectedImages.length} de ${images.length} foto(s) no cupieron. Envíalas en otro reporte.`
+        );
+      } else if (failedImages.length > 0) {
         showWarning(
           `Reporte enviado. ${failedImages.length} de ${images.length} foto(s) no se pudieron subir y se reintentarán automáticamente.`
         );

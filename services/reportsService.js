@@ -163,6 +163,16 @@ export const createTaskReport = async (taskId, userId, reportData) => {
 // Tamaño máximo de una foto guardada dentro del reporte cuando Storage no está disponible.
 // Un documento de Firestore admite 1 MB en total.
 const MAX_EMBEDDED_IMAGE_CHARS = 350 * 1024;
+// Tope para la suma de todas las fotos guardadas dentro de un mismo reporte. Deja margen
+// para el resto del documento (texto, fechas, calificación).
+const MAX_EMBEDDED_TOTAL_CHARS = 850 * 1024;
+
+/** Caracteres que ya ocupan las fotos guardadas dentro del reporte (no las de Storage) */
+export const embeddedImageChars = (images) => (Array.isArray(images) ? images : [])
+  .reduce((sum, image) => {
+    const url = typeof image === 'string' ? image : image?.url;
+    return sum + (typeof url === 'string' && url.startsWith('data:') ? url.length : 0);
+  }, 0);
 
 /**
  * Sube el archivo a Storage. Intenta primero la carpeta de reportes y, si el proyecto
@@ -177,7 +187,8 @@ const uploadToStorage = async (blob, taskId, reportId, fileName) => {
   for (const storagePath of paths) {
     try {
       const storageRef = ref(storage, storagePath);
-      await uploadBytes(storageRef, blob);
+      // Las reglas de Storage solo aceptan imágenes: el tipo se indica siempre
+      await uploadBytes(storageRef, blob, { contentType: blob.type || 'image/jpeg' });
       return await getDownloadURL(storageRef);
     } catch (storageError) {
       if (__DEV__) console.warn(`⚠️ Storage rechazó ${storagePath}:`, storageError.code || storageError.message);
@@ -210,6 +221,16 @@ export const uploadReportImage = async (taskId, reportId, imageData) => {
     if (!downloadURL && dataUrl) {
       if (dataUrl.length > MAX_EMBEDDED_IMAGE_CHARS) {
         throw new Error('La foto es demasiado grande para enviarse. Intenta con otra o tómala de nuevo.');
+      }
+      // Varias fotos dentro del mismo reporte pueden pasar del límite de 1 MB por documento:
+      // sin esta comprobación Firestore rechazaba la foto con un error que no decía por qué
+      const reportSnap = await getDoc(doc(db, 'task_reports', reportId));
+      const usedChars = reportSnap.exists() ? embeddedImageChars(reportSnap.data().images) : 0;
+      if (usedChars + dataUrl.length > MAX_EMBEDDED_TOTAL_CHARS) {
+        const error = new Error('Este reporte ya no admite más fotos. Envía las demás en otro reporte.');
+        // Reintentar no lo arregla: la cola de fotos pendientes no debe insistir
+        error.code = 'failed-precondition';
+        throw error;
       }
       downloadURL = dataUrl;
     }
@@ -299,7 +320,7 @@ export const subscribeToTaskReports = (taskId, callback) => {
       });
     });
     // Sort by creation date descending
-    reports.sort((a, b) => b.createdAt - a.createdAt);
+    reports.sort((a, b) => (toMs(b.createdAt) || 0) - (toMs(a.createdAt) || 0));
     callback(reports);
   });
 };
@@ -348,7 +369,7 @@ export const subscribeToTaskActivity = (taskId, callback) => {
       });
     });
     // Sort by timestamp descending (newest first)
-    activities.sort((a, b) => b.timestamp - a.timestamp);
+    activities.sort((a, b) => (toMs(b.timestamp) || 0) - (toMs(a.timestamp) || 0));
     callback(activities);
   });
 };
@@ -458,10 +479,16 @@ export const subscribeToReports = (callback, onError) => {
 export const subscribeToAllReports = (callback, onError) => {
   const q = query(collection(db, 'task_reports'));
 
+  // Datos de cada tarea ya consultada (null = no existe o no se pudo leer). Antes, cada
+  // cambio en cualquier reporte volvía a leer TODAS las tareas, una por una y en fila.
+  const tasksInfo = new Map();
+  let latestSnapshot = 0;
+
   return onSnapshot(q, async (snapshot) => {
+    const snapshotNumber = ++latestSnapshot;
     const reports = [];
     const taskIds = new Set();
-    
+
     snapshot.forEach((doc) => {
       const data = doc.data();
       if (!data.deleted) {
@@ -475,27 +502,33 @@ export const subscribeToAllReports = (callback, onError) => {
       }
     });
 
-    // Get task info to add area data
-    const tasksInfo = {};
-    for (const taskId of taskIds) {
+    // Solo se leen las tareas que aún no se conocen, y todas a la vez
+    const missing = [...taskIds].filter((taskId) => !tasksInfo.has(taskId));
+    await Promise.all(missing.map(async (taskId) => {
       try {
         const taskDoc = await getDoc(doc(db, 'tasks', taskId));
         if (taskDoc.exists()) {
           const taskData = taskDoc.data();
-          tasksInfo[taskId] = {
+          tasksInfo.set(taskId, {
             title: taskData.title || 'Sin título',
             area: taskData.area || 'Sin área',
             assignedTo: taskData.assignedTo || [],
-          };
+          });
+        } else {
+          tasksInfo.set(taskId, null);
         }
-      } catch (err) {
+      } catch (_err) {
+        // Sin red o sin permiso: se muestra como "no encontrada" y se reintenta en el próximo cambio
       }
-    }
+    }));
+
+    // Mientras se leían las tareas llegó un cambio más reciente: ese es el que se muestra
+    if (snapshotNumber !== latestSnapshot) return;
 
     // Enrich reports with task info
     const enrichedReports = reports.map(report => ({
       ...report,
-      taskInfo: tasksInfo[report.taskId] || { title: 'Tarea no encontrada', area: 'Desconocida' },
+      taskInfo: tasksInfo.get(report.taskId) || { title: 'Tarea no encontrada', area: 'Desconocida' },
     }));
 
     // Sort by creation date descending
