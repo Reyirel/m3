@@ -21,6 +21,7 @@ const LineChart = React.lazy(() => import('react-native-chart-kit').then(module 
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
 import { subscribeToUsers } from '../services/usersDirectory';
+import { isDirectorOfSecretario } from '../services/roles';
 import ProgressBar from '../components/ProgressBar';
 import Avatar from '../components/Avatar';
 import ShimmerEffect from '../components/ShimmerEffect';
@@ -246,10 +247,10 @@ export default function AdminExecutiveDashboard({ navigation }) {
                resolveAreaName(taskArea).includes(resolveAreaName(secArea));
       });
       
-      const secDirectors = directores.filter(d =>
-        direcciones.map(resolveAreaName).includes(resolveAreaName(d.area)) ||
-        direcciones.map(resolveAreaName).includes(resolveAreaName(d.department))
-      );
+      // Los directores guardan su secretaría en `area` y su dirección en `areasPermitidas`:
+      // comparar solo `area` contra la lista de direcciones dejaba a casi todas las
+      // secretarías con 0 directores. isDirectorOfSecretario usa la misma regla que la delegación.
+      const secDirectors = directores.filter(d => d.active !== false && isDirectorOfSecretario(d, sec));
       
       const secCompleted = secTasks.filter(t => t.status === 'completada' || t.status === 'cerrada');
       const secOverdue = secTasks.filter(t => {

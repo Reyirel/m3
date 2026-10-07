@@ -85,3 +85,8 @@ firebase-functions/node_modules/
 
 # Pruebas
 coverage/
+
+# Listados de personal (traen RFC y CURP): nunca al repositorio
+nuevas direcciones/
+*.xlsx
+*.xls
