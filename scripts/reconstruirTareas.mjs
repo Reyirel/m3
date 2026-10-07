@@ -167,11 +167,18 @@ async function main() {
     // Con avisos de asignación, los asignados son los del último grupo. Sin ellos, lo
     // único que queda es quién envió reportes: un secretario puede reportar sin estar
     // asignado, así que eso solo se usa cuando no hay nada mejor.
-    const originalEmails = [...new Set((latestBatch.length
-      ? latestBatch.map((a) => a.email)
-      : task.reports.map((r) => normalizeEmail(r.createdBy)).filter((e) => e.includes('@'))
-    ).filter(Boolean))];
+    const reportAuthors = task.reports.map((r) => normalizeEmail(r.createdBy)).filter((e) => e.includes('@'));
+    const originalEmails = [...new Set((latestBatch.length ? latestBatch.map((a) => a.email) : reportAuthors).filter(Boolean))];
     if (!latestBatch.length && originalEmails.length) notes.push('asignado deducido de quien envió el reporte');
+    // Un director solo ve las tareas que tiene asignadas: si envió un reporte, estaba
+    // asignado. Las delegaciones no dejan aviso de asignación, así que es la única huella.
+    reportAuthors.forEach((email) => {
+      const author = currentAccount(email);
+      if (author && author.role === 'director' && !originalEmails.includes(email)) {
+        originalEmails.push(email);
+        notes.push(`${email} agregado: envió un reporte en esta tarea (había sido delegado)`);
+      }
+    });
     if (!latestBatch.length && task.reports.length === 0) {
       // Solo queda el nombre de quien reportó, dentro del texto del aviso
       task.reportNotes.forEach((n) => {
