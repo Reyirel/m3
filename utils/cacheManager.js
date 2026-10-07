@@ -8,7 +8,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 const CACHE_PREFIX = 'cache_';
 const CACHE_METADATA = 'cache_metadata';
 const MAX_CACHE_SIZE = 5 * 1024 * 1024; // 5MB en bytes estimados
-const CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 días
 const CLEANUP_INTERVAL = 60 * 60 * 1000; // Cada 1 hora
 
 let cleanupTimer = null;
@@ -80,17 +79,6 @@ export const cleanupIfNeeded = async () => {
 };
 
 // Helpers
-const updateCacheMetadata = async (key, metadata) => {
-  const allMetadata = await getAllCacheMetadata();
-  allMetadata[key] = metadata;
-  await AsyncStorage.setItem(CACHE_METADATA, JSON.stringify(allMetadata));
-};
-
-const getCacheMetadata = async (key) => {
-  const allMetadata = await getAllCacheMetadata();
-  return allMetadata[key];
-};
-
 const getAllCacheMetadata = async () => {
   try {
     const data = await AsyncStorage.getItem(CACHE_METADATA);

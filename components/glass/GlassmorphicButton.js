@@ -123,6 +123,10 @@ const GlassmorphicButton = ({
         onPressOut={handlePressOut}
         disabled={disabled || loading}
         activeOpacity={1}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel || (typeof label === 'string' ? label : undefined)}
+        accessibilityHint={accessibilityHint}
+        accessibilityState={{ disabled: disabled || loading, busy: loading }}
         style={Platform.OS === 'web' ? { cursor: disabled || loading ? 'not-allowed' : 'pointer' } : undefined}
       >
         <PremiumGlassCard

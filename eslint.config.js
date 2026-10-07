@@ -112,9 +112,23 @@ module.exports = [
     },
   },
 
+  // Service worker: corre fuera de la página, con sus propias variables globales
+  {
+    files: ['public/sw.js'],
+    languageOptions: {
+      globals: {
+        self: 'readonly',
+        caches: 'readonly',
+        Response: 'readonly',
+      },
+    },
+  },
+
   // Ignorar archivos generados, scripts y documentación
   {
     ignores: [
+      'coverage/**',
+      'firebase-functions/node_modules/**',
       'node_modules/**',
       '.expo/**',
       'dist/**',

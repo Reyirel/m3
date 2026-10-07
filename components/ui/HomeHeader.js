@@ -33,7 +33,6 @@ function getGreeting() {
 
 export default function HomeHeader({
   userName = 'Usuario',
-  userEmail = '',
   role = 'USUARIO',
   onSearch,
   searchText = '',

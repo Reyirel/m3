@@ -56,9 +56,10 @@ export const PERMISSIONS = {
 };
 
 /**
- * Matriz de permisos por rol
+ * Matriz de permisos por rol. Es una referencia: lo que la app comprueba son las
+ * funciones can… de este archivo, y lo que vale en el servidor es firestore.secure.rules.
  */
-const ROLE_PERMISSIONS = {
+export const ROLE_PERMISSIONS = {
   [ROLES.ADMIN]: [
     PERMISSIONS.CREATE_TASK,
     PERMISSIONS.EDIT_TASK,

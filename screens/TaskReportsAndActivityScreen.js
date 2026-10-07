@@ -369,7 +369,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
         </TouchableOpacity>
       </Animated.View>
     );
-  }, [handleDeleteReport]);
+  }, [handleDeleteReport, theme.error]);
 
   const handleRateReport = async (reportId, rating) => {
     // En web Alert.alert no funciona bien, calificamos directamente

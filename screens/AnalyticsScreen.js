@@ -361,7 +361,7 @@ const AnalyticsScreen = ({ navigation, embedded = false }) => {
       color: theme.accentLight,
     },
     // Loading
-  }), [isDark]);
+  }), [isDark, theme]);
 
   // ✨ Función para ejecutar animaciones de entrada
   const runEntranceAnimations = () => {

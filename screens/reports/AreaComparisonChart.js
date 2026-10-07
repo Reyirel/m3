@@ -22,7 +22,7 @@ export default function AreaComparisonChart({
   _padding = 16,
   _isDesktop = false,
 }) {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
 
   // Convertir datos a array y ordenar por completion rate
   const areas = Object.entries(areaMetrics)

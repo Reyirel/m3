@@ -88,31 +88,3 @@ export function getTaskArea(task) {
   }
   return 'Sin área';
 }
-
-/**
- * Check if a user has permission to edit a task based on role
- * @param {Object} task - Task object
- * @param {string} userEmail - User email
- * @param {string} userRole - User role (ADMIN, SECRETARIO, DIRECTOR, etc.)
- * @returns {boolean} True if user can edit task
- */
-export function canEditTask(task, userEmail, userRole) {
-  // ADMIN can edit anything
-  if (userRole === 'ADMIN') return true;
-
-  // Task creator can edit their own tasks
-  if (task.createdBy === userEmail) return true;
-
-  // SECRETARIO can edit tasks assigned to them
-  if (userRole === 'SECRETARIO' && isTaskAssignedToUser(task, userEmail)) {
-    return true;
-  }
-
-  // DIRECTOR can edit tasks in their area assigned to them
-  if (userRole === 'DIRECTOR' && isTaskAssignedToUser(task, userEmail)) {
-    return true;
-  }
-
-  return false;
-}
-

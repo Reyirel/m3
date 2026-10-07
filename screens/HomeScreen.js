@@ -4,7 +4,6 @@ import {
   RefreshControl, Animated, Platform, Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Clipboard from 'expo-clipboard';
 import { Ionicons } from '@expo/vector-icons';
 import { getSwipeable } from '../utils/platformComponents';
 
@@ -25,9 +24,8 @@ import { useResponsive } from '../utils/responsive';
 import { useAccessibility } from '../hooks/useAccessibility';
 
 import { deleteTask as deleteTaskFirebase, updateTask, restoreTask } from '../services/tasks';
-import { hapticLight, hapticMedium, hapticHeavy } from '../utils/haptics';
+import { hapticMedium, hapticHeavy } from '../utils/haptics';
 import { canChangeTaskStatus, canDeleteTask } from '../services/permissions';
-import { toMs } from '../utils/dateUtils';
 import { deleteManager } from '../utils/deleteManager';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { MAX_WIDTHS } from '../theme/tokens';
@@ -35,7 +33,7 @@ import { countByStatus, matchesStatusFilter, statusLabel, isClosed } from '../ut
 
 const Swipeable = getSwipeable();
 
-export default function HomeScreen({ navigation, onLogout }) {
+export default function HomeScreen({ navigation }) {
   const { theme, isDark } = useTheme();
   const { width, isDesktop, isTablet, padding } = useResponsive();
   const { showSuccess, showError, showWarning, showInfo, showNotification } = useNotification();
@@ -95,7 +93,7 @@ export default function HomeScreen({ navigation, onLogout }) {
         toValue: 0, tension: 80, friction: 12, useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [listOpacity, listSlide]);
 
   useEffect(() => {
     if (!tasksLoading && tasks.length > 0) {
@@ -187,38 +185,6 @@ export default function HomeScreen({ navigation, onLogout }) {
     }
   }, [currentUser, isUndoing, showError, showInfo, showNotification, showWarning]);
 
-  const changeTaskStatus = useCallback(async (taskId, newStatus) => {
-    const labels = { pendiente: 'Pendiente', en_proceso: 'En Proceso', en_revision: 'En Revisión', cerrada: 'Completada' };
-    try {
-      const task = tasks.find(t => t.id === taskId);
-      const previousStatus = task?.status;
-      const perm = canChangeTaskStatus(currentUser, task, newStatus);
-      if (!perm.canChange) { showWarning(perm.reason || 'Sin permisos'); return; }
-
-      hapticMedium();
-      await updateTask(taskId, { status: newStatus });
-      if (newStatus === 'cerrada') {
-        setShowConfetti(true);
-        setTimeout(() => setShowConfetti(false), 2500);
-        hapticHeavy();
-      }
-      showNotification({
-        message: `Estado: ${labels[newStatus]} · Toca para deshacer`,
-        type: 'success',
-        duration: 5000,
-        onPress: previousStatus ? async () => {
-          if (isUndoing) return;
-          setIsUndoing(true);
-          try { await updateTask(taskId, { status: previousStatus }); showInfo(`Estado restaurado: ${labels[previousStatus] || previousStatus}`); }
-          catch { showError('Error al deshacer'); }
-          finally { setIsUndoing(false); }
-        } : undefined,
-      });
-    } catch (error) {
-      showError(`Error: ${error.message}`);
-    }
-  }, [showNotification, showInfo, showError, showWarning, tasks, isUndoing, currentUser]);
-
   const reopenTask = useCallback(async (task) => {
     if (!currentUser || currentUser.role !== 'admin') {
       showWarning('Solo los administradores pueden reabrir tareas');
@@ -232,37 +198,6 @@ export default function HomeScreen({ navigation, onLogout }) {
       showError(`Error al reabrir: ${error.message}`);
     }
   }, [currentUser, showWarning, showSuccess, showError]);
-
-  const duplicateTask = useCallback((task) => {
-    hapticMedium();
-    navigation.navigate('TaskDetail', {
-      task: {
-        title: `${task.title} (copia)`,
-        description: task.description || '',
-        status: 'pendiente',
-        priority: task.priority || 'media',
-        area: task.area || '',
-        areas: task.areas || [],
-        department: task.department || '',
-        assignedTo: task.assignedTo || '',
-        dueAt: task.dueAt || Date.now(),
-        tags: task.tags || [],
-      },
-    });
-    showInfo('Editando copia de la tarea');
-  }, [navigation, showInfo]);
-
-  const shareTask = useCallback(async (task) => {
-    hapticLight();
-    const assigned = Array.isArray(task.assignedTo)
-      ? task.assignedTo.join(', ')
-      : (task.assignedTo || 'Sin asignar');
-    const text = `Tarea: ${task.title}\nVence: ${new Date(toMs(task.dueAt)).toLocaleDateString()}\nAsignado: ${assigned}\nÁrea: ${task.area || 'Sin área'}\nPrioridad: ${task.priority || 'media'}\nEstado: ${task.status || 'pendiente'}`;
-    try {
-      await Clipboard.setStringAsync(text);
-      showSuccess('Tarea copiada al portapapeles');
-    } catch { showError('Error al copiar'); }
-  }, [showSuccess, showError]);
 
   const renderRightActions = useCallback((progress, dragX, task) => {
     const trans = dragX.interpolate({ inputRange: [-100, 0], outputRange: [0, 100], extrapolate: 'clamp' });
@@ -471,7 +406,7 @@ export default function HomeScreen({ navigation, onLogout }) {
   );
 }
 
-function createStyles(theme, isDark, isDesktop, width, padding) {
+function createStyles() {
   return StyleSheet.create({
     container: {
       flex: 1,

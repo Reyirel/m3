@@ -16,9 +16,8 @@ export default function TaskHeader({
   canDelete = false,
   onClose = () => {},
   onDelete = () => {},
-  onShowPomodoro = () => {},
 }) {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
 
   return (
     <LinearGradient
@@ -52,21 +51,8 @@ export default function TaskHeader({
         </Text>
       </View>
 
-      {/* POMODORO & DELETE BUTTONS */}
+      {/* DELETE BUTTON */}
       <View style={styles.rightButtons}>
-        {isEditing && (
-          <TouchableOpacity
-            onPress={onShowPomodoro}
-            style={styles.pomodoroButton}
-            accessible={true}
-            accessibilityLabel="Pomodoro Timer"
-            accessibilityHint="Presiona para abrir el temporizador Pomodoro"
-            accessibilityRole="button"
-          >
-            <Ionicons name="timer" size={24} color={theme.primary} />
-          </TouchableOpacity>
-        )}
-
         {canDelete && (
           <TouchableOpacity
             onPress={onDelete}

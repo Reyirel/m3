@@ -62,7 +62,7 @@ function QuickFilterCard({ icon, title, count, color, activeBg, active, onPress,
   );
 }
 
-export function KanbanFiltersModal({ visible, onClose, filters, setFilters, taskStats, currentUser, styles, theme, isDark }) {
+export function KanbanFiltersModal({ visible, onClose, filters, setFilters, taskStats, currentUser, styles, theme }) {
   const priorities = [
     { key: 'alta', label: 'Urgente', color: theme.error, icon: 'flash' },
     { key: 'media', label: 'Media', color: theme.warning, icon: 'remove' },

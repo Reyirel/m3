@@ -1,6 +1,6 @@
 // screens/inbox/MyInboxScreenStyles.js
 // Estilos de MyInboxScreen
-import { StyleSheet, Platform } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { SPACING, RADIUS, SHADOWS } from '../../theme/tokens';
 
 export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, padding) => StyleSheet.create({

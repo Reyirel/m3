@@ -14,11 +14,9 @@ import { useTasks } from '../contexts/TasksContext';
 import { hapticMedium } from '../utils/haptics';
 import { confirmAlert, infoAlert } from '../utils/alert';
 import { requestBrowserNotificationPermission } from '../services/notificationsLive';
-import { useResponsive } from '../utils/responsive';
 
 const SettingsScreen = ({ navigation, onLogout }) => {
   const { theme, isDark, themeMode, setThemeMode } = useTheme();
-  const { isTablet, padding } = useResponsive();
   const { currentUser } = useTasks();
   const isAdmin = currentUser?.role === 'admin';
 
@@ -207,8 +205,7 @@ const SettingsScreen = ({ navigation, onLogout }) => {
   ];
 
   const renderSettingItem = useCallback(
-    (item, groupIndex, itemIndex) => {
-      const isLast = itemIndex === settingGroups[groupIndex].items.length - 1;
+    (item, groupIndex, itemIndex, isLast) => {
 
       return (
         <View key={`${groupIndex}-${itemIndex}`}>
@@ -297,7 +294,7 @@ const SettingsScreen = ({ navigation, onLogout }) => {
         </View>
       );
     },
-    [settingGroups, theme]
+    [theme]
   );
 
   const renderSettingGroup = useCallback(
@@ -325,7 +322,7 @@ const SettingsScreen = ({ navigation, onLogout }) => {
         {/* Group Items */}
         <GlassmorphicCard style={styles.groupCard}>
           {group.items.map((item, itemIndex) =>
-            renderSettingItem(item, groupIndex, itemIndex)
+            renderSettingItem(item, groupIndex, itemIndex, itemIndex === group.items.length - 1)
           )}
         </GlassmorphicCard>
       </View>

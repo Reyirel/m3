@@ -11,7 +11,6 @@ const ProgressBar = memo(function ProgressBar({
   color = null,         // null → usa theme.primary por defecto
   label = 'Progreso',
   height = null,
-  glassmorphic = true,
   animationDuration = 600,
 }) {
   const { theme, isDark } = useTheme();

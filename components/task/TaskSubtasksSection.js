@@ -25,7 +25,7 @@ export default function TaskSubtasksSection({
   canAddSubtask = false,
   canEdit = false,
 }) {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const [showAiSubtasksModal, setShowAiSubtasksModal] = useState(false);
   const [aiSubtaskOptions, setAiSubtaskOptions] = useState([]);
   const [aiPendingSubtasks, setAiPendingSubtasks] = useState([]);

@@ -22,7 +22,7 @@ const InsightsPanel = React.memo(function InsightsPanel({
   predictions = {},
   workloadDistribution = {}
 }) {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
 
   return (
     <ScrollView

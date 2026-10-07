@@ -27,7 +27,6 @@ import { toMs } from '../utils/dateUtils';
 import { isInProgress } from '../utils/taskStatus';
 import { hapticMedium } from '../utils/haptics';
 import { confirmAlert, infoAlert } from '../utils/alert';
-import { useResponsive } from '../utils/responsive';
 
 function getInitials(name = '') {
   const parts = name.trim().split(/\s+/);
@@ -38,7 +37,6 @@ function getInitials(name = '') {
 const ProfileScreen = ({ navigation, onLogout }) => {
   const { theme } = useTheme();
   const { tasks, currentUser } = useTasks();
-  const { padding } = useResponsive();
 
   const displayName = currentUser?.displayName || currentUser?.name || 'Usuario';
   const userEmail = currentUser?.email || '';

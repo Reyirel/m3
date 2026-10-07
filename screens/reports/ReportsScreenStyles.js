@@ -4,7 +4,6 @@ import { StyleSheet, Platform } from 'react-native';
 import { MAX_WIDTHS } from '../../theme/tokens';
 
 export const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge, width, _padding) => {
-  const responsiveHeaderPadding = isDesktopLarge ? 48 : isDesktop ? 32 : isTablet ? 24 : 16;
   const responsiveContentPadding = isDesktopLarge ? 48 : isDesktop ? 32 : isTablet ? 24 : 16;
 
   return StyleSheet.create({

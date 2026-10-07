@@ -171,7 +171,6 @@ class Logger {
 
   _logToConsole(log) {
     const prefix = `[${log.timestamp}] ${log.module} (${log.level})`;
-    const style = this._getConsoleStyle(log.level);
 
     switch (log.level) {
       case 'ERROR':
@@ -205,7 +204,7 @@ class Logger {
     return `color: ${colors[level] || '#000'}; font-weight: bold;`;
   }
 
-  async _sendToRemote(log) {
+  async _sendToRemote(_log) {
     try {
       // Implementar integración con Sentry, LogRocket, etc.
       // await fetch('https://your-logging-service.com/logs', {

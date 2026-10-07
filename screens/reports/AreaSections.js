@@ -64,7 +64,7 @@ function SelectedAreaCard({ area, metrics, userCount, onClose, styles, theme }) 
   );
 }
 
-function QuickMetricCard({ area, metrics, onPress, styles, theme, isDark }) {
+function QuickMetricCard({ area, metrics, onPress, styles, theme }) {
   const rate = metrics.total > 0 ? (metrics.completed / metrics.total) * 100 : 0;
   const statusColor = rate >= 75 ? theme.success : rate >= 50 ? theme.warning : theme.error;
   const statusBg = rate >= 75 ? theme.successAlpha : rate >= 50 ? theme.warningAlpha : theme.errorAlpha;

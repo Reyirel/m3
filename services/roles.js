@@ -1,65 +1,11 @@
-import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
-import { getCurrentSession } from './authFirestore';
 import { resolveAreaName, getDireccionesBySecretaria } from '../config/areas';
 
 import { ROLES } from './permissions';
 
 // Roles disponibles en el sistema (definidos en permissions.js)
 export { ROLES };
-
-// Obtener perfil completo del usuario
-export const getUserProfile = async (userId = null) => {
-  try {
-    let uid = userId;
-    
-    if (!uid) {
-      const sessionResult = await getCurrentSession();
-      if (!sessionResult.success) return null;
-      uid = sessionResult.session.userId;
-    }
-    
-    if (!uid) return null;
-
-    const userDoc = await getDoc(doc(db, 'users', uid));
-    if (userDoc.exists()) {
-      return { id: userDoc.id, ...userDoc.data() };
-    }
-    return null;
-  } catch (error) {
-    return null;
-  }
-};
-
-// Verificar si el usuario es admin
-export const isAdmin = async () => {
-  try {
-    const profile = await getUserProfile();
-    return profile?.role === ROLES.ADMIN;
-  } catch (error) {
-    return false;
-  }
-};
-
-// Verificar si el usuario es secretario
-export const isSecretario = async () => {
-  try {
-    const profile = await getUserProfile();
-    return profile?.role === ROLES.SECRETARIO;
-  } catch (error) {
-    return false;
-  }
-};
-
-// Verificar si el usuario es secretario o admin (puede delegar tareas)
-export const isSecretarioOrAdmin = async () => {
-  try {
-    const profile = await getUserProfile();
-    return profile?.role === ROLES.ADMIN || profile?.role === ROLES.SECRETARIO;
-  } catch (error) {
-    return false;
-  }
-};
 
 // Nombre canónico de un área en minúsculas, para comparar sin depender de alias ni mayúsculas
 const areaKey = (name) => resolveAreaName((name || '').trim()).toLowerCase();
@@ -123,21 +69,3 @@ export const getTitularesByAreas = async (areas) => {
     return [];
   }
 };
-
-// Obtener todos los usuarios activos (solo admin)
-export const getAllUsers = async () => {
-  try {
-    const admin = await isAdmin();
-    if (!admin) {
-      throw new Error('No tienes permisos para ver todos los usuarios');
-    }
-
-    const q = query(collection(db, 'users'), where('active', '==', true));
-    const snapshot = await getDocs(q);
-    return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  } catch (error) {
-    if (__DEV__) console.error('Error obteniendo usuarios:', error);
-    return [];
-  }
-};
-

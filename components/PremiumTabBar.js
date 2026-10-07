@@ -70,7 +70,7 @@ export default function PremiumTabBar({ state, descriptors, navigation, isDark: 
     pillScale.value = withTiming(0.92, { duration: 80 }, () => {
       pillScale.value = withSpring(1, { damping: 12, stiffness: 300 });
     });
-  }, [activeIndex, tabWidth]);
+  }, [activeIndex, tabWidth, pillPosition, pillScale]);
 
   const pillAnimatedStyle = useAnimatedStyle(() => ({
     transform: [

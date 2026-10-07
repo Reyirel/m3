@@ -31,7 +31,7 @@ const GlassmorphicInput = React.forwardRef(({
   accessibilityHint,
   style,
 }, ref) => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const [isFocused, setIsFocused] = React.useState(false);
   const glowAnim = useRef(new Animated.Value(0)).current;
 
@@ -43,11 +43,6 @@ const GlassmorphicInput = React.forwardRef(({
       useNativeDriver: true,
     }).start();
   }, [isFocused, glowAnim]);
-
-  const focusOpacity = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0.8],
-  });
 
   return (
     <View style={[styles.container, style]}>

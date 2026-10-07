@@ -2,7 +2,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useTheme } from '../contexts/ThemeContext';
 import { hapticLight } from '../utils/haptics';
 import { getCurrentSession } from '../services/authFirestore';
 import { canReopenTask } from '../services/permissions';
@@ -15,7 +14,6 @@ const statusFlow = {
 };
 
 export default function TaskStatusButtons({ currentStatus, taskId, onStatusChange, task = {} }) {
-  const { theme } = useTheme();
   const [currentUser, setCurrentUser] = useState(null);
   const nextState = statusFlow[currentStatus || 'pendiente'];
 

@@ -174,7 +174,7 @@ export default function PremiumGlassCard({
     }
 
     return shadows;
-  }, [glowEffect, glowColor, glowIntensity, highlighted, theme.primary]);
+  }, [glowEffect, glowColor, glowIntensity, highlighted, theme.primary, isDark]);
 
   // 🎬 Animation handlers
   const handlePressIn = () => {

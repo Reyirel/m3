@@ -75,3 +75,13 @@ respaldo-usuarios-*.json
 # EAS
 .eas/
 .vercel/
+
+# Firebase: registros locales de la CLI y de la extensión (incluyen la cuenta que inició sesión)
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+firebase-functions/node_modules/
+
+# Pruebas
+coverage/

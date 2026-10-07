@@ -37,7 +37,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   removeItem: jest.fn(async () => {}),
 }));
 
-const { getDocs, collection, query, where, doc, updateDoc, setDoc } = require('firebase/firestore');
+const { getDocs, where, updateDoc } = require('firebase/firestore');
 const AsyncStorage = require('@react-native-async-storage/async-storage');
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

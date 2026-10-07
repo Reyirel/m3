@@ -46,7 +46,7 @@ export default function AreaSelectorModal({
   const getAreaColor = useCallback((areaType) => {
     if (areaType === 'secretaria') return theme.primary;
     return '#0EA5E9';
-  }, []);
+  }, [theme.primary]);
 
   // Filtrar y agrupar áreas
   const groupedAreas = useMemo(() => {

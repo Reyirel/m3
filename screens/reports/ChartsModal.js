@@ -32,7 +32,7 @@ function Section({ icon, title, theme, children }) {
 }
 
 export default function ChartsModal({
-  visible, onClose, subtasksStats, tasksWithProgress, dailyCompletions, priorityData, chartWidth, theme, isDark,
+  visible, onClose, subtasksStats, tasksWithProgress, dailyCompletions, priorityData, chartWidth, theme,
 }) {
   const lineData = useMemo(() => ({
     labels: dailyCompletions.map((day) => day.date),

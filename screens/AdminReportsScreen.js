@@ -12,7 +12,6 @@ import {
   Modal,
   ScrollView,
   Alert,
-  Platform,
 } from 'react-native';
 import { confirmAlert } from '../utils/alert';
 import { Ionicons } from '@expo/vector-icons';
@@ -775,7 +774,7 @@ const AdminReportsScreen = ({ navigation, embedded = false }) => {
       fontSize: 16,
       fontWeight: '600',
     },
-  }), [isDark, theme]);
+  }), [theme]);
 
   // ⚠️ Hooks DEBEN ir antes de cualquier return condicional
   // eslint-disable-next-line react-hooks/exhaustive-deps

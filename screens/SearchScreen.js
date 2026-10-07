@@ -21,13 +21,11 @@ import { GlassmorphicInput, GlassmorphicTabs, GlassmorphicFilterChips, TaskCard 
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
-import { useResponsive } from '../utils/responsive';
 import EmptyState from '../components/EmptyState';
 
 const SearchScreen = ({ navigation }) => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const { tasks } = useTasks();
-  const { width } = useResponsive();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState('all'); // 'all', 'title', 'description', 'assignee'

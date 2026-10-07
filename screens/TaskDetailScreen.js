@@ -67,7 +67,7 @@ if (Platform.OS !== 'web') {
 const normalizeEmail = (email) => (email || '').toLowerCase().trim();
 
 export default function TaskDetailScreen({ route, navigation }) {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const { showSuccess, showError } = useNotification();
   const { currentUser, tasks } = useTasks();
 
@@ -144,7 +144,6 @@ export default function TaskDetailScreen({ route, navigation }) {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [showDelegateModal, setShowDelegateModal] = useState(false);
-  const [showPomodoroModal, setShowPomodoroModal] = useState(false);
   const [showAssigneeChangeConfirm, setShowAssigneeChangeConfirm] = useState(false);
   const [tempDate, setTempDate] = useState(dueAt);
 
@@ -152,7 +151,7 @@ export default function TaskDetailScreen({ route, navigation }) {
   // AI SUGGESTIONS STATE
   // ────────────────────────────────────────────────────────────
   const [similarTasks, setSimilarTasks] = useState([]);
-  const [metaSuggestion, setMetaSuggestion] = useState(null);
+  const [, setMetaSuggestion] = useState(null);
   const [prioritySuggestion, setPrioritySuggestion] = useState(null);
   const [dateSuggestion, setDateSuggestion] = useState(null);
   const aiDebounceRef = useRef(null);
@@ -161,7 +160,6 @@ export default function TaskDetailScreen({ route, navigation }) {
   // OTHER STATE
   // ────────────────────────────────────────────────────────────
   const [delegateUsers, setDelegateUsers] = useState([]);
-  const [assigneeConfirmations, setAssigneeConfirmations] = useState([]);
   const [assigneeChangeData, setAssigneeChangeData] = useState(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -532,7 +530,6 @@ export default function TaskDetailScreen({ route, navigation }) {
           canDelete={permissions.canDelete}
           onClose={handleBack}
           onDelete={handleDelete}
-          onShowPomodoro={() => setShowPomodoroModal(true)}
         />
 
         {/* CONTENT */}

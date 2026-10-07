@@ -14,7 +14,7 @@
  * />
  */
 
-import React, { useRef } from 'react';
+import React from 'react';
 import { View, TouchableOpacity, Text, StyleSheet, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -24,11 +24,9 @@ const GlassmorphicTabs = ({
   tabs = [],
   activeTab,
   onChange,
-  scrollable = false,
   style,
 }) => {
   const { theme, isDark } = useTheme();
-  const scrollViewRef = useRef(null);
 
   const handleTabPress = (tabId) => {
     onChange?.(tabId);
@@ -78,7 +76,7 @@ const GlassmorphicTabs = ({
 
       {/* Content */}
       <View style={styles.content}>
-        {tabs.map((tab, index) => {
+        {tabs.map((tab) => {
           const isActive = tab.id === activeTab;
 
           return (

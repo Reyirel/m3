@@ -79,7 +79,7 @@
   "rewrites": [
     {
       "source": "/admin/download",
-      "destination": "/public/download.html"
+      "destination": "/download.html"
     },
     {
       "source": "/(.*)",

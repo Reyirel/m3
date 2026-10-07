@@ -415,11 +415,6 @@ export default function CalendarScreen({ navigation }) {
   }
   
   // Estilos animados mejorados con glassmorphism
-  const headerAnimatedStyle = {
-    transform: [{ translateY: headerSlide }],
-    opacity: headerOpacity,
-  };
-  
   const calendarAnimatedStyle = {
     opacity: calendarOpacity,
     transform: [

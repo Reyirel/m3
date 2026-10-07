@@ -18,7 +18,7 @@ export default function AreaRankingCard({
   _taskCountByArea = {},
   overdueByArea = {},
 }) {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
 
   // Procesar datos
   const ranking = Object.entries(areaMetrics)

@@ -301,7 +301,7 @@ export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact
   );
 }
 
-const createStyles = (theme, isDark, _compact) => StyleSheet.create({
+const createStyles = (theme, _isDark, _compact) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'transparent',

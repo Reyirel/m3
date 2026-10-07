@@ -352,17 +352,6 @@ export default function NotificationsScreen({ navigation }) {
     );
   }, [handleNotificationPress, handleDeleteNotification, getNotificationColor, theme, isDark, renderNotifSwipeActions]);
 
-  const headerButton = (icon, label, onPress, size = 20) => (
-    <TouchableOpacity
-      style={[styles.closeButton, Platform.OS === 'web' && { cursor: 'pointer' }]}
-      onPress={onPress}
-      accessibilityLabel={label}
-      accessibilityRole="button"
-    >
-      <Ionicons name={icon} size={size} color="#FFFFFF" />
-    </TouchableOpacity>
-  );
-
   const renderBody = () => {
     if (loading) {
       return (

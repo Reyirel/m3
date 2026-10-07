@@ -12,7 +12,7 @@ const PERIODS = [
   { key: 'quarter', label: '90D', fullLabel: 'Trimestre' },
 ];
 
-const glassCard = (theme, isDark) => ({
+const glassCard = (theme) => ({
   backgroundColor: theme.glass,
   borderColor: theme.glassBorder,
 });

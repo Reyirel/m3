@@ -13,7 +13,6 @@ import { TODAS_LAS_AREAS } from '../../config/areas';
 export default function AreaSelector({
   value = [],
   onChange = () => {},
-  multiple = true,
   disabled = false,
 }) {
   const { theme, isDark } = useTheme();
