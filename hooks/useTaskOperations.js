@@ -78,23 +78,33 @@ export const useTaskOperations = (task, currentUser) => {
           });
         }, 100);
 
-        // Guardar tarea
-        const result = await saveTask({
-          ...taskData,
-          createdBy: currentUser?.email,
-          createdAt: task ? undefined : new Date(),
-          updatedBy: currentUser?.email,
-          updatedAt: new Date(),
-        });
+        // Guardar tarea. Se pasa la tarea que se está editando: sin ella saveTask
+        // siempre crea una nueva y la original queda sin cambios.
+        let result;
+        try {
+          result = await saveTask({
+            ...taskData,
+            createdBy: currentUser?.email,
+            createdAt: task ? undefined : new Date(),
+            updatedBy: currentUser?.email,
+            updatedAt: new Date(),
+          }, task || null);
+        } finally {
+          clearInterval(progressInterval);
+        }
 
+        // saveTask no lanza error cuando falla: lo devuelve en el resultado
+        if (!result?.success) {
+          throw new Error(result?.error || 'No se pudo guardar la tarea');
+        }
         setSaveProgress(100);
-        clearInterval(progressInterval);
 
-        // Crear subtareas de IA si es nueva y hay pendientes
-        if (!task && taskData.aiPendingSubtasks?.length > 0) {
+        // Crear subtareas de IA si es nueva y hay pendientes. Una tarea creada sin
+        // conexión todavía no existe en el servidor: no se le pueden agregar subtareas.
+        if (!task && !result.offline && taskData.aiPendingSubtasks?.length > 0) {
           await Promise.all(
             taskData.aiPendingSubtasks.map((subtaskTitle) =>
-              addSubtask(result.id, {
+              addSubtask(result.taskId, {
                 title: subtaskTitle,
                 description: `Subtarea generada por IA`,
                 assignedTo: taskData.selectedAssignees[0]?.email,
@@ -104,7 +114,11 @@ export const useTaskOperations = (task, currentUser) => {
           );
         }
 
-        showSuccess(task ? '¡Tarea actualizada!' : '¡Tarea creada!');
+        if (result.offline) {
+          showSuccess('Guardado en este dispositivo. Se enviará al recuperar la conexión.');
+        } else {
+          showSuccess(task ? '¡Tarea actualizada!' : '¡Tarea creada!');
+        }
         setIsSaving(false);
         return result;
       } catch (err) {
@@ -128,7 +142,10 @@ export const useTaskOperations = (task, currentUser) => {
 
       try {
         setIsSaving(true);
-        await deleteTaskFromCreation(taskId);
+        const result = await deleteTaskFromCreation(taskId);
+        if (!result?.success) {
+          throw new Error(result?.error || 'No se pudo eliminar la tarea');
+        }
         showSuccess('Tarea eliminada');
         setIsSaving(false);
         return true;
