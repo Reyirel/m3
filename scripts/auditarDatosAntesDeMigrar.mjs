@@ -15,7 +15,7 @@ import {
   getFirestore, collection, doc, getDoc, getDocs, getCountFromServer,
 } from 'firebase/firestore';
 import {
-  SECRETARIAS, applyOrgStructure, sanitizeOrgStructure, resolveAreaName, getSecretariasForAreas,
+  SECRETARIAS, OTRAS_AREAS, applyOrgStructure, sanitizeOrgStructure, resolveAreaName, getSecretariasForAreas,
 } from '../config/areas.js';
 
 const firebaseConfig = {
@@ -82,7 +82,9 @@ async function main() {
       console.log(`Organigrama: no se pudo leer (${error?.code || error?.message}); se usa el inicial de config/areas.js\n`);
     }
   }
-  const canonicalSecretarias = new Set(SECRETARIAS);
+  // Los organismos sin secretaría (SMDIF, CAPASMIH, Asamblea) se representan a sí mismos:
+  // su titular los ve igual que un secretario ve su secretaría
+  const canonicalSecretarias = new Set([...SECRETARIAS, ...OTRAS_AREAS]);
 
   // ── USUARIOS
   const users = usersSnap.docs.map((d) => ({ id: d.id, ...d.data() }));

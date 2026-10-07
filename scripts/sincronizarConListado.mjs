@@ -11,6 +11,7 @@
 //   node scripts/sincronizarConListado.mjs --borrar-inactivas  → borra las cuentas ya desactivadas
 //   node scripts/sincronizarConListado.mjs --fuera=borrar      → borra las cuentas activas que no
 //   node scripts/sincronizarConListado.mjs --fuera=desactivar    están en el listado (nunca un admin)
+//   --solo=a@x.com,b@x.com             con --fuera: solo esas cuentas
 //   --listado="ruta/al/archivo.xlsx"   (por omisión: nuevas direcciones/LISTADO DIRECCIONES.xlsx)
 //
 // Antes de escribir guarda una copia completa de `users` en data/ (carpeta que git ignora).
@@ -29,6 +30,8 @@ const APPLY = flag('apply');
 const DELETE_INACTIVE = flag('borrar-inactivas');
 const OUTSIDE = option('fuera'); // '' | 'borrar' | 'desactivar'
 const LISTADO = option('listado') || 'nuevas direcciones/LISTADO DIRECCIONES.xlsx';
+// Con --fuera: limita la acción a estos correos (separados por comas). Sin --solo, a todas.
+const ONLY = option('solo').split(',').map((email) => email.toLowerCase().trim()).filter(Boolean);
 const UPDATED_BY = 'script-sincronizar-listado';
 
 if (OUTSIDE && !['borrar', 'desactivar'].includes(OUTSIDE)) {
@@ -255,6 +258,20 @@ async function main() {
     problems.forEach((p) => console.log(`  - ${p}`));
   }
 
+  // Secretarios que no vienen en el listado (Seguridad Pública, Contraloría…): no se les
+  // cambia el puesto, pero su área debe llevar el nombre oficial. Las reglas seguras
+  // comparan ese texto tal cual con el campo `secretarias` de cada tarea.
+  active.filter((u) => !matchedIds.has(u.id) && u.role === 'secretario').forEach((user) => {
+    const fields = {};
+    ['area', 'department'].forEach((key) => {
+      if (user[key] && canonical(user[key]) !== user[key]) fields[key] = canonical(user[key]);
+    });
+    if (Object.keys(fields).length === 0) return;
+    updates.push({ user, fields });
+    console.log(`  ✏️  ${user.email} — ${user.displayName} (no está en el listado: solo el nombre del área)`);
+    Object.entries(fields).forEach(([k, v]) => console.log(`        ${k}: ${JSON.stringify(user[k])} → ${JSON.stringify(v)}`));
+  });
+
   const outside = active.filter((u) => !matchedIds.has(u.id));
   const outsideAdmins = outside.filter((u) => u.role === 'admin');
   const outsideOthers = outside.filter((u) => u.role !== 'admin');
@@ -270,8 +287,20 @@ async function main() {
   const now = new Date();
   if (APPLY) updates.forEach(({ user, fields }) => operations.push({ type: 'update', id: user.id, email: user.email, data: { ...fields, updatedAt: now, updatedBy: UPDATED_BY } }));
   if (DELETE_INACTIVE) inactive.forEach((u) => operations.push({ type: 'delete', id: u.id, email: u.email }));
-  if (OUTSIDE === 'borrar') outsideOthers.forEach((u) => operations.push({ type: 'delete', id: u.id, email: u.email }));
-  if (OUTSIDE === 'desactivar') outsideOthers.forEach((u) => operations.push({ type: 'update', id: u.id, email: u.email, data: { active: false, deactivatedAt: now, updatedAt: now, updatedBy: UPDATED_BY } }));
+  const outsideTargets = ONLY.length
+    ? outsideOthers.filter((u) => ONLY.includes(String(u.email || '').toLowerCase().trim()))
+    : outsideOthers;
+  if (OUTSIDE && ONLY.length) {
+    const found = new Set(outsideTargets.map((u) => String(u.email).toLowerCase().trim()));
+    const missing = ONLY.filter((email) => !found.has(email));
+    if (missing.length) {
+      console.log(`\n⚠️  --solo incluye correos que no son cuentas activas fuera del listado: ${missing.join(', ')}`);
+      console.log('    No se cambió nada.');
+      return;
+    }
+  }
+  if (OUTSIDE === 'borrar') outsideTargets.forEach((u) => operations.push({ type: 'delete', id: u.id, email: u.email }));
+  if (OUTSIDE === 'desactivar') outsideTargets.forEach((u) => operations.push({ type: 'update', id: u.id, email: u.email, data: { active: false, deactivatedAt: now, updatedAt: now, updatedBy: UPDATED_BY } }));
 
   console.log('\n' + '='.repeat(72));
   if (operations.length === 0) {
