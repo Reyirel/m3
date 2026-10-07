@@ -12,8 +12,10 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Text, StyleSheet, Animated, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Toast from 'react-native-toast-message';
 import {
   subscribeToConnectionState,
+  subscribeToDiscardedOperations,
   getPendingCount,
   syncPendingOperations,
 } from '../services/offlineSync';
@@ -53,6 +55,20 @@ export default function ConnectionStatus() {
       clearInterval(interval);
     };
   }, [refreshPending]);
+
+  // Un cambio hecho sin conexión que el servidor rechazó (o que agotó los reintentos)
+  // se descarta: se avisa, para que no desaparezca sin explicación
+  useEffect(() => subscribeToDiscardedOperations((count) => {
+    Toast.show({
+      type: 'error',
+      text1: count === 1
+        ? 'Un cambio hecho sin conexión no se pudo guardar'
+        : `${count} cambios hechos sin conexión no se pudieron guardar`,
+      text2: 'Revisa la tarea y vuelve a hacer el cambio',
+      position: 'top',
+      visibilityTime: 7000,
+    });
+  }), []);
 
   const failedReports = reports.syncStats.totalFailed;
   const pendingTotal = pendingOps + reports.syncStats.totalPending;

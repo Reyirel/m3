@@ -5,9 +5,10 @@ const log = __DEV__ ? console.log : () => {};
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
-import { collection, addDoc, updateDoc, doc, getDoc, Timestamp } from 'firebase/firestore';
+import { updateDoc, doc, getDoc, writeBatch, Timestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toMs } from '../utils/dateUtils';
+import { addAreaSubtasksToBatch } from './areaSubtasks';
 
 const OFFLINE_TASKS_KEY = '@offline_tasks';
 const PENDING_OPERATIONS_KEY = '@pending_operations';
@@ -24,6 +25,7 @@ let connectionListeners = [];
 let isSyncing = false;
 let syncListeners = [];
 let cacheListeners = [];
+let discardListeners = [];
 
 // Errores que no se arreglan reintentando (permisos, datos inválidos, documento inexistente)
 const PERMANENT_ERROR_CODES = ['permission-denied', 'not-found', 'invalid-argument', 'unauthenticated', 'failed-precondition'];
@@ -55,6 +57,21 @@ export const subscribeToCacheChanges = (callback) => {
   return () => {
     cacheListeners = cacheListeners.filter(cb => cb !== callback);
   };
+};
+
+// Suscribirse a los cambios hechos sin conexión que no se pudieron guardar en el servidor
+// y se descartaron: callback(cantidad). Sin esto el cambio desaparecía sin avisar.
+export const subscribeToDiscardedOperations = (callback) => {
+  discardListeners.push(callback);
+  return () => {
+    discardListeners = discardListeners.filter(cb => cb !== callback);
+  };
+};
+
+const notifyDiscardListeners = (count) => {
+  discardListeners.forEach(listener => {
+    try { listener(count); } catch (_e) { /* silent */ }
+  });
 };
 
 const notifyCacheListeners = () => {
@@ -173,8 +190,18 @@ export const OPERATION_TYPES = {
   CONFIRM: 'CONFIRM'
 };
 
+// La cola se guarda como una sola lista: leerla, cambiarla y volver a guardarla debe
+// hacerse de uno en uno. Si dos cambios lo hacen a la vez, el segundo en guardar borra
+// el del primero.
+let queueLock = Promise.resolve();
+const withQueueLock = (fn) => {
+  const run = queueLock.then(fn, fn);
+  queueLock = run.catch(() => {});
+  return run;
+};
+
 // Agregar operación a la cola
-export const queueOperation = async (type, data, taskId = null, userEmail = null) => {
+export const queueOperation = (type, data, taskId = null, userEmail = null) => withQueueLock(async () => {
   try {
     const pendingOps = await getPendingOperations();
 
@@ -219,7 +246,7 @@ export const queueOperation = async (type, data, taskId = null, userEmail = null
     if (__DEV__) console.error('Error encolando operación:', error);
     throw error;
   }
-};
+});
 
 const normalizeEmail = (email) => (email || '').toLowerCase().trim();
 
@@ -259,7 +286,7 @@ export const getPendingCount = async () => {
 };
 
 // Eliminar operación de la cola
-const removeOperation = async (operationId) => {
+const removeOperation = (operationId) => withQueueLock(async () => {
   try {
     const pendingOps = await getPendingOperations();
     const filtered = pendingOps.filter(op => op.id !== operationId);
@@ -267,10 +294,10 @@ const removeOperation = async (operationId) => {
   } catch (error) {
     if (__DEV__) console.error('Error eliminando operación:', error);
   }
-};
+});
 
 // Registrar un intento fallido; devuelve true si la operación debe descartarse
-const registerFailedAttempt = async (operationId) => {
+const registerFailedAttempt = (operationId) => withQueueLock(async () => {
   try {
     const pendingOps = await getPendingOperations();
     const op = pendingOps.find(o => o.id === operationId);
@@ -283,7 +310,7 @@ const registerFailedAttempt = async (operationId) => {
     if (__DEV__) console.error('Error registrando reintento:', error);
     return false;
   }
-};
+});
 
 // ============ SINCRONIZACIÓN ============
 
@@ -294,34 +321,35 @@ export const syncPendingOperations = async () => {
     return { success: false, synced: 0, pending: await getPendingCount() };
   }
   
-  // Evitar sincronizaciones simultáneas (duplicarían las operaciones CREATE)
+  // Evitar sincronizaciones simultáneas (duplicarían las operaciones CREATE).
+  // El candado se toma aquí, antes de cualquier espera: si se tomara después de leer la
+  // cola, dos llamadas casi simultáneas pasarían las dos la comprobación.
   if (isSyncing) {
     return { success: false, synced: 0, pending: await getPendingCount() };
   }
-
-  // Los cambios que dejó pendientes otra persona en este dispositivo no se envían con la
-  // sesión actual (se harían a su nombre o se rechazarían): esperan a que vuelva a entrar
-  const sessionEmail = await getSessionEmail();
-  const allPendingOps = await getPendingOperations();
-  const pendingOps = sessionEmail
-    ? allPendingOps.filter(op => isOperationOfUser(op, sessionEmail))
-    : allPendingOps;
-
-  if (pendingOps.length === 0) {
-    log('✅ No hay operaciones pendientes');
-    return { success: true, synced: 0, pending: allPendingOps.length };
-  }
-
-  log('🔄 Sincronizando', pendingOps.length, 'operaciones pendientes...');
-
   isSyncing = true;
-  notifySyncListeners(true);
 
   let synced = 0;
   let errors = 0;
   let discarded = 0;
 
   try {
+    // Los cambios que dejó pendientes otra persona en este dispositivo no se envían con la
+    // sesión actual (se harían a su nombre o se rechazarían): esperan a que vuelva a entrar
+    const sessionEmail = await getSessionEmail();
+    const allPendingOps = await getPendingOperations();
+    const pendingOps = sessionEmail
+      ? allPendingOps.filter(op => isOperationOfUser(op, sessionEmail))
+      : allPendingOps;
+
+    if (pendingOps.length === 0) {
+      log('✅ No hay operaciones pendientes');
+      return { success: true, synced: 0, pending: allPendingOps.length };
+    }
+
+    log('🔄 Sincronizando', pendingOps.length, 'operaciones pendientes...');
+    notifySyncListeners(true);
+
     // Ordenar por timestamp para mantener el orden correcto
     const sortedOps = [...pendingOps].sort((a, b) => a.timestamp - b.timestamp);
 
@@ -376,6 +404,7 @@ export const syncPendingOperations = async () => {
   connectionListeners.forEach(listener => listener(isOnline));
   notifySyncListeners(false);
   notifyCacheListeners();
+  if (discarded > 0) notifyDiscardListeners(discarded);
 
   return { success: errors === 0, synced, discarded, pending: remaining };
 };
@@ -386,10 +415,13 @@ const reviveTimestamp = (value) =>
     ? new Timestamp(value.seconds, value.nanoseconds || 0)
     : value;
 
+// ID que tendrá en el servidor una tarea creada sin conexión. Se deriva de su ID temporal:
+// si la app se cierra después de crear la tarea pero antes de quitarla de la cola, el
+// reintento encuentra la misma tarea en lugar de crear otra.
+export const serverIdForTempTask = (tempId) => `off_${String(tempId).replace(/^temp_/, '')}`;
+
 // Sincronizar operación CREATE
 const syncCreateOperation = async (op) => {
-  const tasksRef = collection(db, 'tasks');
-  
   // Las fechas llegan de la cola como número, texto o { seconds } según cómo se guardaron
   const taskData = {
     ...op.data,
@@ -398,33 +430,39 @@ const syncCreateOperation = async (op) => {
     dueAt: Timestamp.fromMillis(toMs(op.data.dueAt) || Date.now()),
     syncedAt: Timestamp.now()
   };
-  
+
   // Eliminar el ID temporal
   delete taskData.id;
   delete taskData.isOffline;
   delete taskData.tempId;
-  
-  const docRef = await addDoc(tasksRef, taskData);
 
-  // Lo que al crear con conexión se hace en el momento: subtareas por área y aviso a los asignados.
-  // Si falla no se reintenta la operación completa (duplicaría la tarea ya creada).
-  try {
-    if (Array.isArray(taskData.areas) && taskData.areas.length > 1) {
-      const { createAreaSubtasks } = await import('./areaSubtasks');
-      await createAreaSubtasks(taskData, docRef.id);
+  const taskId = serverIdForTempTask(op.taskId || op.id);
+  const taskRef = doc(db, 'tasks', taskId);
+
+  // Si un intento anterior ya la creó, no se vuelve a crear
+  const existing = await getDoc(taskRef);
+  if (!existing.exists()) {
+    // La tarea y sus subtareas por área van en un solo lote: o se guarda todo o nada
+    const batch = writeBatch(db);
+    batch.set(taskRef, taskData);
+    addAreaSubtasksToBatch(batch, taskData, taskId);
+    await batch.commit();
+
+    // Aviso a los asignados. Si falla no se reintenta la operación: la tarea ya existe.
+    try {
+      if (Array.isArray(taskData.assignedTo) && taskData.assignedTo.length > 0) {
+        const { notifyAssignment } = await import('./notifications');
+        await notifyAssignment({
+          id: taskId,
+          title: taskData.title,
+          dueAt: op.data.dueAt,
+          assignedTo: taskData.assignedTo,
+          priority: taskData.priority,
+        });
+      }
+    } catch (postCreateError) {
+      if (__DEV__) console.error('Error avisando a los asignados de la tarea creada:', postCreateError);
     }
-    if (Array.isArray(taskData.assignedTo) && taskData.assignedTo.length > 0) {
-      const { notifyAssignment } = await import('./notifications');
-      await notifyAssignment({
-        id: docRef.id,
-        title: taskData.title,
-        dueAt: op.data.dueAt,
-        assignedTo: taskData.assignedTo,
-        priority: taskData.priority,
-      });
-    }
-  } catch (postCreateError) {
-    if (__DEV__) console.error('Error en pasos posteriores a crear la tarea:', postCreateError);
   }
 
   // 🧹 Actualizar caché local: reemplazar tarea temporal con la tarea sincronizada
@@ -435,7 +473,7 @@ const syncCreateOperation = async (op) => {
     // Agregar la tarea sincronizada con el nuevo ID de Firebase
     const syncedTask = {
       ...op.data,
-      id: docRef.id,
+      id: taskId,
       isOffline: false, // Remover el flag de offline
       createdAt: op.data.createdAt,
       updatedAt: op.data.updatedAt,
@@ -540,83 +578,6 @@ const syncConfirmOperation = async (op) => {
   await confirmTaskCompletion(op.taskId, op.data, { fromQueue: true });
 };
 
-// ============ OPERACIONES OFFLINE-FIRST ============
-
-// Crear tarea (offline-first)
-export const createTaskOffline = async (taskData) => {
-  const tempId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-  
-  const newTask = {
-    ...taskData,
-    id: tempId,
-    tempId: tempId,
-    isOffline: true,
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  };
-  
-  // Guardar offline
-  const cached = await getCachedTasks();
-  cached.unshift(newTask);
-  await cacheTasksLocally(cached);
-  
-  // Encolar para sincronización
-  await queueOperation(OPERATION_TYPES.CREATE, taskData, tempId);
-  
-  // Si hay conexión, sincronizar inmediatamente
-  if (isOnline) {
-    syncPendingOperations();
-  }
-  
-  return newTask;
-};
-
-// Actualizar tarea (offline-first)
-export const updateTaskOffline = async (taskId, updates) => {
-  // Actualizar cache local
-  const cached = await getCachedTasks();
-  const taskIndex = cached.findIndex(t => t.id === taskId);
-  
-  if (taskIndex !== -1) {
-    cached[taskIndex] = {
-      ...cached[taskIndex],
-      ...updates,
-      updatedAt: Date.now()
-    };
-    await cacheTasksLocally(cached);
-  }
-  
-  // Encolar para sincronización (solo si no es tarea temporal)
-  if (!taskId.startsWith('temp_')) {
-    await queueOperation(OPERATION_TYPES.UPDATE, updates, taskId);
-  }
-  
-  // Si hay conexión, sincronizar inmediatamente
-  if (isOnline) {
-    syncPendingOperations();
-  }
-  
-  return cached[taskIndex];
-};
-
-// Eliminar tarea (offline-first)
-export const deleteTaskOffline = async (taskId) => {
-  // Eliminar del cache local
-  const cached = await getCachedTasks();
-  const filtered = cached.filter(t => t.id !== taskId);
-  await cacheTasksLocally(filtered);
-  
-  // Encolar para sincronización (solo si no es tarea temporal)
-  if (!taskId.startsWith('temp_')) {
-    await queueOperation(OPERATION_TYPES.DELETE, {}, taskId);
-  }
-  
-  // Si hay conexión, sincronizar inmediatamente
-  if (isOnline) {
-    syncPendingOperations();
-  }
-};
-
 // Limpiar todo el cache (para logout)
 export const clearOfflineData = async () => {
   try {
@@ -647,6 +608,7 @@ export default {
   getConnectionState,
   subscribeSyncStatus,
   subscribeToCacheChanges,
+  subscribeToDiscardedOperations,
   isPermanentError,
   isOperationOfUser,
   cacheTasksLocally,
@@ -656,9 +618,6 @@ export default {
   getPendingOperations,
   getPendingCount,
   syncPendingOperations,
-  createTaskOffline,
-  updateTaskOffline,
-  deleteTaskOffline,
   clearOfflineData,
   OPERATION_TYPES
 };

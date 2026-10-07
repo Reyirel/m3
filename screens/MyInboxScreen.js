@@ -27,7 +27,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import { canChangeTaskStatus } from '../services/permissions';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
-import { scheduleOverdueTasksNotification, scheduleMultipleDailyOverdueNotifications } from '../services/notifications';
+import { scheduleMultipleDailyOverdueNotifications } from '../services/notifications';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
 import { isOverdue } from '../utils/dateUtils';
@@ -103,7 +103,7 @@ export default function MyInboxScreen({ navigation }) {
     if (overdueCount === 0) return;
     const today = new Date().toDateString();
     if (lastScheduledRef.current === today) return;
-    scheduleOverdueTasksNotification(overdueTasks); // 9 AM
+    // Ya incluye el aviso de las 9 AM: programar además el diario lo duplicaba
     scheduleMultipleDailyOverdueNotifications(overdueTasks); // 9 AM, 2 PM y 6 PM
     lastScheduledRef.current = today;
   }, [overdueCount, overdueTasks]);

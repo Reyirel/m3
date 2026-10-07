@@ -3,7 +3,7 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
-import { toDate, toMs } from '../utils/dateUtils';
+import { toDate } from '../utils/dateUtils';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -22,7 +22,6 @@ if (Platform.OS !== 'web') {
 
 // Keys para AsyncStorage
 const NOTIFICATION_TRACKING_KEY = '@notification_tracking';
-const ESCALATION_LEVEL_KEY = '@escalation_level';
 
 // Pide permisos si es necesario. Devuelve true si se concedieron.
 export async function ensurePermissions() {
@@ -74,6 +73,17 @@ export async function scheduleNotificationForTask(task, options = { minutesBefor
   }
   
   try {
+    // Un solo recordatorio por tarea en este dispositivo: al editar la tarea se
+    // reemplaza el anterior en lugar de acumularse uno por cada vez que se guardó
+    if (task.id) {
+      const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+      await Promise.all(
+        scheduled
+          .filter(n => n.content?.data?.type === 'reminder' && n.content?.data?.taskId === task.id)
+          .map(n => Notifications.cancelScheduledNotificationAsync(n.identifier))
+      );
+    }
+
     const due = toDate(task.dueAt);
     if (!due) return null;
     const triggerDate = new Date(due.getTime() - options.minutesBefore * 60 * 1000);
@@ -105,44 +115,12 @@ export async function scheduleNotificationForTask(task, options = { minutesBefor
   }
 }
 
-// Programa recordatorios diarios cada 24 horas para tareas no cerradas
-// 🔔 RECORDATORIOS ESCALONADOS: 24h, 12h, 2h antes del vencimiento
-// Notificación al asignar tarea (Local optimizada + FCM para múltiples asignados)
+// Avisar a los asignados de una tarea (notificación dentro de la app).
+// Antes se mostraba además una notificación local "Te asignaron…" en ESTE dispositivo,
+// que es el de quien crea la tarea y no el de quien la recibe.
 export async function notifyAssignment(task) {
-  // En web no enviar notificaciones locales
-  if (Platform.OS === 'web') {
-    // Pero sí intentar notificar via FCM a los asignados
-    await notifyMultipleAssignees(task);
-    return null;
-  }
-  
-  // El aviso a los asignados no depende del aviso local: sin permiso de notificaciones
-  // en este dispositivo, los asignados deben recibir el suyo igual
   await notifyMultipleAssignees(task);
-
-  try {
-    // Notificación local para el dispositivo actual
-    const localNotifId = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: '📋 Nueva Tarea Asignada',
-        body: `Te asignaron: "${task.title}" - Vence: ${new Date(toMs(task.dueAt)).toLocaleDateString()}`,
-        data: { 
-          taskId: task.id, 
-          type: 'assignment',
-          taskTitle: task.title,
-          assignedTo: task.assignedTo
-        },
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.HIGH,
-        color: '#9F2241',
-      },
-      trigger: null // Notificación inmediata
-    });
-
-    return localNotifId;
-  } catch (e) {
-    return null;
-  }
+  return null;
 }
 
 // 🔔 Notificar a MÚLTIPLES asignados via Firestore (para FCM/notificaciones in-app)
@@ -186,64 +164,6 @@ async function notifyMultipleAssignees(task) {
   }
 }
 
-// Notificación diaria de tareas vencidas (se programa cada 24 horas)
-export async function scheduleOverdueTasksNotification(overdueTasks) {
-  // En web no programar notificaciones
-  if (Platform.OS === 'web') {
-    return null;
-  }
-  
-  // No notificar si no hay tareas vencidas
-  if (!overdueTasks || overdueTasks.length === 0) {
-    return null;
-  }
-  
-  try {
-    const granted = await ensurePermissions();
-    if (!granted) {
-      return null;
-    }
-
-    // Cancelar notificaciones previas de este tipo
-    const allScheduled = await Notifications.getAllScheduledNotificationsAsync();
-    for (const notif of allScheduled) {
-      if (notif.content.data?.type === 'overdue_daily') {
-        await Notifications.cancelScheduledNotificationAsync(notif.identifier);
-      }
-    }
-
-    const count = overdueTasks.length;
-    const taskTitles = overdueTasks.slice(0, 3).map(t => `• ${t.title}`).join('\n');
-    const moreText = count > 3 ? `\n... y ${count - 3} más` : '';
-
-    // Programar notificación para mañana a las 9:00 AM
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(9, 0, 0, 0);
-
-    const id = await Notifications.scheduleNotificationAsync({
-      content: {
-        title: `🚨 ${count} ${count === 1 ? 'Tarea Vencida' : 'Tareas Vencidas'}`,
-        body: `Tienes ${count} ${count === 1 ? 'tarea pendiente vencida' : 'tareas pendientes vencidas'}:\n${taskTitles}${moreText}`,
-        data: { 
-          type: 'overdue_daily',
-          taskCount: count,
-          taskIds: overdueTasks.map(t => t.id)
-        },
-        sound: true,
-        priority: Notifications.AndroidNotificationPriority.HIGH,
-        color: '#DC2626',
-        badge: count
-      },
-      trigger: tomorrow
-    });
-
-    return id;
-  } catch (e) {
-    return null;
-  }
-}
-
 /**
  * Programa notificaciones múltiples al día para tareas vencidas
  * Horarios: 9 AM, 2 PM, 6 PM
@@ -277,8 +197,8 @@ export async function scheduleMultipleDailyOverdueNotifications(overdueTasks) {
     }
 
     const count = overdueTasks.length;
-    const taskTitles = overdueTasks.slice(0, 3).map(t => `• ${t.title}`).join('\\n');
-    const moreText = count > 3 ? `\\n... y ${count - 3} más` : '';
+    const taskTitles = overdueTasks.slice(0, 3).map(t => `• ${t.title}`).join('\n');
+    const moreText = count > 3 ? `\n... y ${count - 3} más` : '';
 
     const ids = [];
     const hours = [9, 14, 18]; // 9 AM, 2 PM, 6 PM
@@ -296,7 +216,7 @@ export async function scheduleMultipleDailyOverdueNotifications(overdueTasks) {
       const id = await Notifications.scheduleNotificationAsync({
         content: {
           title: `⚠ ${count} ${count === 1 ? 'Tarea Vencida' : 'Tareas Vencidas'}`,
-          body: `Tienes ${count} ${count === 1 ? 'tarea pendiente vencida' : 'tareas pendientes vencidas'}:\\n${taskTitles}${moreText}`,
+          body: `Tienes ${count} ${count === 1 ? 'tarea pendiente vencida' : 'tareas pendientes vencidas'}:\n${taskTitles}${moreText}`,
           data: { 
             type: 'overdue_multiple',
             taskCount: count,
@@ -378,25 +298,6 @@ export async function cancelAllNotifications() {
  * Tracking de notificaciones vistas y reprogramación si no se confirma
  */
 
-// Guardar que se envió una notificación
-async function trackNotificationSent(taskId, notificationId) {
-  try {
-    const tracking = await AsyncStorage.getItem(NOTIFICATION_TRACKING_KEY);
-    const data = tracking ? JSON.parse(tracking) : {};
-    
-    data[taskId] = {
-      notificationId,
-      sentAt: Date.now(),
-      confirmed: false,
-      viewCount: 0
-    };
-    
-    await AsyncStorage.setItem(NOTIFICATION_TRACKING_KEY, JSON.stringify(data));
-  } catch (e) {
-    if (__DEV__) console.error('Error guardando tracking:', e);
-  }
-}
-
 // Marcar notificación como confirmada
 export async function confirmNotificationViewed(taskId) {
   try {
@@ -412,34 +313,6 @@ export async function confirmNotificationViewed(taskId) {
     }
   } catch (e) {
     if (__DEV__) console.error('Error confirmando notificación:', e);
-  }
-}
-
-/**
- * SISTEMA DE ESCALADO DE NOTIFICACIONES
- * Aumenta intensidad y frecuencia si el usuario no responde
- */
-
-// Obtener nivel de escalado actual
-async function getEscalationLevel(taskId) {
-  try {
-    const data = await AsyncStorage.getItem(`${ESCALATION_LEVEL_KEY}_${taskId}`);
-    return data ? parseInt(data) : 0;
-  } catch (e) {
-    return 0;
-  }
-}
-
-// Incrementar nivel de escalado
-async function incrementEscalationLevel(taskId) {
-  try {
-    const currentLevel = await getEscalationLevel(taskId);
-    const newLevel = Math.min(currentLevel + 1, 5); // Máximo nivel 5
-    await AsyncStorage.setItem(`${ESCALATION_LEVEL_KEY}_${taskId}`, newLevel.toString());
-    return newLevel;
-  } catch (e) {
-    if (__DEV__) console.error('Error incrementando escalado:', e);
-    return 0;
   }
 }
 

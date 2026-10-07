@@ -35,6 +35,8 @@ import { getCurrentSession } from './authFirestore';
 import { toMs } from '../utils/dateUtils';
 import { ValidationRules, Validator } from '../utils/ValidationRules';
 import { getSecretariasForAreas } from '../config/areas';
+import { getAssignedEmails } from '../utils/taskHelpers';
+import { addAreaSubtasksToBatch } from './areaSubtasks';
 import {
   getConnectionState,
   queueOperation,
@@ -254,66 +256,6 @@ async function getUsersMap() {
 }
 
 /**
- * Crear subtareas automáticas por área
- */
-async function createAreaSubtasks(parentTaskId, parentTask, batch) {
-  // Solo si hay múltiples áreas
-  if (!parentTask.areas || parentTask.areas.length <= 1) {
-    return;
-  }
-
-  const tasksRef = collection(db, TASKS_COLLECTION);
-
-  for (const area of parentTask.areas) {
-    // Crear una subtarea por área
-    const subtaskData = {
-      title: `[${area}] ${parentTask.title}`,
-      description: parentTask.description,
-      priority: parentTask.priority,
-      status: 'pendiente',
-      area,
-      areas: [area],
-      secretarias: getSecretariasForAreas([area]),
-
-      // RELACIÓN
-      parentTaskId,
-      parentTaskTitle: parentTask.title,
-      isSubtask: true,
-      isAreaSubtask: true,
-
-      // ASIGNACIONES (inicialmente vacías para que el secretario de cada área las asigne)
-      assignedTo: [],
-      assignedToNames: [],
-      assignments: [],
-
-      // METADATOS
-      createdBy: parentTask.createdBy,
-      createdByName: parentTask.createdByName,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      dueAt: parentTask.dueAt,
-      tags: parentTask.tags || [],
-
-      // NO ES COORDINACIÓN
-      isCoordinationTask: false,
-      progressPercentage: 0,
-    };
-
-    const subtaskRef = doc(tasksRef);
-    batch.set(subtaskRef, subtaskData);
-  }
-
-  // Marcar tarea padre como coordinativa
-  const parentRef = doc(db, TASKS_COLLECTION, parentTaskId);
-  batch.update(parentRef, {
-    isCoordinationTask: true,
-    subtaskCount: parentTask.areas.length,
-    subtasksCompleted: 0,
-    coordinationProgress: 0,
-  });
-}
-
-/**
  * Enviar notificaciones a asignados
  */
 async function notifyAssignees(task, taskId) {
@@ -370,6 +312,14 @@ export const TaskCreator = {
 
       const currentUser = sessionResult.session;
 
+      // Misma regla que services/permissions.js (canCreateTask) y firestore.secure.rules
+      if (currentUser.role !== 'admin') {
+        return {
+          success: false,
+          error: 'Solo administradores pueden crear tareas',
+        };
+      }
+
       // 3. NORMALIZAR
       const { fields, initial } = await normalizeTaskData(formData, currentUser);
       const normalizedData = { ...fields, ...initial };
@@ -399,10 +349,8 @@ export const TaskCreator = {
       // Guardar tarea principal
       batch.set(taskRef, normalizedData);
 
-      // Si hay múltiples áreas, crear subtareas
-      if (normalizedData.areas.length > 1) {
-        await createAreaSubtasks(taskRef.id, normalizedData, batch);
-      }
+      // Si hay múltiples áreas, crear una subtarea por área en el mismo lote
+      addAreaSubtasksToBatch(batch, normalizedData, taskRef.id);
 
       await batch.commit();
 
@@ -453,6 +401,14 @@ export const TaskCreator = {
       }
 
       const currentUser = sessionResult.session;
+
+      // Secretarios y directores solo cambian el estado (services/tasks.js → updateTask)
+      if (currentUser.role !== 'admin') {
+        return {
+          success: false,
+          error: 'Solo el administrador puede modificar tareas',
+        };
+      }
 
       const isOffline = !getConnectionState();
       const taskRef = doc(db, TASKS_COLLECTION, taskId);
@@ -516,9 +472,12 @@ export const TaskCreator = {
       // 4. ACTUALIZAR EN BD
       await updateDoc(taskRef, normalizedData);
 
-      // 5. NOTIFICAR SI CAMBIARON ASIGNADOS
-      if (formData.assignedEmails) {
-        await notifyAssignees(normalizedData, taskId);
+      // 5. NOTIFICAR SOLO A LOS NUEVOS ASIGNADOS. Quien ya tenía la tarea no debe
+      // recibir "Nueva tarea asignada" cada vez que se corrige el título o la fecha.
+      const previousAssignees = getAssignedEmails(existing);
+      const addedAssignees = fields.assignedTo.filter((email) => !previousAssignees.includes(email));
+      if (addedAssignees.length > 0) {
+        await notifyAssignees({ ...normalizedData, assignedTo: addedAssignees }, taskId);
       }
 
       return {

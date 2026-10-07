@@ -2,93 +2,64 @@
 // Sistema de subtareas automáticas por área
 // Cuando una tarea se asigna a múltiples áreas, se crean subtareas coordinadas
 
-import { collection, doc, getDoc, updateDoc, query, where, getDocs, Timestamp, writeBatch, onSnapshot } from 'firebase/firestore';
+import { collection, doc, getDoc, updateDoc, query, where, getDocs, Timestamp, serverTimestamp, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase';
 import { normalizeStatus } from '../utils/taskHelpers';
 import { getSecretariasForAreas } from '../config/areas';
 
 /**
- * Crear subtareas automáticas para cada área asignada
- * @param {object} parentTask - Tarea padre con múltiples áreas
- * @param {string} parentTaskId - ID de la tarea padre
- * @returns {Promise<{success: boolean, subtasks: Array}>}
+ * Agrega a un lote las subtareas de una tarea con varias áreas (una por área) y marca
+ * la tarea principal como tarea de coordinación.
+ *
+ * El lote debe incluir también la creación de la tarea principal: así la tarea y sus
+ * subtareas se guardan juntas o no se guarda nada, y un reintento no las duplica.
+ * Las subtareas nacen sin asignados: el secretario de cada área las asigna.
+ *
+ * @param {object} batch - Lote de Firestore (writeBatch)
+ * @param {object} parentTask - Datos de la tarea principal
+ * @param {string} parentTaskId - ID de la tarea principal
+ * @returns {number} Subtareas agregadas (0 si la tarea tiene una sola área)
  */
-export const createAreaSubtasks = async (parentTask, parentTaskId) => {
-  try {
-    const areas = parentTask.areas || [parentTask.area];
-    
-    // Solo crear subtareas si hay más de un área
-    if (areas.length <= 1) {
-      return { success: true, subtasks: [], message: 'Tarea de un solo área, no requiere subtareas' };
-    }
-    
-    const batch = writeBatch(db);
-    const subtasks = [];
-    const tasksRef = collection(db, 'tasks');
-    
-    for (const area of areas) {
-      // Buscar usuarios asignados de esta área específica
-      const areaAssignees = [];
-      const areaAssigneeNames = [];
-      
-      if (parentTask.assignedTo && parentTask.assignedToNames) {
-        // Filtrar asignados por área (necesitamos los datos de usuarios)
-        // Por ahora asignamos la subtarea sin asignados específicos
-        // El secretario de cada área deberá asignarla
-      }
-      
-      const subtaskData = {
-        title: `[${area}] ${parentTask.title}`,
-        description: parentTask.description,
-        status: 'pendiente',
-        priority: parentTask.priority || 'media',
-        area: area,
-        areas: [area],
-        // Secretaría que puede ver la subtarea (visibilidad del secretario)
-        secretarias: getSecretariasForAreas([area]),
-        parentTaskId: parentTaskId,
-        parentTaskTitle: parentTask.title,
-        isSubtask: true,
-        isAreaSubtask: true, // Marca especial para subtareas de coordinación
-        assignedTo: areaAssignees,
-        assignedToNames: areaAssigneeNames,
-        assignments: [],
-        createdBy: parentTask.createdBy,
-        createdByName: parentTask.createdByName,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-        dueAt: parentTask.dueAt || null,
-        tags: parentTask.tags || [],
-        isCoordinationTask: false,
-        progressPercentage: 0,
-      };
-      
-      const subtaskRef = doc(tasksRef);
-      batch.set(subtaskRef, subtaskData);
-      subtasks.push({ id: subtaskRef.id, ...subtaskData });
-    }
-    
-    // Actualizar tarea padre para marcarla como tarea de coordinación
-    const parentRef = doc(db, 'tasks', parentTaskId);
-    batch.update(parentRef, {
-      isCoordinationTask: true,
-      subtaskCount: areas.length,
-      subtasksCompleted: 0,
-      coordinationProgress: 0,
-      updatedAt: Timestamp.now()
+export const addAreaSubtasksToBatch = (batch, parentTask, parentTaskId) => {
+  const areas = Array.isArray(parentTask.areas) ? parentTask.areas.filter(Boolean) : [];
+  if (areas.length <= 1) return 0;
+
+  const tasksRef = collection(db, 'tasks');
+  areas.forEach((area) => {
+    batch.set(doc(tasksRef), {
+      title: `[${area}] ${parentTask.title}`,
+      description: parentTask.description,
+      status: 'pendiente',
+      priority: parentTask.priority || 'media',
+      area,
+      areas: [area],
+      // Secretaría que puede ver la subtarea (visibilidad del secretario)
+      secretarias: getSecretariasForAreas([area]),
+      parentTaskId,
+      parentTaskTitle: parentTask.title,
+      isSubtask: true,
+      isAreaSubtask: true, // Marca especial para subtareas de coordinación
+      assignedTo: [],
+      assignedToNames: [],
+      assignments: [],
+      createdBy: parentTask.createdBy,
+      createdByName: parentTask.createdByName,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      dueAt: parentTask.dueAt || null,
+      tags: parentTask.tags || [],
+      isCoordinationTask: false,
+      progressPercentage: 0,
     });
-    
-    await batch.commit();
-    
-    return { 
-      success: true, 
-      subtasks,
-      message: `Se crearon ${subtasks.length} subtareas para coordinación entre áreas`
-    };
-  } catch (error) {
-    if (__DEV__) console.error('Error creando subtareas por área:', error);
-    throw error;
-  }
+  });
+
+  batch.update(doc(db, 'tasks', parentTaskId), {
+    isCoordinationTask: true,
+    subtaskCount: areas.length,
+    subtasksCompleted: 0,
+    coordinationProgress: 0,
+  });
+  return areas.length;
 };
 
 /**
@@ -185,18 +156,3 @@ export const updateParentTaskProgress = async (parentTaskId) => {
     throw error;
   }
 };
-
-/**
- * Helper para obtener label de estado
- */
-const getStatusLabel = (status) => {
-  const labels = {
-    'pendiente': '⏳ Pendiente',
-    'en_proceso': '🔄 En Proceso',
-    'en_revision': '👀 En Revisión',
-    'completada': '✅ Completada',
-    'bloqueada': '🚫 Bloqueada'
-  };
-  return labels[status] || status;
-};
-

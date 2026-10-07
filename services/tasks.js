@@ -40,24 +40,9 @@ import {
 
 const COLLECTION_NAME = 'tasks';
 
-// 🔍 DIAGNÓSTICO: Detectar si emulador está activo
-function detectEmulator() {
-  try {
-    // En Firestore modular, si se usa connectFirestoreEmulator(), la conexión se hace en firebase.js
-    // No hay forma directa de detectarlo, pero podemos chequear si hay configuración en localStorage o envs
-    const emuHost = process.env.REACT_APP_FIREBASE_EMULATOR_HOST;
-    const emuPort = process.env.REACT_APP_FIRESTORE_EMULATOR_PORT;
-    
-    if (emuHost || emuPort) {
-      return true;
-    }
-    return false;
-  } catch (e) {
-    return false;
-  }
-}
-
-const _isEmulatorActive = detectEmulator();
+// La copia local de la lista se guarda como mucho una vez cada este tiempo. Con muchas
+// tareas, serializar la lista completa en cada cambio del servidor traba la pantalla.
+const PERSIST_DELAY_MS = 2000;
 
 // Cache eliminado para tiempo real verdadero
 let _activeSubscriptions = 0;
@@ -221,14 +206,21 @@ export async function subscribeToTasks(callback, knownSession) {
     };
     const unsubscribeCache = subscribeToCacheChanges(() => emit());
 
-    // Guardar la lista del servidor en el dispositivo para poder verla sin conexión
-    const persistServerTasks = async () => {
-      try {
-        const cached = await getCachedTasks(userEmail);
-        await cacheTasksLocally([...cached.filter(isTempTask), ...serverTasks], userEmail, { silent: true });
-      } catch (e) {
-        log('⚠️ Error guardando copia local de tareas:', e.message);
-      }
+    // Guardar la lista del servidor en el dispositivo para poder verla sin conexión.
+    // Varios cambios seguidos se guardan una sola vez, con la lista más reciente.
+    let persistTimer = null;
+    const persistServerTasks = () => {
+      if (persistTimer) return;
+      persistTimer = setTimeout(async () => {
+        persistTimer = null;
+        if (!isSubscribed) return;
+        try {
+          const cached = await getCachedTasks(userEmail);
+          await cacheTasksLocally([...cached.filter(isTempTask), ...serverTasks], userEmail, { silent: true });
+        } catch (e) {
+          log('⚠️ Error guardando copia local de tareas:', e.message);
+        }
+      }, PERSIST_DELAY_MS);
     };
 
     // Mostrar de inmediato la última copia guardada mientras responde Firestore
@@ -304,6 +296,7 @@ export async function subscribeToTasks(callback, knownSession) {
       isSubscribed = false;
       _activeSubscriptions--;
       logger.debug('TasksService', 'Task subscription cleanup');
+      clearTimeout(persistTimer);
       unsubscribeCache();
       unsubscribeListeners.forEach(unsubscribe => unsubscribe && unsubscribe());
     };
@@ -325,9 +318,15 @@ export async function subscribeToTasks(callback, knownSession) {
 export async function updateTask(taskId, updates) {
   let cacheUserEmail;
 
+  // El estado se guarda siempre con su nombre canónico: una variante antigua
+  // ('completada', 'cerrado') cerraría la tarea sin pasar por las reglas de cierre.
+  if (updates.status) {
+    updates = { ...updates, status: normalizeStatus(updates.status) };
+  }
+
   // Solo el administrador puede finalizar una tarea. Se valida aquí, y no solo en
   // cada pantalla, para que ningún botón pueda saltarse la regla.
-  if (updates.status && normalizeStatus(updates.status) === 'cerrada') {
+  if (updates.status === 'cerrada') {
     const sessionResult = await getCurrentSession();
     const role = sessionResult.success ? sessionResult.session?.role : null;
     if (role !== 'admin') {
@@ -571,14 +570,6 @@ export function subscribeToTrash(callback, onError) {
     logger.error('TasksService', 'Trash listener error', error);
     if (onError) onError(error);
   });
-}
-
-/**
- * Cargar tareas (fallback si Firebase no está disponible)
- * @returns {Promise<Array>} Array de tareas
- */
-export async function loadTasks() {
-  return [];
 }
 
 /**
