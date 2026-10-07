@@ -1,11 +1,13 @@
 // Service para exportar reportes a PDF con fotos
 
+import { statusLabel } from '../utils/taskStatus';
+import { toMs } from '../utils/dateUtils';
+
 const log = __DEV__ ? console.log : () => {};
 
 // Imports condicionales para expo modules
 let Print = null;
 let Sharing = null;
-let FileSystem = null;
 
 try {
   Print = require('expo-print');
@@ -19,20 +21,23 @@ try {
   // expo-sharing no disponible (web)
 }
 
-try {
-  FileSystem = require('expo-file-system');
-} catch (e) {
-  // expo-file-system no disponible (web)
-}
+// El reporte se arma con texto que escriben los usuarios (títulos, descripciones,
+// comentarios). Sin esto, un título con etiquetas HTML se interpretaba como código.
+export const escapeHtml = (value) => String(value ?? '')
+  .replace(/&/g, '&amp;')
+  .replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;')
+  .replace(/'/g, '&#39;');
+
+// Solo se aceptan fotos por https o guardadas dentro del reporte (data:image)
+const safeImageUrl = (url) =>
+  (typeof url === 'string' && (url.startsWith('https://') || url.startsWith('data:image/')) ? escapeHtml(url) : '');
 
 // Helper para descargar PDF en web
 const downloadPDFWeb = (html, fileName) => {
   return new Promise((resolve, reject) => {
     try {
-      // Para web, usar Canvas/html2pdf como fallback simple
-      const element = document.createElement('div');
-      element.innerHTML = html;
-      
       // Crear un blob y descargarlo
       const blob = new Blob([html], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
@@ -60,8 +65,10 @@ const downloadPDFWeb = (html, fileName) => {
  */
 const generateReportHTML = (report, images = [], task = {}) => {
   const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    const date = new Date(timestamp instanceof Date ? timestamp : timestamp.toDate?.() || timestamp * 1000);
+    // Acepta Timestamp de Firestore, Date, milisegundos o texto ISO (las fotos guardan texto)
+    const ms = toMs(timestamp);
+    if (!ms) return 'N/A';
+    const date = new Date(ms);
     return date.toLocaleDateString('es-ES', {
       year: 'numeric',
       month: 'long',
@@ -72,8 +79,8 @@ const generateReportHTML = (report, images = [], task = {}) => {
   };
 
   const getRatingStars = (rating) => {
-    if (!rating) return '';
-    return '⭐'.repeat(rating);
+    const stars = Math.min(5, Math.max(0, Math.round(Number(rating) || 0)));
+    return '⭐'.repeat(stars);
   };
 
   const imagesHTML = images && images.length > 0
@@ -86,7 +93,7 @@ const generateReportHTML = (report, images = [], task = {}) => {
         ${images.map((img, idx) => `
           <div style="text-align: center;">
             <img 
-              src="${img.url}" 
+              src="${safeImageUrl(img.url)}"
               style="max-width: 100%; height: 200px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;"
               alt="Foto ${idx + 1}"
             />
@@ -104,9 +111,9 @@ const generateReportHTML = (report, images = [], task = {}) => {
     ? `
     <div style="background-color: #fff3e0; padding: 12px; border-radius: 6px; margin-top: 15px; border-left: 4px solid #ff9800;">
       <p style="margin: 0; font-size: 13px; color: #333;">
-        <strong>Calificación de Calidad:</strong> ${getRatingStars(report.rating)} (${report.rating}/5)
+        <strong>Calificación de Calidad:</strong> ${getRatingStars(report.rating)} (${escapeHtml(report.rating)}/5)
       </p>
-      ${report.ratingComment ? `<p style="margin: 8px 0 0 0; font-size: 12px; color: #555; font-style: italic;">${report.ratingComment}</p>` : ''}
+      ${report.ratingComment ? `<p style="margin: 8px 0 0 0; font-size: 12px; color: #555; font-style: italic;">${escapeHtml(report.ratingComment)}</p>` : ''}
     </div>
     `
     : '';
@@ -254,19 +261,19 @@ const generateReportHTML = (report, images = [], task = {}) => {
           <h2>ℹ️ Información de Tarea</h2>
           <div class="info-row">
             <span class="info-label">Título:</span>
-            <span class="info-value">${task.titulo || 'N/A'}</span>
+            <span class="info-value">${escapeHtml(task.title || task.titulo || 'N/A')}</span>
           </div>
           <div class="info-row">
             <span class="info-label">Área:</span>
-            <span class="info-value">${task.area || 'N/A'}</span>
+            <span class="info-value">${escapeHtml(task.area || 'N/A')}</span>
           </div>
           <div class="info-row">
             <span class="info-label">Prioridad:</span>
-            <span class="info-value">${task.prioridad || 'N/A'}</span>
+            <span class="info-value">${escapeHtml(task.priority || task.prioridad || 'N/A')}</span>
           </div>
           <div class="info-row">
             <span class="info-label">Estado:</span>
-            <span class="info-value">${task.status || 'N/A'}</span>
+            <span class="info-value">${escapeHtml(task.status ? statusLabel(task.status) : 'N/A')}</span>
           </div>
         </div>
 
@@ -274,7 +281,7 @@ const generateReportHTML = (report, images = [], task = {}) => {
           <h2>📝 Detalles del Reporte</h2>
           <div class="info-row">
             <span class="info-label">Título del Reporte:</span>
-            <span class="info-value">${report.title || 'Sin título'}</span>
+            <span class="info-value">${escapeHtml(report.title || 'Sin título')}</span>
           </div>
           <div class="info-row">
             <span class="info-label">Fecha de Envío:</span>
@@ -282,7 +289,7 @@ const generateReportHTML = (report, images = [], task = {}) => {
           </div>
           <div class="description">
             <strong>Descripción:</strong><br/><br/>
-            ${(report.description || 'Sin descripción').replace(/\n/g, '<br/>')}
+            ${escapeHtml(report.description || 'Sin descripción').replace(/\n/g, '<br/>')}
           </div>
         </div>
 

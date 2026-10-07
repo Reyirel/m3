@@ -4,6 +4,8 @@ rules_version = '2';
 // No desplegar antes: sin sesión de Firebase Auth nadie podría leer ni escribir.
 // Pasos en docs/MIGRACION_FIREBASE_AUTH.md
 //
+// Probadas en el emulador: npm run test:rules (tests/rules/).
+//
 // IMPORTANTE: las reglas que coinciden con un mismo documento se suman (OR).
 // Por eso no hay regla comodín: cada colección se declara de forma explícita y
 // cualquier colección no listada queda denegada.
@@ -31,15 +33,32 @@ service cloud.firestore {
       return isActive() && me().role == 'admin';
     }
 
+    function isSecretario() {
+      return isActive() && me().role == 'secretario';
+    }
+
+    function myEmail() {
+      return request.auth.token.email;
+    }
+
+    // Campos que cambia la escritura (solo tiene sentido en update)
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
     // USUARIOS — solo el admin crea, borra o cambia rol/estado/área.
-    // Cada usuario puede editar su propio perfil salvo los campos de permisos.
+    // Cada usuario puede leer siempre su propio documento (así la app sabe decirle que
+    // su cuenta está desactivada) y editar su perfil salvo los campos de permisos.
     match /users/{userId} {
-      allow read: if isActive();
+      allow get: if isActive() || (signedIn() && request.auth.uid == userId);
+      allow list: if isActive();
       allow create, delete: if isAdmin();
       allow update: if isAdmin()
         || (isActive() && request.auth.uid == userId
-            && !request.resource.data.diff(resource.data).affectedKeys()
-                 .hasAny(['role', 'active', 'email', 'area', 'department', 'direcciones', 'areasPermitidas']));
+            && !changedKeys().hasAny([
+                 'role', 'active', 'email', 'area', 'department', 'secretaria',
+                 'direcciones', 'areasPermitidas'
+               ]));
     }
 
     // TAREAS — visibilidad por rol (misma regla que utils/taskVisibility.js):
@@ -54,21 +73,44 @@ service cloud.firestore {
     // Las consultas de la app coinciden con estas reglas:
     //   where('assignedTo', 'array-contains', <correo>)
     //   where('secretarias', 'array-contains', <secretaría>)
-    function myEmail() {
-      return request.auth.token.email;
-    }
-
     function canSeeTask(task) {
       return isAdmin()
         || (isActive() && myEmail() in task.get('assignedTo', []))
-        || (isActive() && me().role == 'secretario' && me().area in task.get('secretarias', []));
+        || (isSecretario() && me().area in task.get('secretarias', []));
+    }
+
+    // Para las subcolecciones de una tarea: quien puede ver la tarea
+    function canSeeTaskById(taskId) {
+      return canSeeTask(get(/databases/$(database)/documents/tasks/$(taskId)).data);
+    }
+
+    // 'cerrada' y las variantes antiguas que la app trata como cerrada (utils/taskStatus.js)
+    function isClosedStatus(status) {
+      return status in ['cerrada', 'cerrado', 'completada', 'completado'];
+    }
+
+    // Secretarios y directores no finalizan ni reabren: solo mueven la tarea entre
+    // pendiente, en proceso y en revisión, y nunca una que ya está finalizada.
+    function statusChangeAllowed() {
+      return !('status' in changedKeys())
+        || (!isClosedStatus(resource.data.get('status', 'pendiente'))
+            && request.resource.data.status in ['pendiente', 'en_proceso', 'en_revision']);
+    }
+
+    // Reasignar (delegar) es cosa del secretario; el director no cambia a quién le toca
+    function assignmentChangeAllowed() {
+      return isSecretario()
+        || !changedKeys().hasAny([
+             'assignedTo', 'assignedToNames', 'assignments', 'secretarias',
+             'delegatedTo', 'delegatedBy', 'delegatedAt'
+           ]);
     }
 
     // Secretarios y directores solo cambian estado, confirmaciones, delegación y avance.
     // No pueden editar el contenido, mandar a la papelera ni finalizar la tarea.
     function isAllowedTaskUpdate() {
-      return request.resource.data.diff(resource.data).affectedKeys().hasOnly([
-          'status', 'updatedAt', 'updatedBy',
+      return changedKeys().hasOnly([
+          'status', 'updatedAt', 'updatedBy', 'syncedAt',
           'completedBy', 'allCompletedAt',
           'assignedTo', 'assignedToNames', 'assignments', 'secretarias',
           'delegatedTo', 'delegatedBy', 'delegatedAt',
@@ -78,26 +120,47 @@ service cloud.firestore {
           'lastMessageAt', 'lastMessageBy', 'lastMessageByEmail',
           'reports', 'lastReportDate', 'qualityRating', 'ratedAt'
         ])
-        && (request.resource.data.get('status', '') != 'cerrada' || resource.data.get('status', '') == 'cerrada');
+        && statusChangeAllowed()
+        && assignmentChangeAllowed();
     }
 
     match /tasks/{taskId} {
-      allow read: if canSeeTask(resource.data);
+      // get: el administrador puede preguntar por una tarea que no existe (la app lo hace
+      // antes de crear en el servidor una tarea hecha sin conexión)
+      allow get: if isAdmin() || (resource != null && canSeeTask(resource.data));
+      allow list: if canSeeTask(resource.data);
       allow create: if isAdmin();
       allow update: if isAdmin() || (canSeeTask(resource.data) && isAllowedTaskUpdate());
       // Nadie borra tareas: "eliminar" las manda a la papelera (deleted: true)
       allow delete: if false;
 
-      // Subtareas, mensajes de chat y demás subcolecciones: quien puede ver la tarea
-      match /{subcollection}/{docId} {
-        allow read, create, update: if canSeeTask(get(/databases/$(database)/documents/tasks/$(taskId)).data);
+      // Chat: cada quien escribe a su nombre y los mensajes no se editan ni se borran
+      match /messages/{messageId} {
+        allow read: if canSeeTaskById(taskId);
+        allow create: if canSeeTaskById(taskId)
+          && request.resource.data.authorId == request.auth.uid;
+      }
+
+      // Subtareas: quien puede ver la tarea; solo el administrador las borra
+      match /subtasks/{subtaskId} {
+        allow read, create, update: if canSeeTaskById(taskId);
         allow delete: if isAdmin();
       }
     }
 
     // REPORTES
+    // La lectura sigue abierta a cualquier usuario activo: la app decide qué reportes
+    // muestra a cada rol (utils/taskVisibility.js → filterVisibleReports).
+    // Escritura: el autor crea y completa su reporte (fotos); calificar es del
+    // administrador y de los secretarios.
     match /task_reports/{reportId} {
-      allow read, create, update: if isActive();
+      allow read: if isActive();
+      allow create: if isActive() && request.resource.data.createdBy == myEmail();
+      allow update: if isAdmin()
+        || (isActive() && resource.data.createdBy == myEmail()
+            && !changedKeys().hasAny(['createdBy', 'taskId', 'rating', 'ratingComment', 'ratedBy', 'ratedAt']))
+        || (isSecretario()
+            && changedKeys().hasOnly(['rating', 'ratingComment', 'ratedBy', 'ratedAt', 'status', 'updatedAt']));
       allow delete: if isAdmin();
     }
 
@@ -110,43 +173,29 @@ service cloud.firestore {
       allow read: if isActive();
       allow write: if isAdmin();
     }
-
-    // NOTIFICACIONES y colas de push
-    match /notifications/{docId} {
-      allow read, write: if isActive();
-    }
-    match /notification_history/{docId} {
-      allow read, write: if isActive();
-    }
-    match /push_notifications_queue/{docId} {
-      allow read, create: if isActive();
-    }
-    match /scheduled_notifications/{docId} {
-      allow read, write: if isActive();
-    }
-    match /user_push_tokens/{docId} {
-      allow read, write: if isActive();
-    }
-    match /fcmTokens/{docId} {
-      allow read, write: if isActive();
-    }
-
-    // POMODORO
-    match /pomodoroSessions/{docId} {
-      allow read, write: if isActive();
-    }
-
-    // HISTORIAL, FIRMAS y AUDITORÍA — solo se agregan, nunca se modifican ni borran
-    match /task_activity_log/{docId} {
-      allow read, create: if isActive();
-    }
-    match /signatures/{docId} {
-      allow read, create: if isActive();
-    }
-    match /auditLogs/{docId} {
-      allow read, create: if isActive();
-    }
     match /area_audit/{docId} {
+      allow read, create: if isAdmin();
+    }
+
+    // NOTIFICACIONES — cualquiera avisa a otro usuario (asignación, chat, reporte),
+    // pero cada quien solo lee las suyas y solo puede marcarlas como leídas o eliminadas.
+    // Las consultas de la app filtran por userId (services/notificationsLive.js).
+    match /notifications/{docId} {
+      allow read: if isActive() && resource.data.userId == request.auth.uid;
+      allow create: if isActive();
+      allow update: if isActive() && resource.data.userId == request.auth.uid
+        && changedKeys().hasOnly(['read', 'readAt', 'deleted', 'deletedAt']);
+    }
+
+    // TOKENS DE PUSH — cada dispositivo registra y da de baja el suyo. Los lee y los
+    // usa solo el servidor (firebase-functions/index.js).
+    match /user_push_tokens/{docId} {
+      allow create, update: if isActive() && request.resource.data.userId == request.auth.uid;
+      allow get, delete: if isActive() && resource.data.userId == request.auth.uid;
+    }
+
+    // HISTORIAL de actividad — solo se agrega, nunca se modifica ni se borra
+    match /task_activity_log/{docId} {
       allow read, create: if isActive();
     }
   }

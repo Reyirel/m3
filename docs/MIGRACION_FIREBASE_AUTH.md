@@ -76,20 +76,48 @@ referencia existente cambia.
 
 ### 5. Desplegar funciones y reglas
 
+Antes de desplegar, comprueba las reglas en el emulador (necesita Java):
+
 ```bash
-cd firebase-functions && npm install && cd ..
-firebase deploy --only functions:adminSetUserPassword,functions:onUserDeleted
+npm run test:rules
 ```
 
-Despliega solo esas dos. Las demás funciones de `firebase-functions/index.js`
-apuntan a una colección `Tasks` y a campos que la app no usa.
+Las funciones usan Node 22 y requieren el plan Blaze:
+
+```bash
+cd firebase-functions && npm install && cd ..
+firebase deploy --only functions
+```
+
+| Función | Para qué |
+| --- | --- |
+| `adminSetUserPassword` | El administrador cambia la contraseña de otra cuenta. **Necesaria.** |
+| `onUserDeleted` | Al borrar un usuario, borra su cuenta de Auth y sus tokens. **Necesaria.** |
+| `onAreaSubtaskChanged` | Recalcula el avance de las tareas repartidas entre áreas. **Necesaria** con las reglas seguras: un director ya no puede leer las subtareas de otras áreas. |
+| `onNotificationCreated` | Envía por push cada aviso de la app. Opcional. |
+| `onReportRated` | Avisa al autor cuando califican su reporte. Opcional. |
+| `notifyDueTasksReminder` | Cada 30 min avisa de las tareas que vencen en menos de 6 horas. Opcional. |
+| `cleanupExpiredTokens` | Borra una vez al día los tokens de push vencidos. Opcional. |
+
+Para desplegar solo las necesarias:
+
+```bash
+firebase deploy --only functions:adminSetUserPassword,functions:onUserDeleted,functions:onAreaSubtaskChanged
+```
+
+El push solo llega a la app nativa y necesita además `EAS_PROJECT_ID` al compilar
+(ver `services/pushNotifications.js`). En web los avisos llegan mientras la app está abierta.
 
 Luego reemplaza el contenido de `firestore.rules` por el de `firestore.secure.rules`
 y despliega:
 
 ```bash
-firebase deploy --only firestore:rules,storage
+firebase deploy --only firestore:rules,firestore:indexes,storage
 ```
+
+Si algo sale mal, vuelve a poner el contenido anterior de `firestore.rules` y despliega
+de nuevo: los hashes siguen en Firestore hasta el paso 6, así que el acceso anterior
+se recupera en segundos.
 
 ### 6. Borrar los hashes
 
@@ -110,35 +138,45 @@ Borra `password` y `tempPassword` de los documentos ya migrados.
 
 ## Qué revisar después de activar las reglas
 
-`firestore.secure.rules` exige usuario activo para todo, reserva al admin la
-gestión de usuarios y áreas, y deja el historial, las firmas y la auditoría como
-solo-agregar. Cualquier colección no listada queda denegada: si una pantalla
-falla con "Missing or insufficient permissions", falta declarar su colección.
+`firestore.secure.rules` exige usuario activo para todo y reserva al admin la
+gestión de usuarios y áreas. Cualquier colección no listada queda denegada: si una
+pantalla falla con "Missing or insufficient permissions", falta declarar su colección.
 
-### Visibilidad de tareas
+### Qué puede hacer cada quien
 
-Las reglas aplican en el servidor lo mismo que `utils/taskVisibility.js` en la app:
+Las reglas aplican en el servidor lo mismo que `utils/taskVisibility.js` y
+`services/permissions.js` en la app:
 
 - **Admin**: ve y modifica todas las tareas.
 - **Director**: solo las que tienen su correo en `assignedTo`.
 - **Secretario**: las asignadas a su correo y las que tienen su secretaría en
   `secretarias`. Ese campo lo calcula la app al guardar (áreas de la tarea más la
   secretaría de cada asignado).
-- Secretarios y directores solo pueden cambiar estado, confirmaciones, delegación
-  y avance; no pueden finalizar ni editar el contenido.
+- Secretarios y directores solo mueven la tarea entre pendiente, en proceso y en
+  revisión, confirman su parte y anotan avance. No editan el contenido, no finalizan
+  ni reabren, y no tocan una tarea ya finalizada (salvo chat y reportes).
+- Solo el secretario (y el admin) reasigna o delega; el director no.
 - Nadie borra tareas: "eliminar" las marca con `deleted: true` (papelera).
+- **Chat**: cada quien escribe a su nombre; los mensajes no se editan ni se borran.
+- **Reportes**: el autor crea y completa el suyo; califican el admin y los secretarios.
+  La lectura sigue abierta a cualquier usuario activo (la app filtra por rol).
+- **Notificaciones**: cada quien lee solo las suyas.
+- **Storage**: solo fotos de hasta 5 MB; no se sobrescriben ni se borran.
 
-Estas reglas no se han probado con el emulador. Antes de desplegarlas, revisa:
+Todo esto está probado en el emulador (`tests/rules/`, 40 casos) con las mismas
+consultas y escrituras que hace la app. Lo que el emulador no puede comprobar son
+los datos reales. Antes de desplegar, revisa:
 
 1. **Área canónica en `users`**: la regla compara `area` del secretario con
    `secretarias` de la tarea. El usuario de Seguridad Pública tiene
    `Secretaría de Seguridad Pública`; debe decir el nombre completo de
-   `config/areas.js`.
+   `config/areas.js`. Si no coincide, la consulta del secretario se rechaza entera.
 2. **Tareas anteriores sin `secretarias`**: los secretarios no las verán hasta
    rellenar el campo (los directores y el admin sí).
-3. **Avance entre áreas**: un director que no está asignado a la tarea principal
-   no puede leer las subtareas de las otras áreas, así que el avance de la tarea
-   principal solo se recalcula cuando el cambio lo hace el admin, el secretario o
-   un asignado a la principal. Lo correcto a futuro es moverlo a una Cloud Function.
+3. **Tareas antiguas con `assignedTo` como texto** (un solo correo en lugar de una
+   lista): las reglas no las reconocen como asignadas. Conviértelas a lista.
 4. Pantallas que consultan `tasks` sin filtro (analíticas, reportes, alertas por
    área): están pensadas para el admin; con otro rol devolverán error de permisos.
+5. **Prueba cada rol** con una cuenta real (admin, secretario, director) antes de
+   borrar los hashes: entrar, ver sus tareas, cambiar un estado, escribir en el chat
+   y enviar un reporte con foto.

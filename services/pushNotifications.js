@@ -1,24 +1,33 @@
 // services/pushNotifications.js
-// Firebase Cloud Messaging (FCM) para push notifications en producción
-// Para App Store y Play Store
+// Notificaciones push en la app nativa (Android / iOS).
+//
+// La app registra aquí el token de Expo de este dispositivo. La Cloud Function
+// onNotificationCreated (firebase-functions/index.js) envía por push cada aviso que se
+// guarda en la colección `notifications`.
+//
+// Requisitos para que funcione:
+//   - EAS_PROJECT_ID definido al compilar (app.config.js → extra.eas.projectId)
+//   - las Cloud Functions desplegadas
+// En web no hay push: los avisos llegan en tiempo real mientras la app está abierta
+// (services/notificationsLive.js).
 
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
 import { db } from '../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 
 const log = __DEV__ ? console.log : () => {};
 
+const TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000; // 30 días; se renueva cada vez que se abre la app
+
 /**
  * Obtener token de push notification del dispositivo
- * @returns {Promise<string>} FCM token o Expo push token
+ * @returns {Promise<string|null>} Token de Expo, o null si no está disponible
  */
 const getPushNotificationToken = async () => {
   try {
     if (Platform.OS === 'web') {
-      // Web no soporta push notifications igual
-      if (__DEV__) console.warn('Push notifications not available on web');
       return null;
     }
 
@@ -40,8 +49,12 @@ const getPushNotificationToken = async () => {
   }
 };
 
+// Un documento por dispositivo, identificado por su token. Antes se agregaba un documento
+// nuevo cada vez que se abría la app, y el mismo aviso llegaba repetido.
+const tokenDocRef = (token) => doc(db, 'user_push_tokens', token.replace(/[^A-Za-z0-9_-]/g, '_'));
+
 /**
- * Registrar token de push notification para el usuario
+ * Registrar el token de este dispositivo a nombre del usuario
  * @param {string} userId - User ID
  * @returns {Promise<void>}
  */
@@ -54,18 +67,33 @@ export const registerPushToken = async (userId) => {
       return;
     }
 
-    // Guardar token en Firestore
-    await addDoc(collection(db, 'user_push_tokens'), {
+    // Si otra persona usó antes este dispositivo, el token pasa a quien tiene la sesión
+    await setDoc(tokenDocRef(token), {
       userId,
       token,
       platform: Platform.OS,
       registeredAt: serverTimestamp(),
-      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+      expiresAt: new Date(Date.now() + TOKEN_TTL_MS),
     });
 
     log('Push token registered:', token);
   } catch (error) {
     if (__DEV__) console.error('Error registering push token:', error);
+  }
+};
+
+/**
+ * Dar de baja el token de este dispositivo. Se llama al cerrar sesión, para que los avisos
+ * de esa cuenta no sigan llegando a un dispositivo donde ya no tiene la sesión abierta.
+ * Nunca lanza error: no debe impedir el cierre de sesión.
+ * @returns {Promise<void>}
+ */
+export const unregisterPushToken = async () => {
+  try {
+    const token = await getPushNotificationToken();
+    if (token) await deleteDoc(tokenDocRef(token));
+  } catch (error) {
+    if (__DEV__) console.error('Error unregistering push token:', error);
   }
 };
 

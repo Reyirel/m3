@@ -1,72 +1,24 @@
 rules_version = '2';
+
+// ⚠️ REGLAS ABIERTAS — NO PROTEGEN LOS DATOS
+//
+// Mientras los usuarios no estén migrados a Firebase Auth, la app valida la contraseña en
+// el propio dispositivo y Firestore no sabe quién hace cada petición (no hay request.auth).
+// Por eso estas reglas dejan leer, escribir y BORRAR cualquier documento a cualquiera que
+// conozca el proyecto, con o sin la app.
+//
+// La versión anterior de este archivo decía "permite lectura y escritura pero NO borrado"
+// y declaraba colecciones de solo-agregar. No era cierto: las reglas que coinciden con un
+// mismo documento se suman (OR), `write` incluye `delete`, y el comodín de abajo coincide
+// con todos los documentos. Un `allow delete: if false` no quita lo que otra regla concede.
+// El comportamiento es exactamente el mismo que antes; solo se corrige lo que dice.
+//
+// La protección real está en firestore.secure.rules (probadas en el emulador con
+// `npm run test:rules`). Para activarlas: docs/MIGRACION_FIREBASE_AUTH.md
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // NOTA: La app usa autenticación custom (Firestore + AsyncStorage), no Firebase Auth.
-    // Por eso no se puede usar request.auth. La validación de roles se hace en la app.
-    // Las reglas aquí agregan una capa mínima de protección a nivel de operaciones.
-
-    // REGLA POR DEFECTO — permite lectura y escritura pero NO borrado
     match /{document=**} {
       allow read, write: if true;
-      allow delete: if false;
-    }
-
-    // USUARIOS — no se borran desde el cliente
-    match /users/{userId} {
-      allow read, create, update: if true;
-      allow delete: if false;
-    }
-
-    // TAREAS — el borrado se hace cambiando status a 'cerrada', no borrando doc
-    match /tasks/{taskId} {
-      allow read, create, update: if true;
-      allow delete: if false;
-
-      match /subtasks/{subtaskId} {
-        allow read, create, update: if true;
-        allow delete: if false;
-      }
-
-      match /messages/{messageId} {
-        allow read, create: if true;
-        allow update, delete: if false;
-      }
-    }
-
-    // FCM TOKENS — solo crear/leer, no borrar desde cliente
-    match /fcmTokens/{tokenId} {
-      allow read, create, update: if true;
-      allow delete: if false;
-    }
-
-    // REPORTES
-    match /reports/{reportId} {
-      allow read, create, update: if true;
-      allow delete: if false;
-    }
-
-    match /task_reports/{reportId} {
-      allow read, create, update: if true;
-      allow delete: if false;
-    }
-
-    // ACTIVIDAD — append-only desde el cliente
-    match /task_activity/{activityId} {
-      allow read, create: if true;
-      allow update, delete: if false;
-    }
-
-    // FIRMAS — inmutables una vez creadas
-    match /signatures/{signatureId} {
-      allow read, create: if true;
-      allow update, delete: if false;
-    }
-
-    // AUDITORÍA — append-only
-    match /auditLogs/{logId} {
-      allow read, create: if true;
-      allow update, delete: if false;
     }
   }
 }

@@ -15,7 +15,8 @@
     "lint:fix": "eslint . --fix",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-m3 \"jest --config jest.rules.config.js\""
   },
   "keywords": [],
   "author": "",
@@ -63,6 +64,7 @@
     "@babel/preset-env": "^7.29.2",
     "@babel/preset-react": "^7.28.5",
     "@eslint/js": "^9.39.5",
+    "@firebase/rules-unit-testing": "^3.0.4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^14.3.1",
     "@testing-library/react-native": "^12.9.0",

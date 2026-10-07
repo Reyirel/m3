@@ -1,403 +1,303 @@
-// Firebase Cloud Function para procesar push notifications
-// Archivo: functions/src/index.ts o index.js
-// Deploy: firebase deploy --only functions
+// Cloud Functions de la app.
+// Deploy: firebase deploy --only functions   (requiere el plan Blaze)
+//
+//   adminSetUserPassword   el administrador cambia la contraseña de otra cuenta
+//   onUserDeleted          al borrar un usuario se borra su cuenta de Firebase Auth
+//   onNotificationCreated  cada aviso de la app (colección `notifications`) sale también
+//                          como notificación push a los dispositivos del usuario
+//   onReportRated          avisa al autor cuando califican su reporte
+//   notifyDueTasksReminder avisa a los asignados de las tareas que vencen pronto
+//   onAreaSubtaskChanged   recalcula el avance de una tarea repartida entre varias áreas
+//   cleanupExpiredTokens   borra los tokens de push vencidos
+//
+// Los tokens que registra la app (services/pushNotifications.js) son tokens de Expo:
+// se envían por el servicio de push de Expo, no directo a FCM.
 
-import * as functions from 'firebase-functions';
-import * as admin from 'firebase-admin';
+import * as functions from 'firebase-functions/v1';
+import admin from 'firebase-admin';
 
 admin.initializeApp();
 
 const db = admin.firestore();
-const messaging = admin.messaging();
+const { FieldValue } = admin.firestore;
+
+const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
+// Expo admite hasta 100 mensajes por petición
+const EXPO_CHUNK_SIZE = 100;
+const DUE_SOON_HOURS = 6;
+const HOUR_MS = 60 * 60 * 1000;
+// Estados en los que la tarea sigue en manos de los asignados
+const OPEN_STATUSES = new Set(['pendiente', 'en_proceso', 'en_progreso']);
+// 'cerrada' y las variantes antiguas que la app trata como cerrada (utils/taskStatus.js)
+const CLOSED_STATUSES = new Set(['cerrada', 'cerrado', 'completada', 'completado']);
+// Un área terminó su parte cuando su subtarea está en revisión o finalizada
+const DONE_STATUSES = new Set(['en_revision', 'revision', ...CLOSED_STATUSES]);
+
+const normalizeEmail = (email) => String(email || '').toLowerCase().trim();
+const isExpoToken = (token) => typeof token === 'string' && /^Expo(nent)?PushToken\[.+\]$/.test(token);
+const toMillis = (value) => (value && typeof value.toMillis === 'function' ? value.toMillis() : null);
+
+const assignedEmailsOf = (task) => {
+  const raw = Array.isArray(task.assignedTo) ? task.assignedTo : task.assignedTo ? [task.assignedTo] : [];
+  return [...new Set(raw.map(normalizeEmail).filter(Boolean))];
+};
+
+/** Usuarios activos por correo: Map(correo → { id, ...datos }) */
+const loadActiveUsersByEmail = async () => {
+  const snapshot = await db.collection('users').get();
+  const users = new Map();
+  snapshot.forEach((doc) => {
+    const data = doc.data();
+    const email = normalizeEmail(data.email);
+    if (email && data.active !== false) users.set(email, { id: doc.id, ...data });
+  });
+  return users;
+};
 
 /**
- * Procesar cola de notificaciones pendientes
- * Ejecutar cada 5 minutos via Cloud Scheduler
+ * Enviar una notificación push a todos los dispositivos de un usuario.
+ * Los tokens que Expo reporta como dados de baja se borran.
+ * @returns {Promise<{ sent: number, failed: number }>}
  */
-export const processPushNotificationQueue = functions.pubsub
-  .schedule('every 5 minutes')
-  .onRun(async (_context) => {
-    try {
-      const now = new Date();
+const sendPushToUser = async (userId, { title, body, data }) => {
+  const snapshot = await db.collection('user_push_tokens').where('userId', '==', userId).get();
+  const now = Date.now();
+  const tokenDocs = snapshot.docs.filter((doc) => {
+    const { token, expiresAt } = doc.data();
+    const expires = toMillis(expiresAt);
+    return isExpoToken(token) && (!expires || expires > now);
+  });
+  if (tokenDocs.length === 0) return { sent: 0, failed: 0 };
 
-      // Obtener notificaciones pendientes
-      const pendingSnapshot = await db
-        .collection('push_notifications_queue')
-        .where('status', '==', 'pending')
-        .where('expiresAt', '>', now)
-        .limit(100)
-        .get();
+  let sent = 0;
+  let failed = 0;
+  for (let i = 0; i < tokenDocs.length; i += EXPO_CHUNK_SIZE) {
+    const chunk = tokenDocs.slice(i, i + EXPO_CHUNK_SIZE);
+    const response = await fetch(EXPO_PUSH_URL, {
+      method: 'POST',
+      headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+      body: JSON.stringify(chunk.map((doc) => ({
+        to: doc.data().token,
+        title,
+        body,
+        data,
+        sound: 'default',
+        channelId: 'default',
+        priority: 'high',
+      }))),
+    });
+    if (!response.ok) {
+      failed += chunk.length;
+      console.error('Expo push respondió', response.status);
+      continue;
+    }
 
-      let sent = 0;
-      let failed = 0;
-
-      for (const doc of pendingSnapshot.docs) {
-        try {
-          const notification = doc.data();
-          const { userId, title, body, data } = notification;
-
-          // Obtener tokens de push del usuario
-          const tokensSnapshot = await db
-            .collection('user_push_tokens')
-            .where('userId', '==', userId)
-            .where('expiresAt', '>', now)
-            .get();
-
-          const tokens = tokensSnapshot.docs.map((t) => t.data().token);
-
-          if (tokens.length === 0) {
-            // No hay tokens válidos, marcar como completado
-            await doc.ref.update({
-              status: 'no_tokens',
-              processedAt: admin.firestore.FieldValue.serverTimestamp(),
-            });
-            continue;
-          }
-
-          // Enviar a todos los tokens del usuario
-          const messagePayload = {
-            notification: {
-              title,
-              body,
-            },
-            data: data || {},
-            android: {
-              priority: 'high',
-              ttl: 3600,
-            },
-            apns: {
-              headers: {
-                'apns-priority': '10',
-              },
-              payload: {
-                aps: {
-                  alert: {
-                    title,
-                    body,
-                  },
-                  sound: 'default',
-                  'mutable-content': 1,
-                },
-              },
-            },
-            webpush: {
-              headers: {
-                TTL: '3600',
-              },
-            },
-          };
-
-          // Multicast send
-          const response = await messaging.sendMulticast({
-            ...messagePayload,
-            tokens,
-          });
-
-          // Log de respuesta
-          const successCount = response.successCount;
-          const failureCount = response.failureCount;
-
-          // Actualizar tokens inválidos
-          for (let i = 0; i < response.responses.length; i++) {
-            const resp = response.responses[i];
-            if (!resp.success) {
-              const token = tokens[i];
-              const error = resp.error;
-
-              // Si token es inválido, eliminar
-              if (error?.code === 'messaging/invalid-registration-token' ||
-                  error?.code === 'messaging/registration-token-not-registered') {
-                await db
-                  .collection('user_push_tokens')
-                  .where('token', '==', token)
-                  .get()
-                  .then((snap) => {
-                    snap.forEach((d) => d.ref.delete());
-                  });
-              }
-            }
-          }
-
-          // Marcar como enviado
-          await doc.ref.update({
-            status: 'sent',
-            sentCount: successCount,
-            failedCount: failureCount,
-            processedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-
-          sent++;
-        } catch (error) {
-          console.error('Error processing notification:', error);
-          failed++;
-
-          // Marcar como error
-          await doc.ref.update({
-            status: 'error',
-            error: error.message,
-            processedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-        }
+    const tickets = (await response.json()).data || [];
+    const deletions = [];
+    tickets.forEach((ticket, index) => {
+      if (ticket.status === 'ok') {
+        sent++;
+        return;
       }
-
-      console.log(`Processed ${sent} notifications, ${failed} failed`);
-      return { processed: sent, failed };
-    } catch (error) {
-      console.error('Error in processPushNotificationQueue:', error);
-      return error;
-    }
-  });
-
-/**
- * Procesar notificaciones agendadas
- * Ejecutar cada minuto
- */
-export const processScheduledNotifications = functions.pubsub
-  .schedule('every 1 minutes')
-  .onRun(async (_context) => {
-    try {
-      const now = new Date();
-
-      // Obtener notificaciones que deben ser enviadas
-      const scheduledSnapshot = await db
-        .collection('scheduled_notifications')
-        .where('status', '==', 'pending')
-        .where('scheduleAt', '<=', now)
-        .limit(50)
-        .get();
-
-      let processed = 0;
-
-      for (const doc of scheduledSnapshot.docs) {
-        try {
-          const notification = doc.data();
-
-          // Mover a cola de notificaciones
-          await db.collection('push_notifications_queue').add({
-            userId: notification.userId,
-            title: notification.title,
-            body: notification.body,
-            data: notification.data || {},
-            status: 'pending',
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-            scheduledFrom: doc.id,
-          });
-
-          // Marcar como enviado
-          await doc.ref.update({
-            status: 'sent',
-            processedAt: admin.firestore.FieldValue.serverTimestamp(),
-          });
-
-          processed++;
-        } catch (error) {
-          console.error('Error processing scheduled notification:', error);
-          await doc.ref.update({
-            status: 'error',
-            error: error.message,
-          });
-        }
-      }
-
-      console.log(`Processed ${processed} scheduled notifications`);
-      return { processed };
-    } catch (error) {
-      console.error('Error in processScheduledNotifications:', error);
-      return error;
-    }
-  });
+      failed++;
+      if (ticket.details?.error === 'DeviceNotRegistered') deletions.push(chunk[index].ref.delete());
+    });
+    await Promise.all(deletions);
+  }
+  return { sent, failed };
+};
 
 /**
- * Limpiar tokens expirados
- * Ejecutar cada hora
+ * Cada aviso que la app guarda en `notifications` sale también como push.
+ * La app escribe esos avisos al asignar una tarea, al llegar un mensaje al chat
+ * y al enviarse un reporte.
  */
-export const cleanupExpiredTokens = functions.pubsub
-  .schedule('every 1 hours')
-  .onRun(async (_context) => {
-    try {
-      const now = new Date();
-
-      const snapshot = await db
-        .collection('user_push_tokens')
-        .where('expiresAt', '<', now)
-        .get();
-
-      let deleted = 0;
-      const batch = db.batch();
-
-      snapshot.docs.forEach((doc) => {
-        batch.delete(doc.ref);
-        deleted++;
-      });
-
-      await batch.commit();
-      console.log(`Cleaned up ${deleted} expired tokens`);
-      return { deleted };
-    } catch (error) {
-      console.error('Error in cleanupExpiredTokens:', error);
-      return error;
-    }
-  });
-
-/**
- * Enviar notificación cuando se crea una tarea
- */
-export const onTaskCreated = functions.firestore
-  .document('Tasks/{taskId}')
+export const onNotificationCreated = functions.firestore
+  .document('notifications/{notificationId}')
   .onCreate(async (snap, context) => {
+    const notification = snap.data();
+    if (!notification.userId || notification.deleted) return null;
+
     try {
-      const task = snap.data();
-      const { taskId } = context.params;
-
-      // Si la tarea tiene asignados, notificarlos
-      if (task.assignedToNames && task.assignedToNames.length > 0) {
-        // Obtener IDs de usuarios asignados
-        const usersSnapshot = await db
-          .collection('users')
-          .where('displayName', 'in', task.assignedToNames)
-          .get();
-
-        const userIds = usersSnapshot.docs.map((d) => d.id);
-
-        // Crear notificaciones
-        const batch = db.batch();
-        userIds.forEach((userId) => {
-          batch.set(db.collection('push_notifications_queue').doc(), {
-            userId,
-            title: '📋 Nueva Tarea Asignada',
-            body: task.titulo || 'Nueva tarea',
-            data: {
-              type: 'task_assigned',
-              taskId,
-              createdBy: task.createdBy,
-            },
-            status: 'pending',
-            createdAt: admin.firestore.FieldValue.serverTimestamp(),
-            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-          });
-        });
-
-        await batch.commit();
-        console.log(`Task notification sent to ${userIds.length} users`);
-      }
-
-      return null;
+      const result = await sendPushToUser(notification.userId, {
+        title: notification.title || 'Nueva notificación',
+        body: notification.body || notification.message || '',
+        data: {
+          notificationId: context.params.notificationId,
+          type: notification.type || '',
+          taskId: notification.taskId || '',
+        },
+      });
+      console.log(`Push de ${context.params.notificationId}: ${result.sent} enviados, ${result.failed} fallidos`);
     } catch (error) {
-      console.error('Error in onTaskCreated:', error);
-      return error;
+      console.error('Error in onNotificationCreated:', error);
     }
+    return null;
   });
 
 /**
- * Enviar notificación cuando se califica un reporte
+ * Avisar al autor de un reporte cuando lo califican
  */
 export const onReportRated = functions.firestore
   .document('task_reports/{reportId}')
   .onUpdate(async (change, context) => {
+    const before = change.before.data();
+    const after = change.after.data();
+    // Solo cuando la calificación es nueva
+    if (before.rating || !after.rating) return null;
+
     try {
-      const before = change.before.data();
-      const after = change.after.data();
+      // createdBy guarda el correo del autor (o su id en reportes antiguos)
+      const author = normalizeEmail(after.createdBy);
+      const users = await loadActiveUsersByEmail();
+      const user = users.get(author) || [...users.values()].find((u) => u.id === after.createdBy);
+      if (!user) return null;
 
-      // Si el rating es nuevo (antes no tenía)
-      if (!before.rating && after.rating) {
-        const { reportId } = context.params;
-
-        // Crear notificación para quien envió el reporte
-        await db.collection('push_notifications_queue').add({
-          userId: after.createdBy,
-          title: '⭐ Tu Reporte fue Calificado',
-          body: `Calificación: ${after.rating}/5 estrellas`,
-          data: {
-            type: 'report_rated',
-            reportId,
-            taskId: after.taskId,
-            rating: after.rating,
-          },
-          status: 'pending',
-          createdAt: admin.firestore.FieldValue.serverTimestamp(),
-          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-        });
-
-        console.log(`Report rating notification sent for report: ${reportId}`);
-      }
-
-      return null;
+      await db.collection('notifications').add({
+        userId: user.id,
+        userEmail: normalizeEmail(user.email),
+        type: 'report_rated',
+        title: '⭐ Calificaron tu reporte',
+        body: `"${after.title || 'Reporte'}": ${after.rating} de 5`,
+        taskId: after.taskId || '',
+        reportId: context.params.reportId,
+        read: false,
+        createdAt: FieldValue.serverTimestamp(),
+      });
     } catch (error) {
       console.error('Error in onReportRated:', error);
-      return error;
     }
+    return null;
   });
 
 /**
- * Enviar recordatorio de tareas vencidas
- * Ejecutar cada 30 minutos
+ * Avisar a los asignados de las tareas abiertas que vencen en las próximas horas.
+ * Cada tarea se avisa una sola vez por fecha límite: si la fecha cambia, se vuelve a avisar.
  */
 export const notifyDueTasksReminder = functions.pubsub
   .schedule('every 30 minutes')
-  .onRun(async (_context) => {
-    try {
-      const now = Date.now();
-      const _in6Hours = new Date(now + 6 * 60 * 60 * 1000);
-      const in24Hours = new Date(now + 24 * 60 * 60 * 1000);
+  .onRun(async () => {
+    const now = Date.now();
+    const snapshot = await db
+      .collection('tasks')
+      .where('dueAt', '>', new Date(now))
+      .where('dueAt', '<=', new Date(now + DUE_SOON_HOURS * HOUR_MS))
+      .get();
 
-      // Obtener tareas que vencen en las próximas 6-24 horas
-      const tasksSnapshot = await db
-        .collection('Tasks')
-        .where('status', 'in', ['pendiente', 'en_progreso'])
-        .where('dueAt', '>', new Date(now))
-        .where('dueAt', '<', in24Hours)
-        .get();
+    const pending = snapshot.docs.filter((doc) => {
+      const task = doc.data();
+      return !task.deleted
+        && OPEN_STATUSES.has(task.status || 'pendiente')
+        && task.dueReminderSentFor !== toMillis(task.dueAt);
+    });
+    if (pending.length === 0) return null;
 
-      let notificationsSent = 0;
+    const users = await loadActiveUsersByEmail();
+    let notified = 0;
+
+    for (const doc of pending) {
+      const task = doc.data();
+      const dueAtMs = toMillis(task.dueAt);
+      const hours = Math.max(1, Math.ceil((dueAtMs - now) / HOUR_MS));
       const batch = db.batch();
 
-      for (const doc of tasksSnapshot.docs) {
-        const task = doc.data();
-        const dueAtMs = task.dueAt?.toMillis ? task.dueAt.toMillis() : (task.dueAt?.seconds ? task.dueAt.seconds * 1000 : task.dueAt);
-        const hoursUntilDue = Math.floor(
-          (dueAtMs - now) / (60 * 60 * 1000)
-        );
-
-        // Solo notificar si es menor a 6 horas
-        if (hoursUntilDue <= 6) {
-          // Notificar a responsables
-          const assignees = task.assignedToNames || [];
-          const usersSnapshot = await db
-            .collection('users')
-            .where('displayName', 'in', assignees)
-            .get();
-
-          usersSnapshot.docs.forEach((userDoc) => {
-            batch.set(db.collection('push_notifications_queue').doc(), {
-              userId: userDoc.id,
-              title: '⏰ Tarea Vence Pronto',
-              body: `${task.titulo} (en ${hoursUntilDue} horas)`,
-              data: {
-                type: 'task_due_soon',
-                taskId: doc.id,
-                hoursUntilDue,
-              },
-              status: 'pending',
-              createdAt: admin.firestore.FieldValue.serverTimestamp(),
-              expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-            });
-
-            notificationsSent++;
-          });
-        }
-      }
-
-      if (notificationsSent > 0) {
-        await batch.commit();
-      }
-
-      console.log(`Sent ${notificationsSent} due date reminders`);
-      return { sent: notificationsSent };
-    } catch (error) {
-      console.error('Error in notifyDueTasksReminder:', error);
-      return error;
+      assignedEmailsOf(task).forEach((email) => {
+        const user = users.get(email);
+        if (!user) return;
+        batch.set(db.collection('notifications').doc(), {
+          userId: user.id,
+          userEmail: email,
+          type: 'task_due_soon',
+          title: '⏰ Tarea por vencer',
+          body: `"${task.title || 'Tarea'}" vence en ${hours === 1 ? 'menos de 1 hora' : `menos de ${hours} horas`}`,
+          taskId: doc.id,
+          taskTitle: task.title || '',
+          read: false,
+          createdAt: FieldValue.serverTimestamp(),
+        });
+        notified++;
+      });
+      batch.update(doc.ref, { dueReminderSentFor: dueAtMs });
+      await batch.commit();
     }
+
+    console.log(`Recordatorios de vencimiento: ${notified} avisos en ${pending.length} tareas`);
+    return null;
+  });
+
+/**
+ * Avance de una tarea repartida entre varias áreas.
+ * Cuando cambia la subtarea de un área, se recalcula el avance de la tarea principal.
+ *
+ * La app también lo intenta (services/areaSubtasks.js → updateParentTaskProgress), pero
+ * con las reglas seguras un director no puede leer las subtareas de las otras áreas:
+ * aquí se hace con permisos de servidor, sin depender de quién hizo el cambio.
+ */
+export const onAreaSubtaskChanged = functions.firestore
+  .document('tasks/{taskId}')
+  .onWrite(async (change) => {
+    const before = change.before.exists ? change.before.data() : null;
+    const after = change.after.exists ? change.after.data() : null;
+    const subtask = after || before;
+    if (!subtask?.isAreaSubtask || !subtask.parentTaskId) return null;
+    // Solo importa si cambió el estado o si entró o salió de la papelera
+    if (before && after && before.status === after.status && !!before.deleted === !!after.deleted) {
+      return null;
+    }
+
+    try {
+      const parentRef = db.collection('tasks').doc(subtask.parentTaskId);
+      const [siblings, parentSnap] = await Promise.all([
+        db.collection('tasks')
+          .where('parentTaskId', '==', subtask.parentTaskId)
+          .where('isAreaSubtask', '==', true)
+          .get(),
+        parentRef.get(),
+      ]);
+      if (!parentSnap.exists) return null;
+
+      const active = siblings.docs.map((doc) => doc.data()).filter((task) => !task.deleted);
+      if (active.length === 0) return null;
+
+      // Un área terminó cuando su subtarea está en revisión o finalizada
+      const done = active.filter((task) => DONE_STATUSES.has(task.status)).length;
+      const update = {
+        subtasksCompleted: done,
+        coordinationProgress: Math.round((done / active.length) * 100),
+        updatedAt: FieldValue.serverTimestamp(),
+      };
+      // Todas las áreas terminaron: la principal pasa a revisión del administrador
+      // (sin tocarla si ya la finalizó)
+      const parentStatus = parentSnap.data().status;
+      if (done === active.length && !CLOSED_STATUSES.has(parentStatus) && parentStatus !== 'en_revision') {
+        update.status = 'en_revision';
+        update.allAreasCompletedAt = FieldValue.serverTimestamp();
+      }
+      await parentRef.update(update);
+    } catch (error) {
+      console.error('Error in onAreaSubtaskChanged:', error);
+    }
+    return null;
+  });
+
+/**
+ * Borrar los tokens de push vencidos. La app renueva el suyo cada vez que se abre.
+ */
+export const cleanupExpiredTokens = functions.pubsub
+  .schedule('every 24 hours')
+  .onRun(async () => {
+    const snapshot = await db
+      .collection('user_push_tokens')
+      .where('expiresAt', '<', new Date())
+      .limit(400)
+      .get();
+    if (snapshot.empty) return null;
+
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+    console.log(`Tokens vencidos borrados: ${snapshot.size}`);
+    return null;
   });
 
 /**
@@ -416,7 +316,7 @@ export const adminSetUserPassword = functions.https.onCall(async (data, context)
   }
 
   const { userId, newPassword } = data || {};
-  if (!userId || typeof newPassword !== 'string' || newPassword.length < 6) {
+  if (!userId || typeof userId !== 'string' || typeof newPassword !== 'string' || newPassword.length < 6) {
     throw new functions.https.HttpsError('invalid-argument', 'userId y contraseña (mínimo 6 caracteres) requeridos');
   }
 
@@ -426,48 +326,24 @@ export const adminSetUserPassword = functions.https.onCall(async (data, context)
 
 /**
  * Al borrar el documento de un usuario, borrar también su cuenta de Firebase Auth
+ * y sus tokens de push
  */
 export const onUserDeleted = functions.firestore
   .document('users/{userId}')
   .onDelete(async (_snap, context) => {
+    const { userId } = context.params;
     try {
-      await admin.auth().deleteUser(context.params.userId);
+      await admin.auth().deleteUser(userId);
     } catch (error) {
       if (error.code !== 'auth/user-not-found') {
         console.error('Error in onUserDeleted:', error);
       }
     }
+    try {
+      const tokens = await db.collection('user_push_tokens').where('userId', '==', userId).get();
+      await Promise.all(tokens.docs.map((doc) => doc.ref.delete()));
+    } catch (error) {
+      console.error('Error borrando tokens del usuario eliminado:', error);
+    }
     return null;
   });
-
-/**
- * HTTP endpoint para testing (opcional)
- */
-export const testPushNotification = functions.https.onRequest(
-  async (req, res) => {
-    try {
-      const { userId, title, body } = req.body;
-
-      if (!userId || !title || !body) {
-        res.status(400).send('Missing required fields');
-        return;
-      }
-
-      // Crear notificación en cola
-      await db.collection('push_notifications_queue').add({
-        userId,
-        title,
-        body,
-        data: { type: 'test' },
-        status: 'pending',
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000),
-      });
-
-      res.status(200).send('Notification queued for sending');
-    } catch (error) {
-      console.error('Error in testPushNotification:', error);
-      res.status(500).send(error.message);
-    }
-  }
-);

@@ -126,7 +126,9 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
         try {
           const storageRef = ref(storage, `chat-images/${filename}`);
           setUploadProgress(50);
-          await uploadBytes(storageRef, blob);
+          // Las reglas de Storage solo aceptan imágenes: el tipo se indica siempre,
+          // porque en la app nativa el archivo a veces llega sin él
+          await uploadBytes(storageRef, blob, { contentType: blob.type || 'image/jpeg' });
           setUploadProgress(85);
           imageUrl = await getDownloadURL(storageRef);
         } catch (storageError) {

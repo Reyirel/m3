@@ -85,7 +85,6 @@ import AnimatedSplash from './components/AnimatedSplash';
 import ImprovedErrorBoundary from './components/ImprovedErrorBoundary';
 import { startAutoCacheCleanup, stopAutoCacheCleanup } from './utils/cacheManager';
 import logger from './services/Logger';
-import { startNetworkMonitoring, stopNetworkMonitoring } from './utils/networkMonitor';
 
 // ✅ OPTIMIZACIÓN: Performance Monitoring
 if (Platform.OS === 'web') {
@@ -453,6 +452,12 @@ function AppNavigator({ navigationRef }) {
   const { isAuthenticated, reload, signOut, revokedReason } = useAuth();
 
   const handleLogout = async () => {
+    // Antes de cerrar la sesión (después ya no hay permiso para escribir): este
+    // dispositivo deja de recibir los avisos de la cuenta. Solo aplica en la app nativa.
+    if (Platform.OS !== 'web') {
+      const { unregisterPushToken } = require('./services/pushNotifications');
+      await unregisterPushToken();
+    }
     await signOut();
     Toast.show({ type: 'success', text1: 'Sesión cerrada', position: 'top' });
   };
@@ -613,9 +618,6 @@ export default function App() {
     // 💾 Inicializar auto-limpieza de cache
     startAutoCacheCleanup();
 
-    // 🌐 Inicializar network quality monitor
-    startNetworkMonitoring();
-
     // 🌐 Inicializar listener de conexión para sincronización offline-first
     const unsubscribeConnection = initConnectionListener();
 
@@ -626,7 +628,6 @@ export default function App() {
       if (unsubscribeConnection) unsubscribeConnection();
       if (notificationSubscription) notificationSubscription.remove();
       stopAutoCacheCleanup();
-      stopNetworkMonitoring();
     };
   }, []);
 
