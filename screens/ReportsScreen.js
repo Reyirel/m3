@@ -48,7 +48,8 @@ const AnalyticsScreen = React.lazy(() => import('./AnalyticsScreen'));
 const NO_PREDICTIONS = {};
 
 const tabStyles = StyleSheet.create({
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  scroll: { flexGrow: 0, flexShrink: 0 },
+  row: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
   tab: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -188,7 +189,14 @@ export default function ReportsScreen({ navigation, route }) {
           />
         </Animated.View>
 
-        <View style={tabStyles.row} accessibilityRole="tablist">
+        {/* Una sola fila que se desliza: en el teléfono tres pestañas no caben a lo ancho */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          style={tabStyles.scroll}
+          contentContainerStyle={tabStyles.row}
+          accessibilityRole="tablist"
+        >
           {tabs.map((item) => {
             const selected = item.key === activeTab;
             return (
@@ -210,7 +218,7 @@ export default function ReportsScreen({ navigation, route }) {
               </TouchableOpacity>
             );
           })}
-        </View>
+        </ScrollView>
 
         {activeTab === 'enviados' && (
           <Suspense fallback={tabFallback}>
@@ -248,8 +256,8 @@ export default function ReportsScreen({ navigation, route }) {
               <AlertsPanel
                 alerts={alerts}
                 suggestions={suggestions}
-                onAlertPress={() => {}}
-                onDismiss={() => {}}
+                // Tocar una alerta deja a la vista solo los indicadores de esa área
+                onAlertPress={(alert) => setFilteredAreas([alert.area])}
               />
             </Animated.View>
           )}

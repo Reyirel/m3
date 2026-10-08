@@ -144,7 +144,7 @@ export function generateOptimizationSuggestions(areaMetrics, allTasks, alerts) {
   if (criticalAlerts.length > 0) {
     suggestions.push({
       priority: 'critical',
-      title: '🚨 Resolver alertas críticas',
+      title: 'Resolver las alertas críticas',
       areas: criticalAlerts.map(a => a.area),
       action: 'Aumentar recursos y revisar asignaciones'
     });
@@ -156,7 +156,7 @@ export function generateOptimizationSuggestions(areaMetrics, allTasks, alerts) {
   if (slowAreas.length > 0) {
     suggestions.push({
       priority: 'high',
-      title: '⚙️ Optimizar procesos lentos',
+      title: 'Agilizar las áreas más lentas',
       areas: slowAreas.map(b => b.area),
       action: `Mejorar eficiencia: ${slowAreas.map(b => b.recommendation).filter(Boolean)[0]}`
     });
@@ -168,7 +168,7 @@ export function generateOptimizationSuggestions(areaMetrics, allTasks, alerts) {
   if (overloaded.length > 0) {
     suggestions.push({
       priority: 'medium',
-      title: '📊 Rebalancear carga de trabajo',
+      title: 'Repartir mejor la carga de trabajo',
       areas: overloaded.map(([area]) => area),
       action: 'Redistribuir tareas a áreas con menos trabajo'
     });

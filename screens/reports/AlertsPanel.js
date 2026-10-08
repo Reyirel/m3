@@ -1,217 +1,161 @@
 // screens/reports/AlertsPanel.js
-// Panel de alertas y sugerencias de optimización
-// Ligero y sin dependencias pesadas
-
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-} from 'react-native';
+// Alertas de las áreas y sugerencias, en la pestaña Indicadores de Reportes.
+// Muestra las más graves primero y solo unas pocas: el resto se despliega con "Ver más",
+// para que las alertas no empujen los indicadores fuera de la pantalla.
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
-import SpringCard from '../../components/SpringCard';
+import { RADIUS, SPACING, TYPOGRAPHY } from '../../theme/tokens';
+import { ACTIVE_OPACITY } from '../../theme/motion';
 
-export default function AlertsPanel({
-  alerts = [],
-  suggestions = [],
-  onAlertPress = () => {},
-  onDismiss = () => {}
-}) {
-  const { theme, isDark } = useTheme();
-  const [expandedAlert, setExpandedAlert] = useState(null);
-  const [dismissedAlerts, setDismissedAlerts] = useState(new Set());
-  const [suggestionsExpanded, setSuggestionsExpanded] = useState(false);
+// Alertas visibles sin desplegar
+const VISIBLE_ALERTS = 3;
 
-  if (alerts.length === 0 && suggestions.length === 0) {
-    return null;
-  }
+const SEVERITY_ICON = {
+  critical: 'alert-circle',
+  warning: 'warning',
+  info: 'information-circle',
+};
 
-  const visibleAlerts = alerts.filter(a => !dismissedAlerts.has(a.id));
+const SUGGESTION_ICON = { critical: 'alert-circle', high: 'warning' };
 
-  const getSeverityColor = (severity) => {
-    switch (severity) {
-      case 'critical': return theme.error;
-      case 'warning': return theme.warning;
-      case 'info': return theme.info;
-      default: return theme.success;
-    }
+export default function AlertsPanel({ alerts = [], suggestions = [], onAlertPress, onDismiss }) {
+  const { theme } = useTheme();
+  const [dismissed, setDismissed] = useState(() => new Set());
+  const [showAll, setShowAll] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+
+  const visible = useMemo(() => alerts.filter((alert) => !dismissed.has(alert.id)), [alerts, dismissed]);
+
+  if (visible.length === 0 && suggestions.length === 0) return null;
+
+  const severityColor = (severity) => {
+    if (severity === 'critical') return theme.error;
+    if (severity === 'warning') return theme.warningText;
+    return theme.info;
+  };
+  const severityBackground = (severity) => {
+    if (severity === 'critical') return theme.errorAlpha;
+    if (severity === 'warning') return theme.warningAlpha;
+    return theme.infoAlpha;
   };
 
-  const getSeverityIcon = (severity) => {
-    switch (severity) {
-      case 'critical': return 'alert-circle';
-      case 'warning': return 'warning';
-      case 'info': return 'information-circle';
-      default: return 'checkmark-circle';
-    }
+  const dismiss = (alert) => {
+    setDismissed((current) => new Set([...current, alert.id]));
+    onDismiss?.(alert.id);
   };
+
+  const shown = showAll ? visible : visible.slice(0, VISIBLE_ALERTS);
+  const hiddenCount = visible.length - shown.length;
+  const criticalCount = visible.filter((alert) => alert.severity === 'critical').length;
 
   return (
     <View style={styles.container}>
-      {/* Alertas críticas primero */}
-      {visibleAlerts.filter(a => a.severity === 'critical').map(alert => (
-        <TouchableOpacity
-          key={alert.id}
-          onPress={() => setExpandedAlert(expandedAlert === alert.id ? null : alert.id)}
-          activeOpacity={0.7}
-        >
-          <SpringCard
-            style={[
-              styles.alertCard,
-              {
-                backgroundColor: isDark ? theme.glass : theme.errorAlpha,
-                borderLeftColor: getSeverityColor(alert.severity),
-                borderWidth: 1,
-                borderLeftWidth: 4
-              }
-            ]}
-          >
-            <View style={styles.alertHeader}>
-              <View style={styles.alertTitleRow}>
-                <Ionicons
-                  name={getSeverityIcon(alert.severity)}
-                  size={20}
-                  color={theme.error}
-                  style={styles.alertIcon}
-                />
-                <Text style={[styles.alertTitle, { color: theme.error }]}>
-                  {alert.title}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => {
-                  setDismissedAlerts(new Set([...dismissedAlerts, alert.id]));
-                  onDismiss(alert.id);
-                }}
-                accessibilityRole="button"
-                accessibilityLabel="Cerrar"
-              >
-                <Ionicons name="close" size={20} color={theme.error} />
-              </TouchableOpacity>
-            </View>
+      {visible.length > 0 && (
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.glassBorder }]}>
+          <View style={styles.header}>
+            <Text style={[styles.heading, { color: theme.text }]} accessibilityRole="header">
+              Áreas que requieren atención
+            </Text>
+            <Text style={[styles.count, { color: theme.textSecondary }]}>
+              {criticalCount > 0 ? `${criticalCount} ${criticalCount === 1 ? 'crítica' : 'críticas'} · ` : ''}
+              {visible.length} en total
+            </Text>
+          </View>
 
-            {expandedAlert === alert.id && (
-              <View style={styles.alertDetails}>
-                <Text style={[styles.alertDescription, { color: theme.textSecondary }]}>
-                  {alert.description}
-                </Text>
-                {alert.stats && (
-                  <View style={styles.statsRow}>
-                    <View style={styles.statItem}>
-                      <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Total</Text>
-                      <Text style={[styles.statValue, { color: theme.text }]}>
-                        {alert.stats.total}
-                      </Text>
-                    </View>
-                    <View style={styles.statItem}>
-                      <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Problema</Text>
-                      <Text style={[styles.statValue, { color: theme.error }]}>
-                        {alert.stats.overdue || alert.stats.pending || 0}
-                      </Text>
-                    </View>
+          {shown.map((alert, index) => {
+            const color = severityColor(alert.severity);
+            return (
+              <View
+                key={alert.id}
+                style={[styles.row, index > 0 && { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.borderLight }]}
+              >
+                <TouchableOpacity
+                  style={styles.rowMain}
+                  onPress={onAlertPress ? () => onAlertPress(alert) : undefined}
+                  disabled={!onAlertPress}
+                  activeOpacity={ACTIVE_OPACITY}
+                  accessibilityRole={onAlertPress ? 'button' : 'text'}
+                  accessibilityLabel={`${alert.title}. ${alert.description}`}
+                  accessibilityHint={onAlertPress ? 'Toca para ver solo esta área' : undefined}
+                >
+                  <View style={[styles.iconWrap, { backgroundColor: severityBackground(alert.severity) }]}>
+                    <Ionicons name={SEVERITY_ICON[alert.severity] || SEVERITY_ICON.info} size={18} color={color} />
                   </View>
-                )}
-                {alert.action && (
-                  <TouchableOpacity
-                    style={[styles.actionButton, { backgroundColor: theme.error }]}
-                    onPress={() => onAlertPress(alert)}
-                  >
-                    <Text style={styles.actionText}>{alert.action}</Text>
-                    <Ionicons name="arrow-forward" size={16} color="#FFF" />
-                  </TouchableOpacity>
-                )}
+                  <View style={styles.rowText}>
+                    <Text style={[styles.title, { color: theme.text }]} numberOfLines={2}>{alert.title}</Text>
+                    <Text style={[styles.description, { color: theme.textSecondary }]}>{alert.description}</Text>
+                  </View>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => dismiss(alert)}
+                  style={styles.dismiss}
+                  activeOpacity={ACTIVE_OPACITY}
+                  hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Descartar alerta de ${alert.title}`}
+                >
+                  <Ionicons name="close" size={18} color={theme.textTertiary} />
+                </TouchableOpacity>
               </View>
-            )}
-          </SpringCard>
-        </TouchableOpacity>
-      ))}
+            );
+          })}
 
-      {/* Alertas de advertencia */}
-      {visibleAlerts.filter(a => a.severity === 'warning').slice(0, 2).map(alert => (
-        <TouchableOpacity
-          key={alert.id}
-          onPress={() => setExpandedAlert(expandedAlert === alert.id ? null : alert.id)}
-          activeOpacity={0.7}
-        >
-          <SpringCard
-            style={[
-              styles.alertCard,
-              {
-                backgroundColor: isDark ? theme.glass : theme.warningAlpha,
-                borderLeftColor: getSeverityColor(alert.severity),
-                borderLeftWidth: 4
-              }
-            ]}
-          >
-            <View style={styles.alertHeader}>
-              <View style={styles.alertTitleRow}>
-                <Ionicons
-                  name="warning"
-                  size={18}
-                  color={theme.warning}
-                  style={styles.alertIcon}
-                />
-                <Text style={[styles.alertTitle, { color: theme.warning }]} numberOfLines={2}>
-                  {alert.title}
-                </Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => setDismissedAlerts(new Set([...dismissedAlerts, alert.id]))}
-                accessibilityRole="button"
-                accessibilityLabel="Cerrar"
-              >
-                <Ionicons name="close" size={18} color={theme.warning} />
-              </TouchableOpacity>
-            </View>
-          </SpringCard>
-        </TouchableOpacity>
-      ))}
-
-      {/* Sugerencias de optimización — colapsables */}
-      {suggestions.length > 0 && (
-        <View style={[styles.suggestionsContainer, { borderTopColor: theme.border }]}>
-          <TouchableOpacity
-            style={styles.suggestionsTrigger}
-            onPress={() => setSuggestionsExpanded(v => !v)}
-            activeOpacity={0.7}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <Ionicons name="bulb-outline" size={16} color={theme.warning} />
-              <Text style={[styles.suggestionsTitle, { color: theme.text }]}>
-                Sugerencias de optimización
+          {(hiddenCount > 0 || showAll) && visible.length > VISIBLE_ALERTS && (
+            <TouchableOpacity
+              style={[styles.more, { borderTopColor: theme.borderLight }]}
+              onPress={() => setShowAll((value) => !value)}
+              activeOpacity={ACTIVE_OPACITY}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.moreText, { color: theme.primary }]}>
+                {showAll ? 'Ver menos' : `Ver ${hiddenCount} más`}
               </Text>
-              <View style={[styles.suggestionsBadge, { backgroundColor: theme.warningAlpha }]}>
-                <Text style={{ color: theme.warning, fontSize: 12, fontWeight: '700' }}>{suggestions.length}</Text>
-              </View>
-            </View>
-            <Ionicons
-              name={suggestionsExpanded ? 'chevron-up' : 'chevron-down'}
-              size={16}
-              color={theme.textSecondary}
-            />
+              <Ionicons name={showAll ? 'chevron-up' : 'chevron-down'} size={16} color={theme.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+
+      {suggestions.length > 0 && (
+        <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.glassBorder }]}>
+          <TouchableOpacity
+            style={styles.suggestionsHeader}
+            onPress={() => setSuggestionsOpen((value) => !value)}
+            activeOpacity={ACTIVE_OPACITY}
+            accessibilityRole="button"
+            accessibilityState={{ expanded: suggestionsOpen }}
+          >
+            <Ionicons name="bulb-outline" size={18} color={theme.warningText} />
+            <Text style={[styles.heading, styles.suggestionsTitle, { color: theme.text }]}>
+              Sugerencias ({suggestions.length})
+            </Text>
+            <Ionicons name={suggestionsOpen ? 'chevron-up' : 'chevron-down'} size={18} color={theme.textSecondary} />
           </TouchableOpacity>
-          {suggestionsExpanded && suggestions.map((suggestion, index) => (
-            <View key={index} style={[styles.suggestionItem, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
-              <Ionicons
-                name={
-                  suggestion.priority === 'critical' ? 'alert' :
-                  suggestion.priority === 'high' ? 'warning' : 'information-circle'
-                }
-                size={18}
-                color={
-                  suggestion.priority === 'critical' ? theme.error :
-                  suggestion.priority === 'high' ? theme.warning : theme.info
-                }
-              />
-              <View style={styles.suggestionContent}>
-                <Text style={[styles.suggestionPriority, { color: theme.text }]}>
-                  {suggestion.title}
-                </Text>
-                <Text style={[styles.suggestionText, { color: theme.textSecondary }]}>
-                  {suggestion.action}
-                </Text>
+
+          {suggestionsOpen && suggestions.map((suggestion, index) => (
+            <View
+              key={index}
+              style={[styles.row, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: theme.borderLight }]}
+            >
+              <View style={styles.rowMain}>
+                <View style={[styles.iconWrap, { backgroundColor: theme.background }]}>
+                  <Ionicons
+                    name={SUGGESTION_ICON[suggestion.priority] || 'information-circle'}
+                    size={18}
+                    color={suggestion.priority === 'critical' ? theme.error : suggestion.priority === 'high' ? theme.warningText : theme.info}
+                  />
+                </View>
+                <View style={styles.rowText}>
+                  <Text style={[styles.title, { color: theme.text }]}>{suggestion.title}</Text>
+                  <Text style={[styles.description, { color: theme.textSecondary }]}>{suggestion.action}</Text>
+                  {Array.isArray(suggestion.areas) && suggestion.areas.length > 0 && (
+                    <Text style={[styles.areas, { color: theme.textTertiary }]} numberOfLines={2}>
+                      {suggestion.areas.join(' · ')}
+                    </Text>
+                  )}
+                </View>
               </View>
             </View>
           ))}
@@ -223,117 +167,88 @@ export default function AlertsPanel({
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
-    marginBottom: 20
+    gap: SPACING.md,
+    marginBottom: SPACING.xl,
   },
-  alertCard: {
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    marginBottom: 8
+  card: {
+    borderRadius: RADIUS.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
-  alertHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    gap: 10
+  header: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
   },
-  alertTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    flex: 1,
-    gap: 8
+  heading: {
+    ...TYPOGRAPHY.body,
+    fontWeight: '700',
   },
-  alertIcon: {
+  count: {
+    ...TYPOGRAPHY.caption,
     marginTop: 2,
-    flexShrink: 0
   },
-  alertTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    flex: 1
-  },
-  alertDetails: {
-    marginTop: 12,
-    gap: 10
-  },
-  alertDescription: {
-    fontSize: 14,
-    lineHeight: 18
-  },
-  statsRow: {
+  row: {
     flexDirection: 'row',
-    gap: 12
-  },
-  statItem: {
-    flex: 1,
     alignItems: 'center',
-    paddingVertical: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.05)'
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    gap: SPACING.sm,
   },
-  statLabel: {
-    fontSize: 12,
+  rowMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.md,
+  },
+  iconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rowText: {
+    flex: 1,
+  },
+  title: {
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
-    marginBottom: 4
   },
-  statValue: {
-    fontSize: 18,
-    fontWeight: '700'
+  description: {
+    ...TYPOGRAPHY.caption,
+    marginTop: 2,
   },
-  actionButton: {
+  areas: {
+    ...TYPOGRAPHY.caption,
+    marginTop: 4,
+  },
+  dismiss: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  more: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 10,
-    gap: 8
+    gap: SPACING.xs,
+    minHeight: 44,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  actionText: {
-    color: '#FFFFFF',
+  moreText: {
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
-    fontSize: 14
   },
-  suggestionsContainer: {
-    borderTopWidth: 1,
-    paddingTop: 12,
-    marginTop: 4
-  },
-  suggestionsTrigger: {
+  suggestionsHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 4,
-    marginBottom: 8,
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    minHeight: 48,
   },
   suggestionsTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  suggestionsBadge: {
-    paddingHorizontal: 7,
-    paddingVertical: 2,
-    borderRadius: 10,
-  },
-  suggestionItem: {
-    flexDirection: 'row',
-    gap: 12,
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 8,
-    alignItems: 'flex-start'
-  },
-  suggestionContent: {
     flex: 1,
-    gap: 2
   },
-  suggestionPriority: {
-    fontSize: 14,
-    fontWeight: '600'
-  },
-  suggestionText: {
-    fontSize: 12,
-    lineHeight: 16
-  }
 });
