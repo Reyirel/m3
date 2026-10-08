@@ -16,215 +16,153 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
 import { DURATION, spring, timing } from '../theme/motion';
 
-// v5 key: versión mejorada y pulida — modo oscuro, delegación completa, responsables por área
-const ONBOARDING_KEY = '@onboarding_v5';
+// Al cambiar la clave, el tutorial se muestra una vez más a quien ya lo había visto.
+// v6: Inicio como resumen, Bandeja como lista de trabajo, Reportes en pestañas y sugerencias.
+const ONBOARDING_KEY = '@onboarding_v6';
 Dimensions.get('window');
 
 // ─── Pasos por rol ────────────────────────────────────────────────────────────
 
+// Pasos comunes a los tres roles
+const STEP_HOME = {
+  id: 'home',
+  title: 'Inicio: lo que pide atención',
+  description: 'Arriba hay cuatro recuadros: Vencidas, Hoy, Revisión y Proceso. Toca uno para ver solo esas tareas y tócalo otra vez para volver al resumen. Debajo aparecen las vencidas, las que vencen hoy y las de los próximos 7 días.',
+  icon: 'home-outline',
+  color: '#9F2241',
+};
+
+const STEP_INBOX = {
+  id: 'inbox',
+  title: 'Bandeja: tu lista de trabajo',
+  description: 'Aquí están todas tus tareas con sus acciones: iniciar, enviar a revisión y abrir el chat. Usa el buscador y el botón de filtros para encontrar una tarea; el aviso rojo de cada tarjeta dice hace cuánto venció.',
+  icon: 'file-tray-full-outline',
+  color: '#3B82F6',
+};
+
+const STEP_BOARD = {
+  id: 'board',
+  title: 'Tablero y Calendario',
+  description: 'El Tablero ordena las tareas en columnas: Pendiente, En proceso, En revisión y Cerrada. El Calendario las muestra por día; toca un día para ver sus tareas.',
+  icon: 'grid-outline',
+  color: '#10B981',
+};
+
+const STEP_NOTIFICATIONS = {
+  id: 'notifications',
+  title: 'Notificaciones',
+  description: 'La campana del encabezado muestra cuántos avisos tienes sin leer: tareas asignadas, reportes nuevos y mensajes del chat. Al tocar un aviso se abre la tarea.',
+  icon: 'notifications-outline',
+  color: '#FF9500',
+};
+
+const STEP_OFFLINE = {
+  id: 'offline',
+  title: 'Sin conexión y modo oscuro',
+  description: 'Si te quedas sin internet la app sigue abriendo y guarda tus cambios para enviarlos al volver la red. El botón de luna o sol del encabezado cambia entre tema claro y oscuro. Este tutorial se puede volver a ver cuando quieras desde el menú, en "Tutorial".',
+  icon: 'cloud-offline-outline',
+  color: '#6366F1',
+};
+
 const STEPS_ADMIN = [
   {
     id: 'welcome',
-    title: '¡Bienvenido a la versión mejorada!',
-    description: 'Esta es una versión más pulida y estable. Encontrarás el toggle de modo oscuro/claro en el encabezado, navegación más fluida y correcciones en toda la app.',
+    title: 'Sistema de Gestión Municipal',
+    description: 'Como administrador ves todas las tareas de todas las áreas. Este recorrido muestra en un minuto dónde está cada cosa.',
     icon: 'sparkles-outline',
     color: '#9F2241',
   },
-  {
-    id: 'stats_strip',
-    title: 'Resumen visual interactivo',
-    description: 'Inicio resume lo que pide atención: vencidas, las que vencen hoy, en revisión y en proceso. Toca un recuadro para abrir la Bandeja con ese filtro.',
-    icon: 'stats-chart-outline',
-    color: '#3B82F6',
-  },
+  STEP_HOME,
+  STEP_INBOX,
   {
     id: 'create_task',
-    title: 'Crear y Asignar Tareas',
-    description: 'Pulsa el botón "+" (esquina inferior derecha) para crear tareas. Asigna responsables, fecha límite y prioridad. La IA sugiere subtareas automáticamente.',
+    title: 'Crear una tarea',
+    description: 'Usa el botón "+" de Inicio o de la Bandeja. Mientras escribes el título aparecen sugerencias de prioridad, fecha límite y área según tareas anteriores, y un aviso si ya existe una tarea parecida. "Sugerir subtareas" propone los pasos habituales.',
     icon: 'add-circle-outline',
     color: '#8B5CF6',
   },
-  {
-    id: 'task_cards',
-    title: 'Tarjetas con fechas relativas',
-    description: 'Cada tarea muestra "Hoy", "Mañana" o "en 3d" en lugar de fechas exactas. La barra de color a la izquierda indica prioridad. Las vencidas se marcan en rojo.',
-    icon: 'calendar-outline',
-    color: '#EF4444',
-  },
-  {
-    id: 'kanban',
-    title: 'Tablero Kanban',
-    description: 'Visualiza todas las tareas en columnas: Pendiente → En Progreso → Revisión → Cerrada. Ideal para detectar cuellos de botella de un vistazo.',
-    icon: 'grid-outline',
-    color: '#10B981',
-  },
+  STEP_BOARD,
   {
     id: 'reports',
-    title: 'Reportes y Evidencias',
-    description: 'Los usuarios suben reportes con fotos y texto. En "Reportes" puedes revisar avances, aprobar/rechazar y exportar a PDF.',
-    icon: 'document-text-outline',
+    title: 'Reportes y Panel ejecutivo',
+    description: 'En "Más" → Reportes hay tres pestañas: Indicadores (con las áreas que requieren atención), Reportes de las áreas y Analíticas. El Panel ejecutivo resume el avance y el cumplimiento de todas las áreas.',
+    icon: 'bar-chart-outline',
     color: '#F59E0B',
   },
   {
-    id: 'executive',
-    title: 'Dashboard Ejecutivo',
-    description: 'El Panel Ejecutivo muestra estadísticas en tiempo real: productividad por área, tareas vencidas, tendencias y comparativos de periodos.',
-    icon: 'bar-chart-outline',
+    id: 'admin',
+    title: 'Administración',
+    description: 'En "Más" → Administración das de alta usuarios, restableces contraseñas y editas el organigrama de secretarías y direcciones. La Papelera guarda las tareas eliminadas por si hay que recuperarlas.',
+    icon: 'people-outline',
     color: '#6366F1',
   },
-  {
-    id: 'notifications',
-    title: 'Notificaciones en tiempo real',
-    description: 'La campana en el encabezado muestra cuántas notificaciones tienes sin leer. Tócala para ver asignaciones, cambios de estado y menciones.',
-    icon: 'notifications-outline',
-    color: '#FF9500',
-  },
-  {
-    id: 'dark_mode',
-    title: 'Modo oscuro/claro',
-    description: 'El botón de luna/sol en el encabezado cambia el tema al instante. Tu preferencia se guarda automáticamente para la próxima vez.',
-    icon: 'moon-outline',
-    color: '#6366F1',
-  },
-  {
-    id: 'ready',
-    title: '¡Todo listo!',
-    description: 'Versión más estable y pulida. Si necesitas ayuda, el ícono "?" en el menú o en cada pantalla te explica qué hace cada sección.',
-    icon: 'rocket-outline',
-    color: '#10B981',
-  },
+  STEP_NOTIFICATIONS,
+  STEP_OFFLINE,
 ];
 
 const STEPS_SECRETARIO = [
   {
     id: 'welcome',
-    title: '¡Versión mejorada para Secretaría!',
-    description: 'El flujo de delegación ahora funciona completamente. Puedes delegar tareas a los directores de tus áreas adscritas y ver quién está a cargo de cada área antes de asignar.',
-    icon: 'git-branch-outline',
+    title: 'Sistema de Gestión Municipal',
+    description: 'Como secretario ves las tareas de tu secretaría y de sus direcciones. Este recorrido muestra en un minuto dónde está cada cosa.',
+    icon: 'sparkles-outline',
     color: '#9F2241',
   },
-  {
-    id: 'my_tasks',
-    title: 'Tus Tareas Asignadas',
-    description: 'Inicio muestra lo urgente de tus tareas: vencidas, las que vencen hoy y las próximas. La lista completa, con sus acciones, está en la Bandeja.',
-    icon: 'checkbox-outline',
-    color: '#3B82F6',
-  },
-  {
-    id: 'task_cards',
-    title: 'Tarjetas inteligentes',
-    description: 'Las tarjetas muestran "Hoy", "Mañana" o "en 3d" para que veas de un vistazo qué vence pronto. Las tareas vencidas se marcan en rojo automáticamente.',
-    icon: 'calendar-outline',
-    color: '#EF4444',
-  },
+  STEP_HOME,
+  STEP_INBOX,
   {
     id: 'delegation',
-    title: 'Delegar a tus Directores',
-    description: 'Abre cualquier tarea y pulsa "Delegar Tarea". Solo verás los directores de tus áreas adscritas. Al seleccionar un área en el formulario, la app muestra automáticamente quién está a cargo.',
+    title: 'Delegar a tus directores',
+    description: 'Abre una tarea y pulsa "Delegar Tarea". Solo aparecen los directores de tus direcciones. Cuando todos los asignados confirman su avance, la tarea pasa sola a En revisión.',
     icon: 'people-outline',
     color: '#10B981',
   },
-  {
-    id: 'monitor',
-    title: 'Monitorear Directores',
-    description: 'Desde el Dashboard de Secretaría ves el avance de todos los directores: tareas completadas, pendientes y vencidas desglosadas por área.',
-    icon: 'eye-outline',
-    color: '#8B5CF6',
-  },
+  STEP_BOARD,
   {
     id: 'reports',
-    title: 'Reportes con Evidencias',
-    description: 'Documenta avances con fotos y texto. Los reportes funcionan sin conexión y se sincronizan automáticamente al reconectarte.',
-    icon: 'camera-outline',
+    title: 'Reportes y Panel de tu secretaría',
+    description: 'En "Más" → Reportes ves los indicadores y los reportes con fotos que envían tus áreas. El Panel de mi secretaría muestra el avance de cada dirección: completadas, pendientes y vencidas.',
+    icon: 'bar-chart-outline',
     color: '#F59E0B',
   },
-  {
-    id: 'ai_subtasks',
-    title: 'IA: Genera subtareas al instante',
-    description: 'Al crear o editar una tarea, el botón "Sugerir subtareas con IA" analiza el título y propone los pasos. Selecciona los que necesites y se crean solos.',
-    icon: 'sparkles-outline',
-    color: '#6366F1',
-  },
-  {
-    id: 'dark_mode',
-    title: 'Modo oscuro/claro',
-    description: 'Toca el ícono de luna o sol en el encabezado para cambiar el tema. Tu preferencia queda guardada.',
-    icon: 'moon-outline',
-    color: '#6366F1',
-  },
-  {
-    id: 'ready',
-    title: '¡Listo para coordinar!',
-    description: 'Versión más estable y completa. Toca "?" en cualquier pantalla para ver una guía rápida de esa sección.',
-    icon: 'checkmark-circle-outline',
-    color: '#10B981',
-  },
+  STEP_NOTIFICATIONS,
+  STEP_OFFLINE,
 ];
 
 const STEPS_DIRECTOR = [
   {
     id: 'welcome',
-    title: '¡Versión mejorada, Director/a!',
-    description: 'Ahora puedes confirmar tu avance directamente desde cada tarea con el botón "Confirmar mi avance". Tu secretario verá el progreso en tiempo real.',
-    icon: 'checkmark-done-circle-outline',
+    title: 'Sistema de Gestión Municipal',
+    description: 'Como director ves las tareas de tu área y las que tienes asignadas. Este recorrido muestra en un minuto dónde está cada cosa.',
+    icon: 'sparkles-outline',
     color: '#9F2241',
   },
-  {
-    id: 'my_tasks',
-    title: 'Mis Tareas',
-    description: 'Inicio muestra lo urgente de tu área y de lo asignado a ti: vencidas, las que vencen hoy y las próximas. La lista completa está en la Bandeja.',
-    icon: 'list-outline',
-    color: '#3B82F6',
-  },
-  {
-    id: 'task_cards',
-    title: 'Fechas que se entienden',
-    description: 'Las tarjetas muestran "Hoy", "Mañana" o "en 3d" en lugar de fechas. La barra de color a la izquierda indica la prioridad. Si vence, se pone roja.',
-    icon: 'calendar-outline',
-    color: '#EF4444',
-  },
+  STEP_HOME,
+  STEP_INBOX,
   {
     id: 'status',
-    title: 'Actualizar Estado y Confirmar Avance',
-    description: 'Cambia el estado a "En Progreso" o "En Revisión" para que tu secretario sepa dónde estás. Cuando termines, pulsa "Confirmar mi avance" — el sistema notificará al equipo.',
-    icon: 'refresh-circle-outline',
+    title: 'Avanzar una tarea',
+    description: 'Desde la Bandeja pulsa "Iniciar" cuando empieces y "Revisión" cuando termines. Dentro de la tarea, "Confirmar mi avance" le avisa a tu secretario que tu parte está lista.',
+    icon: 'play-circle-outline',
     color: '#10B981',
   },
   {
     id: 'reports',
-    title: 'Subir Reportes',
-    description: 'Adjunta fotos de evidencia y texto en la sección "Reportes". Funciona sin internet y sube solo al reconectarte.',
-    icon: 'cloud-upload-outline',
+    title: 'Enviar reportes con fotos',
+    description: 'En la tarea abre "Reportes" para documentar el avance con texto y fotos. Si no hay internet, el reporte se guarda y se envía solo al reconectarte.',
+    icon: 'camera-outline',
     color: '#F59E0B',
   },
   {
-    id: 'notifications',
-    title: 'Notificaciones',
-    description: 'El badge rojo en la campana te avisa de asignaciones nuevas y mensajes. Toca la campana para ver todo sin perder nada.',
-    icon: 'notifications-outline',
-    color: '#FF9500',
-  },
-  {
-    id: 'ai_risk',
-    title: 'IA: Alerta de riesgo',
-    description: 'Cada tarea muestra si tiene riesgo alto o medio de retrasarse, calculado automáticamente. Sin configurar nada.',
+    id: 'risk',
+    title: 'Aviso de riesgo de retraso',
+    description: 'Algunas tarjetas de la Bandeja muestran "Riesgo alto" o "Riesgo medio". Se calcula con la fecha límite, el estado de la tarea y la carga del área, para que sepas cuál atender primero.',
     icon: 'warning-outline',
-    color: '#F59E0B',
+    color: '#EF4444',
   },
-  {
-    id: 'dark_mode',
-    title: 'Modo oscuro/claro',
-    description: 'Toca el ícono de luna o sol en el encabezado para cambiar el tema según tus preferencias.',
-    icon: 'moon-outline',
-    color: '#6366F1',
-  },
-  {
-    id: 'ready',
-    title: '¡Todo en orden!',
-    description: 'Versión más estable y pulida. El ícono "?" en cada pantalla te muestra una guía rápida de esa sección.',
-    icon: 'checkmark-done-circle-outline',
-    color: '#10B981',
-  },
+  STEP_BOARD,
+  STEP_NOTIFICATIONS,
+  STEP_OFFLINE,
 ];
 
 const _DEFAULT_STEPS = STEPS_ADMIN;

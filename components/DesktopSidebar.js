@@ -12,6 +12,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { roleLabel as getRoleLabel } from '../services/permissions';
 import { confirmAlert } from '../utils/alert';
 import { subscribeToUnreadCount } from '../services/notificationsLive';
+import OnboardingTour from './OnboardingTour';
 
 export const SIDEBAR_WIDTH = 220;
 
@@ -43,6 +44,7 @@ export default function DesktopSidebar({
   const [hovered, setHovered] = useState(null);
   // Contador en tiempo real (lo alimenta NotificationWatcher en App.js)
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showTutorial, setShowTutorial] = useState(false);
   useEffect(() => subscribeToUnreadCount(setUnreadCount), []);
 
   const initials = (() => {
@@ -157,6 +159,7 @@ export default function DesktopSidebar({
           { key: 'notifications', label: 'Notificaciones', icon: 'notifications-outline', screen: 'Notifications', badge: unreadCount },
           { key: 'search', label: 'Buscar tareas', icon: 'search-outline', screen: 'Search' },
           currentUser?.role === 'admin' && { key: 'trash', label: 'Papelera', icon: 'trash-outline', screen: 'Trash' },
+          { key: 'tutorial', label: 'Tutorial', icon: 'help-circle-outline', onPress: () => setShowTutorial(true) },
           { key: 'settings', label: 'Configuración', icon: 'settings-outline', screen: 'Settings' },
           { key: 'logout', label: 'Cerrar sesión', icon: 'log-out-outline', onPress: confirmLogout },
         ].filter(Boolean).map((item) => (
@@ -187,6 +190,11 @@ export default function DesktopSidebar({
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* El tutorial se puede volver a ver cuando haga falta */}
+      {showTutorial && (
+        <OnboardingTour userRole={currentUser?.role} forceShow onComplete={() => setShowTutorial(false)} />
+      )}
     </View>
   );
 }

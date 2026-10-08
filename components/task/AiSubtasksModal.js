@@ -1,5 +1,5 @@
 // components/task/AiSubtasksModal.js
-// Modal de selección de subtareas sugeridas por IA (Feature 4).
+// Hoja para elegir cuáles de las subtareas sugeridas se agregan a la tarea.
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -11,6 +11,7 @@ import PrimaryButton from '../ui/PrimaryButton';
  *  visible           — boolean
  *  onClose           — () => void
  *  options           — array de { title: string, checked: boolean }
+ *  category          — tipo de tarea reconocido ("Licitación"); vacío si no se reconoció
  *  onOptionsChange   — (newOptions) => void  (para togglear checks)
  *  editingTask       — objeto de tarea existente o null (si se está creando)
  *  onPendingSubtasks — (selected: string[]) => void  (al crear nueva tarea)
@@ -24,6 +25,7 @@ export default function AiSubtasksModal({
   onClose,
   options,
   onOptionsChange,
+  category = '',
   editingTask,
   onPendingSubtasks,
   theme,
@@ -40,6 +42,7 @@ export default function AiSubtasksModal({
   const handleConfirm = async () => {
     const selected = options.filter((o) => o.checked).map((o) => o.title);
     onClose();
+    if (selected.length === 0) return;
 
     if (editingTask) {
       try {
@@ -70,11 +73,13 @@ export default function AiSubtasksModal({
         <View style={[styles.container, { backgroundColor: theme.background }]}>
           {/* Header */}
           <View style={styles.header}>
-            <Ionicons name="sparkles" size={22} color={theme.secondary} />
+            <Ionicons name="list-outline" size={22} color={theme.primary} />
             <View style={{ flex: 1 }}>
               <Text style={[styles.title, { color: theme.text }]}>Subtareas sugeridas</Text>
               <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
-                Selecciona las que quieras agregar
+                {category
+                  ? `Pasos habituales de una tarea de tipo "${category}". Elige los que apliquen.`
+                  : 'No se reconoció el tipo de tarea: estos son pasos generales. Elige los que apliquen.'}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} accessibilityRole="button" accessibilityLabel="Cerrar">
@@ -90,20 +95,21 @@ export default function AiSubtasksModal({
                 style={[
                   styles.row,
                   {
-                    backgroundColor: opt.checked
-                      ? isDark ? theme.glass : theme.infoAlpha
-                      : isDark ? theme.glass : '#F9F9F9',
-                    borderColor: opt.checked ? theme.secondary : theme.border,
+                    backgroundColor: opt.checked ? theme.primaryAlpha : theme.card,
+                    borderColor: opt.checked ? theme.primary : theme.borderLight,
                   },
                 ]}
                 onPress={() => toggleOption(i)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: opt.checked }}
+                accessibilityLabel={opt.title}
               >
                 <View
                   style={[
                     styles.check,
                     {
-                      backgroundColor: opt.checked ? theme.secondary : 'transparent',
-                      borderColor: opt.checked ? theme.secondary : theme.border,
+                      backgroundColor: opt.checked ? theme.primary : 'transparent',
+                      borderColor: opt.checked ? theme.primary : theme.border,
                     },
                   ]}
                 >
@@ -126,8 +132,9 @@ export default function AiSubtasksModal({
               style={{ flex: 1 }}
             />
             <PrimaryButton
-              title={`Agregar ${checkedCount} subtarea${checkedCount !== 1 ? 's' : ''}`}
+              title={checkedCount === 1 ? 'Agregar 1 subtarea' : `Agregar ${checkedCount} subtareas`}
               onPress={handleConfirm}
+              disabled={checkedCount === 0}
               size="medium"
               style={{ flex: 2 }}
               icon="add-circle"

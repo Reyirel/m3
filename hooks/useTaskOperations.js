@@ -99,14 +99,14 @@ export const useTaskOperations = (task, currentUser) => {
         }
         setSaveProgress(100);
 
-        // Crear subtareas de IA si es nueva y hay pendientes. Una tarea creada sin
+        // Crear las subtareas sugeridas si la tarea es nueva y hay pendientes. Una tarea creada sin
         // conexión todavía no existe en el servidor: no se le pueden agregar subtareas.
         if (!task && !result.offline && taskData.aiPendingSubtasks?.length > 0) {
           await Promise.all(
             taskData.aiPendingSubtasks.map((subtaskTitle) =>
               addSubtask(result.taskId, {
                 title: subtaskTitle,
-                description: `Subtarea generada por IA`,
+                description: '',
                 assignedTo: taskData.selectedAssignees[0]?.email,
                 area: taskData.selectedAreas[0],
               })

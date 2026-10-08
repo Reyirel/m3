@@ -52,6 +52,7 @@ import {
   findSimilarTasks,
   suggestPriority,
   suggestDueDate,
+  suggestTaskMetadata,
 } from '../utils/aiFeatures';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ACTIVE_OPACITY, timing } from '../theme/motion';
@@ -139,6 +140,9 @@ export default function TaskDetailScreen({ route, navigation }) {
   const [similarTasks, setSimilarTasks] = useState([]);
   const [prioritySuggestion, setPrioritySuggestion] = useState(null);
   const [dateSuggestion, setDateSuggestion] = useState(null);
+  const [areaSuggestion, setAreaSuggestion] = useState(null);
+  // Subtareas sugeridas que se crearán al guardar una tarea nueva
+  const [pendingSubtasks, setPendingSubtasks] = useState([]);
   const aiDebounceRef = useRef(null);
 
   // ────────────────────────────────────────────────────────────
@@ -316,23 +320,25 @@ export default function TaskDetailScreen({ route, navigation }) {
   // ────────────────────────────────────────────────────────────
   // AI ANALYSIS (Debounced)
   // ────────────────────────────────────────────────────────────
+  // Solo al crear: en una tarea que ya existe sus datos ya se decidieron
   useEffect(() => {
     if (isEditing || !title || title.length < 6) {
       setSimilarTasks([]);
       setPrioritySuggestion(null);
       setDateSuggestion(null);
-      return;
+      setAreaSuggestion(null);
+      return undefined;
     }
 
     clearTimeout(aiDebounceRef.current);
     aiDebounceRef.current = setTimeout(() => {
       setSimilarTasks(findSimilarTasks(title, tasks));
       const priSug = suggestPriority(title, description);
-      setPrioritySuggestion(
-        priSug.priority && priSug.priority !== 'baja' ? priSug : null
-      );
+      setPrioritySuggestion(priSug.priority ? priSug : null);
       const dateSug = suggestDueDate(title, selectedAreas[0] || '', tasks);
       setDateSuggestion(dateSug.suggestedDate ? dateSug : null);
+      const metaSug = suggestTaskMetadata(title, tasks);
+      setAreaSuggestion(metaSug.area ? metaSug : null);
     }, 600);
 
     return () => clearTimeout(aiDebounceRef.current);
@@ -473,6 +479,7 @@ export default function TaskDetailScreen({ route, navigation }) {
       recurrencePattern,
       tags,
       notifyBefore,
+      aiPendingSubtasks: pendingSubtasks,
     });
 
     if (result) leave();
@@ -669,28 +676,32 @@ export default function TaskDetailScreen({ route, navigation }) {
               isReadOnly={!permissions.canEdit}
             />
 
-            {/* AI SUGGESTIONS */}
-            <TaskAISuggestions
-              isLoading={false}
-              suggestions={{
-                priority: prioritySuggestion,
-                dueDate: dateSuggestion,
-                subtasks: [],
-                similarTasks,
-              }}
-              isReadOnly={!permissions.canEdit}
-            />
-
-            {/* SUBTASKS */}
-            {editingTask && (
-              <TaskSubtasksSection
-                task={editingTask}
-                title={title}
-                description={description}
-                canAddSubtask={permissions.canAddSubtask}
-                canEdit={permissions.canEdit}
+            {/* SUGERENCIAS: solo las que cambiarían algo de lo ya elegido */}
+            {!isEditing && (
+              <TaskAISuggestions
+                suggestions={{
+                  priority: prioritySuggestion && prioritySuggestion.priority !== priority ? prioritySuggestion : null,
+                  dueDate: dateSuggestion,
+                  area: areaSuggestion && !selectedAreas.includes(areaSuggestion.area) ? areaSuggestion : null,
+                  similarTasks,
+                }}
+                onApplyPriority={(value) => { setPriority(value); showSuccess('Prioridad aplicada'); }}
+                onApplyDueDate={(date) => { setDueAt(new Date(date)); setDateSuggestion(null); showSuccess('Fecha aplicada'); }}
+                onApplyArea={(area) => { setSelectedAreas([area]); showSuccess('Área aplicada'); }}
+                onOpenTask={(task) => navigation.push('TaskDetail', { task, taskId: task.id })}
+                isReadOnly={!permissions.canEdit}
               />
             )}
+
+            {/* SUBTAREAS SUGERIDAS */}
+            <TaskSubtasksSection
+              task={editingTask}
+              title={title}
+              description={description}
+              canEdit={permissions.canEdit}
+              pendingSubtasks={pendingSubtasks}
+              onPendingSubtasksChange={setPendingSubtasks}
+            />
           </ScrollView>
         </Animated.View>
 

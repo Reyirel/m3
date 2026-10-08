@@ -1,39 +1,60 @@
 /**
  * utils/aiFeatures.js
- * Motores de IA local para la app municipal.
- * Funcionan 100% offline sin API key — heurísticas basadas en datos reales de Firestore.
+ * Asistente de tareas. No usa un modelo de lenguaje ni conexión: son reglas sobre el
+ * texto de la tarea y el historial de tareas que el usuario ya puede ver.
  *
- * Features:
- *   1. generateDailySummary    — Resumen natural del día
- *   2. findSimilarTasks        — Detección de tareas duplicadas
- *   3. suggestTaskMetadata     — Sugerencia de área y responsable
- *   4. generateSubtasks        — Subtareas desde título/descripción
- *   5. predictDelayRisk        — Alerta predictiva de retraso
+ *   generateDailySummary  — resumen del día
+ *   findSimilarTasks      — posibles tareas duplicadas
+ *   suggestTaskMetadata   — área y responsable según tareas parecidas
+ *   generateSubtasks      — pasos típicos según el tipo de tarea
+ *   predictDelayRisk      — riesgo de que una tarea se atrase
+ *   suggestPriority       — prioridad según el texto
+ *   suggestDueDate        — fecha límite según tareas parecidas ya cerradas
  */
 
 import { toMs } from './dateUtils';
 
-// ─── Helpers internos ─────────────────────────────────────────────────────────
+// ─── Texto ────────────────────────────────────────────────────────────────────
 
-/**
- * Tokeniza texto en palabras significativas (quita stopwords en español).
- */
 const STOPWORDS = new Set([
   'de','la','el','en','y','a','los','las','un','una','por','con','del',
-  'para','se','su','que','al','es','lo','le','más','como','pero','si',
+  'para','se','su','que','al','es','lo','le','mas','como','pero','si',
   'no','mi','tu','te','yo','me','hay','bien','este','esta','ese','esa',
-  'ser','tener','hacer','su','sus','o','e','ni','ya','también','muy',
+  'ser','tener','hacer','sus','o','e','ni','ya','tambien','muy',
 ]);
 
+/** Minúsculas, sin acentos ni signos */
+const normalizeText = (text = '') => String(text)
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .replace(/[^a-z0-9\s]/g, ' ');
+
+/** Singular aproximado: "reportes" y "reporte", "luminarias" y "luminaria" cuentan igual */
+const stem = (word) => {
+  if (word.length > 5 && word.endsWith('es')) return word.slice(0, -2);
+  if (word.length > 4 && word.endsWith('s')) return word.slice(0, -1);
+  return word;
+};
+
+/** Palabras con significado, en singular */
 function tokenize(text = '') {
-  return text
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // quitar tildes
-    .replace(/[^a-z0-9\s]/g, ' ')
+  return normalizeText(text)
     .split(/\s+/)
-    .filter(w => w.length > 2 && !STOPWORDS.has(w));
+    .filter((word) => word.length > 2 && !STOPWORDS.has(word))
+    .map(stem);
 }
+
+/**
+ * Primera palabra de `keywords` que aparece COMO PALABRA en el texto. Comparar por
+ * palabra y no por fragmento evita falsos positivos ("ya" dentro de "playa").
+ */
+const findKeyword = (tokens, keywords) => {
+  const set = tokens instanceof Set ? tokens : new Set(tokens);
+  return keywords.find((keyword) => set.has(stem(keyword))) || null;
+};
+
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * Similitud Jaccard entre dos conjuntos de tokens.
@@ -160,7 +181,7 @@ export function findSimilarTasks(title, tasks, threshold = 0.45) {
  * Sugiere área y responsable basándose en tareas históricas con títulos similares.
  * @param {string} title  - Título que el usuario está escribiendo
  * @param {Array}  tasks  - Historial de tareas
- * @returns {{ area: string|null, assignedTo: string|null, confidence: number }}
+ * @returns {{ area: string|null, assignedTo: string|null, confidence: number, matches?: number }}
  */
 export function suggestTaskMetadata(title, tasks) {
   if (!title || title.length < 8 || !tasks?.length) {
@@ -203,6 +224,8 @@ export function suggestTaskMetadata(title, tasks) {
     area: topArea[0],
     assignedTo: topResponsable ? topResponsable[0] : null,
     confidence,
+    // Tareas parecidas que respaldan la sugerencia
+    matches: topArea[1],
   };
 }
 
@@ -246,55 +269,83 @@ const SUBTASK_TEMPLATES = {
   default: ['Revisar antecedentes y contexto', 'Definir alcance y objetivos', 'Identificar responsables', 'Establecer cronograma', 'Ejecutar actividades principales', 'Documentar avance', 'Verificar resultados', 'Cerrar y archivar'],
 };
 
+// Palabras que identifican cada tipo de tarea (además de su propio nombre)
+const CATEGORY_KEYWORDS = {
+  obra: ['obra', 'rehabilitacion', 'remodelacion', 'ampliacion'],
+  construccion: ['construccion', 'construir', 'edificacion', 'barda', 'techumbre'],
+  pavimentacion: ['pavimentacion', 'pavimentar', 'pavimento', 'bacheo', 'bache', 'asfalto', 'encarpetado'],
+  mantenimiento: ['mantenimiento', 'reparacion', 'reparar', 'arreglo', 'compostura'],
+  contrato: ['contrato', 'contratacion', 'convenio', 'adjudicacion'],
+  licitacion: ['licitacion', 'licitar', 'convocatoria', 'concurso'],
+  informe: ['informe', 'memoria'],
+  reporte: ['reporte', 'reportar'],
+  reunion: ['reunion', 'junta', 'sesion', 'cabildo', 'mesa'],
+  presupuesto: ['presupuesto', 'presupuestal', 'egreso', 'gasto'],
+  alumbrado: ['alumbrado', 'luminaria', 'lampara', 'poste'],
+  agua: ['agua', 'fuga', 'drenaje', 'alcantarillado', 'tuberia', 'pozo'],
+  limpieza: ['limpieza', 'limpia', 'basura', 'recoleccion', 'barrido', 'residuo'],
+  parque: ['parque', 'jardin', 'plaza', 'areas verdes', 'poda'],
+  tramite: ['tramite', 'solicitud', 'expediente', 'constancia'],
+  permiso: ['permiso', 'licencia', 'autorizacion'],
+  evento: ['evento', 'festival', 'feria', 'ceremonia', 'desfile', 'inauguracion'],
+  campana: ['campana', 'jornada', 'brigada'],
+  vacunacion: ['vacunacion', 'vacuna', 'vacunar'],
+};
+
+// Tipos que describen la acción y no el tema: ceden ante uno más concreto
+const GENERIC_CATEGORIES = new Set(['mantenimiento', 'obra', 'reporte', 'informe', 'tramite', 'reunion']);
+
+const CATEGORY_LABELS = {
+  obra: 'Obra', construccion: 'Construcción', pavimentacion: 'Pavimentación', mantenimiento: 'Mantenimiento',
+  contrato: 'Contrato', licitacion: 'Licitación', informe: 'Informe', reporte: 'Reporte', reunion: 'Reunión',
+  presupuesto: 'Presupuesto', alumbrado: 'Alumbrado', agua: 'Agua y drenaje', limpieza: 'Limpieza',
+  parque: 'Parques y jardines', tramite: 'Trámite', permiso: 'Permiso', evento: 'Evento',
+  campana: 'Campaña', vacunacion: 'Vacunación',
+};
+
 /**
- * Genera una lista de subtareas sugeridas basándose en el título y descripción.
- * Funciona 100% offline con heurísticas de palabras clave.
- *
- * @param {string} title       - Título de la tarea
- * @param {string} description - Descripción opcional
+ * Tipos de tarea que coinciden con el texto, del más probable al menos probable.
+ * Una coincidencia en el título pesa el doble que una en la descripción.
+ * @returns {Array<{ category: string, score: number, keyword: string }>}
+ */
+function detectCategories(title = '', description = '') {
+  const titleTokens = new Set(tokenize(title));
+  const descriptionTokens = new Set(tokenize(description));
+
+  return Object.entries(CATEGORY_KEYWORDS)
+    .map(([category, keywords]) => {
+      const single = keywords.filter((keyword) => !keyword.includes(' '));
+      const inTitle = findKeyword(titleTokens, single);
+      const inDescription = findKeyword(descriptionTokens, single);
+      // Frases de varias palabras ("áreas verdes") se buscan tal cual
+      const phrase = keywords.find((keyword) => keyword.includes(' ')
+        && normalizeText(`${title} ${description}`).includes(keyword));
+      const score = (inTitle ? 2 : 0) + (inDescription ? 1 : 0) + (phrase ? 2 : 0);
+      return { category, score, keyword: inTitle || phrase || inDescription };
+    })
+    .filter((match) => match.score > 0)
+    // En empate gana el tipo más concreto: "reparar luminarias" es Alumbrado, no Mantenimiento
+    .sort((a, b) => (b.score - a.score) || (GENERIC_CATEGORIES.has(a.category) - GENERIC_CATEGORIES.has(b.category)));
+}
+
+/**
+ * Pasos sugeridos según el tipo de tarea que se reconoce en el título y la descripción.
+ * @param {string} title
+ * @param {string} description
  * @returns {{ subtasks: string[], category: string, confidence: 'alta'|'media'|'baja' }}
  */
 export function generateSubtasks(title = '', description = '') {
-  const text = `${title} ${description}`.toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
-  // Buscar coincidencias con las categorías
-  const matches = [];
-  for (const [keyword, subtasks] of Object.entries(SUBTASK_TEMPLATES)) {
-    if (keyword === 'default') continue;
-    if (text.includes(keyword)) {
-      matches.push({ keyword, subtasks });
-    }
-  }
+  const matches = detectCategories(title, description);
 
   if (matches.length === 0) {
-    // Segundo intento: buscar palabras del título en los keywords
-    const words = tokenize(text);
-    for (const [keyword, subtasks] of Object.entries(SUBTASK_TEMPLATES)) {
-      if (keyword === 'default') continue;
-      if (words.some(w => keyword.includes(w) || w.includes(keyword))) {
-        matches.push({ keyword, subtasks });
-      }
-    }
+    return { subtasks: SUBTASK_TEMPLATES.default, category: 'General', confidence: 'baja' };
   }
 
-  if (matches.length === 0) {
-    return {
-      subtasks: SUBTASK_TEMPLATES.default,
-      category: 'General',
-      confidence: 'baja',
-    };
-  }
-
-  // Usar la primera coincidencia más específica (keyword más largo)
-  matches.sort((a, b) => b.keyword.length - a.keyword.length);
   const best = matches[0];
-
   return {
-    subtasks: best.subtasks,
-    category: best.keyword.charAt(0).toUpperCase() + best.keyword.slice(1),
-    confidence: matches.length >= 2 ? 'alta' : 'media',
+    subtasks: SUBTASK_TEMPLATES[best.category],
+    category: CATEGORY_LABELS[best.category],
+    confidence: best.score >= 3 ? 'alta' : 'media',
   };
 }
 
@@ -400,50 +451,53 @@ export function riskLevelDisplay(level) {
 
 // ─── Feature 6: Sugerencia de prioridad ───────────────────────────────────────
 
-/**
- * Palabras clave que indican alta/urgente prioridad.
- */
-const PRIORITY_KEYWORDS = {
-  urgente: ['urgente', 'urgencia', 'emergencia', 'inmediato', 'inmediata', 'critico', 'critica',
-            'prioritario', 'prioritaria', 'alerta', 'atencion', 'hoy', 'ya', 'ahora'],
-  alta:    ['importante', 'necesario', 'necesaria', 'requerido', 'requerida', 'obligatorio',
-            'obligatoria', 'revision', 'inspeccion', 'supervision', 'contrato', 'licitacion',
-            'presupuesto', 'autorizar', 'aprobar', 'gobernador', 'presidente', 'director',
-            'reunion', 'sesion', 'cabildo', 'auditoria'],
-  media:   ['seguimiento', 'actualizacion', 'reporte', 'informe', 'tramite', 'solicitud',
-            'verificar', 'revisar', 'coordinar'],
-};
+// La app maneja tres prioridades: alta, media y baja
+const PRIORITY_RULES = [
+  {
+    priority: 'alta',
+    confidence: 'alta',
+    why: 'pide atención inmediata',
+    keywords: ['urgente', 'urgencia', 'emergencia', 'inmediato', 'inmediata', 'critico', 'critica',
+      'prioritario', 'prioritaria', 'riesgo', 'accidente', 'inundacion', 'derrumbe', 'incendio'],
+  },
+  {
+    priority: 'alta',
+    confidence: 'media',
+    why: 'suele tener plazos o consecuencias formales',
+    keywords: ['contrato', 'licitacion', 'presupuesto', 'auditoria', 'cabildo', 'gobernador',
+      'obligatorio', 'obligatoria', 'vencimiento', 'demanda', 'juicio', 'requerimiento', 'observacion'],
+  },
+  {
+    priority: 'media',
+    confidence: 'media',
+    why: 'es trabajo de seguimiento',
+    keywords: ['seguimiento', 'actualizacion', 'reporte', 'informe', 'tramite', 'solicitud',
+      'verificar', 'revisar', 'coordinar', 'reunion'],
+  },
+];
 
 /**
- * Sugiere la prioridad de una tarea basándose en palabras clave del título y descripción.
- * @param {string} title
- * @param {string} description
- * @returns {{ priority: 'urgente'|'alta'|'media'|'baja', confidence: 'alta'|'media'|'baja', reason: string|null }}
+ * Prioridad sugerida según las palabras del título y la descripción.
+ * @returns {{ priority: 'alta'|'media'|null, confidence: 'alta'|'media'|'baja', reason: string|null }}
+ *          `priority` es null cuando el texto no da ninguna pista.
  */
 export function suggestPriority(title = '', description = '') {
   if (!title || title.length < 4) return { priority: null, confidence: 'baja', reason: null };
 
-  const text = `${title} ${description}`.toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
-
-  // Buscar por nivel de mayor a menor urgencia
-  for (const [level, keywords] of Object.entries(PRIORITY_KEYWORDS)) {
-    const matched = keywords.find(kw => text.includes(kw));
+  const tokens = new Set(tokenize(`${title} ${description}`));
+  for (const rule of PRIORITY_RULES) {
+    const matched = findKeyword(tokens, rule.keywords);
     if (matched) {
-      const confidenceMap = { urgente: 'alta', alta: 'media', media: 'baja' };
       return {
-        priority: level,
-        confidence: confidenceMap[level],
-        reason: `Detectado: "${matched}"`,
+        priority: rule.priority,
+        confidence: rule.confidence,
+        reason: `Menciona "${matched}": ${rule.why}.`,
       };
     }
   }
 
-  return { priority: 'baja', confidence: 'baja', reason: null };
+  return { priority: null, confidence: 'baja', reason: null };
 }
-
-// ─── Feature 7: Detección de tareas estancadas ────────────────────────────────
 
 // ─── Feature 8: Sugerencia de fecha límite ────────────────────────────────────
 
@@ -458,50 +512,66 @@ const CATEGORY_DURATIONS = {
   campana: 14, vacunacion: 7,
 };
 
+/** Fecha a `days` días de hoy, a las 17:00; si cae en fin de semana pasa al lunes */
+const businessDate = (days, now = Date.now()) => {
+  const date = new Date(now + days * DAY_MS);
+  if (date.getDay() === 6) date.setDate(date.getDate() + 2);
+  if (date.getDay() === 0) date.setDate(date.getDate() + 1);
+  date.setHours(17, 0, 0, 0);
+  return date;
+};
+
 /**
- * Sugiere una fecha límite realista basándose en tareas históricas del mismo área/categoría.
- * Si no hay historial suficiente, usa duraciones estándar por categoría.
+ * Fecha límite sugerida. Primero busca tareas parecidas ya cerradas en la misma área y
+ * usa lo que tardaron en promedio; si no hay suficientes, usa la duración típica del
+ * tipo de tarea.
  *
  * @param {string} title
  * @param {string} area
- * @param {Array}  allTasks - Historial de tareas cerradas
- * @returns {{ suggestedDate: Date|null, basisDays: number, source: 'historico'|'estandar'|null }}
+ * @param {Array}  allTasks
+ * @returns {{ suggestedDate: Date|null, basisDays: number, source: 'historico'|'estandar'|null, reason: string|null }}
  */
 export function suggestDueDate(title = '', area = '', allTasks = []) {
-  if (!title) return { suggestedDate: null, basisDays: 0, source: null };
+  if (!title) return { suggestedDate: null, basisDays: 0, source: null, reason: null };
 
-  const text = title.toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '');
+  const inputTokens = tokenize(title);
 
-  // Intentar obtener duración histórica de tareas cerradas similares en el mismo área
-  if (area && allTasks.length > 0) {
-    const inputTokens = tokenize(text);
+  if (area && allTasks.length > 0 && inputTokens.length > 0) {
     const closedSimilar = allTasks
-      .filter(t => t.status === 'cerrada' && t.area === area && t.createdAt && t.updatedAt)
-      .map(t => {
-        const sim = jaccardSimilarity(inputTokens, tokenize(t.title || ''));
-        const durationDays = Math.round((toMs(t.updatedAt) - toMs(t.createdAt)) / (24 * 60 * 60 * 1000));
-        return { sim, durationDays };
+      .filter((task) => task.status === 'cerrada' && task.area === area && task.createdAt)
+      .map((task) => {
+        const end = toMs(task.completedAt) || toMs(task.updatedAt);
+        const start = toMs(task.createdAt);
+        return {
+          similarity: jaccardSimilarity(inputTokens, tokenize(task.title || '')),
+          days: end && start ? Math.round((end - start) / DAY_MS) : 0,
+        };
       })
-      .filter(r => r.sim >= 0.25 && r.durationDays > 0 && r.durationDays <= 180)
-      .sort((a, b) => b.sim - a.sim)
+      .filter((item) => item.similarity >= 0.25 && item.days > 0 && item.days <= 180)
+      .sort((a, b) => b.similarity - a.similarity)
       .slice(0, 5);
 
     if (closedSimilar.length >= 2) {
-      const avgDays = Math.round(closedSimilar.reduce((s, r) => s + r.durationDays, 0) / closedSimilar.length);
-      const date = new Date(Date.now() + avgDays * 24 * 60 * 60 * 1000);
-      return { suggestedDate: date, basisDays: avgDays, source: 'historico' };
+      const average = Math.round(closedSimilar.reduce((sum, item) => sum + item.days, 0) / closedSimilar.length);
+      return {
+        suggestedDate: businessDate(average),
+        basisDays: average,
+        source: 'historico',
+        reason: `${closedSimilar.length} tareas parecidas de esta área tardaron ${average} ${average === 1 ? 'día' : 'días'} en promedio.`,
+      };
     }
   }
 
-  // Fallback: duraciones estándar por categoría
-  for (const [keyword, days] of Object.entries(CATEGORY_DURATIONS)) {
-    if (text.includes(keyword)) {
-      const date = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-      return { suggestedDate: date, basisDays: days, source: 'estandar' };
-    }
+  const [match] = detectCategories(title);
+  if (match && CATEGORY_DURATIONS[match.category]) {
+    const days = CATEGORY_DURATIONS[match.category];
+    return {
+      suggestedDate: businessDate(days),
+      basisDays: days,
+      source: 'estandar',
+      reason: `Duración habitual de una tarea de tipo "${CATEGORY_LABELS[match.category]}": ${days} ${days === 1 ? 'día' : 'días'}.`,
+    };
   }
 
-  return { suggestedDate: null, basisDays: 0, source: null };
+  return { suggestedDate: null, basisDays: 0, source: null, reason: null };
 }

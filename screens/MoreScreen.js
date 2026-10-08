@@ -13,6 +13,7 @@ import { confirmAlert } from '../utils/alert';
 import { hapticLight } from '../utils/haptics';
 import { roleLabel } from '../services/permissions';
 import { SPACING, TYPOGRAPHY, TOUCH_TARGET, MAX_WIDTHS } from '../theme/tokens';
+import OnboardingTour from '../components/OnboardingTour';
 
 function Row({ icon, label, description, badge, danger, onPress, isLast, theme }) {
   const color = danger ? theme.error : theme.text;
@@ -53,6 +54,7 @@ export default function MoreScreen({ navigation, onLogout }) {
   const { theme } = useTheme();
   const { user, isAdmin, isSecretario, isDirector } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   // Contador en tiempo real (lo alimenta NotificationWatcher en App.js)
   useEffect(() => subscribeToUnreadCount(setUnreadCount), []);
@@ -71,6 +73,7 @@ export default function MoreScreen({ navigation, onLogout }) {
     const tools = [
       { icon: 'notifications-outline', label: 'Notificaciones', badge: unreadCount, onPress: go('Notifications') },
       { icon: 'search-outline', label: 'Buscar tareas', onPress: go('Search') },
+      { icon: 'help-circle-outline', label: 'Tutorial', description: 'Recorrido por la app, paso a paso', onPress: () => setShowTutorial(true) },
       isAdmin && { icon: 'trash-outline', label: 'Papelera', description: 'Tareas eliminadas', onPress: go('Trash') },
     ].filter(Boolean);
 
@@ -129,6 +132,11 @@ export default function MoreScreen({ navigation, onLogout }) {
           </View>
         ))}
       </ScrollView>
+
+      {/* El tutorial se puede volver a ver cuando haga falta */}
+      {showTutorial && (
+        <OnboardingTour userRole={user?.role} forceShow onComplete={() => setShowTutorial(false)} />
+      )}
     </View>
   );
 }

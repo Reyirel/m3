@@ -1,499 +1,235 @@
-/**
- * TaskAISuggestions.js - Panel de sugerencias IA
- * 
- * Muestra sugerencias de prioridad, fechas, subtareas, etc.
- * Componente colapsable para no saturar
- */
-
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
+// components/task/TaskAISuggestions.js
+// Sugerencias al crear una tarea: prioridad, fecha límite, área y posibles duplicadas.
+// Se calculan solas mientras se escribe el título (utils/aiFeatures.js); cada una dice
+// en qué se basa y se aplica con un toque. No hay que pedirlas con un botón.
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
-import GlassCard from '../GlassCard';
+import { RADIUS, SPACING, TYPOGRAPHY } from '../../theme/tokens';
+import { ACTIVE_OPACITY } from '../../theme/motion';
+import { priorityLabel, statusLabel } from '../../utils/taskStatus';
+
+const formatDate = (date) => new Date(date).toLocaleDateString('es-MX', {
+  weekday: 'long', day: 'numeric', month: 'long',
+});
 
 export default function TaskAISuggestions({
-  onSuggestPriority = () => {},
-  onSuggestDueDate = () => {},
-  onSuggestSubtasks = () => {},
-  onFindSimilarTasks = () => {},
-  isLoading = false,
-  suggestions = {
-    priority: null,
-    dueDate: null,
-    subtasks: [],
-    similarTasks: [],
-  },
+  suggestions = {},
+  onApplyPriority,
+  onApplyDueDate,
+  onApplyArea,
+  onOpenTask,
   isReadOnly = false,
 }) {
-  const { theme, isDark } = useTheme();
-  const [isExpanded, setIsExpanded] = React.useState(false);
-  const [activeTab, setActiveTab] = React.useState('priority');
+  const { theme } = useTheme();
+  const [collapsed, setCollapsed] = useState(false);
+  const { priority, dueDate, area, similarTasks = [] } = suggestions;
 
-  const hasSuggestions = 
-    suggestions.priority ||
-    suggestions.dueDate ||
-    (suggestions.subtasks && suggestions.subtasks.length > 0) ||
-    (suggestions.similarTasks && suggestions.similarTasks.length > 0);
+  const rows = [
+    priority && {
+      key: 'priority',
+      icon: 'flag-outline',
+      title: `Prioridad ${priorityLabel(priority.priority).toLowerCase()}`,
+      reason: priority.reason,
+      onApply: onApplyPriority && (() => onApplyPriority(priority.priority)),
+    },
+    dueDate && {
+      key: 'dueDate',
+      icon: 'calendar-outline',
+      title: `Fecha límite: ${formatDate(dueDate.suggestedDate)}`,
+      reason: dueDate.reason,
+      onApply: onApplyDueDate && (() => onApplyDueDate(dueDate.suggestedDate)),
+    },
+    area && {
+      key: 'area',
+      icon: 'business-outline',
+      title: `Área: ${area.area}`,
+      reason: area.matches > 1
+        ? `${area.matches} tareas parecidas se asignaron a esta área.`
+        : 'Una tarea parecida se asignó a esta área.',
+      onApply: onApplyArea && (() => onApplyArea(area.area)),
+    },
+  ].filter(Boolean);
+
+  const count = rows.length + (similarTasks.length > 0 ? 1 : 0);
+  if (count === 0) return null;
 
   return (
-    <View style={styles.container}>
-      {/* HEADER COLAPSABLE */}
+    <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.glassBorder }]}>
       <TouchableOpacity
-        onPress={() => setIsExpanded(!isExpanded)}
-        style={[
-          styles.expandHeader,
-          {
-            backgroundColor: isDark ? theme.glass : theme.glassStrong,
-            borderColor: theme.glassBorder,
-          },
-        ]}
-        accessible={true}
-        accessibilityLabel="Sugerencias de IA"
-        accessibilityHint="Presiona para ver sugerencias inteligentes"
+        style={styles.header}
+        onPress={() => setCollapsed((value) => !value)}
+        activeOpacity={ACTIVE_OPACITY}
         accessibilityRole="button"
-        accessibilityExpanded={isExpanded}
+        accessibilityState={{ expanded: !collapsed }}
+        accessibilityLabel={`Sugerencias, ${count}`}
       >
-        <View style={styles.expandHeaderLeft}>
-          <Ionicons name="sparkles" size={18} color={theme.primary} />
-          <Text style={[styles.expandHeaderText, { color: theme.text }]}>
-            Sugerencias IA
+        <Ionicons name="sparkles" size={18} color={theme.primary} />
+        <View style={styles.headerText}>
+          <Text style={[styles.heading, { color: theme.text }]}>Sugerencias</Text>
+          <Text style={[styles.subheading, { color: theme.textSecondary }]}>
+            Según el título y las tareas anteriores
           </Text>
-          {hasSuggestions && (
-            <View style={[styles.badge, { backgroundColor: theme.primary }]}>
-              <Text style={styles.badgeText}>
-                {(suggestions.priority ? 1 : 0) +
-                  (suggestions.dueDate ? 1 : 0) +
-                  (suggestions.subtasks?.length || 0) +
-                  (suggestions.similarTasks?.length || 0)}
-              </Text>
-            </View>
-          )}
         </View>
-        {isLoading ? (
-          <ActivityIndicator size="small" color={theme.primary} />
-        ) : (
-          <Ionicons
-            name={isExpanded ? 'chevron-up' : 'chevron-down'}
-            size={22}
-            color={theme.textMuted}
-          />
-        )}
+        <View style={[styles.badge, { backgroundColor: theme.primaryAlpha }]}>
+          <Text style={[styles.badgeText, { color: theme.primary }]}>{count}</Text>
+        </View>
+        <Ionicons name={collapsed ? 'chevron-down' : 'chevron-up'} size={18} color={theme.textSecondary} />
       </TouchableOpacity>
 
-      {/* CONTENIDO EXPANDIBLE */}
-      {isExpanded && (
-        <GlassCard>
-          {/* TABS */}
-          <View style={styles.tabs}>
-            {[
-              { id: 'priority', label: 'Prioridad', icon: 'flag-outline' },
-              { id: 'duedate', label: 'Fecha', icon: 'calendar-outline' },
-              { id: 'subtasks', label: 'Subtareas', icon: 'list-outline' },
-              { id: 'similar', label: 'Similares', icon: 'copy-outline' },
-            ].map((tab) => (
-              <TouchableOpacity
-                key={tab.id}
-                onPress={() => setActiveTab(tab.id)}
-                style={[
-                  styles.tab,
-                  activeTab === tab.id && {
-                    borderBottomColor: theme.primary,
-                    borderBottomWidth: 2,
-                  },
-                ]}
-                accessible={true}
-                accessibilityLabel={tab.label}
-                accessibilityRole="tab"
-              >
-                <Ionicons
-                  name={tab.icon}
-                  size={16}
-                  color={activeTab === tab.id ? theme.primary : theme.textMuted}
-                />
-                <Text
-                  style={[
-                    styles.tabLabel,
-                    {
-                      color: activeTab === tab.id ? theme.primary : theme.textMuted,
-                    },
-                  ]}
-                >
-                  {tab.label}
+      {!collapsed && rows.map((row) => (
+        <View key={row.key} style={[styles.row, { borderTopColor: theme.borderLight }]}>
+          <View style={[styles.iconWrap, { backgroundColor: theme.primaryAlpha }]}>
+            <Ionicons name={row.icon} size={18} color={theme.primary} />
+          </View>
+          <View style={styles.rowText}>
+            <Text style={[styles.title, { color: theme.text }]}>{row.title}</Text>
+            {!!row.reason && <Text style={[styles.reason, { color: theme.textSecondary }]}>{row.reason}</Text>}
+          </View>
+          {!isReadOnly && row.onApply && (
+            <TouchableOpacity
+              onPress={row.onApply}
+              style={[styles.apply, { borderColor: theme.primary }]}
+              activeOpacity={ACTIVE_OPACITY}
+              accessibilityRole="button"
+              accessibilityLabel={`Aplicar: ${row.title}`}
+            >
+              <Text style={[styles.applyText, { color: theme.primary }]}>Aplicar</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ))}
+
+      {!collapsed && similarTasks.length > 0 && (
+        <View style={[styles.similar, { borderTopColor: theme.borderLight }]}>
+          <View style={styles.similarHeader}>
+            <Ionicons name="copy-outline" size={18} color={theme.warningText} />
+            <Text style={[styles.title, { color: theme.text }]}>
+              {similarTasks.length === 1 ? 'Ya existe una tarea parecida' : 'Ya existen tareas parecidas'}
+            </Text>
+          </View>
+          <Text style={[styles.reason, { color: theme.textSecondary }]}>
+            Revísalas antes de crear una duplicada.
+          </Text>
+          {similarTasks.map(({ task, score }) => (
+            <TouchableOpacity
+              key={task.id}
+              style={[styles.similarItem, { backgroundColor: theme.background }]}
+              onPress={onOpenTask ? () => onOpenTask(task) : undefined}
+              disabled={!onOpenTask}
+              activeOpacity={ACTIVE_OPACITY}
+              accessibilityRole="button"
+              accessibilityLabel={`Abrir tarea parecida: ${task.title}`}
+            >
+              <View style={styles.rowText}>
+                <Text style={[styles.similarTitle, { color: theme.text }]} numberOfLines={2}>{task.title}</Text>
+                <Text style={[styles.reason, { color: theme.textTertiary }]} numberOfLines={1}>
+                  {[task.area, statusLabel(task.status), `${Math.round(score * 100)}% parecida`].filter(Boolean).join(' · ')}
                 </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          {/* CONTENIDO RELATIVO A TABS */}
-          <View style={styles.tabContent}>
-            {/* PRIORIDAD */}
-            {activeTab === 'priority' && (
-              <View style={styles.tabPane}>
-                {suggestions.priority ? (
-                  <View
-                    style={[
-                      styles.suggestionCard,
-                      { backgroundColor: theme.primary + '15' },
-                    ]}
-                  >
-                    <View style={styles.suggestionHeader}>
-                      <Ionicons
-                        name="flag"
-                        size={18}
-                        color={theme.primary}
-                      />
-                      <Text style={[styles.suggestionTitle, { color: theme.text }]}>
-                        Prioridad sugerida: {suggestions.priority}
-                      </Text>
-                    </View>
-                    {!isReadOnly && (
-                      <TouchableOpacity
-                        onPress={() => onSuggestPriority(suggestions.priority)}
-                        style={[
-                          styles.applyButton,
-                          { backgroundColor: theme.primary },
-                        ]}
-                        accessible={true}
-                        accessibilityLabel={`Aplicar prioridad ${suggestions.priority}`}
-                        accessibilityRole="button"
-                      >
-                        <Ionicons name="checkmark" size={16} color="white" />
-                        <Text style={styles.applyButtonText}>Aplicar</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    onPress={onSuggestPriority}
-                    disabled={isLoading}
-                    style={[
-                      styles.actionButton,
-                      { backgroundColor: isDark ? theme.glass : theme.glassStrong },
-                    ]}
-                    accessible={true}
-                    accessibilityLabel="Generar sugerencia de prioridad"
-                    accessibilityRole="button"
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator size="small" color={theme.primary} />
-                    ) : (
-                      <>
-                        <Ionicons name="sparkles" size={16} color={theme.primary} />
-                        <Text style={[styles.actionButtonText, { color: theme.text }]}>
-                          Generar sugerencia
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                )}
               </View>
-            )}
-
-            {/* FECHA */}
-            {activeTab === 'duedate' && (
-              <View style={styles.tabPane}>
-                {suggestions.dueDate ? (
-                  <View
-                    style={[
-                      styles.suggestionCard,
-                      { backgroundColor: theme.primary + '15' },
-                    ]}
-                  >
-                    <View style={styles.suggestionHeader}>
-                      <Ionicons
-                        name="calendar"
-                        size={18}
-                        color={theme.primary}
-                      />
-                      <Text style={[styles.suggestionTitle, { color: theme.text }]}>
-                        Fecha sugerida:{' '}
-                        {new Date(suggestions.dueDate).toLocaleDateString('es-ES')}
-                      </Text>
-                    </View>
-                    {!isReadOnly && (
-                      <TouchableOpacity
-                        onPress={() => onSuggestDueDate(suggestions.dueDate)}
-                        style={[
-                          styles.applyButton,
-                          { backgroundColor: theme.primary },
-                        ]}
-                        accessible={true}
-                        accessibilityLabel="Aplicar fecha sugerida"
-                        accessibilityRole="button"
-                      >
-                        <Ionicons name="checkmark" size={16} color="white" />
-                        <Text style={styles.applyButtonText}>Aplicar</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    onPress={onSuggestDueDate}
-                    disabled={isLoading}
-                    style={[
-                      styles.actionButton,
-                      { backgroundColor: isDark ? theme.glass : theme.glassStrong },
-                    ]}
-                    accessible={true}
-                    accessibilityLabel="Generar sugerencia de fecha"
-                    accessibilityRole="button"
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator size="small" color={theme.primary} />
-                    ) : (
-                      <>
-                        <Ionicons name="sparkles" size={16} color={theme.primary} />
-                        <Text style={[styles.actionButtonText, { color: theme.text }]}>
-                          Sugerir fecha
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-
-            {/* SUBTAREAS */}
-            {activeTab === 'subtasks' && (
-              <View style={styles.tabPane}>
-                {suggestions.subtasks && suggestions.subtasks.length > 0 ? (
-                  <View style={styles.suggestionsList}>
-                    {suggestions.subtasks.map((subtask, idx) => (
-                      <View
-                        key={idx}
-                        style={[
-                          styles.suggestionItem,
-                          { backgroundColor: theme.primary + '15' },
-                        ]}
-                        accessible={true}
-                        accessibilityLabel={`Subtarea: ${subtask}`}
-                      >
-                        <Text style={[styles.suggestionText, { color: theme.text }]}>
-                          {subtask}
-                        </Text>
-                        {!isReadOnly && (
-                          <TouchableOpacity
-                            accessible={true}
-                            accessibilityLabel={`Agregar subtarea ${subtask}`}
-                            accessibilityRole="button"
-                          >
-                            <Ionicons name="add-circle-outline" size={20} color={theme.primary} />
-                          </TouchableOpacity>
-                        )}
-                      </View>
-                    ))}
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    onPress={onSuggestSubtasks}
-                    disabled={isLoading}
-                    style={[
-                      styles.actionButton,
-                      { backgroundColor: isDark ? theme.glass : theme.glassStrong },
-                    ]}
-                    accessible={true}
-                    accessibilityLabel="Generar subtareas con IA"
-                    accessibilityRole="button"
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator size="small" color={theme.primary} />
-                    ) : (
-                      <>
-                        <Ionicons name="sparkles" size={16} color={theme.primary} />
-                        <Text style={[styles.actionButtonText, { color: theme.text }]}>
-                          Generar subtareas
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-
-            {/* TAREAS SIMILARES */}
-            {activeTab === 'similar' && (
-              <View style={styles.tabPane}>
-                {suggestions.similarTasks && suggestions.similarTasks.length > 0 ? (
-                  <View style={styles.suggestionsList}>
-                    {suggestions.similarTasks.map((task, idx) => (
-                      <TouchableOpacity
-                        key={idx}
-                        style={[
-                          styles.suggestionItem,
-                          { backgroundColor: theme.primary + '15' },
-                        ]}
-                        accessible={true}
-                        accessibilityLabel={`Tarea similar: ${task.title}`}
-                        accessibilityRole="button"
-                      >
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.suggestionText, { color: theme.text }]}>
-                            {task.title}
-                          </Text>
-                          {task.status && (
-                            <Text style={[styles.suggestionMeta, { color: theme.textMuted }]}>
-                              {task.status}
-                            </Text>
-                          )}
-                        </View>
-                        <Ionicons name="chevron-forward" size={18} color={theme.textMuted} />
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                ) : (
-                  <TouchableOpacity
-                    onPress={onFindSimilarTasks}
-                    disabled={isLoading}
-                    style={[
-                      styles.actionButton,
-                      { backgroundColor: isDark ? theme.glass : theme.glassStrong },
-                    ]}
-                    accessible={true}
-                    accessibilityLabel="Buscar tareas similares"
-                    accessibilityRole="button"
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator size="small" color={theme.primary} />
-                    ) : (
-                      <>
-                        <Ionicons name="sparkles" size={16} color={theme.primary} />
-                        <Text style={[styles.actionButtonText, { color: theme.text }]}>
-                          Buscar similares
-                        </Text>
-                      </>
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
-            )}
-          </View>
-        </GlassCard>
+              <Ionicons name="chevron-forward" size={18} color={theme.textTertiary} />
+            </TouchableOpacity>
+          ))}
+        </View>
       )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    gap: 12,
+  card: {
+    borderRadius: RADIUS.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
-  expandHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  expandHeaderLeft: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
   },
-  expandHeaderText: {
-    fontSize: 14,
-    fontWeight: '600',
+  headerText: {
+    flex: 1,
+  },
+  heading: {
+    ...TYPOGRAPHY.body,
+    fontWeight: '700',
+  },
+  subheading: {
+    ...TYPOGRAPHY.caption,
   },
   badge: {
     minWidth: 24,
     height: 24,
     borderRadius: 12,
+    paddingHorizontal: 6,
     justifyContent: 'center',
     alignItems: 'center',
   },
   badgeText: {
-    color: 'white',
-    fontSize: 12,
+    ...TYPOGRAPHY.caption,
     fontWeight: '700',
   },
-  tabs: {
+  row: {
     flexDirection: 'row',
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.05)',
-    marginHorizontal: -16,
-    marginBottom: 12,
+    alignItems: 'center',
+    gap: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
-  tab: {
+  iconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  rowText: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 10,
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
   },
-  tabLabel: {
-    fontSize: 12,
+  title: {
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
   },
-  tabContent: {
-    minHeight: 100,
-  },
-  tabPane: {
-    gap: 12,
-  },
-  suggestionCard: {
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 10,
-    gap: 10,
-  },
-  suggestionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  suggestionTitle: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  applyButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-  applyButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  actionButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 10,
-  },
-  actionButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  suggestionsList: {
-    gap: 8,
-  },
-  suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  suggestionText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-  suggestionMeta: {
-    fontSize: 12,
+  reason: {
+    ...TYPOGRAPHY.caption,
     marginTop: 2,
+  },
+  apply: {
+    minHeight: 36,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.round,
+    borderWidth: 1,
+    justifyContent: 'center',
+  },
+  applyText: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: '600',
+  },
+  similar: {
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: SPACING.xs,
+  },
+  similarHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
+  similarItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    padding: SPACING.md,
+    borderRadius: RADIUS.sm,
+    marginTop: SPACING.xs,
+  },
+  similarTitle: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: '500',
   },
 });
