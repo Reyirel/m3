@@ -3,13 +3,10 @@
 // ⚡ Optimizado con useMemo para evitar re-renders innecesarios
 
 import React, { createContext, useState, useEffect, useMemo } from 'react';
-import { Platform } from 'react-native';
 import logger from '../services/Logger';
 import { subscribeToTasks } from '../services/tasks';
 import { subscribeToConnectionState } from '../services/offlineSync';
 import { deleteManager } from '../utils/deleteManager';
-import { enableNetwork, disableNetwork } from 'firebase/firestore';
-import { db } from '../firebase';
 import { useAuth } from './AuthContext';
 
 export const TasksContext = createContext(null);
@@ -29,14 +26,10 @@ export function TasksProvider({ children }) {
       if (online === previous) return;
       previous = online;
       setIsOnline(online);
-      // Pausar o reanudar Firestore solo en web, como hasta ahora: en el teléfono
-      // Firestore gestiona sus reintentos y no conviene apagarlo por un aviso de red
-      if (Platform.OS !== 'web') return;
-      try {
-        Promise.resolve(online ? enableNetwork(db) : disableNetwork(db)).catch(() => {});
-      } catch {
-        // Firestore no disponible: la app sigue con la caché local
-      }
+      // Firestore detecta por su cuenta cuándo hay red y reintenta solo. Antes aquí se
+      // apagaba y encendía a mano (enableNetwork/disableNetwork); con la copia local
+      // compartida entre pestañas eso puede dejarlo en un estado inválido
+      // ("INTERNAL ASSERTION FAILED: Unexpected state").
     });
   }, []);
 

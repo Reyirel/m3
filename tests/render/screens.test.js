@@ -55,8 +55,11 @@ jest.mock('firebase/firestore', () => new Proxy({}, {
   },
 }));
 
+const mockTheme = { mode: 'light' };
+
 jest.mock('@react-native-async-storage/async-storage', () => ({
-  getItem: jest.fn(() => Promise.resolve(null)),
+  // 'appTheme' es la clave donde ThemeContext guarda el tema elegido
+  getItem: jest.fn((key) => Promise.resolve(key === 'appTheme' ? mockTheme.mode : null)),
   setItem: jest.fn(() => Promise.resolve()),
   removeItem: jest.fn(() => Promise.resolve()),
   multiGet: jest.fn(() => Promise.resolve([])),
@@ -138,7 +141,10 @@ jest.mock('../../contexts/TasksContext', () => ({
 }));
 jest.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({
-    user: mockUser, isAuthenticated: true, isAdmin: true, isSecretario: false, isDirector: false,
+    user: mockUser, isAuthenticated: true,
+    isAdmin: mockUser.role === 'admin',
+    isSecretario: mockUser.role === 'secretario',
+    isDirector: mockUser.role === 'director',
     isLoading: false, reload: jest.fn(), signOut: jest.fn(),
   }),
 }));
@@ -148,9 +154,22 @@ const navigation = {
   addListener: jest.fn(() => () => {}), canGoBack: () => true, isFocused: () => true,
 };
 
+// Cada rol ve la app distinta (pestañas, botones, tareas): se dibuja con los tres
+const ROLES = {
+  admin: { email: 'admin@m.com', displayName: 'Ana Admin', role: 'admin', area: mockArea, direcciones: [] },
+  secretario: {
+    email: 'sec@m.com', displayName: 'Saúl Secretario', role: 'secretario',
+    area: 'Secretaría de Desarrollo Económico y Turismo', direcciones: [mockArea],
+  },
+  director: { email: 'tur@m.com', displayName: 'Tere Turismo', role: 'director', area: mockArea, direcciones: [] },
+};
+
+const taskParams = { route: { params: { taskId: 't2', taskTitle: 'Feria regional', task: mockTasks[1] } } };
+
 const SCREENS = [
   ['HomeScreen', {}],
   ['MyInboxScreen', {}],
+  ['MyInboxScreen', { route: { params: { preset: { filters: { overdue: true }, at: 1 } } } }],
   ['ReportsScreen', {}],
   ['ReportsScreen', { route: { params: { tab: 'enviados' } } }],
   ['ReportsScreen', { route: { params: { tab: 'analiticas' } } }],
@@ -170,13 +189,27 @@ const SCREENS = [
   ['SecretarioDashboardScreen', {}],
   ['AreaChiefDashboard', {}],
   ['TrashScreen', {}],
+  ['TaskDetailScreen', {}],
+  ['TaskDetailScreen', taskParams],
+  ['TaskChatScreen', taskParams],
+  ['TaskProgressScreen', taskParams],
+  ['TaskReportsAndActivityScreen', taskParams],
+  ['area/AreaManagementScreen', {}],
+];
+
+// Tres roles en tema claro, y el administrador también en tema oscuro
+const CASES = [
+  ...Object.keys(ROLES).flatMap((role) => SCREENS.map(([name, props]) => [role, 'light', name, props])),
+  ...SCREENS.map(([name, props]) => ['admin', 'dark', name, props]),
 ];
 
 describe('las pantallas se dibujan sin errores', () => {
   beforeAll(() => { jest.useFakeTimers(); });
   afterAll(() => { jest.useRealTimers(); });
 
-  test.each(SCREENS)('%s %j', async (name, props) => {
+  test.each(CASES)('%s · %s · %s %j', async (role, themeMode, name, props) => {
+    Object.assign(mockUser, ROLES[role]);
+    mockTheme.mode = themeMode;
     const { ThemeProvider } = require('../../contexts/ThemeContext');
     const Screen = require(`../../screens/${name}`).default;
     let tree;

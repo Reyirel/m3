@@ -6,6 +6,7 @@ import {
   getFirestore,
   persistentLocalCache,
   persistentMultipleTabManager,
+  memoryLocalCache,
   serverTimestamp,
   collection,
   doc,
@@ -84,16 +85,84 @@ try {
   analytics = null;
 }
 
+// Copia local de Firestore en el navegador (IndexedDB). Si esa copia se daña —por
+// ejemplo, cuando el equipo se queda sin espacio en disco— Firestore lanza
+// "INTERNAL ASSERTION FAILED: Unexpected state" y deja de responder hasta recargar,
+// y al recargar vuelve a leer la misma copia dañada. Por eso, ante ese error:
+//   1.ª vez → se borra la copia local y se recarga la página
+//   si se repite en menos de 10 minutos → se recarga usando solo memoria
+// Las tareas pendientes sin conexión no se pierden: van en la cola propia de la app
+// (services/offlineSync), no en esta copia.
+const CACHE_CLEAR_KEY = 'firestore_clear_cache';
+const CACHE_MEMORY_KEY = 'firestore_memory_cache';
+const CACHE_RECOVERY_AT_KEY = 'firestore_recovery_at';
+const CACHE_RETRY_WINDOW_MS = 10 * 60 * 1000;
+const CACHE_MEMORY_MAX_MS = 24 * 60 * 60 * 1000;
+
+const webStorage = () => {
+  try {
+    return typeof window !== 'undefined' ? window.localStorage : null;
+  } catch {
+    return null; // almacenamiento bloqueado (modo privado estricto)
+  }
+};
+
+const prepareWebCache = () => {
+  const storage = webStorage();
+  if (!storage) return { useMemory: false };
+  try {
+    if (storage.getItem(CACHE_CLEAR_KEY) === '1') {
+      storage.removeItem(CACHE_CLEAR_KEY);
+      // Se pide antes de abrir Firestore: IndexedDB atiende las peticiones en orden
+      window.indexedDB?.deleteDatabase(`firestore/[DEFAULT]/${firebaseConfig.projectId}/main`);
+    }
+    // Pasado un día se vuelve a intentar con la copia en disco
+    const last = Number(storage.getItem(CACHE_RECOVERY_AT_KEY) || 0);
+    if (Date.now() - last > CACHE_MEMORY_MAX_MS) storage.removeItem(CACHE_MEMORY_KEY);
+    return { useMemory: storage.getItem(CACHE_MEMORY_KEY) === '1' };
+  } catch {
+    return { useMemory: false };
+  }
+};
+
+let recovering = false;
+const recoverFromFirestoreFailure = (message) => {
+  if (recovering || !String(message || '').includes('INTERNAL ASSERTION FAILED')) return;
+  const storage = webStorage();
+  if (!storage) return;
+  try {
+    const usingMemory = storage.getItem(CACHE_MEMORY_KEY) === '1';
+    const last = Number(storage.getItem(CACHE_RECOVERY_AT_KEY) || 0);
+    const repeated = Date.now() - last < CACHE_RETRY_WINDOW_MS;
+    // Ya sin copia local y sigue fallando: recargar otra vez no lo arregla
+    if (usingMemory && repeated) return;
+    recovering = true;
+    storage.setItem(CACHE_RECOVERY_AT_KEY, String(Date.now()));
+    storage.setItem(CACHE_CLEAR_KEY, '1');
+    if (repeated) storage.setItem(CACHE_MEMORY_KEY, '1');
+    else storage.removeItem(CACHE_MEMORY_KEY);
+    window.location.reload();
+  } catch {
+    // Sin acceso al almacenamiento: no se puede reparar desde aquí
+  }
+};
+
+if (Platform.OS === 'web' && typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('error', (event) => recoverFromFirestoreFailure(event?.message || event?.error?.message));
+  window.addEventListener('unhandledrejection', (event) => recoverFromFirestoreFailure(event?.reason?.message));
+}
+
 // Inicializar Firestore con persistencia offline
 // - Web: IndexedDB (multi-tab) → los datos persisten aunque se cierre el navegador
 // - Nativo: memoria (AsyncStorage lo maneja la propia app)
 let db;
 try {
   if (Platform.OS === 'web') {
+    const { useMemory } = prepareWebCache();
     db = initializeFirestore(app, {
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-      }),
+      localCache: useMemory
+        ? memoryLocalCache()
+        : persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
     });
   } else {
     db = getFirestore(app);
