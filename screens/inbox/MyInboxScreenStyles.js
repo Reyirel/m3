@@ -54,7 +54,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   heading: {
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.5,
     textShadowColor: 'rgba(0,0,0,0.20)',
@@ -72,7 +72,8 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 12,
-    paddingVertical: 10,
+    // El campo ya trae su propio alto: más relleno le quitaba una fila a la lista
+    paddingVertical: 2,
     borderRadius: 16,
     gap: 10,
   },
@@ -81,8 +82,8 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     height: 20,
   },
   filterIconBtn: {
-    width: 32,
-    height: 32,
+    width: 40,
+    height: 40,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
@@ -118,7 +119,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   selectionBadgeText: {
     color: '#FFFFFF',
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   selectionText: {
     fontSize: 14,
@@ -139,9 +140,10 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   itemWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: isDesktop || isTablet ? 6 : 8,
     marginBottom: 4,
-    paddingHorizontal: 4,
+    // En el teléfono cada punto de margen cuenta: la tarjeta llega casi al borde
+    paddingHorizontal: isDesktop || isTablet ? 4 : 0,
     borderRadius: 24,
   },
   selectionCircle: {
@@ -152,7 +154,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     justifyContent: 'center',
     alignItems: 'center',
     flexShrink: 0,
-    marginLeft: 8,
+    marginLeft: isDesktop || isTablet ? 8 : 2,
   },
   // Quick Stats
   // Active Filters Chips
@@ -191,8 +193,8 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
     fontWeight: '600',
   },
   listContent: {
-    padding: isDesktop ? 20 : isTablet ? 16 : 16,
-    paddingTop: isDesktop ? 32 : 24,
+    padding: isDesktop ? 20 : isTablet ? 16 : 10,
+    paddingTop: isDesktop ? 32 : isTablet ? 24 : 12,
     paddingBottom: 80
   },
   messageCard: {
@@ -215,7 +217,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   messageTaskTitle: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     flex: 1,
     color: theme.text,
     letterSpacing: -0.3,
@@ -225,7 +227,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   messageAuthor: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: 8,
     color: theme.primary,
     textTransform: 'uppercase',
@@ -250,7 +252,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end'
   },
   modalContent: {
@@ -278,7 +280,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   modalTitle: {
     fontSize: isDesktop ? 24 : 26,
-    fontWeight: '900',
+    fontWeight: '700',
     color: theme.text,
     letterSpacing: -0.6,
     textShadowColor: 'rgba(0,0,0,0.1)',
@@ -313,7 +315,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   filterBadgeText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 0.5,
   },
   filterSeparator: {
@@ -322,7 +324,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   filterTitle: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 1,
     opacity: 0.8,
     textTransform: 'uppercase',
@@ -370,7 +372,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   filterOptionLargeText: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   clearFiltersBtn: {
     flexDirection: 'row',
@@ -390,7 +392,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   clearFiltersBtnText: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },
@@ -429,7 +431,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   modalFooterBtnText: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.6,
     textTransform: 'uppercase',
   },

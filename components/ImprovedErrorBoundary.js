@@ -6,9 +6,12 @@
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import logger from '../services/Logger';
+import { useTheme } from '../contexts/ThemeContext';
+import { RADIUS, SPACING, TYPOGRAPHY } from '../theme/tokens';
+import { ACTIVE_OPACITY } from '../theme/motion';
 
 class ImprovedErrorBoundary extends React.Component {
   constructor(props) {
@@ -86,88 +89,16 @@ class ImprovedErrorBoundary extends React.Component {
 
   render() {
     if (this.state.hasError) {
-      const { error, errorInfo, showDetails, errorCount } = this.state;
-
       return (
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Ionicons name="warning" size={48} color="#FF6B6B" />
-            <Text style={styles.title}>Algo salió mal</Text>
-            <Text style={styles.subtitle}>
-              Error #{errorCount} detectado
-            </Text>
-          </View>
-
-          {/* Scrollable Content */}
-          <ScrollView style={styles.content}>
-            <View style={styles.errorBox}>
-              <Text style={styles.errorTitle}>Mensaje de Error:</Text>
-              <Text style={styles.errorMessage}>
-                {error?.toString()}
-              </Text>
-            </View>
-
-            {/* Detalles técnicos (si expandido) */}
-            {showDetails && errorInfo && (
-              <View style={styles.detailsBox}>
-                <Text style={styles.detailsTitle}>Detalles Técnicos:</Text>
-                <Text style={styles.detailsText}>
-                  {errorInfo.componentStack}
-                </Text>
-              </View>
-            )}
-
-            {/* Sugerencias */}
-            <View style={styles.suggestionBox}>
-              <Text style={styles.suggestionTitle}>Qué puedes hacer:</Text>
-              <Text style={styles.suggestionText}>
-                • Intenta actualizar la pantalla{'\n'}
-                • Cierra la app y vuelve a abrirla{'\n'}
-                • Verifica tu conexión{'\n'}
-                • Contacta soporte si persiste
-              </Text>
-            </View>
-          </ScrollView>
-
-          {/* Actions */}
-          <View style={styles.actions}>
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={this.toggleDetails}
-            >
-              <Text style={styles.secondaryText}>
-                {showDetails ? 'Ocultar' : 'Ver'} Detalles
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.primaryButton}
-              onPress={this.resetError}
-            >
-              <Ionicons name="refresh" size={20} color="#fff" />
-              <Text style={styles.primaryText}>Intentar de Nuevo</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.dangerButton}
-              onPress={this.goToHome}
-            >
-              <Ionicons name="home" size={20} color="#fff" />
-              <Text style={styles.dangerText}>Ir a Inicio</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Error Count Warning */}
-          {errorCount > 3 && (
-            <View style={styles.warningBanner}>
-              <Ionicons name="alert-circle" size={20} color="#FFA500" />
-              <Text style={styles.warningText}>
-                Múltiples errores detectados. Por favor, reinicia.
-              </Text>
-            </View>
-          )}
-        </View>
+        <ErrorScreen
+          error={this.state.error}
+          errorInfo={this.state.errorInfo}
+          showDetails={this.state.showDetails}
+          repeated={this.state.errorCount > 3}
+          onToggleDetails={this.toggleDetails}
+          onRetry={this.resetError}
+          onGoHome={this.goToHome}
+        />
       );
     }
 
@@ -175,150 +106,115 @@ class ImprovedErrorBoundary extends React.Component {
   }
 }
 
+// Pantalla de error con el tema de la app. Todo va dentro de un solo desplazamiento:
+// antes el mensaje quedaba entre el título y los botones y en ventanas bajas no se veía.
+function ErrorScreen({ error, errorInfo, showDetails, repeated, onToggleDetails, onRetry, onGoHome }) {
+  const { theme } = useTheme();
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: theme.background }}
+      contentContainerStyle={styles.content}
+    >
+      <View style={[styles.iconWrap, { backgroundColor: theme.errorAlpha }]}>
+        <Ionicons name="alert-circle-outline" size={36} color={theme.error} />
+      </View>
+      <Text style={[styles.title, { color: theme.text }]} accessibilityRole="header">Algo salió mal</Text>
+      <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
+        {repeated
+          ? 'El error se repite. Vuelve al inicio o recarga la página.'
+          : 'Puedes intentarlo de nuevo o volver al inicio. Tus datos no se pierden.'}
+      </Text>
+
+      <TouchableOpacity
+        style={[styles.button, { backgroundColor: theme.primary }]}
+        onPress={onRetry}
+        activeOpacity={ACTIVE_OPACITY}
+        accessibilityRole="button"
+      >
+        <Ionicons name="refresh" size={20} color="#FFFFFF" />
+        <Text style={[styles.buttonText, { color: '#FFFFFF' }]}>Intentar de nuevo</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.button, styles.buttonOutline, { borderColor: theme.border }]}
+        onPress={onGoHome}
+        activeOpacity={ACTIVE_OPACITY}
+        accessibilityRole="button"
+      >
+        <Ionicons name="home-outline" size={20} color={theme.text} />
+        <Text style={[styles.buttonText, { color: theme.text }]}>Ir a Inicio</Text>
+      </TouchableOpacity>
+
+      {/* El mensaje siempre a la vista: es lo que hay que reportar */}
+      <View style={[styles.box, { backgroundColor: theme.card, borderColor: theme.border }]}>
+        <Text style={[styles.boxTitle, { color: theme.textSecondary }]}>Mensaje del error</Text>
+        <Text selectable style={[styles.mono, { color: theme.text }]}>
+          {error?.toString() || 'Sin mensaje'}
+        </Text>
+        {!!errorInfo?.componentStack && (
+          <TouchableOpacity onPress={onToggleDetails} accessibilityRole="button" style={styles.detailsLink}>
+            <Text style={[styles.detailsLinkText, { color: theme.primary }]}>
+              {showDetails ? 'Ocultar detalles técnicos' : 'Ver detalles técnicos'}
+            </Text>
+          </TouchableOpacity>
+        )}
+        {showDetails && !!errorInfo?.componentStack && (
+          <Text selectable style={[styles.mono, styles.stack, { color: theme.textSecondary }]}>
+            {errorInfo.componentStack.trim()}
+          </Text>
+        )}
+      </View>
+    </ScrollView>
+  );
+}
+
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    paddingTop: 60,
-  },
-  header: {
-    alignItems: 'center',
-    paddingVertical: 30,
-    paddingHorizontal: 20,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
-    marginTop: 12,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginTop: 8,
-  },
   content: {
-    flex: 1,
-    paddingHorizontal: 16,
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    maxWidth: 520,
+    alignSelf: 'center',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.xl,
   },
-  errorBox: {
-    backgroundColor: '#FFE5E5',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderLeftColor: '#FF6B6B',
-    borderLeftWidth: 4,
+  iconWrap: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-  errorTitle: {
-    fontWeight: '600',
-    color: '#D32F2F',
-    marginBottom: 8,
+  title: { ...TYPOGRAPHY.h2, fontWeight: '700', marginTop: SPACING.lg, textAlign: 'center' },
+  subtitle: { ...TYPOGRAPHY.body, marginTop: SPACING.sm, marginBottom: SPACING.xl, textAlign: 'center' },
+  button: {
+    alignSelf: 'stretch',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    minHeight: 48,
+    borderRadius: RADIUS.md,
+    marginBottom: SPACING.md,
   },
-  errorMessage: {
-    fontSize: 14,
-    color: '#C62828',
-    fontFamily: 'Courier New',
+  buttonOutline: { borderWidth: 1 },
+  buttonText: { ...TYPOGRAPHY.body, fontWeight: '600' },
+  box: {
+    alignSelf: 'stretch',
+    marginTop: SPACING.md,
+    padding: SPACING.lg,
+    borderRadius: RADIUS.md,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  boxTitle: { ...TYPOGRAPHY.caption, fontWeight: '600', marginBottom: SPACING.xs },
+  mono: {
+    fontSize: 13,
     lineHeight: 18,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
   },
-  detailsBox: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-  },
-  detailsTitle: {
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  detailsText: {
-    fontSize: 12,
-    color: '#666',
-    fontFamily: 'Courier New',
-    lineHeight: 16,
-  },
-  suggestionBox: {
-    backgroundColor: '#E8F5E9',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    borderLeftColor: '#4CAF50',
-    borderLeftWidth: 4,
-  },
-  suggestionTitle: {
-    fontWeight: '600',
-    color: '#1B5E20',
-    marginBottom: 8,
-  },
-  suggestionText: {
-    fontSize: 14,
-    color: '#2E7D32',
-    lineHeight: 18,
-  },
-  actions: {
-    paddingHorizontal: 16,
-    paddingBottom: 24,
-    gap: 12,
-  },
-  primaryButton: {
-    backgroundColor: '#4CAF50',
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  primaryText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  secondaryButton: {
-    backgroundColor: '#E0E0E0',
-    borderRadius: 16,
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  secondaryText: {
-    color: '#333',
-    fontWeight: '500',
-    fontSize: 14,
-  },
-  dangerButton: {
-    backgroundColor: '#FF9800',
-    borderRadius: 16,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 8,
-  },
-  dangerText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 16,
-  },
-  warningBanner: {
-    backgroundColor: '#FFF3E0',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    borderTopColor: '#FFA500',
-    borderTopWidth: 1,
-  },
-  warningText: {
-    flex: 1,
-    color: '#E65100',
-    fontSize: 14,
-    fontWeight: '500',
-  },
+  stack: { fontSize: 12, lineHeight: 16, marginTop: SPACING.sm },
+  detailsLink: { marginTop: SPACING.md, minHeight: 32, justifyContent: 'center' },
+  detailsLinkText: { ...TYPOGRAPHY.bodySmall, fontWeight: '600' },
 });
 
 // HOC para wrappear screens

@@ -13,9 +13,15 @@ import { hapticLight } from '../utils/haptics';
  * @param {string} placeholder - Placeholder text
  * @param {number} debounceMs - Debounce delay in milliseconds (default: 100)
  */
-const SearchBar = memo(forwardRef(function SearchBar({ onSearch, placeholder = 'Buscar tareas...', debounceMs = 100 }, ref) {
+const SearchBar = memo(forwardRef(function SearchBar({ onSearch, placeholder = 'Buscar tareas...', debounceMs = 100, initialValue = '' }, ref) {
   const { theme, isDark } = useTheme();
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState(initialValue);
+  // Una búsqueda guardada llega después de montar: se muestra mientras el usuario
+  // no haya escrito (después manda lo que escribe, no lo que devuelve el padre)
+  const editedRef = useRef(false);
+  useEffect(() => {
+    if (!editedRef.current && initialValue) setSearchText(initialValue);
+  }, [initialValue]);
   const [isFocused, setIsFocused] = useState(false);
   const inputRef = useRef(null);
 
@@ -97,7 +103,7 @@ const SearchBar = memo(forwardRef(function SearchBar({ onSearch, placeholder = '
         placeholder={placeholder}
         placeholderTextColor={theme.textSecondary}
         value={searchText}
-        onChangeText={setSearchText}
+        onChangeText={(text) => { editedRef.current = true; setSearchText(text); }}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
         autoCapitalize="none"

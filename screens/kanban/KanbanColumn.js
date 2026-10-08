@@ -4,22 +4,13 @@ import React from 'react';
 import { View, Text, TouchableOpacity, FlatList, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import FadeInView from '../../components/FadeInView';
-import PulsingDot from '../../components/PulsingDot';
 import TaskStatusButtons from '../../components/TaskStatusButtons';
 import { toMs } from '../../utils/dateUtils';
 import { hapticLight, hapticMedium } from '../../utils/haptics';
+import { priorityColor, priorityIcon, priorityLabel } from '../../utils/taskStatus';
+import { ACTIVE_OPACITY } from '../../theme/motion';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-// Alto aproximado de una tarjeta, para que la lista calcule posiciones sin medir
-const CARD_HEIGHT = 120;
-
-const PRIORITY = {
-  alta: { label: 'URGENTE', icon: 'flash' },
-  media: { label: 'MEDIA', icon: 'warning' },
-  baja: { label: 'BAJA', icon: 'checkmark-circle' },
-};
-
-const priorityColor = (priority, theme) => ({ alta: theme.error, media: theme.warning, baja: theme.success }[priority]);
 
 const assigneeText = (assignedTo) => {
   const text = Array.isArray(assignedTo) ? assignedTo.join(', ') : assignedTo;
@@ -32,14 +23,12 @@ const dueDateText = (dueAt) => {
 };
 
 const keyExtractor = (item) => item.id;
-const getItemLayout = (_data, index) => ({ length: CARD_HEIGHT, offset: CARD_HEIGHT * index, index });
 
 const KanbanCard = React.memo(function KanbanCard({
-  item, status, overdue, compact, onOpen, onQuickEdit, onStatusChange, styles, theme, isDark,
+  item, overdue, compact, onOpen, onQuickEdit, onStatusChange, styles, theme, isDark,
 }) {
   const color = priorityColor(item.priority, theme);
-  const priority = PRIORITY[item.priority] || PRIORITY.baja;
-  const borderColor = item.priority === 'alta' || item.priority === 'media' ? color : theme.border;
+  const borderColor = overdue ? theme.error : theme.glassBorderStrong;
 
   // Días que lleva la tarea en su estado actual
   const daysInStatus = item.statusChangedAt ? Math.floor((Date.now() - item.statusChangedAt) / DAY_MS) : 0;
@@ -49,7 +38,9 @@ const KanbanCard = React.memo(function KanbanCard({
     <TouchableOpacity
       onPress={() => { hapticLight(); onOpen(item); }}
       onLongPress={() => { hapticMedium(); onQuickEdit(item); }}
-      activeOpacity={0.85}
+      activeOpacity={ACTIVE_OPACITY}
+      accessibilityRole="button"
+      accessibilityLabel={`Tarea: ${item.title}. Prioridad ${priorityLabel(item.priority)}${overdue ? ', vencida' : ''}`}
     >
       <View
         style={[
@@ -57,7 +48,7 @@ const KanbanCard = React.memo(function KanbanCard({
           {
             backgroundColor: isDark ? theme.card : theme.glassStrong,
             borderWidth: 1,
-            borderColor: borderColor + '55',
+            borderColor,
             padding: 12,
             shadowColor: theme.shadowColor,
             shadowOffset: { width: 0, height: 2 },
@@ -70,15 +61,14 @@ const KanbanCard = React.memo(function KanbanCard({
       >
         {!compact && (
           <View style={styles.cardTopRow}>
-            <View style={[styles.priorityChip, color && { backgroundColor: color }]}>
-              <Ionicons name={priority.icon} size={10} color="#FFFFFF" />
-              <Text style={styles.priorityChipText}>{priority.label}</Text>
-              {item.priority === 'alta' && <PulsingDot size={4} color="#FFFFFF" />}
+            <View style={[styles.priorityChip, { backgroundColor: color + '1F' }]}>
+              <Ionicons name={priorityIcon(item.priority)} size={12} color={color} />
+              <Text style={[styles.priorityChipText, { color }]}>{priorityLabel(item.priority)}</Text>
             </View>
 
             {overdue && (
               <View style={styles.overdueChip}>
-                <Ionicons name="time" size={10} color="#FFFFFF" />
+                <Ionicons name="time" size={12} color="#FFFFFF" />
                 <Text style={styles.overdueChipText}>VENCIDA</Text>
               </View>
             )}
@@ -88,8 +78,7 @@ const KanbanCard = React.memo(function KanbanCard({
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           {compact && (
             <>
-              <View style={[styles.compactPriorityDot, { backgroundColor: color || theme.border }]} />
-              {item.priority === 'alta' && <PulsingDot size={3} color={color} />}
+              <View style={[styles.compactPriorityDot, { backgroundColor: color }]} />
             </>
           )}
           <Text style={[styles.cardTitle, { color: theme.text, flex: 1 }]} numberOfLines={compact ? 1 : 2}>
@@ -102,14 +91,14 @@ const KanbanCard = React.memo(function KanbanCard({
           <>
             <View style={styles.cardInfoGrid}>
               <View style={styles.cardInfoItem}>
-                <Ionicons name="person" size={11} color={status.color} />
+                <Ionicons name="person" size={12} color={theme.textTertiary} />
                 <Text style={[styles.cardInfoText, { color: theme.textSecondary }]} numberOfLines={1}>
                   {assigneeText(item.assignedTo)}
                 </Text>
               </View>
 
               <View style={styles.cardInfoItem}>
-                <Ionicons name="calendar-outline" size={11} color={status.color} />
+                <Ionicons name="calendar-outline" size={12} color={overdue ? theme.error : theme.textTertiary} />
                 <Text style={[styles.cardInfoText, { color: theme.textSecondary }]}>
                   {dueDateText(item.dueAt)}
                 </Text>
@@ -131,7 +120,7 @@ const KanbanCard = React.memo(function KanbanCard({
 
             {daysInStatus > 0 && (
               <View style={styles.statusAgeIndicator}>
-                <Ionicons name="time-outline" size={10} color={statusAgeColor} />
+                <Ionicons name="time-outline" size={12} color={statusAgeColor} />
                 <Text style={[styles.statusAgeText, { color: statusAgeColor }]}>
                   {daysInStatus === 1 ? 'Hace 1 día' : `Hace ${daysInStatus} días`}
                 </Text>
@@ -156,10 +145,10 @@ function EmptyColumn({ status, styles, theme }) {
           <Ionicons name={closed ? 'checkmark-circle-outline' : 'document-text-outline'} size={28} color={status.color} />
         </View>
         <Text style={[styles.emptyStateTitle, { color: theme.text }]}>
-          {closed ? '¡Todo listo! 🎉' : 'Columna vacía'}
+          {closed ? 'Nada cerrado aún' : 'Sin tareas'}
         </Text>
         <Text style={[styles.emptyStateDescription, { color: theme.textSecondary }]}>
-          {closed ? 'Todas las tareas están completadas' : 'Aquí aparecerán las tareas \n del estado ' + status.label}
+          {closed ? 'Aquí aparecerán las tareas cerradas' : `Aquí aparecerán las tareas en estado ${status.label.toLowerCase()}`}
         </Text>
       </View>
     </FadeInView>
@@ -236,7 +225,6 @@ export default function KanbanColumn({
         renderItem={({ item }) => (
           <KanbanCard
             item={item}
-            status={status}
             overdue={isTaskOverdue(item)}
             compact={compact}
             onOpen={onOpen}
@@ -250,10 +238,7 @@ export default function KanbanColumn({
         contentContainerStyle={{ paddingBottom: 8 }}
         windowSize={5}
         maxToRenderPerBatch={5}
-        removeClippedSubviews={true}
         initialNumToRender={6}
-        updateCellsBatchingPeriod={100}
-        getItemLayout={getItemLayout}
         ListEmptyComponent={<EmptyColumn status={status} styles={styles} theme={theme} />}
       />
     </Animated.View>

@@ -1,78 +1,50 @@
+// screens/HomeScreen.js
+// Inicio: resumen de lo que pide atención hoy (vencidas, vencen hoy, en revisión y
+// próximas). Los recuadros de arriba filtran esta misma pantalla: al tocar uno se ven
+// todas las tareas de ese grupo, y al tocarlo otra vez vuelve el resumen. La lista
+// completa con sus acciones está en la Bandeja. Al buscar se muestran los resultados.
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import {
-  View, Text, FlatList, StyleSheet, TouchableOpacity,
-  RefreshControl, Animated, Platform, Easing,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity,
+  Animated, Platform, Easing,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { getSwipeable } from '../utils/platformComponents';
 
 import TaskCard from '../components/TaskCard';
 import { TaskCardSkeleton } from '../components/ShimmerEffect';
 import EmptyState from '../components/EmptyState';
-import ConfettiCelebration from '../components/ConfettiCelebration';
-import HomeHeader from '../components/ui/HomeHeader';
-import OverdueAlert from '../components/OverdueAlert';
-import QuickTip, { TIPS } from '../components/QuickTip';
+import HomeHeader, { HomeFilters } from '../components/ui/HomeHeader';
 import OnboardingTour from '../components/OnboardingTour';
-import QuickActionButton from '../components/QuickActionButton';
 
-import { useNotification } from '../contexts/NotificationContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
 import { useResponsive } from '../utils/responsive';
-import { useAccessibility } from '../hooks/useAccessibility';
+import { useNow } from '../hooks/useNow';
+import { hapticLight, hapticMedium } from '../utils/haptics';
+import { MAX_WIDTHS, RADIUS, SPACING, TYPOGRAPHY } from '../theme/tokens';
+import { ACTIVE_OPACITY, DURATION, spring, timing } from '../theme/motion';
+import { buildHomeSummary, searchTasks } from './home/homeSummary';
 
-import { deleteTask as deleteTaskFirebase, updateTask, restoreTask } from '../services/tasks';
-import { hapticMedium, hapticHeavy } from '../utils/haptics';
-import { canChangeTaskStatus, canDeleteTask } from '../services/permissions';
-import { deleteManager } from '../utils/deleteManager';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { MAX_WIDTHS } from '../theme/tokens';
-import { countByStatus, matchesStatusFilter, statusLabel, isClosed } from '../utils/taskStatus';
-
-const Swipeable = getSwipeable();
+// Tareas que se muestran por sección en el resumen; al filtrar se ven todas
+const SECTION_LIMIT = 4;
+const SEARCH_LIMIT = 30;
 
 export default function HomeScreen({ navigation }) {
-  const { theme, isDark } = useTheme();
-  const { width, isDesktop, isTablet, padding } = useResponsive();
-  const { showSuccess, showError, showWarning, showInfo, showNotification } = useNotification();
-  const { announce } = useAccessibility();
-
-  const { tasks, setTasks, isLoading: tasksLoading, currentUser } = useTasks();
-  const isLoading = tasksLoading;
+  const { theme } = useTheme();
+  const { isDesktop, isTablet } = useResponsive();
+  const isGrid = isDesktop || isTablet;
+  const { tasks, isLoading, currentUser } = useTasks();
+  const isAdmin = currentUser?.role === 'admin';
   const [searchText, setSearchText] = useState('');
-  const [quickStatusFilter, setQuickStatusFilter] = useState('todas');
-  const [refreshing, setRefreshing] = useState(false);
-  const [showConfetti, setShowConfetti] = useState(false);
-  const [isUndoing, setIsUndoing] = useState(false);
-
-  // Persistent search per user
-  useEffect(() => {
-    if (!currentUser?.email) return;
-    const key = currentUser.email.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    AsyncStorage.getItem(`@home_search_${key}`)
-      .then(saved => { if (saved) setSearchText(saved); })
-      .catch(() => {});
-  }, [currentUser?.email]);
-
-  useEffect(() => {
-    if (!currentUser?.email) return;
-    const key = currentUser.email.toLowerCase().replace(/[^a-z0-9]/g, '_');
-    AsyncStorage.setItem(`@home_search_${key}`, searchText).catch(() => {});
-  }, [searchText, currentUser?.email]);
-
-  // Animations
-  const listOpacity = useRef(new Animated.Value(0)).current;
-  const listSlide = useRef(new Animated.Value(20)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const flatListRef = useRef(null);
-  const deletingTasksRef = useRef(new Set());
+  // Grupo elegido en los recuadros (null = resumen completo)
+  const [activeGroup, setActiveGroup] = useState(null);
   const searchRef = useRef(null);
+  // Avanza cada minuto: una tarea pasa sola de "vence hoy" a "vencida"
+  const now = useNow(true);
 
   // Cmd+K / Ctrl+K → enfocar búsqueda (solo web)
   useEffect(() => {
-    if (Platform.OS !== 'web') return;
+    if (Platform.OS !== 'web') return undefined;
     const handler = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
@@ -83,365 +55,380 @@ export default function HomeScreen({ navigation }) {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  const opacity = useRef(new Animated.Value(0)).current;
+  const slide = useRef(new Animated.Value(20)).current;
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(listOpacity, {
-        toValue: 1, duration: 400, useNativeDriver: true,
-        easing: Easing.out(Easing.cubic),
-      }),
-      Animated.spring(listSlide, {
-        toValue: 0, tension: 80, friction: 12, useNativeDriver: true,
-      }),
+      timing(opacity, 1, { duration: DURATION.slow, easing: Easing.out(Easing.cubic) }),
+      spring(slide, 0),
     ]).start();
-  }, [listOpacity, listSlide]);
+  }, [opacity, slide]);
 
-  useEffect(() => {
-    if (!tasksLoading && tasks.length > 0) {
-      if (fadeAnim._value !== 1) {
-        Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
-      }
-    }
-  }, [tasksLoading, tasks, fadeAnim]);
+  const summary = useMemo(() => buildHomeSummary(tasks, currentUser, now), [tasks, currentUser, now]);
+  const results = useMemo(() => searchTasks(tasks, currentUser, searchText), [tasks, currentUser, searchText]);
+  const searching = searchText.trim() !== '';
 
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    hapticMedium();
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
-
-  const openDetail = useCallback((task) => {
+  const openTask = useCallback((task) => {
     navigation.navigate('TaskDetail', { task, taskId: task.id });
   }, [navigation]);
 
-  const deleteTask = useCallback((taskId) => {
-    if (deletingTasksRef.current.has(taskId)) return;
-    const taskToDelete = tasks.find(t => t.id === taskId);
-    if (!taskToDelete) { showError('Tarea no encontrada'); return; }
-    const perm = canDeleteTask(currentUser, taskToDelete);
-    if (!perm.canDelete) { showError(perm.reason); return; }
+  const openInbox = useCallback(() => {
+    hapticLight();
+    navigation.navigate('Inbox');
+  }, [navigation]);
 
-    deletingTasksRef.current.add(taskId);
-    deleteManager.markDeleting(taskId);
-    hapticHeavy();
-    setTasks(prev => prev.filter(t => t.id !== taskId));
+  // Tocar un recuadro filtra; tocarlo de nuevo quita el filtro
+  const toggleGroup = useCallback((key) => {
+    hapticLight();
+    setActiveGroup((current) => (current === key ? null : key));
+  }, []);
 
-    showNotification({
-      message: 'Tarea eliminada · Toca para deshacer',
-      type: 'success',
-      duration: 8000,
-      onPress: async () => {
-        if (isUndoing) return;
-        setIsUndoing(true);
-        try {
-          deleteManager.cancelDelete(taskId);
-          deletingTasksRef.current.delete(taskId);
-          // La tarea está en la papelera: se restaura la misma (conserva chat y subtareas)
-          await restoreTask(taskId);
-          showInfo('Tarea restaurada');
-        } catch { showError('Error al restaurar'); }
-        finally { setIsUndoing(false); }
-      },
-    });
+  const goToCreate = useCallback(() => {
+    hapticMedium();
+    navigation.navigate('TaskDetail', {});
+  }, [navigation]);
 
-    deleteTaskFirebase(taskId)
-      .then(() => deleteManager.confirmDelete(taskId))
-      .catch(() => {})
-      .finally(() => { deletingTasksRef.current.delete(taskId); });
-  }, [currentUser, isUndoing, tasks, setTasks, showNotification, showError, showInfo]);
-
-  const toggleComplete = useCallback(async (task) => {
-    try {
-      const previousStatus = task.status;
-      const newStatus = task.status === 'cerrada' ? 'pendiente' : 'cerrada';
-      const perm = canChangeTaskStatus(currentUser, task, newStatus);
-      if (!perm.canChange) { showWarning(perm.reason || 'Sin permisos'); return; }
-
-      hapticMedium();
-      await updateTask(task.id, { status: newStatus });
-
-      if (newStatus === 'cerrada') {
-        if (task.priority === 'alta') {
-          setShowConfetti(true);
-          setTimeout(() => setShowConfetti(false), 2500);
-          hapticHeavy();
-        }
-        showNotification({
-          message: 'Tarea completada · Toca para deshacer',
-          type: 'success',
-          duration: 5000,
-          onPress: async () => {
-            if (isUndoing) return;
-            setIsUndoing(true);
-            try { await updateTask(task.id, { status: previousStatus }); showInfo('Estado restaurado'); }
-            catch { showError('Error al deshacer'); }
-            finally { setIsUndoing(false); }
-          },
-        });
-      } else {
-        showInfo('Tarea reabierta');
-      }
-    } catch (error) {
-      showError(`Error al actualizar: ${error.message}`);
-    }
-  }, [currentUser, isUndoing, showError, showInfo, showNotification, showWarning]);
-
-  const reopenTask = useCallback(async (task) => {
-    if (!currentUser || currentUser.role !== 'admin') {
-      showWarning('Solo los administradores pueden reabrir tareas');
-      return;
-    }
-    try {
-      hapticMedium();
-      await updateTask(task.id, { status: 'pendiente' });
-      showSuccess('Tarea reabierta');
-    } catch (error) {
-      showError(`Error al reabrir: ${error.message}`);
-    }
-  }, [currentUser, showWarning, showSuccess, showError]);
-
-  const renderRightActions = useCallback((progress, dragX, task) => {
-    const trans = dragX.interpolate({ inputRange: [-100, 0], outputRange: [0, 100], extrapolate: 'clamp' });
-    return (
-      <Animated.View style={{ transform: [{ translateX: trans }], flexDirection: 'row', alignItems: 'center' }}>
-        <TouchableOpacity
-          onPress={() => deleteTask(task.id)}
-          style={{ backgroundColor: theme.error, justifyContent: 'center', alignItems: 'center', width: 80, height: '100%', borderRadius: 16 }}
-        >
-          <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
-          <Text style={{ color: '#FFFFFF', fontSize: 12, marginTop: 3, fontWeight: '600' }}>Eliminar</Text>
-        </TouchableOpacity>
-      </Animated.View>
-    );
-  }, [deleteTask, theme.error]);
-
-  // Memos
-  const statusCounts = useMemo(() => ({
-    todas: tasks.length,
-    ...countByStatus(tasks),
-  }), [tasks]);
-
-  const filteredTasks = useMemo(() => tasks.filter(task => {
-    if (!matchesStatusFilter(task.status, quickStatusFilter)) return false;
-    if (searchText) {
-      const q = searchText.toLowerCase();
-      const matchTitle = task.title?.toLowerCase().includes(q);
-      const matchDesc = task.description?.toLowerCase().includes(q);
-      const matchAssigned = Array.isArray(task.assignedTo)
-        ? task.assignedTo.some(a => a?.toLowerCase().includes(q))
-        : task.assignedTo?.toLowerCase().includes(q);
-      const matchTags = task.tags?.some(tag => tag.toLowerCase().includes(q));
-      if (!matchTitle && !matchDesc && !matchAssigned && !matchTags) return false;
-    }
-    return true;
-  }), [tasks, searchText, quickStatusFilter]);
-
-  const keyExtractor = useCallback((item) => item.id, []);
-  const handleSearch = useCallback((text) => setSearchText(text), []);
-
-  const styles = useMemo(
-    () => createStyles(theme, isDark, isDesktop, width, padding),
-    [theme, isDark, isDesktop, width, padding]
+  const header = (
+    <HomeHeader
+      userName={currentUser?.displayName || 'Usuario'}
+      role={currentUser?.role?.toUpperCase() || 'USUARIO'}
+      onSearch={setSearchText}
+      searchText={searchText}
+      onProfilePress={() => navigation.navigate('Profile')}
+      onNotificationsPress={() => navigation.navigate('Notifications')}
+      searchRef={searchRef}
+    />
   );
 
-  // Loading state — skeletons en vez de spinner
   if (isLoading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <LinearGradient
-          colors={theme.gradientHeader}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0.6, y: 1 }}
-          style={styles.loadingGradient}
-        >
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <View style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.18)' }} />
-            <View style={{ gap: 8 }}>
-              <View style={{ width: 80, height: 12, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.22)' }} />
-              <View style={{ width: 130, height: 18, borderRadius: 6, backgroundColor: 'rgba(255,255,255,0.30)' }} />
-            </View>
+        <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
+          {header}
+          <View style={{ paddingTop: SPACING.lg }} accessibilityLabel="Cargando tareas">
+            {[1, 2, 3, 4].map(i => <TaskCardSkeleton key={i} />)}
           </View>
-        </LinearGradient>
-        <View style={{ paddingTop: 16 }}>
-          {[1, 2, 3, 4, 5].map(i => <TaskCardSkeleton key={i} />)}
         </View>
       </View>
     );
   }
 
+  const groups = {
+    overdue: { title: 'Vencidas', list: summary.overdue },
+    today: { title: 'Vencen hoy', list: summary.today },
+    review: { title: 'En revisión', list: summary.review },
+    progress: { title: 'En proceso', list: summary.inProgress },
+    upcoming: { title: 'Próximos 7 días', list: summary.upcoming },
+  };
+
+  const tiles = [
+    { key: 'overdue', label: 'Vencidas', short: 'Vencidas', icon: 'alert-circle', color: theme.error },
+    { key: 'today', label: 'Vencen hoy', short: 'Hoy', icon: 'today', color: theme.warningText },
+    { key: 'review', label: 'En revisión', short: 'Revisión', icon: 'eye', color: theme.statusReview },
+    { key: 'progress', label: 'En proceso', short: 'Proceso', icon: 'play-circle', color: theme.statusInProgress },
+  ].map((tile) => ({ ...tile, count: groups[tile.key].list.length, active: activeGroup === tile.key }));
+
+  const cards = (list) => (
+    <View style={isGrid ? styles.grid : undefined}>
+      {list.map((task) => (
+        <View key={task.id} style={isGrid ? styles.gridCell : undefined}>
+          <TaskCard task={task} onPress={openTask} />
+        </View>
+      ))}
+    </View>
+  );
+
+  // `expanded`: el grupo elegido en los recuadros, con todas sus tareas
+  const section = (key, expanded = false) => {
+    const { title, list } = groups[key];
+    if (list.length === 0 && !expanded) return null;
+    return (
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]} accessibilityRole="header">
+            {title}
+            <Text style={{ color: theme.textTertiary }}>{`  ${list.length}`}</Text>
+          </Text>
+          {(expanded || list.length > SECTION_LIMIT) && (
+            <TouchableOpacity
+              onPress={() => toggleGroup(key)}
+              activeOpacity={ACTIVE_OPACITY}
+              accessibilityRole="button"
+              accessibilityLabel={expanded ? 'Volver al resumen' : `Ver todas: ${title}`}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <Text style={[styles.seeAll, { color: theme.primary }]}>{expanded ? 'Ver resumen' : 'Ver todas'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        {list.length === 0 ? (
+          <Text style={[styles.emptyGroup, { color: theme.textSecondary }]}>No hay tareas en este grupo.</Text>
+        ) : cards(expanded ? list : list.slice(0, SECTION_LIMIT))}
+      </View>
+    );
+  };
+
+  const nothingUrgent = summary.overdue.length + summary.today.length + summary.review.length + summary.upcoming.length === 0;
+
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
       <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
+        {header}
 
-        <HomeHeader
-          userName={currentUser?.displayName || 'Usuario'}
-          userEmail={currentUser?.email || ''}
-          role={currentUser?.role?.toUpperCase() || 'USUARIO'}
-          onSearch={handleSearch}
-          searchText={searchText}
-          quickStatusFilter={quickStatusFilter}
-          onFilterChange={setQuickStatusFilter}
-          statusCounts={statusCounts}
-          onProfilePress={() => navigation.navigate('Profile')}
-          onNotificationsPress={() => navigation.navigate('Notifications')}
-          searchRef={searchRef}
-        />
-
-        <OverdueAlert
-          tasks={tasks}
-          currentUserEmail={currentUser?.email}
-          role={currentUser?.role}
-          onTaskPress={(task) => navigation.navigate('TaskDetail', { task, taskId: task.id })}
-        />
-
-        {/* Lista de tareas */}
-        <Animated.View style={{ flex: 1, opacity: listOpacity, transform: [{ translateY: listSlide }] }}>
-          <FlatList
-            ref={flatListRef}
-            key={isDesktop || isTablet ? 'grid-2' : 'list-1'}
-            data={filteredTasks}
-            keyExtractor={keyExtractor}
-            numColumns={isDesktop || isTablet ? 2 : 1}
-            columnWrapperStyle={isDesktop || isTablet ? { alignItems: 'flex-start' } : undefined}
+        <Animated.View style={{ flex: 1, opacity, transform: [{ translateY: slide }] }}>
+          <ScrollView
+            contentContainerStyle={styles.content}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            getItemLayout={(_, index) => ({ length: 120, offset: 120 * index, index })}
-            windowSize={5}
-            maxToRenderPerBatch={isDesktop || isTablet ? 10 : 5}
-            removeClippedSubviews
-            initialNumToRender={isDesktop || isTablet ? 14 : 8}
-            updateCellsBatchingPeriod={100}
-            refreshControl={
-              <RefreshControl
-                refreshing={refreshing}
-                onRefresh={onRefresh}
-                tintColor={theme.primary}
-                colors={[theme.primary]}
-              />
-            }
-            contentContainerStyle={styles.listContent}
-            ListHeaderComponent={
-              <View>
-              <View style={styles.listHeader}>
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.listTitle, { color: theme.text }]}>
-                    {quickStatusFilter === 'todas' ? 'Mis tareas' : statusLabel(quickStatusFilter)}
-                  </Text>
-                  <Text style={[styles.listSub, { color: theme.textSecondary }]}>
-                    {filteredTasks.length === tasks.length
-                      ? `${filteredTasks.length} tarea${filteredTasks.length !== 1 ? 's' : ''}`
-                      : `${filteredTasks.length} de ${tasks.length} tareas`}
+          >
+            {/* En el celular el buscador va aquí; en pantalla ancha, en el encabezado */}
+            <HomeFilters onSearch={setSearchText} searchText={searchText} searchRef={searchRef} />
+
+            {searching ? (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]} accessibilityRole="header">
+                    Resultados
+                    <Text style={{ color: theme.textTertiary }}>{`  ${results.length}`}</Text>
                   </Text>
                 </View>
-              </View>
-              </View>
-            }
-            renderItem={({ item }) => {
-              const card = (
-                <View style={isDesktop || isTablet ? { flex: 1 } : undefined}>
-                  <TaskCard
-                    task={item}
-                    onPress={() => { announce(`Abriendo: ${item.title}`); openDetail(item); }}
-                    onLongPress={() => {
-                      if (currentUser?.role === 'admin') {
-                        hapticMedium();
-                        if (isClosed(item.status)) reopenTask(item);
-                        else toggleComplete(item);
-                      }
+                {results.length === 0 ? (
+                  <EmptyState
+                    icon="search-outline"
+                    title="Sin resultados"
+                    message="Ninguna tarea coincide con la búsqueda."
+                    quickAction={{
+                      label: 'Borrar búsqueda',
+                      icon: 'close-circle-outline',
+                      onPress: () => { searchRef.current?.clear(); setSearchText(''); },
                     }}
                   />
+                ) : cards(results.slice(0, SEARCH_LIMIT))}
+              </View>
+            ) : (
+              <>
+                <View style={styles.tiles}>
+                  {tiles.map((tile) => (
+                    <TouchableOpacity
+                      key={tile.key}
+                      onPress={() => toggleGroup(tile.key)}
+                      activeOpacity={ACTIVE_OPACITY}
+                      style={[
+                        styles.tile,
+                        isGrid && styles.tileWide,
+                        { backgroundColor: theme.card, borderColor: theme.glassBorder, shadowColor: theme.shadowColor },
+                        tile.active && { backgroundColor: theme.primaryAlpha, borderColor: theme.primary },
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected: tile.active }}
+                      accessibilityLabel={`${tile.label}: ${tile.count}`}
+                      accessibilityHint={tile.active ? 'Toca para volver al resumen' : 'Toca para ver solo estas tareas'}
+                    >
+                      {isGrid ? (
+                        <>
+                          <Ionicons name={tile.icon} size={20} color={tile.count > 0 ? tile.color : theme.textMuted} />
+                          <Text style={[styles.tileCountWide, { color: tile.count > 0 ? theme.text : theme.textTertiary }]}>
+                            {tile.count}
+                          </Text>
+                          <Text style={[styles.tileLabelWide, { color: theme.textSecondary }]} numberOfLines={1}>
+                            {tile.label}
+                          </Text>
+                        </>
+                      ) : (
+                        <>
+                          {/* Celular: una sola fila baja; el color del número ya indica el tipo */}
+                          <Text style={[styles.tileCount, { color: tile.count > 0 ? tile.color : theme.textTertiary }]}>
+                            {tile.count}
+                          </Text>
+                          <Text style={[styles.tileLabel, { color: theme.textSecondary }]} numberOfLines={1}>
+                            {tile.short}
+                          </Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  ))}
                 </View>
-              );
 
-              if (Platform.OS === 'web' || !currentUser || currentUser.role !== 'admin') return card;
+                {activeGroup ? section(activeGroup, true) : (
+                  <>
+                    {section('overdue')}
+                    {section('today')}
+                    {section('review')}
+                    {section('upcoming')}
 
-              return (
-                <Swipeable
-                  renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item)}
-                  friction={2}
-                  overshootRight={false}
-                >
-                  {card}
-                </Swipeable>
-              );
-            }}
-            ListEmptyComponent={
-              <EmptyState
-                icon="checkbox-outline"
-                title="Sin tareas"
-                message={
-                  searchText || quickStatusFilter !== 'todas'
-                    ? 'No hay tareas con los filtros aplicados'
-                    : currentUser?.role === 'admin'
-                      ? 'Aún no hay tareas. Crea la primera para asignarla a un área.'
-                      : 'No tienes tareas asignadas por ahora.'
-                }
-                quickAction={currentUser?.role === 'admin' && !searchText && quickStatusFilter === 'todas' ? {
-                  label: 'Crear tarea',
-                  icon: 'add-circle-outline',
-                  onPress: () => { hapticMedium(); navigation.navigate('TaskDetail', {}); },
-                } : undefined}
-              />
-            }
-          />
+                    {nothingUrgent && (
+                      <EmptyState
+                        icon="checkmark-done-circle-outline"
+                        title="Todo al día"
+                        message={
+                          summary.openCount > 0
+                            ? 'No hay tareas vencidas ni por vencer esta semana.'
+                            : isAdmin
+                              ? 'Aún no hay tareas abiertas. Crea la primera para asignarla a un área.'
+                              : 'No tienes tareas abiertas por ahora.'
+                        }
+                        quickAction={summary.openCount === 0 && isAdmin ? {
+                          label: 'Crear tarea',
+                          icon: 'add-circle-outline',
+                          onPress: goToCreate,
+                        } : undefined}
+                      />
+                    )}
+                  </>
+                )}
+
+                {summary.openCount > 0 && (
+                  <TouchableOpacity
+                    onPress={openInbox}
+                    activeOpacity={ACTIVE_OPACITY}
+                    style={[styles.inboxLink, { backgroundColor: theme.card, borderColor: theme.glassBorder }]}
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="file-tray-full-outline" size={20} color={theme.primary} />
+                    <Text style={[styles.inboxLinkText, { color: theme.text }]}>
+                      {`Ver mi bandeja (${summary.openCount} ${summary.openCount === 1 ? 'tarea abierta' : 'tareas abiertas'})`}
+                    </Text>
+                    <Ionicons name="chevron-forward" size={18} color={theme.textTertiary} />
+                  </TouchableOpacity>
+                )}
+              </>
+            )}
+          </ScrollView>
         </Animated.View>
-
-        <ConfettiCelebration trigger={showConfetti} />
       </View>
 
       {/* Botón flotante: crear tarea (solo administrador) */}
-      {currentUser?.role === 'admin' && (
-        <QuickActionButton
-          actions={[
-            { icon: 'add-circle', label: 'Nueva tarea', color: theme.primary, onPress: () => navigation.navigate('TaskDetail', {}) },
-            { icon: 'search', label: 'Buscar', color: theme.info, onPress: () => navigation.navigate('Search') },
-          ]}
-          position="bottom-right"
-        />
+      {isAdmin && (
+        <TouchableOpacity
+          style={[styles.fab, { backgroundColor: theme.primary, shadowColor: theme.shadowColor }]}
+          onPress={goToCreate}
+          activeOpacity={ACTIVE_OPACITY}
+          accessibilityRole="button"
+          accessibilityLabel="Nueva tarea"
+        >
+          <Ionicons name="add" size={28} color={theme.buttonPrimaryText} />
+        </TouchableOpacity>
       )}
-
-      <QuickTip {...TIPS.HOME_SWIPE} position="bottom" delay={2000} />
       {currentUser && <OnboardingTour userRole={currentUser.role} />}
     </View>
   );
 }
 
-function createStyles() {
-  return StyleSheet.create({
-    container: {
-      flex: 1,
-    },
-    contentWrapper: {
-      flex: 1,
-      alignSelf: 'center',
-      width: '100%',
-    },
-    loadingGradient: {
-      paddingTop: Platform.OS === 'ios' ? 52 : 32,
-      paddingBottom: 32,
-      paddingHorizontal: 20,
-      borderBottomLeftRadius: 32,
-      borderBottomRightRadius: 32,
-      gap: 10,
-    },
-    listContent: {
-      paddingBottom: 100,
-    },
-    listHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 16,
-      paddingTop: 16,
-      paddingBottom: 8,
-    },
-    listTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      letterSpacing: -0.3,
-    },
-    listSub: {
-      fontSize: 14,
-      marginTop: 2,
-    },
-  });
-}
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  contentWrapper: {
+    flex: 1,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  content: {
+    paddingBottom: 100,
+  },
+  tiles: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+  },
+  // Celular: los cuatro en una fila baja, para que las tareas se vean sin desplazarse
+  tile: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.xs,
+    borderRadius: RADIUS.sm,
+    borderWidth: StyleSheet.hairlineWidth,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  tileWide: {
+    alignItems: 'flex-start',
+    padding: SPACING.md,
+    borderRadius: RADIUS.md,
+    gap: 2,
+  },
+  tileCount: {
+    ...TYPOGRAPHY.h2,
+    fontWeight: '700',
+  },
+  tileLabel: {
+    ...TYPOGRAPHY.caption,
+    fontWeight: '500',
+  },
+  tileCountWide: {
+    ...TYPOGRAPHY.h1,
+    fontWeight: '700',
+    marginTop: SPACING.xs,
+  },
+  tileLabelWide: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: '500',
+  },
+  section: {
+    marginTop: SPACING.md,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.xs,
+  },
+  sectionTitle: {
+    ...TYPOGRAPHY.h3,
+    fontWeight: '700',
+    letterSpacing: -0.3,
+  },
+  emptyGroup: {
+    ...TYPOGRAPHY.bodySmall,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+  },
+  seeAll: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: '600',
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+  },
+  gridCell: {
+    width: '50%',
+  },
+  inboxLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    marginTop: SPACING.xl,
+    marginHorizontal: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+    minHeight: 52,
+    borderRadius: RADIUS.md,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  inboxLinkText: {
+    ...TYPOGRAPHY.body,
+    flex: 1,
+    fontWeight: '600',
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+});

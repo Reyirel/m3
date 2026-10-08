@@ -11,6 +11,7 @@ import { useNotification } from '../../contexts/NotificationContext';
 import AreaFormModal from './AreaFormModal';
 import ShimmerEffect from '../../components/ShimmerEffect';
 import ScreenHeader from '../../components/ui/ScreenHeader';
+import { syncPendingOperations } from '../../services/offlineSync';
 
 export default function AreaManagementScreen({ navigation }) {
   const { theme, isDark } = useTheme();
@@ -73,7 +74,8 @@ export default function AreaManagementScreen({ navigation }) {
   const onRefresh = async () => {
     setRefreshing(true);
     // La suscripción se actualiza automáticamente
-    setTimeout(() => setRefreshing(false), 500);
+    // Los datos llegan en tiempo real; el gesto envía lo que quedó pendiente sin conexión
+    syncPendingOperations().catch(() => {}).finally(() => setRefreshing(false));
   };
 
   const onModalClose = () => {
@@ -216,7 +218,7 @@ const createStyles = (_theme, _isDark) =>
     },
     title: {
       fontSize: 28,
-      fontWeight: '800',
+      fontWeight: '700',
       color: '#FFFFFF',
       letterSpacing: -0.5,
       textShadowColor: 'rgba(0,0,0,0.20)',

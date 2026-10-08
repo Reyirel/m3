@@ -18,6 +18,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { PremiumGlassCard } from '../index';
+import { spring } from '../../theme/motion';
 
 const GlassmorphicButton = ({
   title,
@@ -38,21 +39,11 @@ const GlassmorphicButton = ({
   const scaleAnim = useRef(new Animated.Value(1)).current;
 
   const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.96,
-      tension: 100,
-      friction: 8,
-      useNativeDriver: true,
-    }).start();
+    spring(scaleAnim, 0.96).start();
   };
 
   const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      tension: 50,
-      friction: 8,
-      useNativeDriver: true,
-    }).start();
+    spring(scaleAnim, 1).start();
   };
 
   const getVariantConfig = () => {

@@ -2,24 +2,20 @@
 // Vista con animación de fade in automática - Optimizada con memo
 import React, { useEffect, useRef, memo } from 'react';
 import { Animated } from 'react-native';
+import { DURATION, timing } from '../theme/motion';
 
-const FadeInView = memo(function FadeInView({ 
-  children, 
-  duration = 400, 
-  delay = 0, 
+const FadeInView = memo(function FadeInView({
+  children,
+  duration = DURATION.normal,
+  delay = 0,
   style = {},
   from = 0,
-  to = 1 
+  to = 1
 }) {
   const fadeAnim = useRef(new Animated.Value(from)).current;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: to,
-      duration,
-      delay,
-      useNativeDriver: true,
-    }).start();
+    timing(fadeAnim, to, { duration, delay }).start();
   }, [duration, delay, to, fadeAnim]);
 
   return (

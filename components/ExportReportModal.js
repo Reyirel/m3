@@ -54,7 +54,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
     },
     title: {
       fontSize: 18,
-      fontWeight: 'bold',
+      fontWeight: '700',
       color: theme.text,
       marginBottom: 4,
     },
@@ -253,7 +253,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="slide"
     >
       <WebSafeBlur intensity={70} style={styles.container}>
         <TouchableOpacity accessibilityLabel="Cerrar"

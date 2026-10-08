@@ -2,13 +2,14 @@
 // Muestra los diálogos de la app (confirmaciones y avisos) con su propio diseño.
 // Se monta una sola vez en App.js; los diálogos se piden con utils/alert.js.
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { View, Text, Modal, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { View, Text, Modal, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { registerDialogHost } from '../utils/alert';
+import { ACTIVE_OPACITY, OVERLAY_COLOR, spring } from '../theme/motion';
 
 export default function DialogHost() {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   // Cola: si se piden dos diálogos seguidos, el segundo aparece al cerrar el primero
   const [queue, setQueue] = useState([]);
   const scale = useRef(new Animated.Value(0.92)).current;
@@ -22,7 +23,7 @@ export default function DialogHost() {
   useEffect(() => {
     if (!dialog) return;
     scale.setValue(0.92);
-    Animated.spring(scale, { toValue: 1, tension: 110, friction: 10, useNativeDriver: true }).start();
+    spring(scale, 1).start();
   }, [dialog, scale]);
 
   const close = useCallback((button) => {
@@ -30,6 +31,18 @@ export default function DialogHost() {
     // La acción se ejecuta después de cerrar, para que pueda abrir otro diálogo
     if (button?.onPress) setTimeout(button.onPress, 0);
   }, []);
+
+  // En web, Escape equivale a tocar fuera del diálogo
+  useEffect(() => {
+    if (!dialog || Platform.OS !== 'web') return undefined;
+    const onKeyDown = (event) => {
+      if (event.key !== 'Escape') return;
+      const current = dialog.buttons;
+      close(current.find(b => b.style === 'cancel') || (current.length === 1 ? current[0] : null));
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [dialog, close]);
 
   if (!dialog) return null;
 
@@ -53,7 +66,7 @@ export default function DialogHost() {
             {
               transform: [{ scale }],
               backgroundColor: theme.card,
-              borderColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+              borderColor: theme.glassBorder,
             },
           ]}
           accessibilityRole="alert"
@@ -73,20 +86,20 @@ export default function DialogHost() {
                 <TouchableOpacity
                   key={`${button.text}-${index}`}
                   onPress={() => close(button)}
-                  activeOpacity={0.8}
+                  activeOpacity={ACTIVE_OPACITY}
                   accessibilityRole="button"
                   style={[
                     styles.button,
                     buttons.length > 2 && styles.buttonFull,
                     isPrimary
                       ? { backgroundColor: button.style === 'destructive' ? theme.error : theme.primary }
-                      : { borderWidth: 1.5, borderColor: isDark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.12)' },
+                      : { borderWidth: 1.5, borderColor: theme.glassBorderStrong },
                   ]}
                 >
                   <Text
                     style={[
                       styles.buttonText,
-                      { color: isPrimary ? '#FFFFFF' : (isDark ? 'rgba(255,255,255,0.75)' : '#555555') },
+                      { color: isPrimary ? theme.buttonPrimaryText : theme.textSecondary },
                       isPrimary && { fontWeight: '700' },
                     ]}
                   >
@@ -105,7 +118,7 @@ export default function DialogHost() {
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: OVERLAY_COLOR,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 24,
@@ -133,7 +146,7 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: -0.3,
     textAlign: 'center',
     marginBottom: 8,

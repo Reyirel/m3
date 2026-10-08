@@ -63,7 +63,7 @@ export default function ChartsModal({
                     { label: 'Completado', value: `${subtasksStats.completionRate}%`, color: theme.primary },
                   ].map((stat) => (
                     <View key={stat.label} style={{ flex: 1, backgroundColor: theme.glass, borderRadius: 16, padding: 12, alignItems: 'center', borderWidth: 1, borderColor: theme.glassBorder }}>
-                      <Text style={{ fontSize: 22, fontWeight: '800', color: stat.color }}>{stat.value}</Text>
+                      <Text style={{ fontSize: 22, fontWeight: '700', color: stat.color }}>{stat.value}</Text>
                       <Text style={{ fontSize: 12, color: theme.textSecondary, marginTop: 2 }}>{stat.label}</Text>
                     </View>
                   ))}

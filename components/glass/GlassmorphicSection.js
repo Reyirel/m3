@@ -18,6 +18,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { PremiumGlassCard } from '../index';
+import { spring } from '../../theme/motion';
 
 const GlassmorphicSection = ({
   title,
@@ -46,12 +47,7 @@ const GlassmorphicSection = ({
     setIsExpanded(!isExpanded);
     onToggle && onToggle(!isExpanded);
 
-    Animated.spring(rotateAnim, {
-      toValue: isExpanded ? 0 : 1,
-      tension: 60,
-      friction: 9,
-      useNativeDriver: true,
-    }).start();
+    spring(rotateAnim, isExpanded ? 0 : 1).start();
   };
 
   const rotateInterpolation = rotateAnim.interpolate({

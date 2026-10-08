@@ -7,9 +7,9 @@ const env = (name) => process.env[name] || process.env[`REACT_APP_${name}`];
 
 module.exports = {
   expo: {
-    name: 'M2 TodoApp',
+    name: 'Gestión Municipal',
     slug: 'm2-todo-app',
-    version: '1.0.0',
+    version: '1.4.2',
     orientation: 'portrait',
     icon: './assets/icon.png',
     userInterfaceStyle: 'light',
@@ -57,9 +57,9 @@ module.exports = {
       },
       // PWA support
       lang: 'es',
-      name: 'TodoApp MORENA',
-      shortName: 'TodoApp',
-      description: 'Sistema de gestión de tareas y proyectos',
+      name: 'Sistema de Gestión Municipal',
+      shortName: 'Gestión Municipal',
+      description: 'Tareas y coordinación entre áreas del municipio',
       themeColor: '#9F2241',
       backgroundColor: '#9F2241',
       display: 'standalone',

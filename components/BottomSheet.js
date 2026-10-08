@@ -1,187 +1,131 @@
 // components/BottomSheet.js
-// Modal deslizable desde abajo con drag gesture
-import React, { useRef, useEffect, useCallback } from 'react';
-import { View, Modal, StyleSheet, Animated, PanResponder, TouchableOpacity, Dimensions, Platform } from 'react-native';
-import { BlurView } from 'expo-blur';
-import { hapticMedium } from '../utils/haptics';
+// Hoja que sube desde abajo. Se cierra arrastrando la barra superior, tocando fuera
+// o con "atrás" (Escape en web).
+import React, { useRef, useEffect, useCallback, useState } from 'react';
+import { View, Text, Modal, StyleSheet, Animated, PanResponder, TouchableOpacity, Platform, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { hapticLight } from '../utils/haptics';
 import { useTheme } from '../contexts/ThemeContext';
-
-const SCREEN_HEIGHT = Dimensions.get('window').height;
+import { RADIUS, SPACING, TYPOGRAPHY } from '../theme/tokens';
+import { EASING, OVERLAY_COLOR, SPRING, spring, timing } from '../theme/motion';
 
 const BottomSheet = ({
   visible = false,
   onClose,
   children,
-  height = SCREEN_HEIGHT * 0.6,
+  title,
+  height: heightProp,
   closeOnBackdrop = true,
 }) => {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const { height: screenHeight } = useWindowDimensions();
+  const height = Math.min(heightProp || screenHeight * 0.6, screenHeight * 0.9) + insets.bottom;
+
+  // El Modal sigue montado mientras dura la animación de salida
+  const [mounted, setMounted] = useState(visible);
   const translateY = useRef(new Animated.Value(height)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
-  const show = useCallback(() => {
+  const animateOut = useCallback((after) => {
     Animated.parallel([
-      Animated.spring(translateY, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 50,
-        friction: 8,
-      }),
-      Animated.timing(backdropOpacity, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [translateY, backdropOpacity]);
-
-  const hide = useCallback(() => {
-    Animated.parallel([
-      Animated.spring(translateY, {
-        toValue: height,
-        useNativeDriver: true,
-        tension: 50,
-        friction: 8,
-      }),
-      Animated.timing(backdropOpacity, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      if (onClose) onClose();
-    });
-  }, [height, translateY, backdropOpacity, onClose]);
+      timing(translateY, height, { easing: EASING.exit }),
+      timing(backdropOpacity, 0, { easing: EASING.exit }),
+    ]).start(() => after?.());
+  }, [height, translateY, backdropOpacity]);
 
   useEffect(() => {
     if (visible) {
-      show();
-    } else {
-      hide();
+      setMounted(true);
+      translateY.setValue(height);
+      Animated.parallel([
+        spring(translateY, 0, SPRING.sheet),
+        timing(backdropOpacity, 1),
+      ]).start();
+    } else if (mounted) {
+      animateOut(() => setMounted(false));
     }
-  }, [visible, show, hide]);
+    // `mounted` y `height` no deben relanzar la animación
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
+  // Cierre pedido por el usuario: primero la animación, después se avisa al padre
+  const dismiss = useCallback(() => {
+    animateOut(() => onCloseRef.current?.());
+  }, [animateOut]);
+
+  useEffect(() => {
+    if (!mounted || Platform.OS !== 'web') return undefined;
+    const onKeyDown = (event) => { if (event.key === 'Escape') dismiss(); };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [mounted, dismiss]);
+
+  // Solo la barra superior arrastra la hoja: así el contenido puede desplazarse
+  const dismissRef = useRef(dismiss);
+  dismissRef.current = dismiss;
+  const heightRef = useRef(height);
+  heightRef.current = height;
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dy) > 5;
+      onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dy) > 5,
+      onPanResponderMove: (_, gesture) => {
+        if (gesture.dy > 0) translateY.setValue(gesture.dy);
       },
-      onPanResponderMove: (_, gestureState) => {
-        if (gestureState.dy > 0) {
-          translateY.setValue(gestureState.dy);
-        }
-      },
-      onPanResponderRelease: (_, gestureState) => {
-        if (gestureState.dy > height * 0.3 || gestureState.vy > 0.5) {
-          hapticMedium();
-          hide();
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dy > heightRef.current * 0.3 || gesture.vy > 0.5) {
+          hapticLight();
+          dismissRef.current();
         } else {
-          Animated.spring(translateY, {
-            toValue: 0,
-            useNativeDriver: true,
-            tension: 50,
-            friction: 8,
-          }).start();
+          spring(translateY, 0, SPRING.sheet).start();
         }
       },
     })
   ).current;
 
+  if (!mounted) return null;
+
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={hide}
-    >
+    <Modal visible transparent animationType="none" onRequestClose={dismiss}>
       <View style={styles.container}>
-        {/* Backdrop */}
-        <Animated.View
-          style={[
-            styles.backdrop,
-            {
-              opacity: backdropOpacity,
-              backgroundColor: theme.overlay,
-            },
-          ]}
-        >
-          <TouchableOpacity accessibilityLabel="Cerrar"
+        <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
+          <TouchableOpacity
+            accessibilityLabel="Cerrar"
+            accessibilityRole="button"
             style={styles.backdropTouchable}
             activeOpacity={1}
-            onPress={closeOnBackdrop ? hide : undefined}
+            onPress={closeOnBackdrop ? dismiss : undefined}
           />
         </Animated.View>
 
-        {/* Bottom Sheet */}
         <Animated.View
           style={[
             styles.sheet,
             {
               height,
+              paddingBottom: insets.bottom,
               transform: [{ translateY }],
-              backgroundColor: theme.glass,
-              borderTopColor: isDark ? theme.glassBorder : theme.glassBorderSubtle,
-              shadowColor: theme.glassShadow,
+              backgroundColor: theme.card,
+              borderColor: theme.glassBorder,
+              shadowColor: theme.shadowColor,
             },
           ]}
-          {...(Platform.OS !== 'web' ? panResponder.panHandlers : {})}
         >
-          {/* Blur layer — native only */}
-          {Platform.OS !== 'web' && (
-            <View style={[StyleSheet.absoluteFillObject, styles.blurLayer]}>
-              <BlurView
-                intensity={isDark ? 85 : 70}
-                tint={isDark ? 'dark' : 'light'}
-                style={StyleSheet.absoluteFill}
-              />
-            </View>
-          )}
-          {/* Web: CSS backdrop-filter */}
-          {Platform.OS === 'web' && (
-            <View
-              style={[
-                StyleSheet.absoluteFillObject,
-                styles.blurLayer,
-                {
-                  backdropFilter: `blur(${isDark ? 20 : 16}px)`,
-                  WebkitBackdropFilter: `blur(${isDark ? 20 : 16}px)`,
-                },
-              ]}
-            />
-          )}
-
-          {/* Top highlight stripe — light reflection */}
-          <View
-            pointerEvents="none"
-            style={[
-              styles.sheetHighlight,
-              { backgroundColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.70)' },
-            ]}
-          />
-
-          {/* Handle */}
-          <View style={styles.handleContainer}>
-            <View style={[
-              styles.handle,
-              { backgroundColor: isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)' },
-            ]} />
+          <View style={styles.handleContainer} {...panResponder.panHandlers}>
+            <View style={[styles.handle, { backgroundColor: theme.borderStrong }]} />
+            {!!title && (
+              <Text style={[styles.title, { color: theme.text }]} numberOfLines={1} accessibilityRole="header">
+                {title}
+              </Text>
+            )}
           </View>
 
-          {/* Content */}
           <View style={styles.content}>
             {children}
           </View>
-
-          {/* Rim glow */}
-          <View
-            pointerEvents="none"
-            style={[
-              StyleSheet.absoluteFillObject,
-              styles.sheetRim,
-              { borderColor: theme.glassBorderSubtle },
-            ]}
-          />
         </Animated.View>
       </View>
     </Modal>
@@ -195,55 +139,44 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: OVERLAY_COLOR,
   },
   backdropTouchable: {
     flex: 1,
   },
   sheet: {
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    borderTopWidth: 1,
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
+    borderTopLeftRadius: RADIUS.lg,
+    borderTopRightRadius: RADIUS.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 0,
     shadowOffset: { width: 0, height: -8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 28,
+    shadowOpacity: 0.2,
+    shadowRadius: 24,
     elevation: 20,
     overflow: 'hidden',
   },
-  blurLayer: {
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    overflow: 'hidden',
-  },
-  sheetHighlight: {
-    position: 'absolute',
-    top: 0,
-    left: 40,
-    right: 40,
-    height: 1,
-    borderRadius: 1,
-    zIndex: 3,
-  },
-  sheetRim: {
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    borderWidth: 1,
-    borderBottomWidth: 0,
-    zIndex: 3,
-  },
   handleContainer: {
     alignItems: 'center',
-    paddingVertical: 14,
-    zIndex: 2,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
+    gap: SPACING.md,
+    ...(Platform.OS === 'web' ? { cursor: 'grab' } : {}),
   },
   handle: {
     width: 40,
     height: 4,
     borderRadius: 2,
   },
+  title: {
+    ...TYPOGRAPHY.h3,
+    paddingHorizontal: 20,
+  },
   content: {
     flex: 1,
     paddingHorizontal: 20,
-    zIndex: 2,
   },
 });
 

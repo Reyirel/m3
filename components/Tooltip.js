@@ -6,6 +6,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Modal, Animated, Platform, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { DURATION, SPRING, spring, timing } from '../theme/motion';
 
 export default function Tooltip({
   children,
@@ -28,32 +29,15 @@ export default function Tooltip({
   const showTooltip = () => {
     setVisible(true);
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 150,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 300,
-        friction: 15,
-        useNativeDriver: true,
-      }),
+      timing(fadeAnim, 1, { duration: DURATION.fast }),
+      spring(scaleAnim, 1, SPRING.press),
     ]).start();
   };
 
   const hideTooltip = () => {
     Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 0.9,
-        duration: 100,
-        useNativeDriver: true,
-      }),
+      timing(fadeAnim, 0, { duration: 100 }),
+      timing(scaleAnim, 0.9, { duration: 100 }),
     ]).start(() => setVisible(false));
   };
 
@@ -159,7 +143,7 @@ export default function Tooltip({
           showTooltip();
         }}
         delayLongPress={300}
-        activeOpacity={0.8}
+        activeOpacity={0.7}
       >
         <TriggerComponent />
       </TouchableOpacity>

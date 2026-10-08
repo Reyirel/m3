@@ -107,7 +107,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge,
     },
     summaryValue: {
       fontSize: 32,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: -1,
     },
     summaryPercent: {
@@ -151,7 +151,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge,
     },
     metricNumber: {
       fontSize: 28,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: -1,
       textAlign: 'center',
     },
@@ -387,7 +387,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge,
     },
     hierarchySectionTitle: {
       fontSize: 22,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: -0.5,
     },
     hierarchySectionSubtitle: {
@@ -446,7 +446,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge,
     },
     hierarchyCardTitle: {
       fontSize: 22,
-      fontWeight: '800',
+      fontWeight: '700',
       color: '#FFFFFF',
       letterSpacing: -0.3,
     },
@@ -464,7 +464,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge,
     },
     hierarchyRateBadgeText: {
       fontSize: 18,
-      fontWeight: '800',
+      fontWeight: '700',
       color: '#FFFFFF',
     },
     hierarchyProgressWrapper: {
@@ -498,7 +498,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge,
     },
     hierarchyMetricValue: {
       fontSize: 22,
-      fontWeight: '800',
+      fontWeight: '700',
       color: '#FFFFFF',
     },
     hierarchyMetricLabel: {
@@ -562,7 +562,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge,
     },
     quickMetricsTitle: {
       fontSize: 18,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: -0.3,
     },
     quickMetricsSubtitle: {
@@ -624,7 +624,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, isDesktopLarge,
     },
     quickMetricStatValue: {
       fontSize: 18,
-      fontWeight: '800',
+      fontWeight: '700',
     },
     quickMetricStatLabel: {
       fontSize: 14,

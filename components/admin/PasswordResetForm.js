@@ -192,7 +192,7 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 22,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: -0.6,
     flex: 1,
     textShadowColor: 'rgba(0,0,0,0.15)',
@@ -244,7 +244,7 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
-    fontWeight: '900',
+    fontWeight: '700',
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },

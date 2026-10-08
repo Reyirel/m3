@@ -13,6 +13,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
+import { DURATION, spring, timing } from '../theme/motion';
 
 Dimensions.get('window');
 
@@ -72,39 +73,17 @@ const QuickTip = ({
 
   const showTip = () => {
     Animated.parallel([
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 65,
-        friction: 10,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 65,
-        friction: 8,
-        useNativeDriver: true,
-      }),
+      spring(slideAnim, 0),
+      timing(fadeAnim, 1),
+      spring(scaleAnim, 1),
     ]).start();
   };
 
   const dismissTip = async () => {
     // Animar salida
     Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: position === 'top' ? -100 : 100,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 200,
-        useNativeDriver: true,
-      }),
+      timing(slideAnim, position === 'top' ? -100 : 100),
+      timing(fadeAnim, 0, { duration: DURATION.fast }),
     ]).start(async () => {
       setVisible(false);
       setShouldRender(false);

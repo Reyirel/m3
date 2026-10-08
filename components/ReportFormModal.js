@@ -2,13 +2,11 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   Modal,
   TouchableOpacity,
   ScrollView,
   ActivityIndicator,
   Image,
-  Dimensions,
   TextInput,
   Platform,
   KeyboardAvoidingView,
@@ -24,9 +22,9 @@ import { useNotification } from '../contexts/NotificationContext';
 import { prepareImage } from '../utils/imageData';
 import { showDialog } from '../utils/alert';
 import WebSafeBlur from './WebSafeBlur';
-import { GlassmorphicButton } from './index';
+import PrimaryButton from './ui/PrimaryButton';
+import { createStyles } from './ReportFormModalStyles';
 
-const { width } = Dimensions.get('window');
 
 const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
   const { theme, isDark } = useTheme();
@@ -113,246 +111,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     return () => unsubscribe();
   }, []);
 
-  const styles = useMemo(() => StyleSheet.create({
-    container: {
-      flex: 1,
-      justifyContent: 'flex-end',
-    },
-    background: {
-      flex: 1,
-    },
-    sheet: {
-      maxHeight: '90%',
-      borderTopLeftRadius: 32,
-      borderTopRightRadius: 32,
-      backgroundColor: theme.card,
-      borderTopWidth: 1,
-      borderLeftWidth: 1,
-      borderRightWidth: 1,
-      borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.07)',
-      paddingHorizontal: 16,
-      paddingTop: 8,
-      paddingBottom: 24,
-      flexDirection: 'column',
-      display: 'flex',
-    },
-    scrollView: {
-      flex: 1,
-    },
-    header: {
-      marginBottom: 16,
-    },
-    headerRow: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 4,
-    },
-    title: {
-      fontSize: 22,
-      fontWeight: 'bold',
-      color: theme.text,
-    },
-    connectionBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 16,
-      gap: 4,
-    },
-    connectionText: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: '#fff',
-    },
-    subtitle: {
-      fontSize: 14,
-      color: theme.textSecondary,
-    },
-    offlineWarning: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: theme.warningAlpha,
-      padding: 12,
-      borderRadius: 10,
-      marginBottom: 16,
-      gap: 8,
-    },
-    offlineWarningText: {
-      flex: 1,
-      fontSize: 12,
-      color: theme.warning,
-    },
-    section: {
-      marginBottom: 24,
-    },
-    label: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.text,
-      marginBottom: 8,
-    },
-    input: {
-      borderRadius: 10,
-      borderWidth: 1,
-      borderColor: theme.border,
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      fontSize: 14,
-      color: theme.text,
-      backgroundColor: isDark ? theme.glass : theme.glassStrong,
-    },
-    multilineInput: {
-      minHeight: 100,
-      textAlignVertical: 'top',
-      paddingTop: 12,
-    },
-    ratingContainer: {
-      flexDirection: 'row',
-      gap: 12,
-    },
-    star: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: isDark ? theme.glass : theme.glassStrong,
-    },
-    starActive: {
-      backgroundColor: '#FFD700',
-    },
-    imageGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 12,
-    },
-    imageContainer: {
-      position: 'relative',
-      borderRadius: 10,
-      overflow: 'hidden',
-    },
-    image: {
-      width: (width - 56) / 2,
-      height: (width - 56) / 2,
-    },
-    removeImageButton: {
-      position: 'absolute',
-      top: 6,
-      right: 6,
-      backgroundColor: 'rgba(0, 0, 0, 0.7)',
-      borderRadius: 16,
-      padding: 4,
-    },
-    uploadOverlay: {
-      position: 'absolute',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      backgroundColor: 'rgba(0, 0, 0, 0.6)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderRadius: 10,
-    },
-    successBadge: {
-      backgroundColor: 'rgba(0, 0, 0, 0.4)',
-      borderRadius: 50,
-      padding: 8,
-    },
-    errorBadge: {
-      backgroundColor: 'rgba(0, 0, 0, 0.4)',
-      borderRadius: 50,
-      padding: 8,
-    },
-    uploadSummary: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      backgroundColor: isDark ? theme.glass : theme.glassStrong,
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderRadius: 10,
-    },
-    uploadSummaryText: {
-      fontSize: 14,
-      fontWeight: '500',
-    },
-    imageButtonsRow: {
-      flexDirection: 'row',
-      gap: 8,
-    },
-    addImageButton: {
-      width: (width - 72) / 3,
-      aspectRatio: 1,
-      borderRadius: 10,
-      borderWidth: 2,
-      borderStyle: 'dashed',
-      borderColor: theme.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      backgroundColor: isDark ? theme.glass : theme.glassStrong,
-    },
-    addImageText: {
-      fontSize: 12,
-      color: theme.primary,
-      marginTop: 8,
-      fontWeight: '500',
-    },
-    buttonRow: {
-      flexDirection: 'row',
-      gap: 12,
-      marginTop: 24,
-    },
-    errorText: {
-      color: theme.error,
-      fontSize: 12,
-      marginTop: 4,
-    },
-    ratingCommentInput: {
-      minHeight: 80,
-      marginTop: 8,
-    },
-    // 📋 Estilos de plantillas rápidas
-    templatesSection: {
-      marginBottom: 20,
-    },
-    templatesHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 10,
-    },
-    templatesTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.textSecondary,
-    },
-    templatesGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-    },
-    templateChip: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderRadius: 10,
-      backgroundColor: isDark ? theme.glass : theme.glassStrong,
-      borderWidth: 1,
-      borderColor: theme.border,
-      gap: 6,
-    },
-    templateIcon: {
-      fontSize: 16,
-    },
-    templateLabel: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.text,
-    },
-  }), [isDark, theme]);
+  const styles = useMemo(() => createStyles(isDark, theme), [isDark, theme]);
 
   // Agregar una foto: se reduce antes de guardarla en el formulario, para que el envío
   // sea rápido y para poder conservarla en el dispositivo si no hay conexión
@@ -586,7 +345,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     <Modal
       visible={visible}
       transparent
-      animationType="fade"
+      animationType="slide"
     >
       <WebSafeBlur intensity={70} style={styles.container}>
         <TouchableOpacity accessibilityLabel="Cerrar"
@@ -851,29 +610,23 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
 
           {/* Action Buttons */}
           <View style={styles.buttonRow}>
-            <GlassmorphicButton
+            <PrimaryButton
+              title="Cancelar"
               onPress={handleClose}
               disabled={loading}
               variant="secondary"
               size="medium"
               style={{ flex: 1 }}
-            >
-              Cancelar
-            </GlassmorphicButton>
-            <GlassmorphicButton
+            />
+            <PrimaryButton
+              title={isOnline ? 'Enviar reporte' : 'Guardar sin conexión'}
               onPress={handleSubmit}
-              disabled={loading || preparingImage}
-              variant="primary"
+              loading={loading}
+              disabled={preparingImage}
               size="medium"
               style={{ flex: 1 }}
-              icon={loading ? undefined : 'checkmark-done'}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" size="small" />
-              ) : (
-                isOnline ? 'Enviar Reporte' : 'Guardar Offline'
-              )}
-            </GlassmorphicButton>
+              icon="checkmark-done"
+            />
           </View>
         </View>
         </KeyboardAvoidingView>

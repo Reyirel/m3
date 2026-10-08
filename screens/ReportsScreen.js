@@ -15,7 +15,6 @@ import {
   Alert,
   StyleSheet,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNotification } from '../contexts/NotificationContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -37,6 +36,7 @@ import { PeriodTabs, KeyStats, NoAreaData } from './reports/PeriodSummary';
 import HierarchySummary from './reports/HierarchySummary';
 import AreaSections from './reports/AreaSections';
 import ChartsModal, { priorityChartData } from './reports/ChartsModal';
+import { syncPendingOperations } from '../services/offlineSync';
 
 const ComplianceReport = React.lazy(() => import('./reports/ComplianceReport'));
 // Pestañas que antes eran pantallas aparte
@@ -102,7 +102,8 @@ export default function ReportsScreen({ navigation, route }) {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1500);
+    // Los datos llegan en tiempo real; el gesto envía lo que quedó pendiente sin conexión
+    syncPendingOperations().catch(() => {}).finally(() => setRefreshing(false));
   };
 
   const handleExportReport = useCallback(async () => {
@@ -138,15 +139,7 @@ export default function ReportsScreen({ navigation, route }) {
   if (loading) {
     return (
       <View style={[styles.container, { backgroundColor: theme.background }]}>
-        <LinearGradient
-          colors={theme.gradientHeader}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0.8 }}
-          style={{ paddingTop: 52, paddingBottom: 20, paddingHorizontal: 20 }}
-        >
-          <ShimmerEffect width={160} height={24} borderRadius={8} style={{ marginBottom: 8 }} />
-          <ShimmerEffect width={240} height={14} borderRadius={6} />
-        </LinearGradient>
+        <ScreenHeader title="Reportes" subtitle="Cargando…" icon="bar-chart" />
         <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }} scrollEnabled={false}>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             {[...Array(3)].map((_, i) => (
@@ -206,7 +199,7 @@ export default function ReportsScreen({ navigation, route }) {
                   tabStyles.tab,
                   { backgroundColor: selected ? theme.primary : theme.glass, borderColor: selected ? theme.primary : theme.glassBorder },
                 ]}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
                 accessibilityRole="tab"
                 accessibilityState={{ selected }}
               >
@@ -324,7 +317,7 @@ export default function ReportsScreen({ navigation, route }) {
             <TouchableOpacity
               style={[styles.chartsButton, glassCard]}
               onPress={() => setShowChartsModal(true)}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
             >
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                 <View style={{ backgroundColor: theme.primary + '15', padding: 8, borderRadius: 10 }}>

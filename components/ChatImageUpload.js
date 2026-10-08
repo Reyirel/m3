@@ -11,11 +11,13 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import { getConnectionState } from '../services/offlineSync';
 import { uriToDataUrl } from '../utils/imageData';
+import { useTheme } from '../contexts/ThemeContext';
 
 // Una foto dentro del mensaje no puede acercarse al límite de 1 MB por documento de Firestore
 const MAX_EMBEDDED_IMAGE_CHARS = 700 * 1024;
 
 export default function ChatImageUpload({ onImageCapture = () => {}, disabled = false }) {
+  const { theme } = useTheme();
   const [selectedImage, setSelectedImage]           = useState(null);
   const [previewVisible, setPreviewVisible]         = useState(false);
   const [sourceMenuVisible, setSourceMenuVisible]   = useState(false);
@@ -181,7 +183,7 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
       >
         {uploading
           ? <ActivityIndicator size="small" color="#9F2241" />
-          : <Ionicons name="image" size={22} color={(disabled || uploading) ? '#CCC' : '#9F2241'} />
+          : <Ionicons name="image" size={22} color={(disabled || uploading) ? theme.textMuted : theme.primary} />
         }
       </TouchableOpacity>
 
@@ -197,16 +199,16 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
           activeOpacity={1}
           onPress={() => setSourceMenuVisible(false)}
         >
-          <View style={styles.menuSheet}>
-            <Text style={styles.menuTitle}>Adjuntar imagen</Text>
+          <View style={[styles.menuSheet, { backgroundColor: theme.card }]}>
+            <Text style={[styles.menuTitle, { color: theme.textTertiary }]}>Adjuntar imagen</Text>
 
             <TouchableOpacity style={styles.menuOption} onPress={openCamera}>
               <View style={styles.menuIconBg}>
                 <Ionicons name="camera" size={22} color="#9F2241" />
               </View>
               <View>
-                <Text style={styles.menuOptionLabel}>Cámara</Text>
-                <Text style={styles.menuOptionSub}>Tomar una foto ahora</Text>
+                <Text style={[styles.menuOptionLabel, { color: theme.text }]}>Cámara</Text>
+                <Text style={[styles.menuOptionSub, { color: theme.textTertiary }]}>Tomar una foto ahora</Text>
               </View>
             </TouchableOpacity>
 
@@ -215,13 +217,13 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
                 <Ionicons name="images" size={22} color="#9F2241" />
               </View>
               <View>
-                <Text style={styles.menuOptionLabel}>Galería</Text>
-                <Text style={styles.menuOptionSub}>Elegir de tus fotos</Text>
+                <Text style={[styles.menuOptionLabel, { color: theme.text }]}>Galería</Text>
+                <Text style={[styles.menuOptionSub, { color: theme.textTertiary }]}>Elegir de tus fotos</Text>
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuCancel} onPress={() => setSourceMenuVisible(false)}>
-              <Text style={styles.menuCancelText}>Cancelar</Text>
+            <TouchableOpacity style={[styles.menuCancel, { backgroundColor: theme.background }]} onPress={() => setSourceMenuVisible(false)}>
+              <Text style={[styles.menuCancelText, { color: theme.error }]}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         </TouchableOpacity>
@@ -307,7 +309,7 @@ const styles = StyleSheet.create({
   // Menú fuente
   menuOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.50)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   menuSheet: {
@@ -430,7 +432,7 @@ const styles = StyleSheet.create({
   uploadPercent: {
     color: '#FF9F9F',
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   progressBar: {
     width: 180,

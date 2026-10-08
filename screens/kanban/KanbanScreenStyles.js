@@ -49,7 +49,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
   },
   heading: {
     fontSize: screenWidth > 768 ? 30 : 26,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.5,
     textShadowColor: 'rgba(0,0,0,0.20)',
@@ -240,7 +240,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     elevation: 2
   },
   progressText: {
-    fontSize: dimensions.width > 768 ? 9 : 8,
+    fontSize: 11,
     fontWeight: '600',
     textAlign: 'center'
   },
@@ -263,12 +263,12 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
     marginBottom: 2
   },
   emptyStateTitle: {
-    fontSize: dimensions.width > 768 ? 13 : 11,
+    fontSize: dimensions.width > 768 ? 14 : 12,
     fontWeight: '600',
     letterSpacing: -0.2
   },
   emptyStateDescription: {
-    fontSize: dimensions.width > 768 ? 11 : 10,
+    fontSize: 12,
     fontWeight: '500',
     textAlign: 'center',
     lineHeight: 14,
@@ -321,7 +321,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
   },
   priorityChipText: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.4,
     textTransform: 'uppercase'
@@ -349,17 +349,17 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
   },
   overdueChipText: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.4,
     textTransform: 'uppercase'
   },
   cardTitle: {
-    fontSize: dimensions.width > 600 ? 13 : 12,
+    fontSize: 14,
     fontWeight: '600',
     color: theme.text,
     marginBottom: dimensions.width > 600 ? 8 : 6,
-    lineHeight: dimensions.width > 600 ? 18 : 16,
+    lineHeight: 20,
     letterSpacing: -0.1
   },
   cardInfoGrid: {
@@ -422,7 +422,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
   },
   statCardCount: {
     fontSize: 32,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: -1,
     lineHeight: 38,
   },
@@ -505,7 +505,7 @@ export const createKanbanStyles = (theme, isDark, columnWidth = 300, dimensions 
   },
   filterModalTitle: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.3,
   },

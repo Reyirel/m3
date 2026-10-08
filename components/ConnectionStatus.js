@@ -22,6 +22,7 @@ import {
 import useOfflineReportsSync from '../hooks/useOfflineReportsSync';
 import { useTheme } from '../contexts/ThemeContext';
 import { SPACING, TYPOGRAPHY, TOUCH_TARGET } from '../theme/tokens';
+import { spring } from '../theme/motion';
 
 const PENDING_POLL_MS = 5000;
 const HIDDEN_OFFSET = -120;
@@ -103,12 +104,7 @@ export default function ConnectionStatus() {
 
   const visible = !!state;
   useEffect(() => {
-    Animated.spring(translateY, {
-      toValue: visible ? 0 : HIDDEN_OFFSET,
-      useNativeDriver: true,
-      tension: 80,
-      friction: 12,
-    }).start();
+    spring(translateY, visible ? 0 : HIDDEN_OFFSET).start();
   }, [visible, translateY]);
 
   // Se conserva el último estado mientras la barra se oculta, para que no quede vacía

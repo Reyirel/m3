@@ -16,7 +16,7 @@ function HierarchyCard({ title, icon, colors, metrics, scaleStyle, pulseStyle, o
 
   return (
     <Animated.View style={[styles.hierarchyCardWrapper, scaleStyle]}>
-      <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={styles.hierarchyCardTouchable}>
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.hierarchyCardTouchable}>
         <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.hierarchyCardGradient}>
           <View style={[styles.hierarchyGlassOverlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.1)' }]} />
 

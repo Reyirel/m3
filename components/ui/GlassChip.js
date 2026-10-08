@@ -9,7 +9,7 @@ export default function GlassChip({ label, icon, count, active = false, onPress 
   return (
     <TouchableOpacity
       onPress={onPress}
-      activeOpacity={0.75}
+      activeOpacity={0.7}
       style={[
         styles.chip,
         {

@@ -1,0 +1,11 @@
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <!-- Solo la figura, en blanco y sin fondo: pantalla de inicio y encabezados guinda -->
+  <g fill="#FFFFFF">
+    <path d="M512 196 L812 372 Q826 382 820 396 Q814 408 798 408 L226 408 Q210 408 204 396 Q198 382 212 372 Z"/>
+    <rect x="232" y="444" width="560" height="52" rx="16"/>
+    <rect x="270" y="528" width="92" height="212" rx="22"/>
+    <rect x="466" y="528" width="92" height="212" rx="22"/>
+    <rect x="662" y="528" width="92" height="212" rx="22"/>
+    <rect x="204" y="772" width="616" height="64" rx="22"/>
+  </g>
+</svg>

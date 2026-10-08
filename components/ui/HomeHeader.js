@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
 import GlassChip from './GlassChip';
 import SearchBar from '../SearchBar';
@@ -31,19 +32,60 @@ function getGreeting() {
   return 'Buenas noches,';
 }
 
+// Buscador (en el celular) y, si se pasa `onFilterChange`, chips de estado. Va dentro
+// del contenido de Inicio para que se desplace con él en vez de ocupar pantalla fija.
+export function HomeFilters({ onSearch, searchText = '', quickStatusFilter = 'todas', onFilterChange, statusCounts = {}, searchRef }) {
+  const { theme } = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
+  const isWide = screenWidth >= 768;
+
+  return (
+    <View>
+      {!isWide && (
+        <View style={styles.searchWrapper}>
+          <View style={[
+            styles.searchCard,
+            { backgroundColor: theme.glass, borderColor: theme.glassBorder, shadowColor: theme.shadowColor },
+          ]}>
+            <SearchBar ref={searchRef} onSearch={onSearch} placeholder="Buscar tareas..." initialValue={searchText} />
+          </View>
+        </View>
+      )}
+
+      {!!onFilterChange && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.chipsRow}
+          style={styles.chipsScroll}
+        >
+          {FILTERS.map(f => (
+            <GlassChip
+              key={f.id}
+              label={f.label}
+              icon={f.icon}
+              count={statusCounts[f.id]}
+              active={quickStatusFilter === f.id}
+              onPress={() => onFilterChange(f.id)}
+            />
+          ))}
+        </ScrollView>
+      )}
+    </View>
+  );
+}
+
 export default function HomeHeader({
   userName = 'Usuario',
   role = 'USUARIO',
   onSearch,
   searchText = '',
-  quickStatusFilter = 'todas',
-  onFilterChange,
-  statusCounts = {},
   onProfilePress,
   onNotificationsPress,
   searchRef,
 }) {
   const { theme, isDark, toggleTheme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
   const isWide = screenWidth >= 768;
   const [unreadCount, setUnreadCount] = useState(0);
@@ -60,7 +102,11 @@ export default function HomeHeader({
         colors={theme.gradientHeader}
         start={{ x: 0, y: 0 }}
         end={{ x: 0.6, y: 1 }}
-        style={[styles.gradient, isWide && styles.gradientWide]}
+        style={[
+          styles.gradient,
+          { paddingTop: insets.top + (Platform.OS === 'web' ? 16 : 12), borderBottomColor: theme.glassBorder },
+          isWide && styles.gradientWide,
+        ]}
       >
         <View style={[styles.headerRow, isWide && { alignItems: 'center', flex: 1 }]}>
           {/* Avatar + info — navega a perfil */}
@@ -127,61 +173,21 @@ export default function HomeHeader({
         </View>
       </LinearGradient>
 
-      {/* ─── Search bar ─── */}
-      {!isWide && (
-        <View style={styles.searchWrapper}>
-          <View style={[
-            styles.searchCard,
-            { backgroundColor: theme.glass, borderColor: theme.glassBorder, shadowColor: theme.shadowColor },
-          ]}>
-            <SearchBar ref={searchRef} onSearch={onSearch} placeholder="Buscar tareas..." initialValue={searchText} />
-          </View>
-        </View>
-      )}
-
-      {/* ─── Filter chips ─── */}
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.chipsRow, isWide && { paddingTop: 12 }]}
-        style={styles.chipsScroll}
-      >
-        {FILTERS.map(f => (
-          <GlassChip
-            key={f.id}
-            label={f.label}
-            icon={f.icon}
-            count={statusCounts[f.id]}
-            active={quickStatusFilter === f.id}
-            onPress={() => onFilterChange?.(f.id)}
-          />
-        ))}
-      </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   gradient: {
-    paddingTop: Platform.OS === 'ios' ? 52 : 32,
-    paddingBottom: 32,
+    paddingBottom: 16,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    shadowColor: '#9F2241',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28,
-    shadowRadius: 20,
-    elevation: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   gradientWide: {
-    paddingTop: 20,
-    paddingBottom: 20,
+    paddingBottom: 16,
     paddingHorizontal: 28,
     flexDirection: 'row',
     alignItems: 'center',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
   },
   headerRow: {
     flexDirection: 'row',
@@ -213,7 +219,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
@@ -228,13 +234,13 @@ const styles = StyleSheet.create({
   },
   name: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.5,
     lineHeight: 28,
   },
   roleTag: {
-    marginTop: 10,
+    marginTop: 8,
     alignSelf: 'flex-start',
     backgroundColor: 'rgba(255,255,255,0.14)',
     paddingHorizontal: 10,
@@ -281,10 +287,10 @@ const styles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
-  searchWrapper: { marginTop: -18, paddingHorizontal: 16, zIndex: 10 },
+  searchWrapper: { marginTop: 12, paddingHorizontal: 16 },
   searchCard: {
     borderRadius: 16,
     borderWidth: 1,

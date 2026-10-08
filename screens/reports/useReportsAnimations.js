@@ -2,10 +2,10 @@
 // Animaciones de entrada de la pantalla de reportes.
 import { useEffect, useMemo, useRef } from 'react';
 import { Animated, InteractionManager, Platform } from 'react-native';
+import { DURATION, spring, timing } from '../../theme/motion';
 
 // En web las secciones se muestran sin animar (useNativeDriver da problemas ahí)
 const IS_WEB = Platform.OS === 'web';
-const useNativeDriver = !IS_WEB;
 
 const useValue = (initial) => useRef(new Animated.Value(initial)).current;
 
@@ -57,10 +57,10 @@ export function useReportsAnimations(ready, metricsByType) {
 
     const start = () => {
       Animated.stagger(60, sections.map(([opacity, slide], index) => Animated.parallel([
-        Animated.timing(opacity, { toValue: 1, duration: 300, useNativeDriver }),
+        timing(opacity, 1),
         index === 0
-          ? Animated.spring(slide, { toValue: 0, tension: 50, friction: 8, useNativeDriver })
-          : Animated.timing(slide, { toValue: 0, duration: 300, useNativeDriver }),
+          ? spring(slide, 0)
+          : timing(slide, 0),
       ]))).start();
     };
 
@@ -84,19 +84,19 @@ export function useReportsAnimations(ready, metricsByType) {
     Animated.sequence([
       Animated.delay(50),
       Animated.parallel([
-        Animated.timing(hierarchyOpacity, { toValue: 1, duration: 500, useNativeDriver }),
-        Animated.spring(hierarchySlide, { toValue: 0, tension: 60, friction: 10, useNativeDriver }),
+        timing(hierarchyOpacity, 1, { duration: DURATION.slow }),
+        spring(hierarchySlide, 0),
       ]),
       Animated.stagger(60, [
-        Animated.spring(secretariaScale, { toValue: 1, tension: 80, friction: 8, useNativeDriver }),
-        Animated.spring(direccionScale, { toValue: 1, tension: 80, friction: 8, useNativeDriver }),
+        spring(secretariaScale, 1),
+        spring(direccionScale, 1),
       ]),
     ]).start();
 
     // Un solo pulso (un ciclo infinito consumía CPU de forma constante)
     Animated.sequence([
-      Animated.timing(pulse, { toValue: 1.03, duration: 600, useNativeDriver }),
-      Animated.timing(pulse, { toValue: 1, duration: 400, useNativeDriver }),
+      timing(pulse, 1.03, { duration: DURATION.slow }),
+      timing(pulse, 1, { duration: DURATION.slow }),
     ]).start();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [metricsByType]);

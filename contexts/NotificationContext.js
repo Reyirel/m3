@@ -70,14 +70,12 @@ export const NotificationProvider = ({ children }) => {
 
     setCurrentNotification(notification);
 
-    // Show with react-native-toast-message
-    // 'warning' no es un tipo nativo — se mapea a 'info'
-    const toastType = type === 'warning' ? 'info' : type;
+    // Los cuatro tipos tienen su diseño en components/AppToast.js
     Toast.show({
-      type: toastType,
+      type,
       position,
       text1: message,
-      duration,
+      visibilityTime: duration,
       onPress: () => {
         onPress?.();
       },

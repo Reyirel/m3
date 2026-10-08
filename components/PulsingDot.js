@@ -2,6 +2,7 @@
 // Dot animado con pulso para notificaciones
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet, Animated } from 'react-native';
+import { loop, timing } from '../theme/motion';
 
 const PulsingDot = ({ 
   size = 12,
@@ -12,20 +13,14 @@ const PulsingDot = ({
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.loop(
+    const pulse = loop(
       Animated.sequence([
-        Animated.timing(pulseAnim, {
-          toValue: 1,
-          duration: duration,
-          useNativeDriver: true,
-        }),
-        Animated.timing(pulseAnim, {
-          toValue: 0,
-          duration: duration,
-          useNativeDriver: true,
-        }),
+        timing(pulseAnim, 1, { duration: duration }),
+        timing(pulseAnim, 0, { duration: duration }),
       ])
-    ).start();
+    );
+    pulse.start();
+    return () => pulse.stop();
   }, [duration, pulseAnim]);
 
   const scale = pulseAnim.interpolate({

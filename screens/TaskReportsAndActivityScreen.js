@@ -4,12 +4,10 @@ const Swipeable = getSwipeable();
 import {
   View,
   Text,
-  StyleSheet,
   FlatList,
   TouchableOpacity,
   Image,
   ScrollView,
-  Dimensions,
   RefreshControl,
   Animated,
   Platform,
@@ -26,8 +24,8 @@ import ExportReportModal from '../components/ExportReportModal';
 import { useNotification } from '../contexts/NotificationContext';
 import ShimmerEffect from '../components/ShimmerEffect';
 import EmptyState from '../components/EmptyState';
+import { createStyles } from './task/TaskReportsAndActivityScreenStyles';
 
-const { width } = Dimensions.get('window');
 
 const TaskReportsAndActivityScreen = ({ route, navigation }) => {
   const { taskId, taskTitle } = route.params;
@@ -57,247 +55,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
   const [hoverRating, setHoverRating] = useState({});  // Para feedback visual de estrellas
   const [refreshing, setRefreshing] = useState(false);
 
-  const styles = useMemo(() => StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    header: {
-      paddingHorizontal: 16,
-      paddingTop: Platform.OS === 'web' ? 16 : 48,
-      paddingBottom: 22,
-      borderBottomLeftRadius: 32,
-      borderBottomRightRadius: 32,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 12,
-      shadowOffset: { width: 0, height: 10 },
-      shadowOpacity: 0.35,
-      shadowRadius: 20,
-      elevation: 12,
-      overflow: 'hidden',
-    },
-    headerTitle: {
-      fontSize: 18,
-      fontWeight: '800',
-      color: '#FFFFFF',
-      marginBottom: 2,
-      letterSpacing: -0.3,
-    },
-    backButton: {
-      width: 38,
-      height: 38,
-      borderRadius: 19,
-      backgroundColor: 'rgba(255,255,255,0.14)',
-      borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.20)',
-      justifyContent: 'center',
-      alignItems: 'center',
-    },
-    tabsContainer: {
-      flexDirection: 'row',
-      backgroundColor: theme.glass,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.glassBorder,
-    },
-    tab: {
-      flex: 1,
-      paddingVertical: 12,
-      alignItems: 'center',
-      borderBottomWidth: 3,
-      borderBottomColor: 'transparent',
-    },
-    activeTab: {
-      borderBottomColor: theme.primary,
-    },
-    tabText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.textSecondary,
-    },
-    activeTabText: {
-      color: theme.primary,
-    },
-    content: {
-      flex: 1,
-    },
-    emptyContainer: {
-      flex: 1,
-      justifyContent: 'center',
-      alignItems: 'center',
-      paddingHorizontal: 32,
-    },
-    emptyIcon: {
-      marginBottom: 16,
-    },
-    emptyText: {
-      fontSize: 16,
-      fontWeight: '600',
-      color: theme.text,
-      marginBottom: 8,
-      textAlign: 'center',
-    },
-    emptySubtext: {
-      fontSize: 14,
-      color: theme.textSecondary,
-      textAlign: 'center',
-      marginBottom: 24,
-    },
-    addButton: {
-      paddingHorizontal: 16,
-      paddingVertical: 8,
-      backgroundColor: theme.primary,
-      borderRadius: 6,
-      flexDirection: 'row',
-      gap: 6,
-      alignItems: 'center',
-    },
-    addButtonText: {
-      color: '#fff',
-      fontWeight: '600',
-      fontSize: 14,
-    },
-    // Report styles
-    reportCard: {
-      backgroundColor: theme.glass,
-      borderWidth: 1,
-      borderColor: theme.glassBorder,
-      marginHorizontal: 12,
-      marginVertical: 8,
-      borderRadius: 16,
-      borderLeftWidth: 4,
-      borderLeftColor: theme.primary,
-      overflow: 'hidden',
-    },
-    reportHeader: {
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    reportTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.text,
-      flex: 1,
-    },
-    reportMeta: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-      marginTop: 4,
-    },
-    reportDate: {
-      fontSize: 12,
-      color: theme.textSecondary,
-    },
-    ratingBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 2,
-      backgroundColor: isDark ? theme.glass : theme.glassStrong,
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 4,
-    },
-    ratingText: {
-      fontSize: 12,
-      color: theme.text,
-      fontWeight: '600',
-    },
-    reportContent: {
-      paddingHorizontal: 12,
-      paddingVertical: 10,
-      borderTopWidth: 1,
-      borderTopColor: isDark ? theme.glass : theme.glassStrong,
-    },
-    reportDescription: {
-      fontSize: 14,
-      color: theme.text,
-      lineHeight: 20,
-      marginBottom: 12,
-    },
-    imagesContainer: {
-      marginBottom: 12,
-    },
-    imageGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 8,
-    },
-    reportImage: {
-      width: (width - 48) / 2,
-      height: (width - 48) / 2,
-      borderRadius: 10,
-      backgroundColor: isDark ? theme.glass : theme.glassStrong,
-    },
-    ratingSection: {
-      borderTopWidth: 1,
-      borderTopColor: isDark ? theme.glass : theme.glassStrong,
-      paddingTop: 10,
-      marginTop: 10,
-    },
-    ratingLabel: {
-      fontSize: 12,
-      fontWeight: '600',
-      color: theme.textSecondary,
-      marginBottom: 8,
-    },
-    starsContainer: {
-      flexDirection: 'row',
-      gap: 8,
-      justifyContent: 'center',
-      paddingVertical: 8,
-    },
-    starButton: {
-      width: 44,
-      height: 44,
-      borderRadius: 22,
-      backgroundColor: isDark ? theme.glass : theme.glassStrong,
-      justifyContent: 'center',
-      alignItems: 'center',
-      borderWidth: 2,
-      borderColor: theme.border,
-    },
-    // Activity styles
-    activityItem: {
-      flexDirection: 'row',
-      paddingHorizontal: 12,
-      paddingVertical: 12,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.glassBorder,
-      backgroundColor: theme.glass,
-    },
-    activityIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: theme.primary,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 12,
-    },
-    activityContent: {
-      flex: 1,
-    },
-    activityAction: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.text,
-      marginBottom: 2,
-    },
-    activityTime: {
-      fontSize: 12,
-      color: theme.textSecondary,
-    },
-    activityDetails: {
-      fontSize: 12,
-      color: theme.textSecondary,
-      marginTop: 4,
-      fontStyle: 'italic',
-    },
-  }), [isDark, theme]);
+  const styles = useMemo(() => createStyles(isDark, theme), [isDark, theme]);
 
   const unsubReportsRef = useRef(null);
   const unsubActivityRef = useRef(null);

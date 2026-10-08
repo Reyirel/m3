@@ -1,26 +1,34 @@
 // screens/LoginScreen.js
+// Inicio de sesión. Misma identidad que el resto de la app: encabezado guinda con el
+// logotipo (igual que la pantalla de inicio animada) y el formulario en una tarjeta con
+// los colores del tema, así que respeta el modo claro y el oscuro.
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, TextInput, TouchableOpacity, StyleSheet,
+  View, Text, TextInput, TouchableOpacity, StyleSheet, Image,
   KeyboardAvoidingView, Platform, ScrollView, Animated,
-  Linking, ActivityIndicator, Easing,
+  Linking, Easing,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { loginUser } from '../services/authFirestore';
 import Toast from 'react-native-toast-message';
+import { useTheme } from '../contexts/ThemeContext';
+import PrimaryButton from '../components/ui/PrimaryButton';
+import { RADIUS, SPACING, TYPOGRAPHY } from '../theme/tokens';
+import { ACTIVE_OPACITY, DURATION, spring, timing } from '../theme/motion';
 
-const BRAND = '#9F2241';
 const MAX_ATTEMPTS = 5;
 const LOCKOUT_MS = 5 * 60 * 1000; // 5 minutos
 // Los intentos fallidos dejan de contar pasado este tiempo sin nuevos errores
 const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
 const ATTEMPTS_KEY = 'login_attempts_by_email';
-const BRAND_DARK = '#7A1A32';
-const BRAND_GLOW = 'rgba(159, 34, 65, 0.35)';
 
 export default function LoginScreen({ onLogin }) {
+  const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
+  const passwordRef = useRef(null);
   const [email, setEmail]               = useState('');
   const [password, setPassword]         = useState('');
   const [loading, setLoading]           = useState(false);
@@ -65,8 +73,8 @@ export default function LoginScreen({ onLogin }) {
 
   useEffect(() => {
     Animated.parallel([
-      Animated.timing(fadeAnim,  { toValue: 1, duration: 480, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
-      Animated.spring(slideAnim, { toValue: 0, tension: 60, friction: 10, useNativeDriver: true }),
+      timing(fadeAnim, 1, { duration: DURATION.slow, easing: Easing.out(Easing.cubic) }),
+      spring(slideAnim, 0),
     ]).start();
 
     // Restaurar intentos guardados
@@ -115,11 +123,11 @@ export default function LoginScreen({ onLogin }) {
 
   const triggerShake = () => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 9,   duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -8,  duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 6,   duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -4,  duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0,   duration: 50, useNativeDriver: true }),
+      timing(shakeAnim, 9, { duration: 50 }),
+      timing(shakeAnim, -8, { duration: 50 }),
+      timing(shakeAnim, 6, { duration: 50 }),
+      timing(shakeAnim, -4, { duration: 50 }),
+      timing(shakeAnim, 0, { duration: 50 }),
     ]).start();
   };
 
@@ -176,7 +184,7 @@ export default function LoginScreen({ onLogin }) {
         Toast.show({
           type: 'error',
           text1: result.error || 'Credenciales incorrectas',
-          text2: remaining === 1 ? '⚠️ Último intento antes del bloqueo' : `${remaining} intentos restantes`,
+          text2: remaining === 1 ? 'Último intento antes del bloqueo' : `${remaining} intentos restantes`,
           position: 'top',
           visibilityTime: 3000,
         });
@@ -190,389 +198,263 @@ export default function LoginScreen({ onLogin }) {
     }
   };
 
-  return (
-    <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      {/* Fondo: negro puro con acento borgoña arriba */}
-      {/* Fondo oscuro con presencia de marca */}
-      <LinearGradient
-        colors={['#2D0F1E', '#160008', '#000000']}
-        locations={[0, 0.4, 1]}
-        style={StyleSheet.absoluteFillObject}
-      />
-      {/* Halo guinda en la parte superior */}
-      <View style={loginBgStyles.halo} />
+  const remainingAttempts = MAX_ATTEMPTS - attempts;
 
+  const field = (name, label, icon, inputProps, trailing) => {
+    const focused = focusedInput === name;
+    return (
+      <View style={styles.field}>
+        <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>{label}</Text>
+        <View
+          style={[
+            styles.inputWrap,
+            { backgroundColor: theme.background, borderColor: focused ? theme.primary : theme.borderLight },
+          ]}
+        >
+          <Ionicons name={icon} size={18} color={focused ? theme.primary : theme.textTertiary} />
+          <TextInput
+            style={[styles.input, { color: theme.text }, Platform.OS === 'web' && { outlineStyle: 'none' }]}
+            placeholderTextColor={theme.textMuted}
+            onFocus={() => setFocusedInput(name)}
+            onBlur={() => setFocusedInput(null)}
+            autoCapitalize="none"
+            autoCorrect={false}
+            accessibilityLabel={label}
+            {...inputProps}
+          />
+          {trailing}
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <KeyboardAvoidingView
+      style={[styles.root, { backgroundColor: theme.background }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
+        {/* Encabezado guinda con el logotipo: el mismo de la pantalla de inicio */}
+        <LinearGradient
+          colors={theme.gradientHeader}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0.6, y: 1 }}
+          style={[styles.hero, { paddingTop: insets.top + SPACING.xxl }]}
+        >
+          <Image source={require('../assets/logo-mark.png')} style={styles.logo} resizeMode="contain" />
+          <Text style={styles.appName} accessibilityRole="header">Sistema de Gestión Municipal</Text>
+          <Text style={styles.tagline}>Tareas y coordinación entre áreas</Text>
+        </LinearGradient>
+
         <Animated.View
           style={[
             styles.content,
             { opacity: fadeAnim, transform: [{ translateY: slideAnim }, { translateX: shakeAnim }] },
           ]}
         >
-          {/* ---- Marca ---- */}
-          <View style={styles.brandSection}>
-            {/* Icono cuadrado redondeado estilo Apple */}
-            <View style={styles.iconWrap}>
-              <LinearGradient
-                colors={[BRAND, BRAND_DARK]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.iconGradient}
-              >
-                <Ionicons name="checkmark-done" size={36} color="#FFFFFF" />
-              </LinearGradient>
-            </View>
+          <View style={[styles.card, { backgroundColor: theme.card, borderColor: theme.glassBorder, shadowColor: theme.shadowColor }]}>
+            <Text style={[styles.cardTitle, { color: theme.text }]}>Iniciar sesión</Text>
 
-            <Text style={styles.appName}>Gestión</Text>
-            <Text style={styles.tagline}>Sistema de tareas y coordinación</Text>
-          </View>
-
-          {/* ---- Card de formulario ---- */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Iniciar sesión</Text>
-
-            {/* Banner de bloqueo */}
             {lockedUntil && (
-              <View style={styles.lockBanner}>
-                <Ionicons name="lock-closed" size={16} color="#EF4444" />
+              <View style={[styles.banner, { backgroundColor: theme.errorAlpha, borderColor: theme.error }]} accessibilityRole="alert">
+                <Ionicons name="lock-closed" size={18} color={theme.error} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.lockTitle}>Cuenta bloqueada temporalmente</Text>
-                  <Text style={styles.lockSub}>Disponible en {lockTimer}</Text>
+                  <Text style={[styles.bannerTitle, { color: theme.error }]}>Cuenta bloqueada temporalmente</Text>
+                  <Text style={[styles.bannerSub, { color: theme.textSecondary }]}>Disponible en {lockTimer}</Text>
                 </View>
               </View>
             )}
-            {/* Advertencia de intentos */}
             {!lockedUntil && attempts > 0 && (
-              <View style={[styles.lockBanner, { borderColor: 'rgba(245,158,11,0.5)', backgroundColor: 'rgba(245,158,11,0.08)' }]}>
-                <Ionicons name="warning-outline" size={16} color="#F59E0B" />
-                <Text style={[styles.lockTitle, { color: '#F59E0B' }]}>
-                  {MAX_ATTEMPTS - attempts} intento{MAX_ATTEMPTS - attempts !== 1 ? 's' : ''} restante{MAX_ATTEMPTS - attempts !== 1 ? 's' : ''}
+              <View style={[styles.banner, { backgroundColor: theme.warningAlpha, borderColor: theme.warning }]} accessibilityRole="alert">
+                <Ionicons name="warning-outline" size={18} color={theme.warningText} />
+                <Text style={[styles.bannerTitle, { color: theme.warningText }]}>
+                  {remainingAttempts} {remainingAttempts === 1 ? 'intento restante' : 'intentos restantes'}
                 </Text>
               </View>
             )}
 
-            {/* Campo email */}
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Correo electrónico</Text>
-              <View style={[styles.inputWrap, focusedInput === 'email' && styles.inputFocused]}>
-                <Ionicons
-                  name="mail-outline"
-                  size={17}
-                  color={focusedInput === 'email' ? BRAND : 'rgba(255,255,255,0.35)'}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  value={email}
-                  onChangeText={setEmail}
-                  onFocus={() => setFocusedInput('email')}
-                  onBlur={() => setFocusedInput(null)}
-                  placeholder="usuario@empresa.com"
-                  placeholderTextColor="rgba(255,255,255,0.25)"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-              </View>
-            </View>
+            {field('email', 'Correo electrónico', 'mail-outline', {
+              value: email,
+              onChangeText: setEmail,
+              placeholder: 'nombre@correo.com',
+              keyboardType: 'email-address',
+              autoComplete: 'email',
+              textContentType: 'username',
+              returnKeyType: 'next',
+              onSubmitEditing: () => passwordRef.current?.focus(),
+            })}
 
-            {/* Campo contraseña */}
-            <View style={styles.field}>
-              <Text style={styles.fieldLabel}>Contraseña</Text>
-              <View style={[styles.inputWrap, focusedInput === 'password' && styles.inputFocused]}>
-                <Ionicons
-                  name="lock-closed-outline"
-                  size={17}
-                  color={focusedInput === 'password' ? BRAND : 'rgba(255,255,255,0.35)'}
-                  style={styles.inputIcon}
-                />
-                <TextInput
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  onFocus={() => setFocusedInput('password')}
-                  onBlur={() => setFocusedInput(null)}
-                  placeholder="••••••••"
-                  placeholderTextColor="rgba(255,255,255,0.25)"
-                  secureTextEntry={!showPassword}
-                />
-                <TouchableOpacity
-                  onPress={() => setShowPassword(!showPassword)}
-                  style={styles.eyeBtn}
-                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                  accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                >
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={17}
-                    color="rgba(255,255,255,0.35)"
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
+            {field('password', 'Contraseña', 'lock-closed-outline', {
+              ref: passwordRef,
+              value: password,
+              onChangeText: setPassword,
+              placeholder: 'Tu contraseña',
+              secureTextEntry: !showPassword,
+              autoComplete: 'current-password',
+              textContentType: 'password',
+              returnKeyType: 'go',
+              onSubmitEditing: handleSubmit,
+            }, (
+              <TouchableOpacity
+                onPress={() => setShowPassword(!showPassword)}
+                style={styles.eyeBtn}
+                activeOpacity={ACTIVE_OPACITY}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+              >
+                <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={20} color={theme.textTertiary} />
+              </TouchableOpacity>
+            ))}
 
-            {/* CTA principal */}
-            <TouchableOpacity
-              style={[styles.btn, loading && styles.btnLoading, lockedUntil && { opacity: 0.5 }]}
-              onPress={handleSubmit}
-              disabled={loading || !!lockedUntil}
-              activeOpacity={0.85}
-            >
-              {loading ? (
-                <>
-                  <ActivityIndicator size="small" color="#FFFFFF" />
-                  <Text style={styles.btnText}>Iniciando sesión...</Text>
-                </>
-              ) : (
-                <>
-                  <Text style={styles.btnText}>Continuar</Text>
-                  <Ionicons name="arrow-forward" size={17} color="#FFFFFF" />
-                </>
-              )}
-            </TouchableOpacity>
+            <View style={styles.submit}>
+              <PrimaryButton
+                title={loading ? 'Iniciando sesión…' : 'Entrar'}
+                onPress={handleSubmit}
+                loading={loading}
+                disabled={!!lockedUntil}
+                icon="arrow-forward"
+              />
+            </View>
           </View>
 
-          {/* ---- Descarga ---- */}
-          <View style={styles.footer}>
-            <View style={styles.divider}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>o</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            <TouchableOpacity
-              style={styles.downloadBtn}
-              onPress={() => {
-                if (Platform.OS === 'web') window.open('/download.html', '_blank');
-                else Linking.openURL('https://to-do-iota-opal.vercel.app/download.html');
-              }}
-              activeOpacity={0.75}
-            >
-              <Ionicons name="phone-portrait-outline" size={16} color="rgba(255,255,255,0.55)" />
-              <Text style={styles.downloadText}>Ver opciones de descarga</Text>
-            </TouchableOpacity>
-          </View>
+          <TouchableOpacity
+            style={styles.downloadBtn}
+            onPress={() => {
+              if (Platform.OS === 'web') window.open('/download.html', '_blank');
+              else Linking.openURL('https://to-do-iota-opal.vercel.app/download.html');
+            }}
+            activeOpacity={ACTIVE_OPACITY}
+            accessibilityRole="link"
+          >
+            <Ionicons name="phone-portrait-outline" size={16} color={theme.textSecondary} />
+            <Text style={[styles.downloadText, { color: theme.textSecondary }]}>Instalar la app en tu teléfono</Text>
+          </TouchableOpacity>
         </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
 
+// El formulario se monta sobre el borde inferior del encabezado
+const CARD_OVERLAP = 40;
+
 const styles = StyleSheet.create({
   root: {
     flex: 1,
-    backgroundColor: '#000000',
   },
   scroll: {
     flexGrow: 1,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
-    paddingVertical: 56,
-    minHeight: '100%',
+    paddingBottom: SPACING.xxl,
+  },
+  hero: {
+    alignItems: 'center',
+    paddingHorizontal: SPACING.xl,
+    paddingBottom: CARD_OVERLAP + SPACING.xl,
+  },
+  logo: {
+    width: 72,
+    height: 72,
+    marginBottom: SPACING.md,
+  },
+  appName: {
+    ...TYPOGRAPHY.h2,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: -0.4,
+    textAlign: 'center',
+  },
+  tagline: {
+    ...TYPOGRAPHY.bodySmall,
+    color: 'rgba(255,255,255,0.72)',
+    marginTop: 2,
+    textAlign: 'center',
   },
   content: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 440,
     alignSelf: 'center',
+    paddingHorizontal: SPACING.lg,
+    marginTop: -CARD_OVERLAP,
   },
-
-  // Sección de marca
-  brandSection: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  iconWrap: {
-    marginBottom: 20,
-    borderRadius: 32,
-    shadowColor: BRAND,
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.65,
-    shadowRadius: 28,
-    elevation: 18,
-    borderWidth: 1,
-    borderColor: 'rgba(159,34,65,0.35)',
-  },
-  iconGradient: {
-    width: 92,
-    height: 92,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  appName: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    letterSpacing: -1,
-    marginBottom: 6,
-  },
-  tagline: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.42)',
-    fontWeight: '400',
-    letterSpacing: 0.2,
-  },
-
-  // Card de formulario
   card: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-    padding: 24,
-    marginBottom: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.65,
-    shadowRadius: 40,
-    elevation: 18,
+    borderRadius: RADIUS.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: SPACING.xl,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.12,
+    shadowRadius: 24,
+    elevation: 6,
   },
   cardTitle: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 24,
+    ...TYPOGRAPHY.h2,
+    fontWeight: '700',
     letterSpacing: -0.4,
+    marginBottom: SPACING.lg,
   },
-
-  // Campos
   field: {
-    marginBottom: 16,
+    marginBottom: SPACING.lg,
   },
   fieldLabel: {
-    fontSize: 12,
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '600',
-    color: 'rgba(255,255,255,0.50)',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    marginBottom: 8,
+    marginBottom: SPACING.xs + 2,
   },
   inputWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2C2C2E',
-    borderRadius: 10,
+    gap: SPACING.sm + 2,
+    height: 52,
+    paddingHorizontal: SPACING.md + 2,
+    borderRadius: RADIUS.sm + 2,
     borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.08)',
-    height: 50,
-    paddingHorizontal: 14,
-  },
-  inputFocused: {
-    borderColor: BRAND,
-    backgroundColor: '#2C2C2E',
-  },
-  inputIcon: {
-    marginRight: 10,
   },
   input: {
     flex: 1,
+    height: '100%',
     fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '400',
   },
   eyeBtn: {
-    padding: 4,
-    marginLeft: 8,
-  },
-
-  // Botón principal — sólido, sin gradiente
-  btn: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    width: 32,
+    height: 32,
     justifyContent: 'center',
-    gap: 8,
-    marginTop: 8,
-    height: 52,
-    borderRadius: 16,
-    backgroundColor: BRAND,
-    shadowColor: BRAND,
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.45,
-    shadowRadius: 14,
-    elevation: 8,
-  },
-  btnLoading: {
-    opacity: 0.70,
-  },
-  btnText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    letterSpacing: 0.1,
-  },
-
-  // Footer
-  footer: {
     alignItems: 'center',
   },
-  divider: {
+  submit: {
+    marginTop: SPACING.sm,
+  },
+  banner: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
-    marginBottom: 16,
+    gap: SPACING.sm + 2,
+    borderWidth: 1,
+    borderRadius: RADIUS.sm + 2,
+    padding: SPACING.md,
+    marginBottom: SPACING.lg,
   },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+  bannerTitle: {
+    ...TYPOGRAPHY.bodySmall,
+    fontWeight: '600',
   },
-  dividerText: {
-    marginHorizontal: 12,
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.30)',
-    fontWeight: '500',
+  bannerSub: {
+    ...TYPOGRAPHY.caption,
+    marginTop: 2,
   },
   downloadBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    justifyContent: 'center',
+    gap: SPACING.sm,
+    minHeight: 44,
+    marginTop: SPACING.lg,
   },
   downloadText: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.45)',
+    ...TYPOGRAPHY.bodySmall,
     fontWeight: '500',
-  },
-  lockBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(239,68,68,0.10)',
-    borderWidth: 1,
-    borderColor: 'rgba(239,68,68,0.4)',
-    borderRadius: 16,
-    padding: 12,
-    marginBottom: 16,
-  },
-  lockTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#EF4444',
-  },
-  lockSub: {
-    fontSize: 12,
-    color: 'rgba(239,68,68,0.75)',
-    marginTop: 2,
-  },
-});
-
-// Estilos del fondo — separados para no contaminar el StyleSheet principal
-const loginBgStyles = StyleSheet.create({
-  halo: {
-    position: 'absolute',
-    top: -120,
-    left: '50%',
-    marginLeft: -180,
-    width: 360,
-    height: 360,
-    borderRadius: 180,
-    backgroundColor: BRAND_GLOW,
-    // En web el blur no existe en RN, pero el color translúcido ya da el efecto
   },
 });

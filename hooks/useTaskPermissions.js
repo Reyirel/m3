@@ -18,10 +18,11 @@ import {
  * 
  * @param {Object} task - La tarea actual (null para nueva tarea)
  * @param {Object} currentUser - Usuario autenticado
- * @param {string} userRole - Rol del usuario (admin, secretario, director)
+ * @param {string} [userRole] - Rol del usuario (admin, secretario, director). Por defecto,
+ *   el del usuario: sin rol no se asume ninguno (antes se asumía administrador)
  * @returns {Object} Objeto con permisos { canEdit, isReadOnly, canDelegate, canAddSubtask }
  */
-export const useTaskPermissions = (task, currentUser, userRole = 'admin') => {
+export const useTaskPermissions = (task, currentUser, userRole = currentUser?.role) => {
   const [permissions, setPermissions] = useState({
     canEdit: false,
     isReadOnly: false,

@@ -16,8 +16,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import ShimmerEffect from '../components/ShimmerEffect';
 import FadeInView from '../components/FadeInView';
-import PulsingDot from '../components/PulsingDot';
 import RippleButton from '../components/RippleButton';
+import TaskCard from '../components/TaskCard';
 import { useTasks } from '../contexts/TasksContext';
 import { hapticLight, hapticMedium, hapticSuccess } from '../utils/haptics';
 import { useTheme } from '../contexts/ThemeContext';
@@ -27,8 +27,9 @@ import { MAX_WIDTHS } from '../theme/tokens';
 import WebSafeBlur from '../components/WebSafeBlur';
 import { toMs } from '../utils/dateUtils';
 import ScreenHeader from '../components/ui/ScreenHeader';
-import { isInProgress, countByStatus, matchesStatusFilter } from '../utils/taskStatus';
+import { isInProgress, countByStatus, matchesStatusFilter, priorityColor, statusColor, statusLabel } from '../utils/taskStatus';
 import { createStyles } from './calendar/CalendarScreenStyles';
+import { DURATION, SPRING, spring, timing } from '../theme/motion';
 
 const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
 const MONTHS_SHORT = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
@@ -61,20 +62,20 @@ export default function CalendarScreen({ navigation }) {
     const startAnimations = () => {
       Animated.stagger(80, [
         Animated.parallel([
-          Animated.spring(headerSlide, { toValue: 0, friction: 10, tension: 50, useNativeDriver: true }),
-          Animated.timing(headerOpacity, { toValue: 1, duration: 400, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          spring(headerSlide, 0),
+          timing(headerOpacity, 1, { duration: DURATION.slow, easing: Easing.out(Easing.cubic) }),
         ]),
         Animated.parallel([
-          Animated.spring(calendarSlide, { toValue: 0, friction: 8, tension: 45, useNativeDriver: true }),
-          Animated.timing(calendarOpacity, { toValue: 1, duration: 500, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+          spring(calendarSlide, 0),
+          timing(calendarOpacity, 1, { duration: DURATION.slow, easing: Easing.out(Easing.cubic) }),
         ]),
         Animated.parallel([
-          Animated.spring(legendSlide, { toValue: 0, friction: 10, tension: 50, useNativeDriver: true }),
-          Animated.timing(legendOpacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+          spring(legendSlide, 0),
+          timing(legendOpacity, 1, { duration: DURATION.slow }),
         ]),
       ]).start();
 
-      Animated.spring(fabScale, { toValue: 1, delay: 100, friction: 5, tension: 50, useNativeDriver: true }).start();
+      spring(fabScale, 1, SPRING.enter, { delay: 100 }).start();
     };
 
     if (Platform.OS !== 'web') {
@@ -88,12 +89,7 @@ export default function CalendarScreen({ navigation }) {
   // Animación de transición de mes
   const animateMonthChange = useCallback((direction) => {
     monthTransition.setValue(direction * 30);
-    Animated.spring(monthTransition, {
-      toValue: 0,
-      friction: 12,
-      tension: 100,
-      useNativeDriver: true,
-    }).start();
+    spring(monthTransition, 0).start();
   }, [monthTransition]);
 
   // Generar días del mes con memoización para mejor rendimiento
@@ -202,7 +198,7 @@ export default function CalendarScreen({ navigation }) {
               showInfo('No hay tareas para este día');
             }
           }}
-          activeOpacity={0.75}
+          activeOpacity={0.7}
           accessible
           accessibilityLabel={`${date.getDate()} de ${MONTHS[date.getMonth()]}${hasTasks ? `, ${dayTasks.length} tareas` : ''}`}
           accessibilityRole="button"
@@ -258,7 +254,7 @@ export default function CalendarScreen({ navigation }) {
                     </Text>
                   </View>
                 )}
-                {hasHighPriority && !today && <PulsingDot size={7} color={theme.error} />}
+                {hasHighPriority && !today && <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: theme.error }} />}
               </View>
             )}
           </View>
@@ -267,109 +263,38 @@ export default function CalendarScreen({ navigation }) {
     );
   };
 
+  const openTask = (task) => {
+    hapticLight();
+    setModalVisible(false);
+    navigation.navigate('TaskDetail', { task, taskId: task.id });
+  };
+
+  // Vista normal: la misma tarjeta que Inicio y Buscar. Vista compacta: una fila por tarea.
   const renderTaskItem = (task, index) => (
-    <FadeInView key={task.id} duration={350} delay={index * 80} style={{ marginBottom: compactTaskView ? 6 : 12 }}>
-      <RippleButton
-        style={[
-          compactTaskView ? styles.modalTaskCardCompact : styles.modalTaskCard,
-          {
-            backgroundColor: isDark ? 'rgba(255,255,255,0.07)' : '#FAFAFA',
-            borderColor: isDark ? 'rgba(255,255,255,0.10)' : 'rgba(0,0,0,0.07)',
-          }
-        ]}
-        onPress={() => {
-          hapticLight();
-          setModalVisible(false);
-          navigation.navigate('TaskDetail', { task, taskId: task.id });
-        }}
-        rippleColor={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}
-      >
-        {compactTaskView ? (
-          // Vista compacta
+    <FadeInView key={task.id} duration={350} delay={index * 80} style={{ marginBottom: compactTaskView ? 6 : 2 }}>
+      {compactTaskView ? (
+        <RippleButton
+          style={[
+            styles.modalTaskCardCompact,
+            { backgroundColor: theme.card, borderColor: theme.glassBorder },
+          ]}
+          onPress={() => openTask(task)}
+          rippleColor={isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}
+        >
           <View style={styles.compactTaskRow}>
-            <View style={[
-              styles.compactPriorityDot,
-              task.priority === 'alta' && { backgroundColor: theme.error },
-              task.priority === 'media' && { backgroundColor: theme.warning },
-              task.priority === 'baja' && { backgroundColor: theme.success }
-            ]} />
+            <View style={[styles.compactPriorityDot, { backgroundColor: priorityColor(task.priority, theme) }]} />
             <Text style={[styles.compactTaskTitle, { color: theme.text }]} numberOfLines={1}>
               {task.title}
             </Text>
-            <View style={[
-              styles.compactStatusBadge,
-              task.status === 'cerrada' && { backgroundColor: theme.successAlpha },
-              task.status === 'en_proceso' && { backgroundColor: theme.infoAlpha },
-              task.status === 'en_revision' && { backgroundColor: theme.primaryAlpha },
-              task.status === 'pendiente' && { backgroundColor: theme.warningAlpha },
-            ]}>
-              <Text style={[
-                styles.compactStatusText,
-                task.status === 'cerrada' && { color: theme.success },
-                task.status === 'en_proceso' && { color: theme.info },
-                task.status === 'en_revision' && { color: theme.secondary },
-                task.status === 'pendiente' && { color: theme.warning },
-              ]}>
-                {task.status === 'cerrada' ? '✓' : task.status === 'en_proceso' ? '▶' : task.status === 'en_revision' ? '👁' : '⏳'}
-              </Text>
-            </View>
+            <Text style={[styles.compactStatusText, { color: statusColor(task.status, theme) }]} numberOfLines={1}>
+              {statusLabel(task.status)}
+            </Text>
             <Ionicons name="chevron-forward" size={14} color={theme.textSecondary} />
           </View>
-        ) : (
-          // Vista normal
-          <>
-            <View style={styles.modalTaskHeader}>
-              <View style={[
-                styles.modalTaskPriority,
-                task.priority === 'alta' && styles.modalTaskPriorityHigh,
-                task.priority === 'media' && styles.modalTaskPriorityMedium,
-                task.priority === 'baja' && styles.modalTaskPriorityLow
-              ]} />
-              <View style={styles.modalTaskContent}>
-                <Text style={[styles.modalTaskTitle, { color: theme.text }]} numberOfLines={2}>{task.title}</Text>
-                
-                <View style={styles.modalTaskMeta}>
-                  <View style={styles.modalTaskMetaItem}>
-                    <Ionicons name="business-outline" size={13} color={theme.textSecondary} />
-                    <Text style={[styles.modalTaskMetaText, { color: theme.textSecondary }]}>{task.area}</Text>
-                  </View>
-                  <View style={styles.modalTaskMetaItem}>
-                    <Ionicons name="person-outline" size={13} color={theme.textSecondary} />
-                    <Text style={[styles.modalTaskMetaText, { color: theme.textSecondary }]}>{task.assignedTo || 'Sin asignar'}</Text>
-                  </View>
-                  <View style={styles.modalTaskMetaItem}>
-                    <Ionicons name="time-outline" size={13} color={theme.textSecondary} />
-                    <Text style={[styles.modalTaskMetaText, { color: theme.textSecondary }]}>
-                      {new Date(toMs(task.dueAt)).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                    </Text>
-                  </View>
-                </View>
-              </View>
-            </View>
-            
-            <View style={styles.modalTaskFooter}>
-              <View style={[
-                styles.modalTaskStatus,
-                task.status === 'cerrada' && styles.modalTaskStatusClosed,
-                task.status === 'en_proceso' && styles.modalTaskStatusInProgress,
-                task.status === 'en_revision' && styles.modalTaskStatusReview,
-              ]}>
-                <Text style={[
-                  styles.modalTaskStatusText,
-                  task.status === 'cerrada' && { color: theme.success },
-                  task.status === 'en_proceso' && { color: theme.info },
-                  task.status === 'en_revision' && { color: theme.secondary },
-                ]}>
-                  {task.status === 'en_proceso' ? 'En proceso' :
-                   task.status === 'en_revision' ? 'En revisión' :
-                   task.status === 'cerrada' ? 'Completada' : 'Pendiente'}
-                </Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={theme.textSecondary} />
-            </View>
-          </>
-        )}
-      </RippleButton>
+        </RippleButton>
+      ) : (
+        <TaskCard task={task} onPress={openTask} />
+      )}
     </FadeInView>
   );
 
@@ -468,7 +393,7 @@ export default function CalendarScreen({ navigation }) {
                 previousMonth();
               }}
               style={[styles.monthButton, { backgroundColor: theme.primary }]}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
               accessibilityLabel="Mes anterior"
               accessibilityRole="button"
             >
@@ -500,7 +425,7 @@ export default function CalendarScreen({ navigation }) {
                 nextMonth();
               }}
               style={[styles.monthButton, { backgroundColor: theme.primary }]}
-              activeOpacity={0.8}
+              activeOpacity={0.7}
               accessibilityLabel="Mes siguiente"
               accessibilityRole="button"
             >

@@ -7,7 +7,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { GlassmorphicCard, GlassmorphicDivider } from '../components';
+import { GlassmorphicCard } from '../components';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
@@ -290,7 +290,7 @@ const SettingsScreen = ({ navigation, onLogout }) => {
             </View>
           </TouchableOpacity>
 
-          {!isLast && <GlassmorphicDivider />}
+          {!isLast && <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: theme.border }} />}
         </View>
       );
     },
