@@ -140,7 +140,7 @@ export default function DateSelector({
 
       <View style={styles.rows}>
         {/* Fecha */}
-        <TouchableOpacity onPress={() => openPicker('date')} activeOpacity={0.75} style={rowStyle(pickerMode === 'date')}>
+        <TouchableOpacity onPress={() => openPicker('date')} activeOpacity={0.7} style={rowStyle(pickerMode === 'date')}>
           <View style={[styles.iconWrap, { backgroundColor: '#FF950018' }]}>
             <Ionicons name="calendar-outline" size={17} color={theme.warning} />
           </View>
@@ -154,7 +154,7 @@ export default function DateSelector({
 
         {/* Hora */}
         {showTime && (
-          <TouchableOpacity onPress={() => openPicker('time')} activeOpacity={0.75} style={rowStyle(pickerMode === 'time')}>
+          <TouchableOpacity onPress={() => openPicker('time')} activeOpacity={0.7} style={rowStyle(pickerMode === 'time')}>
             <View style={[styles.iconWrap, { backgroundColor: '#007AFF18' }]}>
               <Ionicons name="time-outline" size={17} color={theme.info} />
             </View>
@@ -171,7 +171,7 @@ export default function DateSelector({
         {!disabled && (
           <TouchableOpacity
             onPress={() => onChange(new Date())}
-            activeOpacity={0.75}
+            activeOpacity={0.7}
             style={[styles.todayBtn, { borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)' }]}
           >
             <Ionicons name="today-outline" size={14} color={theme.primary} />

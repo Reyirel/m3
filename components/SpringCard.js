@@ -1,52 +1,23 @@
 // components/SpringCard.js
-// Card con animaciones de spring physics
+// Tarjeta que se encoge un poco al presionarla
 // ⚡ Optimizado con React.memo
 import React, { useRef, memo } from 'react';
 import { Animated, TouchableOpacity } from 'react-native';
 import { hapticLight } from '../utils/haptics';
+import { PRESS_SCALE, SPRING, spring } from '../theme/motion';
 
-const SpringCard = memo(function SpringCard({ 
+const SpringCard = memo(function SpringCard({
   children,
   onPress,
   style,
-  springConfig = { tension: 300, friction: 10 },
-  scaleDown = 0.95,
+  springConfig = SPRING.press,
+  scaleDown = PRESS_SCALE,
   ...props
 }) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
 
-  const handlePressIn = () => {
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: scaleDown,
-        useNativeDriver: true,
-        ...springConfig,
-      }),
-      Animated.spring(rotateAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        tension: 200,
-        friction: 5,
-      }),
-    ]).start();
-  };
-
-  const handlePressOut = () => {
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        useNativeDriver: true,
-        ...springConfig,
-      }),
-      Animated.spring(rotateAnim, {
-        toValue: 0,
-        useNativeDriver: true,
-        tension: 200,
-        friction: 5,
-      }),
-    ]).start();
-  };
+  const handlePressIn = () => spring(scaleAnim, scaleDown, springConfig).start();
+  const handlePressOut = () => spring(scaleAnim, 1, springConfig).start();
 
   const handlePress = () => {
     hapticLight();
@@ -54,11 +25,6 @@ const SpringCard = memo(function SpringCard({
       onPress();
     }
   };
-
-  const rotate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '2deg'],
-  });
 
   return (
     <TouchableOpacity
@@ -68,17 +34,7 @@ const SpringCard = memo(function SpringCard({
       activeOpacity={1}
       {...props}
     >
-      <Animated.View
-        style={[
-          style,
-          {
-            transform: [
-              { scale: scaleAnim },
-              { rotate },
-            ],
-          },
-        ]}
-      >
+      <Animated.View style={[style, { transform: [{ scale: scaleAnim }] }]}>
         {children}
       </Animated.View>
     </TouchableOpacity>

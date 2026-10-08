@@ -1,15 +1,13 @@
 /**
- * screens/TaskDetailScreenNew.js
- * 
- * REFACTORED TaskDetailScreen - VERSIÓN LIMPIA
- * Orquestador que usa los 8 componentes descompuestos
- * ~800 líneas vs 3349 del original
+ * screens/TaskDetailScreen.js
+ *
+ * Formulario para crear o editar una tarea. Las secciones viven en components/task
+ * y components/selectors; aquí se guarda el estado del formulario y se valida.
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
-  StyleSheet,
   ScrollView,
   Animated,
   KeyboardAvoidingView,
@@ -32,7 +30,6 @@ import {
   TaskSubtasksSection,
   ReadOnlyTaskModal,
   DelegateTaskModal,
-  AssigneeChangeConfirmModal,
 } from '../components/task';
 
 // Importar selectores avanzados
@@ -53,21 +50,18 @@ import { getAssignedEmails } from '../utils/taskHelpers';
 import { getTaskAreas } from '../utils/taskVisibility';
 import {
   findSimilarTasks,
-  suggestTaskMetadata,
   suggestPriority,
   suggestDueDate,
 } from '../utils/aiFeatures';
-
-// DateTimePicker solo en móvil
-let DateTimePicker;
-if (Platform.OS !== 'web') {
-  DateTimePicker = require('@react-native-community/datetimepicker').default;
-}
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ACTIVE_OPACITY, timing } from '../theme/motion';
+import { styles } from './task/TaskDetailScreenStyles';
 
 const normalizeEmail = (email) => (email || '').toLowerCase().trim();
 
 export default function TaskDetailScreen({ route, navigation }) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
   const { showSuccess, showError } = useNotification();
   const { currentUser, tasks } = useTasks();
 
@@ -82,11 +76,7 @@ export default function TaskDetailScreen({ route, navigation }) {
   );
 
   // Permisos (usando hook)
-  const permissions = useTaskPermissions(
-    editingTask,
-    currentUser,
-    currentUser?.role || 'admin'
-  );
+  const permissions = useTaskPermissions(editingTask, currentUser);
 
   // Operaciones (usando hook)
   const taskOps = useTaskOperations(editingTask, currentUser);
@@ -141,17 +131,12 @@ export default function TaskDetailScreen({ route, navigation }) {
   // ────────────────────────────────────────────────────────────
   // MODAL STATES
   // ────────────────────────────────────────────────────────────
-  const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [showDelegateModal, setShowDelegateModal] = useState(false);
-  const [showAssigneeChangeConfirm, setShowAssigneeChangeConfirm] = useState(false);
-  const [tempDate, setTempDate] = useState(dueAt);
 
   // ────────────────────────────────────────────────────────────
   // AI SUGGESTIONS STATE
   // ────────────────────────────────────────────────────────────
   const [similarTasks, setSimilarTasks] = useState([]);
-  const [, setMetaSuggestion] = useState(null);
   const [prioritySuggestion, setPrioritySuggestion] = useState(null);
   const [dateSuggestion, setDateSuggestion] = useState(null);
   const aiDebounceRef = useRef(null);
@@ -160,8 +145,58 @@ export default function TaskDetailScreen({ route, navigation }) {
   // OTHER STATE
   // ────────────────────────────────────────────────────────────
   const [delegateUsers, setDelegateUsers] = useState([]);
-  const [assigneeChangeData, setAssigneeChangeData] = useState(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef(null);
+  // Errores de validación, junto al campo que los causa
+  const [errors, setErrors] = useState({});
+
+  // ────────────────────────────────────────────────────────────
+  // CAMBIOS SIN GUARDAR
+  // ────────────────────────────────────────────────────────────
+  // Se compara todo el formulario con su estado al abrir (no solo título y descripción).
+  // Los responsables cuentan solo si el usuario los marcó o desmarcó: al abrir una
+  // tarea se ajustan solos mientras cargan.
+  const formSnapshot = JSON.stringify({
+    title: title.trim(),
+    description: description.trim(),
+    priority,
+    status,
+    dueAt: dueAt.getTime(),
+    areas: [...selectedAreas].sort(),
+    isRecurring,
+    recurrencePattern,
+    tags,
+    notifyBefore,
+  });
+  const initialSnapshotRef = useRef(formSnapshot);
+  const assigneesTouchedRef = useRef(false);
+  const [assigneesTouched, setAssigneesTouched] = useState(false);
+  const isDirty = permissions.canEdit && (formSnapshot !== initialSnapshotRef.current || assigneesTouched);
+  // true al guardar, eliminar o confirmar que se descartan los cambios
+  const leavingRef = useRef(false);
+
+  useEffect(() => {
+    // Con cambios sin guardar no se puede salir deslizando (iOS): el gesto no pregunta
+    navigation.setOptions({ gestureEnabled: !isDirty });
+    if (!isDirty) return undefined;
+    // Botón atrás de Android, del navegador o cualquier otra salida
+    return navigation.addListener('beforeRemove', (event) => {
+      if (leavingRef.current) return;
+      event.preventDefault();
+      showDialog({
+        title: 'Descartar cambios',
+        message: 'Hay cambios sin guardar. ¿Deseas salir sin guardarlos?',
+        buttons: [
+          { text: 'Seguir editando', style: 'cancel' },
+          {
+            text: 'Descartar',
+            style: 'destructive',
+            onPress: () => { leavingRef.current = true; navigation.dispatch(event.data.action); },
+          },
+        ],
+      });
+    });
+  }, [navigation, isDirty]);
 
   // ────────────────────────────────────────────────────────────
   // INITIALIZATION
@@ -173,11 +208,7 @@ export default function TaskDetailScreen({ route, navigation }) {
   }, [navigation]);
 
   useEffect(() => {
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 300,
-      useNativeDriver: true,
-    }).start();
+    timing(fadeAnim, 1).start();
   }, [fadeAnim]);
 
   // Cargar usuarios activos para el selector de asignados
@@ -272,6 +303,10 @@ export default function TaskDetailScreen({ route, navigation }) {
   );
 
   const toggleResponsable = useCallback((email) => {
+    if (!assigneesTouchedRef.current) {
+      assigneesTouchedRef.current = true;
+      setAssigneesTouched(true);
+    }
     const key = normalizeEmail(email);
     setExcludedEmails(current =>
       current.includes(key) ? current.filter(e => e !== key) : [...current, key]
@@ -284,7 +319,6 @@ export default function TaskDetailScreen({ route, navigation }) {
   useEffect(() => {
     if (isEditing || !title || title.length < 6) {
       setSimilarTasks([]);
-      setMetaSuggestion(null);
       setPrioritySuggestion(null);
       setDateSuggestion(null);
       return;
@@ -293,8 +327,6 @@ export default function TaskDetailScreen({ route, navigation }) {
     clearTimeout(aiDebounceRef.current);
     aiDebounceRef.current = setTimeout(() => {
       setSimilarTasks(findSimilarTasks(title, tasks));
-      const meta = suggestTaskMetadata(title, tasks);
-      setMetaSuggestion(meta.area ? meta : null);
       const priSug = suggestPriority(title, description);
       setPrioritySuggestion(
         priSug.priority && priSug.priority !== 'baja' ? priSug : null
@@ -310,34 +342,26 @@ export default function TaskDetailScreen({ route, navigation }) {
   // HANDLERS
   // ────────────────────────────────────────────────────────────
 
+  // Si hay cambios sin guardar, el aviso lo muestra el listener de `beforeRemove`
   const handleBack = useCallback(() => {
-    const hasChanges = isEditing
-      ? title !== editingTask.title || description !== editingTask.description
-      : title.trim() !== '' || description.trim() !== '';
+    if (navigation.canGoBack()) navigation.goBack();
+    else navigation.navigate('Main');
+  }, [navigation]);
 
-    if (hasChanges) {
-      showDialog({
-        title: 'Descartar cambios',
-        message: '¿Deseas salir sin guardar?',
-        buttons: [
-          { text: 'Seguir editando', style: 'cancel' },
-          { text: 'Descartar', style: 'destructive', onPress: () => navigation.goBack() },
-        ],
-      });
-    } else {
-      navigation.goBack();
-    }
-  }, [isEditing, editingTask, title, description, navigation]);
+  const leave = useCallback(() => {
+    leavingRef.current = true;
+    handleBack();
+  }, [handleBack]);
 
   const handleDelete = () => {
     if (!permissions.canDelete) return;
 
     confirmAlert(
       'Eliminar tarea',
-      '¿Estás seguro? Esta acción es irreversible.',
+      'La tarea se moverá a la papelera, de donde un administrador puede restaurarla.',
       async () => {
         const result = await taskOps.deleteTask(editingTask.id);
-        if (result) navigation.goBack();
+        if (result) leave();
       },
       'Eliminar'
     );
@@ -414,25 +438,25 @@ export default function TaskDetailScreen({ route, navigation }) {
   const handleSave = async () => {
     if (taskOps.isSaving) return;
 
-    // Validaciones
-    if (!title.trim()) {
-      showError('El título es obligatorio');
-      return;
+    // Validaciones: cada error se muestra junto a su campo
+    const found = {};
+    const cleanTitle = title.trim();
+    const cleanDescription = description.trim();
+    if (!cleanTitle) found.title = 'El título es obligatorio';
+    else if (cleanTitle.length < 3) found.title = 'El título debe tener al menos 3 caracteres';
+    if (!cleanDescription) found.description = 'La descripción es obligatoria';
+    else if (cleanDescription.length < 10) found.description = 'La descripción debe tener al menos 10 caracteres';
+    if (selectedAreas.length === 0) found.areas = 'Selecciona al menos un área';
+    else if (assignees.length === 0) {
+      found.assignees = responsables.length === 0
+        ? 'Las áreas elegidas no tienen responsable con cuenta activa: nadie recibiría la tarea'
+        : 'Marca al menos a un responsable para que reciba la tarea';
     }
-    if (!description.trim()) {
-      showError('La descripción es obligatoria');
-      return;
-    }
-    if (selectedAreas.length === 0) {
-      showError('Debes seleccionar al menos una área');
-      return;
-    }
-    if (assignees.length === 0) {
-      showError(
-        responsables.length === 0
-          ? 'Las áreas elegidas no tienen responsable con cuenta activa: nadie recibiría la tarea'
-          : 'Marca al menos a un responsable para que reciba la tarea'
-      );
+    setErrors(found);
+    if (Object.keys(found).length > 0) {
+      showError('Revisa los campos marcados');
+      // Título y descripción están arriba; las áreas y responsables, más abajo
+      if (found.title || found.description) scrollRef.current?.scrollTo({ y: 0, animated: true });
       return;
     }
 
@@ -451,40 +475,11 @@ export default function TaskDetailScreen({ route, navigation }) {
       notifyBefore,
     });
 
-    if (result) {
-      navigation.goBack();
-    }
+    if (result) leave();
   };
 
-  const onChangeDate = useCallback((event, selectedDate) => {
-    if (Platform.OS === 'android') {
-      setShowDatePicker(false);
-    }
-    if (event.type === 'set' && selectedDate) {
-      setTempDate(selectedDate);
-      if (Platform.OS === 'android') {
-        setTimeout(() => setShowTimePicker(true), 100);
-      } else {
-        const newDate = new Date(dueAt);
-        newDate.setFullYear(selectedDate.getFullYear());
-        newDate.setMonth(selectedDate.getMonth());
-        newDate.setDate(selectedDate.getDate());
-        setDueAt(newDate);
-      }
-    }
-  }, [dueAt]);
-
-  const onChangeTime = useCallback((event, selectedTime) => {
-    if (Platform.OS === 'android') {
-      setShowTimePicker(false);
-    }
-    if (event.type === 'set' && selectedTime) {
-      const finalDate = new Date(tempDate);
-      finalDate.setHours(selectedTime.getHours());
-      finalDate.setMinutes(selectedTime.getMinutes());
-      setDueAt(finalDate);
-    }
-  }, [tempDate]);
+  // Al corregir un campo se quita su error
+  const clearError = (key) => setErrors((current) => (current[key] ? { ...current, [key]: undefined } : current));
 
   // Mostrar modal de solo lectura si es read-only
   if (permissions.isReadOnly && editingTask) {
@@ -535,6 +530,7 @@ export default function TaskDetailScreen({ route, navigation }) {
         {/* CONTENT */}
         <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
           <ScrollView
+            ref={scrollRef}
             contentContainerStyle={styles.scrollContent}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -542,10 +538,11 @@ export default function TaskDetailScreen({ route, navigation }) {
             {/* FORM BASIC */}
             <TaskFormBasic
               title={title}
-              onTitleChange={setTitle}
+              onTitleChange={(text) => { setTitle(text); clearError('title'); }}
               description={description}
-              onDescriptionChange={setDescription}
+              onDescriptionChange={(text) => { setDescription(text); clearError('description'); }}
               isReadOnly={!permissions.canEdit}
+              errors={errors}
             />
 
             {/* ENHANCED SELECTORS - PRIORITY */}
@@ -568,16 +565,22 @@ export default function TaskDetailScreen({ route, navigation }) {
             {permissions.canEdit && (
               <AreaSelector
                 value={selectedAreas}
-                onChange={setSelectedAreas}
+                onChange={(areas) => { setSelectedAreas(areas); clearError('areas'); clearError('assignees'); }}
                 multiple={true}
               />
+            )}
+            {permissions.canEdit && !!(errors.areas || errors.assignees) && (
+              <View style={styles.fieldError} accessibilityLiveRegion="polite">
+                <Ionicons name="alert-circle" size={16} color={theme.error} />
+                <Text style={[styles.fieldErrorText, { color: theme.error }]}>{errors.areas || errors.assignees}</Text>
+              </View>
             )}
 
             {/* RESPONSABLES POR ÁREA — son quienes reciben la tarea.
                 No hay selector de personas aparte: la tarea se asigna por área y aquí
                 solo se desmarca a quien no deba recibirla. */}
             {permissions.canEdit && responsables.length > 0 && (
-              <View style={[styles.titularesCard, { backgroundColor: theme.primary + '0D', borderColor: theme.primary + '30' }]}>
+              <View style={[styles.titularesCard, { backgroundColor: theme.glassPrimary, borderColor: theme.primary + '30' }]}>
                 <View style={styles.infoCardHeader}>
                   <Ionicons name="people-circle-outline" size={16} color={theme.primary} />
                   <Text style={[styles.infoCardTitle, { color: theme.primary }]}>
@@ -591,7 +594,7 @@ export default function TaskDetailScreen({ route, navigation }) {
                       key={t.id}
                       style={styles.titularRow}
                       onPress={() => toggleResponsable(t.email)}
-                      activeOpacity={0.7}
+                      activeOpacity={ACTIVE_OPACITY}
                       accessibilityRole="checkbox"
                       accessibilityState={{ checked: included }}
                       accessibilityLabel={`${t.displayName || t.email}: ${included ? 'recibe la tarea' : 'no recibe la tarea'}`}
@@ -618,10 +621,10 @@ export default function TaskDetailScreen({ route, navigation }) {
 
             {/* ÁREAS SIN RESPONSABLE: nadie recibiría la tarea por esa área */}
             {permissions.canEdit && areasSinResponsable.length > 0 && (
-              <View style={[styles.infoCard, { backgroundColor: '#FF95000D', borderColor: '#FF950040' }]}>
-                <Ionicons name="warning-outline" size={16} color={theme.warning} />
+              <View style={[styles.infoCard, { backgroundColor: theme.warningAlpha, borderColor: theme.warningText + '55' }]}>
+                <Ionicons name="warning-outline" size={16} color={theme.warningText} />
                 <View style={{ flex: 1 }}>
-                  <Text style={[styles.infoCardTitle, { color: '#B36B00' }]}>
+                  <Text style={[styles.infoCardTitle, { color: theme.warningText }]}>
                     {areasSinResponsable.length === 1 ? 'Área sin responsable' : 'Áreas sin responsable'}
                   </Text>
                   <Text style={[styles.infoCardDesc, { color: theme.textSecondary }]}>
@@ -633,7 +636,7 @@ export default function TaskDetailScreen({ route, navigation }) {
 
             {/* AVISO DE TAREA COORDINADA */}
             {permissions.canEdit && !isEditing && selectedAreas.length > 1 && (
-              <View style={[styles.infoCard, { backgroundColor: '#007AFF0D', borderColor: '#007AFF30' }]}>
+              <View style={[styles.infoCard, { backgroundColor: theme.infoAlpha, borderColor: theme.info + '40' }]}>
                 <Ionicons name="git-branch-outline" size={16} color={theme.info} />
                 <View style={{ flex: 1 }}>
                   <Text style={[styles.infoCardTitle, { color: theme.info }]}>Tarea coordinada</Text>
@@ -688,46 +691,32 @@ export default function TaskDetailScreen({ route, navigation }) {
                 canEdit={permissions.canEdit}
               />
             )}
-
-            {/* SAVE BUTTON */}
-            {permissions.canEdit && (
-              <View style={styles.saveWrapper}>
-                <PrimaryButton
-                  title={
-                    taskOps.isSaving
-                      ? `Guardando... ${taskOps.saveProgress || 0}%`
-                      : isEditing
-                      ? 'Actualizar'
-                      : 'Crear Tarea'
-                  }
-                  onPress={handleSave}
-                  loading={taskOps.isSaving}
-                  icon={taskOps.isSaving ? 'hourglass' : 'checkmark-circle'}
-                />
-              </View>
-            )}
           </ScrollView>
         </Animated.View>
+
+        {/* GUARDAR: fijo abajo, a la vista sin tener que recorrer todo el formulario */}
+        {permissions.canEdit && (
+          <View
+            style={[
+              styles.saveBar,
+              { backgroundColor: theme.card, borderTopColor: theme.glassBorder, paddingBottom: insets.bottom + 12 },
+            ]}
+          >
+            <PrimaryButton
+              title={
+                taskOps.isSaving
+                  ? `Guardando… ${taskOps.saveProgress || 0}%`
+                  : isEditing
+                  ? 'Guardar cambios'
+                  : 'Crear tarea'
+              }
+              onPress={handleSave}
+              loading={taskOps.isSaving}
+              icon="checkmark-circle"
+            />
+          </View>
+        )}
       </KeyboardAvoidingView>
-
-      {/* MODALS */}
-      {showDatePicker && Platform.OS !== 'web' && DateTimePicker && (
-        <DateTimePicker
-          value={tempDate}
-          mode="date"
-          display="default"
-          onChange={onChangeDate}
-        />
-      )}
-
-      {showTimePicker && Platform.OS !== 'web' && DateTimePicker && (
-        <DateTimePicker
-          value={tempDate}
-          mode="time"
-          display="default"
-          onChange={onChangeTime}
-        />
-      )}
 
       {/* DELEGATE MODAL */}
       <DelegateTaskModal
@@ -740,81 +729,6 @@ export default function TaskDetailScreen({ route, navigation }) {
         onDelegate={handleDelegate}
       />
 
-      {/* ASSIGNEE CHANGE CONFIRMATION */}
-      <AssigneeChangeConfirmModal
-        visible={showAssigneeChangeConfirm}
-        data={assigneeChangeData}
-        onConfirm={() => {
-          setShowAssigneeChangeConfirm(false);
-          handleSave();
-        }}
-        onCancel={() => {
-          setShowAssigneeChangeConfirm(false);
-          setAssigneeChangeData(null);
-        }}
-        theme={theme}
-      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  scrollContent: {
-    padding: 16,
-    gap: 16,
-    paddingBottom: 40,
-  },
-  saveWrapper: {
-    marginTop: 8,
-  },
-  infoCard: {
-    flexDirection: 'row',
-    gap: 10,
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-    alignItems: 'flex-start',
-  },
-  titularesCard: {
-    flexDirection: 'column',
-    gap: 4,
-    padding: 14,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  infoCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  infoCardTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    letterSpacing: 0.1,
-  },
-  infoCardDesc: {
-    fontSize: 12,
-    fontWeight: '400',
-    lineHeight: 17,
-    marginTop: 3,
-  },
-  titularRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 10,
-    paddingVertical: 4,
-  },
-  titularName: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  titularMeta: {
-    fontSize: 12,
-    fontWeight: '400',
-    marginTop: 1,
-  },
-});

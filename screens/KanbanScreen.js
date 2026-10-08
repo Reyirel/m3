@@ -8,10 +8,9 @@ import {
   Text,
   ScrollView,
   TouchableOpacity,
-  RefreshControl,
   Animated,
-  Dimensions,
   Platform,
+  useWindowDimensions,
   InteractionManager,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -24,20 +23,23 @@ import { hapticMedium, hapticLight, hapticSuccess, hapticWarning } from '../util
 import { useNotification } from '../contexts/NotificationContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { canChangeTaskStatus, canEditTask } from '../services/permissions';
-import QuickTip, { TIPS } from '../components/QuickTip';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { useResponsive } from '../utils/responsive';
-import { MAX_WIDTHS } from '../theme/tokens';
+import { BREAKPOINTS, MAX_WIDTHS } from '../theme/tokens';
+import { SIDEBAR_WIDTH } from '../components/DesktopSidebar';
+import { priorityLabel, statusColor, statusIcon, statusLabel } from '../utils/taskStatus';
 import { useKanbanFilters } from '../hooks/useKanbanFilters';
 import { createKanbanStyles } from './kanban/KanbanScreenStyles';
 import { getColumnWidth } from './kanban/columnWidth';
 import KanbanColumn from './kanban/KanbanColumn';
 import { KanbanFiltersModal, KanbanHelpModal } from './kanban/KanbanModals';
 import { QuickEditSheet, StatsSheet } from './kanban/KanbanSheets';
+import { SPRING, spring, timing } from '../theme/motion';
 
 const GestureHandlerRootView = getGestureHandlerRootView();
 
-const PRIORITY_CHIP_LABELS = { alta: 'Urgente', media: 'Media', baja: 'Baja' };
+// Separación entre columnas en el teléfono (gap de styles.board)
+const COLUMN_GAP = 8;
 // Retraso de entrada de cada columna
 const COLUMN_DELAYS_MS = [0, 60, 120, 180];
 const EMPTY_GROUP = { byStatus: [], filtered: [], sorted: [] };
@@ -46,11 +48,14 @@ export default function KanbanScreen({ navigation }) {
   const { theme, isDark } = useTheme();
 
   const STATUSES = useMemo(() => [
-    { key: 'pendiente',   label: 'Pendiente',   color: theme.warning,   icon: 'hourglass-outline' },
-    { key: 'en_proceso',  label: 'En proceso',  color: theme.info,      icon: 'play-circle-outline' },
-    { key: 'en_revision', label: 'En revisión', color: theme.secondary, icon: 'eye-outline' },
-    { key: 'cerrada',     label: 'Cerrada',     color: theme.success,   icon: 'checkmark-circle-outline' },
-  ], [theme.warning, theme.info, theme.secondary, theme.success]);
+    // Mismos nombres, iconos y colores de estado que en el resto de la app
+    ...['pendiente', 'en_proceso', 'en_revision', 'cerrada'].map((key) => ({
+      key,
+      label: statusLabel(key),
+      color: statusColor(key, theme),
+      icon: statusIcon(key),
+    })),
+  ], [theme]);
   const { isDesktop } = useResponsive();
   const { tasks, isLoading, currentUser } = useTasks();
   const {
@@ -60,9 +65,9 @@ export default function KanbanScreen({ navigation }) {
   } = useKanbanFilters(tasks, currentUser);
   const { showSuccess, showError, showWarning } = useNotification();
 
-  const [refreshing, setRefreshing] = useState(false);
   const [showStats, setShowStats] = useState(false);
-  const [dimensions, setDimensions] = useState(Dimensions.get('window'));
+  const dimensions = useWindowDimensions();
+  const isAdmin = currentUser?.role === 'admin';
   const [compactView, setCompactView] = useState(false);
   const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -78,24 +83,17 @@ export default function KanbanScreen({ navigation }) {
   }).current;
   const fabScale = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
-    const subscription = Dimensions.addEventListener('change', ({ window }) => setDimensions(window));
-    return () => subscription?.remove();
-  }, []);
-
-  const columnWidth = useMemo(() => getColumnWidth(dimensions.width, Platform.OS === 'web'), [dimensions.width]);
+  // En tableta y escritorio la barra lateral ocupa parte del ancho: las columnas se
+  // reparten lo que queda (antes se calculaban con toda la pantalla y se desbordaban)
+  const boardWidth = dimensions.width - (dimensions.width >= BREAKPOINTS.tablet ? SIDEBAR_WIDTH : 0);
+  const columnWidth = useMemo(() => getColumnWidth(boardWidth, Platform.OS === 'web'), [boardWidth]);
 
   useEffect(() => {
     const start = () => {
       Object.values(columnAnimations).forEach((animation, index) => {
-        Animated.timing(animation, {
-          toValue: 1,
-          duration: 280,
-          delay: COLUMN_DELAYS_MS[index],
-          useNativeDriver: true,
-        }).start();
+        timing(animation, 1, { delay: COLUMN_DELAYS_MS[index] }).start();
       });
-      Animated.spring(fabScale, { toValue: 1, delay: 100, friction: 6, tension: 40, useNativeDriver: true }).start();
+      spring(fabScale, 1, SPRING.enter, { delay: 100 }).start();
     };
 
     if (Platform.OS === 'web') {
@@ -105,12 +103,6 @@ export default function KanbanScreen({ navigation }) {
     const interaction = InteractionManager.runAfterInteractions(start);
     return () => interaction.cancel();
   }, [columnAnimations, fabScale]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    hapticMedium();
-    setTimeout(() => setRefreshing(false), 1000);
-  }, []);
 
   const changeStatus = useCallback(async (taskId, newStatus) => {
     try {
@@ -160,10 +152,6 @@ export default function KanbanScreen({ navigation }) {
   }, [navigation]);
 
   const goToCreate = () => {
-    if (currentUser?.role !== 'admin') {
-      showWarning('Solo administradores pueden crear tareas');
-      return;
-    }
     hapticMedium();
     navigation.navigate('TaskDetail', { task: null });
   };
@@ -299,7 +287,7 @@ export default function KanbanScreen({ navigation }) {
                 <View style={[styles.filterChipCompact, { backgroundColor: theme.error, borderColor: theme.error }]}>
                   <Ionicons name="flash" size={14} color="#FFFFFF" />
                   <Text style={[styles.filterChipCompactText, { color: '#FFFFFF' }]}>
-                    {PRIORITY_CHIP_LABELS[filters.priority] || 'Baja'}
+                    {priorityLabel(filters.priority)}
                   </Text>
                   <TouchableOpacity onPress={() => setFilters({ ...filters, priority: '' })} accessibilityRole="button" accessibilityLabel="Quitar filtro">
                     <Ionicons name="close-circle" size={14} color="#FFFFFF" />
@@ -343,30 +331,27 @@ export default function KanbanScreen({ navigation }) {
               horizontal
               showsHorizontalScrollIndicator={false}
               contentContainerStyle={styles.board}
-              refreshControl={
-                <RefreshControl
-                  refreshing={refreshing}
-                  onRefresh={onRefresh}
-                  tintColor={theme.primary}
-                  colors={[theme.primary]}
-                />
-              }
+              // Cada deslizamiento deja una columna alineada al borde
+              snapToInterval={columnWidth + COLUMN_GAP}
+              decelerationRate="fast"
             >
               {columns}
             </ScrollView>
           )}
 
           {/* Crear tarea (solo admin) */}
-          <Animated.View style={{ transform: [{ scale: fabScale }], opacity: fabScale }}>
-            <TouchableOpacity
-              style={[styles.fab, { backgroundColor: theme.primary }]}
-              onPress={goToCreate}
-              accessibilityRole="button"
-              accessibilityLabel="Agregar"
-            >
-              <Ionicons name="add" size={28} color="#FFFFFF" />
-            </TouchableOpacity>
-          </Animated.View>
+          {isAdmin && (
+            <Animated.View style={{ transform: [{ scale: fabScale }], opacity: fabScale }}>
+              <TouchableOpacity
+                style={[styles.fab, { backgroundColor: theme.primary }]}
+                onPress={goToCreate}
+                accessibilityRole="button"
+                accessibilityLabel="Nueva tarea"
+              >
+                <Ionicons name="add" size={28} color="#FFFFFF" />
+              </TouchableOpacity>
+            </Animated.View>
+          )}
 
           <KanbanFiltersModal
             visible={showFiltersModal}
@@ -385,8 +370,8 @@ export default function KanbanScreen({ navigation }) {
           <QuickEditSheet
             task={quickEditTask}
             statuses={STATUSES}
-            canClose={currentUser?.role === 'admin'}
-            canEditPriority={currentUser?.role === 'admin'}
+            canClose={isAdmin}
+            canEditPriority={isAdmin}
             onChangePriority={changePriority}
             onChangeStatus={(taskId, status) => {
               changeStatus(taskId, status);
@@ -408,8 +393,6 @@ export default function KanbanScreen({ navigation }) {
             theme={theme}
             isDark={isDark}
           />
-
-          <QuickTip {...TIPS.KANBAN_DRAG} position="bottom" delay={2500} />
         </View>
       </View>
     </GestureHandlerRootView>

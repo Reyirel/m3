@@ -10,6 +10,7 @@ import { View, Text, TextInput, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { PremiumGlassCard } from '../index';
+import { spring } from '../../theme/motion';
 
 const GlassmorphicInput = React.forwardRef(({
   label,
@@ -36,12 +37,7 @@ const GlassmorphicInput = React.forwardRef(({
   const glowAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.spring(glowAnim, {
-      toValue: isFocused ? 1 : 0,
-      tension: 50,
-      friction: 8,
-      useNativeDriver: true,
-    }).start();
+    spring(glowAnim, isFocused ? 1 : 0).start();
   }, [isFocused, glowAnim]);
 
   return (

@@ -1,15 +1,19 @@
 /**
  * TaskHeader.js
- * 
- * Header del TaskDetailScreen
- * Contiene: Close button, Delete button, Pomodoro button
+ *
+ * Encabezado del formulario de tarea: cerrar, título y eliminar.
  */
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../../contexts/ThemeContext';
+import { SPACING, TYPOGRAPHY } from '../../theme/tokens';
+import { ACTIVE_OPACITY } from '../../theme/motion';
+
+const BUTTON_SIZE = 40;
 
 export default function TaskHeader({
   isEditing = false,
@@ -18,57 +22,48 @@ export default function TaskHeader({
   onDelete = () => {},
 }) {
   const { theme } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <LinearGradient
       colors={theme.gradientHeader}
       start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={[styles.headerBar, { shadowColor: theme.primary }]}
+      end={{ x: 0.6, y: 1 }}
+      style={[
+        styles.headerBar,
+        { paddingTop: insets.top + (Platform.OS === 'web' ? SPACING.lg : SPACING.md), borderBottomColor: theme.glassBorder },
+      ]}
     >
-      {/* CLOSE BUTTON */}
       <TouchableOpacity
         onPress={onClose}
-        style={styles.closeButton}
-        accessible={true}
+        style={styles.button}
+        activeOpacity={ACTIVE_OPACITY}
+        hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
         accessibilityLabel="Cerrar"
-        accessibilityHint="Presiona para volver atrás"
         accessibilityRole="button"
       >
         <Ionicons name="close" size={24} color="#FFFFFF" />
       </TouchableOpacity>
 
-      {/* TITLE */}
-      <View style={styles.headerTitleContainer}>
-        <Ionicons
-          name={isEditing ? 'pencil' : 'sparkles'}
-          size={20}
-          color="#FFFFFF"
-          style={{ marginRight: 8 }}
-        />
-        <Text style={styles.headerTitle}>
-          {isEditing ? 'Editar Tarea' : 'Nueva Tarea'}
-        </Text>
-      </View>
+      <Text style={styles.headerTitle} numberOfLines={1} accessibilityRole="header">
+        {isEditing ? 'Editar tarea' : 'Nueva tarea'}
+      </Text>
 
-      {/* DELETE BUTTON */}
-      <View style={styles.rightButtons}>
-        {canDelete && (
-          <TouchableOpacity
-            onPress={onDelete}
-            style={styles.deleteButton}
-            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessible={true}
-            accessibilityLabel="Eliminar tarea"
-            accessibilityHint="Presiona para eliminar esta tarea"
-            accessibilityRole="button"
-          >
-            <Ionicons name="trash" size={22} color="#FFFFFF" />
-          </TouchableOpacity>
-        )}
-
-        {!isEditing && <View style={{ width: 40 }} />}
-      </View>
+      {canDelete ? (
+        <TouchableOpacity
+          onPress={onDelete}
+          style={styles.button}
+          activeOpacity={ACTIVE_OPACITY}
+          hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+          accessibilityLabel="Eliminar tarea"
+          accessibilityRole="button"
+        >
+          <Ionicons name="trash-outline" size={22} color="#FFFFFF" />
+        </TouchableOpacity>
+      ) : (
+        // Mantiene el título centrado cuando no hay botón a la derecha
+        <View style={{ width: BUTTON_SIZE }} />
+      )}
     </LinearGradient>
   );
 }
@@ -78,66 +73,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 48,
-    paddingBottom: 20,
-    gap: 12,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    elevation: 12,
-    overflow: 'hidden',
+    paddingHorizontal: SPACING.lg,
+    paddingBottom: SPACING.lg,
+    gap: SPACING.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  closeButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+  button: {
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
+    borderRadius: BUTTON_SIZE / 2,
     backgroundColor: 'rgba(255,255,255,0.14)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.20)',
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  headerTitleContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
+    ...TYPOGRAPHY.h3,
+    flex: 1,
+    textAlign: 'center',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.3,
-    textShadowColor: 'rgba(0,0,0,0.20)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
-  },
-  rightButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  pomodoroButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.14)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.20)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  deleteButton: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,59,48,0.25)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,59,48,0.40)',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
 });

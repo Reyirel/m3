@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../contexts/ThemeContext';
 import { roleLabel as getRoleLabel } from '../services/permissions';
 import { confirmAlert } from '../utils/alert';
@@ -38,6 +39,7 @@ export default function DesktopSidebar({
   stackNavigation,  // navegación de Stack para Profile/Settings
 }) {
   const { theme, isDark } = useTheme();
+  const insets = useSafeAreaInsets();
   const [hovered, setHovered] = useState(null);
   // Contador en tiempo real (lo alimenta NotificationWatcher en App.js)
   const [unreadCount, setUnreadCount] = useState(0);
@@ -61,20 +63,20 @@ export default function DesktopSidebar({
 
   return (
     <View style={[styles.sidebar, {
-      backgroundColor: isDark ? '#0C0A0F' : '#FFFFFF',
-      borderRightColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)',
+      backgroundColor: theme.card,
+      borderRightColor: theme.glassBorder,
     }]}>
       {/* ─── Brand / Usuario ─── */}
       <LinearGradient
         colors={theme.gradientHeader}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={styles.brand}
+        style={[styles.brand, { paddingTop: insets.top + 16 }]}
       >
         <TouchableOpacity
           style={styles.brandInner}
           onPress={() => stackNavigation?.navigate('Profile')}
-          activeOpacity={0.75}
+          activeOpacity={0.7}
           accessibilityLabel="Ver perfil"
         >
           <View style={styles.avatarCircle}>
@@ -114,7 +116,7 @@ export default function DesktopSidebar({
                   backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
                 },
               ]}
-              activeOpacity={0.75}
+              activeOpacity={0.7}
               accessibilityRole="link"
               accessibilityLabel={badge > 0 ? `${meta.label}, ${badge} pendientes` : meta.label}
               accessibilityState={{ selected: isActive }}
@@ -150,9 +152,7 @@ export default function DesktopSidebar({
       </ScrollView>
 
       {/* ─── Acciones del fondo ─── */}
-      <View style={[styles.bottom, {
-        borderTopColor: isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)',
-      }]}>
+      <View style={[styles.bottom, { borderTopColor: theme.glassBorder, paddingBottom: insets.bottom + 12 }]}>
         {[
           { key: 'notifications', label: 'Notificaciones', icon: 'notifications-outline', screen: 'Notifications', badge: unreadCount },
           { key: 'search', label: 'Buscar tareas', icon: 'search-outline', screen: 'Search' },
@@ -171,7 +171,7 @@ export default function DesktopSidebar({
                 backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
               },
             ]}
-            activeOpacity={0.75}
+            activeOpacity={0.7}
             {...(Platform.OS === 'web' ? {
               onMouseEnter: () => setHovered(item.key),
               onMouseLeave: () => setHovered(null),
@@ -198,7 +198,6 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
   },
   brand: {
-    paddingTop: Platform.OS === 'ios' ? 52 : 20,
     paddingBottom: 16,
     paddingHorizontal: 14,
   },
@@ -220,7 +219,7 @@ const styles = StyleSheet.create({
   },
   avatarText: {
     fontSize: 14,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
@@ -287,7 +286,6 @@ const styles = StyleSheet.create({
   },
   bottom: {
     paddingHorizontal: 10,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 14,
     paddingTop: 10,
     borderTopWidth: 1,
     gap: 2,

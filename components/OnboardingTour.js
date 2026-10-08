@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '../contexts/ThemeContext';
+import { DURATION, spring, timing } from '../theme/motion';
 
 // v5 key: versión mejorada y pulida — modo oscuro, delegación completa, responsables por área
 const ONBOARDING_KEY = '@onboarding_v5';
@@ -32,7 +33,7 @@ const STEPS_ADMIN = [
   {
     id: 'stats_strip',
     title: 'Resumen visual interactivo',
-    description: 'Los chips de colores bajo el buscador muestran conteos en tiempo real. Toca "Pendientes", "En proceso" o "Cerradas" para filtrar la lista al instante.',
+    description: 'Inicio resume lo que pide atención: vencidas, las que vencen hoy, en revisión y en proceso. Toca un recuadro para abrir la Bandeja con ese filtro.',
     icon: 'stats-chart-outline',
     color: '#3B82F6',
   },
@@ -105,7 +106,7 @@ const STEPS_SECRETARIO = [
   {
     id: 'my_tasks',
     title: 'Tus Tareas Asignadas',
-    description: 'La pantalla principal muestra las tareas asignadas a ti. Los chips de colores (Pendientes, En proceso, Cerradas) son táctiles — tócalos para filtrar al instante.',
+    description: 'Inicio muestra lo urgente de tus tareas: vencidas, las que vencen hoy y las próximas. La lista completa, con sus acciones, está en la Bandeja.',
     icon: 'checkbox-outline',
     color: '#3B82F6',
   },
@@ -171,7 +172,7 @@ const STEPS_DIRECTOR = [
   {
     id: 'my_tasks',
     title: 'Mis Tareas',
-    description: 'Ves solo las tareas de tu área o asignadas a ti. Los chips "Pendientes", "En proceso" y "Cerradas" filtran la lista con un solo toque.',
+    description: 'Inicio muestra lo urgente de tu área y de lo asignado a ti: vencidas, las que vencen hoy y las próximas. La lista completa está en la Bandeja.',
     icon: 'list-outline',
     color: '#3B82F6',
   },
@@ -275,9 +276,9 @@ export default function OnboardingTour({ userRole, onComplete, forceShow = false
     slideAnim.setValue(40);
     scaleAnim.setValue(0.92);
     Animated.parallel([
-      Animated.timing(fadeAnim, { toValue: 1, duration: 380, useNativeDriver: true }),
-      Animated.spring(slideAnim, { toValue: 0, friction: 8, tension: 42, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, friction: 8, tension: 42, useNativeDriver: true }),
+      timing(fadeAnim, 1, { duration: DURATION.slow }),
+      spring(slideAnim, 0),
+      spring(scaleAnim, 1),
     ]).start();
   }, [fadeAnim, slideAnim, scaleAnim]);
 
@@ -323,7 +324,7 @@ export default function OnboardingTour({ userRole, onComplete, forceShow = false
           ]}
         >
           {/* Progress bar */}
-          <View style={[styles.progressBar, { backgroundColor: isDark ? '#2C2C2E' : '#F3F4F6' }]}>
+          <View style={[styles.progressBar, { backgroundColor: theme.backgroundTertiary }]}>
             <View style={[styles.progressFill, { width: `${progress}%`, backgroundColor: step.color }]} />
           </View>
 
@@ -356,7 +357,7 @@ export default function OnboardingTour({ userRole, onComplete, forceShow = false
                   style={[
                     styles.dot,
                     {
-                      backgroundColor: i === currentStep ? step.color : isDark ? '#3A3A3C' : '#E5E7EB',
+                      backgroundColor: i === currentStep ? step.color : theme.borderLight,
                       width: i === currentStep ? 22 : 8,
                     },
                   ]}

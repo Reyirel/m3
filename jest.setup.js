@@ -55,6 +55,20 @@ jest.mock('react-native', () => ({
     event: jest.fn(),
     timing: jest.fn(),
   },
+  // Usados por theme/motion.js al cargarse
+  Easing: {
+    in: (fn) => fn,
+    out: (fn) => fn,
+    inOut: (fn) => fn,
+    cubic: (t) => t,
+    quad: (t) => t,
+    ease: (t) => t,
+    linear: (t) => t,
+  },
+  AccessibilityInfo: {
+    isReduceMotionEnabled: jest.fn(async () => false),
+    addEventListener: jest.fn(() => ({ remove: jest.fn() })),
+  },
   Keyboard: {
     dismiss: jest.fn(),
   },

@@ -14,6 +14,7 @@ const ComplianceReport = ({
   showDetails = true 
 }) => {
   const { theme } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   const [expandedUser, setExpandedUser] = useState(null);
   const [sortBy, setSortBy] = useState('complianceRate'); // 'complianceRate', 'assigned', 'pending'
   const [sortOrder, setSortOrder] = useState('asc'); // 'asc' = peor primero para identificar quién no trabaja
@@ -139,7 +140,7 @@ const ComplianceReport = ({
               setExpandedUser(expandedUser === user.email ? null : user.email);
               onUserPress?.(user);
             }}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
             <View style={styles.userMainRow}>
               {/* Posición/Ranking */}
@@ -253,9 +254,9 @@ const ComplianceReport = ({
   );
 };
 
-const styles = StyleSheet.create({
+const createStyles = (theme) => StyleSheet.create({
   container: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: theme.card,
     borderRadius: 16,
     padding: 16,
     marginVertical: 8,
@@ -276,11 +277,11 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#1F2937',
+    color: theme.text,
   },
   subtitle: {
     fontSize: 14,
-    color: '#6B7280',
+    color: theme.textSecondary,
     marginTop: 4,
   },
   summaryRow: {
@@ -290,7 +291,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     flex: 1,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: theme.background,
     borderRadius: 16,
     padding: 12,
     alignItems: 'center',
@@ -298,11 +299,11 @@ const styles = StyleSheet.create({
   summaryValue: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#1F2937',
+    color: theme.text,
   },
   summaryLabel: {
     fontSize: 12,
-    color: '#6B7280',
+    color: theme.textSecondary,
     marginTop: 2,
   },
   sortControls: {
@@ -314,20 +315,20 @@ const styles = StyleSheet.create({
   },
   sortLabel: {
     fontSize: 14,
-    color: '#6B7280',
+    color: theme.textSecondary,
   },
   sortBtn: {
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#F3F4F6',
+    backgroundColor: theme.background,
     borderRadius: 16,
   },
   sortBtnActive: {
-    backgroundColor: '#6366F1',
+    backgroundColor: theme.info,
   },
   sortBtnText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: theme.textSecondary,
   },
   sortBtnTextActive: {
     color: '#FFFFFF',
@@ -337,15 +338,15 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   userCard: {
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.background,
     borderRadius: 16,
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E5E7EB',
+    borderColor: theme.borderLight,
   },
   userCardWarning: {
-    backgroundColor: '#FEF2F2',
-    borderColor: '#FECACA',
+    backgroundColor: theme.errorAlpha,
+    borderColor: theme.error,
   },
   userMainRow: {
     flexDirection: 'row',
@@ -370,11 +371,11 @@ const styles = StyleSheet.create({
   userName: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#1F2937',
+    color: theme.text,
   },
   userEmail: {
     fontSize: 12,
-    color: '#6B7280',
+    color: theme.textSecondary,
   },
   userMetrics: {
     alignItems: 'flex-end',
@@ -391,7 +392,7 @@ const styles = StyleSheet.create({
   },
   complianceLabel: {
     fontSize: 11,
-    color: '#6B7280',
+    color: theme.textSecondary,
     marginTop: 2,
   },
   progressBarContainer: {
@@ -403,7 +404,7 @@ const styles = StyleSheet.create({
   progressBar: {
     flex: 1,
     height: 6,
-    backgroundColor: '#E5E7EB',
+    backgroundColor: theme.borderLight,
     borderRadius: 3,
     overflow: 'hidden',
   },
@@ -413,7 +414,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: theme.textSecondary,
     minWidth: 70,
     textAlign: 'right',
   },
@@ -421,7 +422,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: theme.borderLight,
   },
   detailRow: {
     flexDirection: 'row',
@@ -436,10 +437,10 @@ const styles = StyleSheet.create({
   },
   detailText: {
     fontSize: 12,
-    color: '#4B5563',
+    color: theme.textSecondary,
   },
   onTimeRate: {
-    backgroundColor: '#EEF2FF',
+    backgroundColor: theme.infoAlpha,
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 10,
@@ -449,18 +450,18 @@ const styles = StyleSheet.create({
   onTimeRateText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6366F1',
+    color: theme.info,
   },
   legend: {
     marginTop: 16,
     paddingTop: 16,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: theme.borderLight,
   },
   legendTitle: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6B7280',
+    color: theme.textSecondary,
     marginBottom: 8,
   },
   legendItems: {
@@ -480,24 +481,24 @@ const styles = StyleSheet.create({
   },
   legendText: {
     fontSize: 12,
-    color: '#6B7280',
+    color: theme.textSecondary,
   },
   emptyContainer: {
     alignItems: 'center',
     justifyContent: 'center',
     padding: 32,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: theme.background,
     borderRadius: 16,
   },
   emptyText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
+    color: theme.textSecondary,
     marginTop: 12,
   },
   emptySubtext: {
     fontSize: 14,
-    color: '#9CA3AF',
+    color: theme.textTertiary,
     marginTop: 4,
     textAlign: 'center',
   },

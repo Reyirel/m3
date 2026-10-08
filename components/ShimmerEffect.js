@@ -1,19 +1,16 @@
 // components/ShimmerEffect.js
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet, Animated } from 'react-native';
+import { View, StyleSheet, Animated, Easing } from 'react-native';
 import { useTheme } from '../contexts/ThemeContext';
+import { loop, timing } from '../theme/motion';
 
 export default function ShimmerEffect({ width = '100%', height = 60, borderRadius = 12, style = {} }) {
-  const { isDark } = useTheme();
+  const { theme, isDark } = useTheme();
   const translateX = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const shimmer = Animated.loop(
-      Animated.timing(translateX, {
-        toValue: 1,
-        duration: 1400,
-        useNativeDriver: true,
-      })
+    const shimmer = loop(
+      timing(translateX, 1, { duration: 1400, easing: Easing.linear })
     );
     shimmer.start();
     return () => shimmer.stop();
@@ -24,7 +21,7 @@ export default function ShimmerEffect({ width = '100%', height = 60, borderRadiu
     outputRange: [-300, 300],
   });
 
-  const baseColor = isDark ? '#2C2C2E' : '#E5E5EA';
+  const baseColor = theme.shimmerBase;
   const shineColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.75)';
 
   return (
@@ -45,13 +42,13 @@ export default function ShimmerEffect({ width = '100%', height = 60, borderRadiu
 
 /** Skeleton con forma de TaskCard — usar durante carga inicial */
 export function TaskCardSkeleton() {
-  const { isDark } = useTheme();
-  const base = isDark ? '#2C2C2E' : '#E5E5EA';
+  const { theme } = useTheme();
+  const base = theme.shimmerBase;
 
   return (
     <View style={[skStyles.card, {
-      backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7',
-      borderColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)',
+      backgroundColor: theme.card,
+      borderColor: theme.glassBorder,
     }]}>
       <View style={[skStyles.bar, { backgroundColor: base }]} />
       <View style={skStyles.inner}>

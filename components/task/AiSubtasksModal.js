@@ -4,7 +4,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { addSubtask } from '../../services/tasksMultiple';
-import { GlassmorphicButton } from '../index';
+import PrimaryButton from '../ui/PrimaryButton';
 
 /**
  * Props:
@@ -118,23 +118,20 @@ export default function AiSubtasksModal({
 
           {/* Footer */}
           <View style={styles.footer}>
-            <GlassmorphicButton
+            <PrimaryButton
+              title="Cancelar"
               onPress={onClose}
               variant="secondary"
               size="medium"
               style={{ flex: 1 }}
-            >
-              Cancelar
-            </GlassmorphicButton>
-            <GlassmorphicButton
+            />
+            <PrimaryButton
+              title={`Agregar ${checkedCount} subtarea${checkedCount !== 1 ? 's' : ''}`}
               onPress={handleConfirm}
-              variant="primary"
               size="medium"
               style={{ flex: 2 }}
               icon="add-circle"
-            >
-              Agregar {checkedCount} subtarea{checkedCount !== 1 ? 's' : ''}
-            </GlassmorphicButton>
+            />
           </View>
         </View>
       </View>

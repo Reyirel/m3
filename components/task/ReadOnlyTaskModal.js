@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import TaskStatusButtons from '../TaskStatusButtons';
 import SubtasksList from '../SubtasksList';
 import AreaCoordinationProgress from '../AreaCoordinationProgress';
-import GlassmorphicButton from '../glass/GlassmorphicButton';
+import PrimaryButton from '../ui/PrimaryButton';
 import { useNotification } from '../../contexts/NotificationContext';
 import { confirmTaskCompletion } from '../../services/taskConfirmations';
 import { isTaskAssignedToUser } from '../../utils/taskHelpers';
@@ -159,7 +159,7 @@ export default function ReadOnlyTaskModal({
               <Text style={[styles.label, { color: theme.textSecondary }]}>Más Opciones</Text>
               <View style={{ gap: 12, marginTop: 10 }}>
                 {/* Reportes */}
-                <GlassmorphicButton
+                <PrimaryButton
                   title="Ver/Enviar Reportes"
                   onPress={() => {
                     navigation.goBack();
@@ -176,7 +176,7 @@ export default function ReadOnlyTaskModal({
                 />
 
                 {/* Chat */}
-                <GlassmorphicButton
+                <PrimaryButton
                   title="Ir al Chat"
                   onPress={() => {
                     navigation.goBack();
@@ -202,7 +202,7 @@ export default function ReadOnlyTaskModal({
                     style={[styles.confirmBtn, { backgroundColor: theme.success }]}
                     onPress={handleConfirmProgress}
                     disabled={confirming}
-                    activeOpacity={0.8}
+                    activeOpacity={0.7}
                   >
                     {confirming
                       ? <ActivityIndicator size="small" color="#FFF" />
@@ -215,10 +215,10 @@ export default function ReadOnlyTaskModal({
 
                 {/* Delegar — solo secretarios con permiso */}
                 {canDelegate && currentUser?.role === 'secretario' && (
-                  <GlassmorphicButton
+                  <PrimaryButton
                     title="Delegar Tarea"
                     onPress={onOpenDelegate}
-                    variant="outline"
+                    variant="ghost"
                     size="large"
                     icon="people"
                   />
@@ -267,7 +267,7 @@ const createStyles = (_theme) =>
     },
     title: {
       fontSize: 18,
-      fontWeight: '800',
+      fontWeight: '700',
       letterSpacing: -0.5,
     },
     closeButton: {

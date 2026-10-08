@@ -3,8 +3,10 @@
 // ⚡ Optimizado con useMemo para evitar re-renders innecesarios
 
 import React, { createContext, useState, useEffect, useMemo } from 'react';
+import { Platform } from 'react-native';
 import logger from '../services/Logger';
 import { subscribeToTasks } from '../services/tasks';
+import { subscribeToConnectionState } from '../services/offlineSync';
 import { deleteManager } from '../utils/deleteManager';
 import { enableNetwork, disableNetwork } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -18,20 +20,24 @@ export function TasksProvider({ children }) {
   const [isLoading, setIsLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
 
-  // Detectar cambios de conectividad del navegador/dispositivo
+  // Conectividad: la misma fuente que el resto de la app (services/offlineSync, que usa
+  // NetInfo). Antes se escuchaban los eventos online/offline de `window`, que solo
+  // existen en el navegador: en iOS y Android `isOnline` nunca cambiaba.
   useEffect(() => {
-    const handleOnline  = () => { setIsOnline(true);  try { enableNetwork(db); } catch {} };
-    const handleOffline = () => { setIsOnline(false); try { disableNetwork(db); } catch {} };
-    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
-      window.addEventListener('online',  handleOnline);
-      window.addEventListener('offline', handleOffline);
-      setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine ?? true : true);
-      return () => {
-        window.removeEventListener('online',  handleOnline);
-        window.removeEventListener('offline', handleOffline);
-      };
-    }
-    return undefined;
+    let previous = null;
+    return subscribeToConnectionState((online) => {
+      if (online === previous) return;
+      previous = online;
+      setIsOnline(online);
+      // Pausar o reanudar Firestore solo en web, como hasta ahora: en el teléfono
+      // Firestore gestiona sus reintentos y no conviene apagarlo por un aviso de red
+      if (Platform.OS !== 'web') return;
+      try {
+        Promise.resolve(online ? enableNetwork(db) : disableNetwork(db)).catch(() => {});
+      } catch {
+        // Firestore no disponible: la app sigue con la caché local
+      }
+    });
   }, []);
 
   // Suscribirse a las tareas del usuario. Se vuelve a suscribir si cambia el usuario,

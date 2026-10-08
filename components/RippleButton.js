@@ -3,6 +3,7 @@
 import React, { useRef } from 'react';
 import { TouchableOpacity, Animated, StyleSheet, View } from 'react-native';
 import { hapticLight } from '../utils/haptics';
+import { timing } from '../theme/motion';
 
 const RippleButton = ({ 
   children, 
@@ -25,16 +26,8 @@ const RippleButton = ({
     rippleOpacity.setValue(1);
     
     Animated.parallel([
-      Animated.timing(rippleAnim, {
-        toValue: 1,
-        duration: rippleDuration,
-        useNativeDriver: true,
-      }),
-      Animated.timing(rippleOpacity, {
-        toValue: 0,
-        duration: rippleDuration,
-        useNativeDriver: true,
-      }),
+      timing(rippleAnim, 1, { duration: rippleDuration }),
+      timing(rippleOpacity, 0, { duration: rippleDuration }),
     ]).start();
   };
 
@@ -55,7 +48,7 @@ const RippleButton = ({
       onPressIn={handlePressIn}
       onPress={handlePress}
       disabled={disabled}
-      activeOpacity={0.8}
+      activeOpacity={0.7}
       accessible={true}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}

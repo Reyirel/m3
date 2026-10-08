@@ -9,16 +9,9 @@ export const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    paddingTop: 50,
     paddingBottom: 28,
     paddingHorizontal: 20,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.35,
-    shadowRadius: 20,
-    elevation: 12,
-    overflow: 'hidden',
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerContent: {
     flexDirection: 'row',
@@ -34,7 +27,7 @@ export const styles = StyleSheet.create({
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.5,
     textShadowColor: 'rgba(0,0,0,0.20)',

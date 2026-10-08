@@ -8,14 +8,12 @@ import {
   Text,
   FlatList,
   TouchableOpacity,
-  RefreshControl,
   TextInput,
   Animated,
   Easing,
   Platform,
   InteractionManager,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import TaskItem from './inbox/TaskItem';
 import EmptyState from '../components/EmptyState';
@@ -32,19 +30,19 @@ import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
 import { isOverdue } from '../utils/dateUtils';
 import { createStyles } from './inbox/MyInboxScreenStyles';
-import { EMPTY_FILTERS, filterInboxTasks, uniqueTaskAreas } from './inbox/inboxFilters';
+import { EMPTY_FILTERS, filterInboxTasks, hasActiveFilters, uniqueTaskAreas } from './inbox/inboxFilters';
 import { useRecentMessages } from './inbox/useRecentMessages';
 import { useTaskDeletion } from './inbox/useTaskDeletion';
 import { InboxFiltersModal, ActiveFilterChips } from './inbox/InboxFilterControls';
 import { HelpModal, MessagesModal } from './inbox/InboxModals';
+import { spring, timing } from '../theme/motion';
 
-export default function MyInboxScreen({ navigation }) {
+export default function MyInboxScreen({ navigation, route }) {
   const { theme, isDark } = useTheme();
   const { width, isDesktop, isTablet, padding } = useResponsive();
   const { showSuccess, showError, showWarning, showInfo } = useNotification();
   const { tasks, setTasks, isLoading: tasksLoading, currentUser } = useTasks();
 
-  const [refreshing, setRefreshing] = useState(false);
   const [showMessagesModal, setShowMessagesModal] = useState(false);
   const [searchText, setSearchText] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -52,6 +50,14 @@ export default function MyInboxScreen({ navigation }) {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [filters, setFilters] = useState(EMPTY_FILTERS);
   const [compactView, setCompactView] = useState(false);
+
+  // Inicio abre la Bandeja con un filtro ya puesto (vencidas, en revisión…)
+  const preset = route?.params?.preset;
+  useEffect(() => {
+    if (!preset) return;
+    setSearchText('');
+    setFilters({ ...EMPTY_FILTERS, ...preset.filters });
+  }, [preset]);
 
   const recentMessages = useRecentMessages(tasks, currentUser);
   const { deletingTaskIds, deleteTask, deleteTasks } = useTaskDeletion({
@@ -62,15 +68,13 @@ export default function MyInboxScreen({ navigation }) {
 
   const headerOpacity = useRef(new Animated.Value(0)).current;
   const headerSlide = useRef(new Animated.Value(-20)).current;
-  const isMountedRef = useRef(true);
-  useEffect(() => () => { isMountedRef.current = false; }, []);
 
   // Entrada del encabezado — espera a que termine la transición de navegación
   useEffect(() => {
     const start = () => {
       Animated.parallel([
-        Animated.timing(headerOpacity, { toValue: 1, duration: 300, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
-        Animated.spring(headerSlide, { toValue: 0, tension: 80, friction: 12, useNativeDriver: true }),
+        timing(headerOpacity, 1, { easing: Easing.out(Easing.cubic) }),
+        spring(headerSlide, 0),
       ]).start();
     };
     if (Platform.OS === 'web') {
@@ -80,14 +84,6 @@ export default function MyInboxScreen({ navigation }) {
     const interaction = InteractionManager.runAfterInteractions(start);
     return () => interaction.cancel();
   }, [headerOpacity, headerSlide]);
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true);
-    hapticMedium();
-    setTimeout(() => {
-      if (isMountedRef.current) setRefreshing(false);
-    }, 1000);
-  }, []);
 
   const filtered = useMemo(
     () => filterInboxTasks(tasks, currentUser, searchText, filters),
@@ -108,61 +104,61 @@ export default function MyInboxScreen({ navigation }) {
     lastScheduledRef.current = today;
   }, [overdueCount, overdueTasks]);
 
-  const toggleTaskSelection = (taskId) => {
-    const updated = new Set(selectedTaskIds);
-    if (updated.has(taskId)) updated.delete(taskId);
-    else updated.add(taskId);
-    setSelectedTaskIds(updated);
-    hapticMedium();
-  };
+  const isAdmin = currentUser?.role === 'admin';
 
-  const changeStatus = async (taskId, newStatus) => {
+  // Las funciones que recibe cada fila no cambian entre renders: así una fila solo se
+  // vuelve a dibujar cuando cambia su tarea, no cada vez que llega una actualización.
+  const toggleTaskSelection = useCallback((taskId) => {
+    setSelectedTaskIds((current) => {
+      const updated = new Set(current);
+      if (updated.has(taskId)) updated.delete(taskId);
+      else updated.add(taskId);
+      return updated;
+    });
+    hapticMedium();
+  }, []);
+
+  const changeStatus = useCallback(async (task, newStatus) => {
     // Misma regla que en Inicio y Kanban: cada rol solo puede hacer sus transiciones
-    const task = tasks.find((t) => t.id === taskId);
-    const perm = canChangeTaskStatus(currentUser, task || { id: taskId }, newStatus);
+    const perm = canChangeTaskStatus(currentUser, task, newStatus);
     if (!perm.canChange) {
       showWarning(perm.reason || 'No tienes permisos para cambiar el estado');
       return;
     }
     try {
-      await updateTask(taskId, { status: newStatus });
+      await updateTask(task.id, { status: newStatus });
     } catch (e) {
       showError(e?.code === 'permission-denied' ? e.message : 'No se pudo actualizar la tarea');
     }
-  };
+  }, [currentUser, showWarning, showError]);
 
-  const toggleComplete = async (task) => {
-    if (task.status === 'cerrada' && currentUser?.role !== 'admin') {
+  const toggleComplete = useCallback((task) => {
+    if (task.status === 'cerrada' && !isAdmin) {
       showWarning('Solo administradores pueden reabrir tareas');
       return;
     }
-    await changeStatus(task.id, task.status === 'cerrada' ? 'pendiente' : 'cerrada');
-  };
+    changeStatus(task, task.status === 'cerrada' ? 'pendiente' : 'cerrada');
+  }, [isAdmin, changeStatus, showWarning]);
 
-  const openDetail = (task) => {
-    const canEdit = currentUser && ['admin', 'secretario', 'director'].includes(currentUser.role);
-    if (!canEdit) {
-      showInfo('No tienes permisos para editar tareas');
-      return;
-    }
+  const reopen = useCallback((task) => changeStatus(task, 'pendiente'), [changeStatus]);
+  const removeTask = useCallback((task) => deleteTask(task.id), [deleteTask]);
+
+  const openDetail = useCallback((task) => {
     navigation.navigate('TaskDetail', { task, taskId: task.id });
-  };
+  }, [navigation]);
 
-  const openChat = (task) => navigation.navigate('TaskChat', { taskId: task.id, taskTitle: task.title });
+  const openChat = useCallback(
+    (task) => navigation.navigate('TaskChat', { taskId: task.id, taskTitle: task.title }),
+    [navigation]
+  );
 
-  const goToCreate = () => {
-    // Solo el admin crea tareas principales
-    if (currentUser?.role !== 'admin') {
-      showWarning('Solo administradores pueden crear tareas. Los secretarios y directores solo pueden crear subtareas.');
-      return;
-    }
-    navigation.navigate('TaskDetail');
-  };
+  // Solo el admin crea tareas principales (el botón no se muestra a los demás)
+  const goToCreate = () => navigation.navigate('TaskDetail');
+  const filtersApplied = !!searchText || hasActiveFilters(filters);
 
   const styles = React.useMemo(() => createStyles(theme, isDark, isDesktop, isTablet, width, padding), [theme, isDark, isDesktop, isTablet, width, padding]);
 
-  const renderItem = ({ item }) => {
-    const isAdmin = currentUser?.role === 'admin';
+  const renderItem = useCallback(({ item }) => {
     const isSelected = selectedTaskIds.has(item.id);
     const isDeleting = deletingTaskIds.has(item.id);
 
@@ -191,51 +187,35 @@ export default function MyInboxScreen({ navigation }) {
           <TaskItem
             task={item}
             compact={compactView}
-            onPress={() => !isDeleting && openDetail(item)}
-            onDelete={isAdmin ? () => deleteTask(item.id) : undefined}
-            onToggleComplete={() => !isDeleting && toggleComplete(item)}
-            onReopen={isAdmin ? () => !isDeleting && changeStatus(item.id, 'pendiente') : undefined}
-            onChangeStatus={item.status !== 'cerrada'
-              ? (task, newStatus) => !isDeleting && changeStatus(task.id, newStatus)
-              : undefined}
-            onChat={(task) => openChat(task)}
+            onPress={openDetail}
+            onDelete={isAdmin ? removeTask : undefined}
+            onToggleComplete={toggleComplete}
+            onReopen={isAdmin ? reopen : undefined}
+            onChangeStatus={item.status !== 'cerrada' ? changeStatus : undefined}
+            onChat={openChat}
             currentUserRole={currentUser?.role || 'director'}
             isDeleting={isDeleting}
           />
         </View>
       </View>
     );
-  };
+  }, [
+    styles, theme, isDark, isAdmin, selectedTaskIds, deletingTaskIds, compactView, currentUser?.role,
+    toggleTaskSelection, openDetail, removeTask, toggleComplete, reopen, changeStatus, openChat,
+  ]);
 
   const glassCard = {
     backgroundColor: theme.glass,
     borderColor: theme.glassBorder,
   };
 
-  // Mientras se cargan las tareas
-  if (tasksLoading && !currentUser) {
+  // Mientras se cargan las tareas: tarjetas de relleno, no "bandeja vacía"
+  if (tasksLoading) {
     return (
       <View style={styles.container}>
         <View style={[styles.contentWrapper, { maxWidth: isDesktop ? MAX_WIDTHS.content : '100%' }]}>
-          <LinearGradient
-            colors={theme.gradientHeader}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.headerGradient}
-          >
-            <View style={styles.header}>
-              <View style={styles.headerLeft}>
-                <View style={styles.headerIconWrapper}>
-                  <Ionicons name="file-tray-full" size={22} color="#FFFFFF" />
-                </View>
-                <View>
-                  <Text style={styles.greeting}>Mi Bandeja</Text>
-                  <Text style={styles.heading}>Cargando...</Text>
-                </View>
-              </View>
-            </View>
-          </LinearGradient>
-          <View style={{ flex: 1, padding: 16 }}>
+          <ScreenHeader title="Mi Bandeja" subtitle="Cargando…" />
+          <View style={{ flex: 1, padding: 16 }} accessibilityLabel="Cargando tareas">
             {[1, 2, 3, 4, 5].map((i) => (
               <View key={i} style={[glassCard, { borderWidth: 1, padding: 16, borderRadius: 16, marginBottom: 12 }]}>
                 <ShimmerEffect width="70%" height={18} style={{ marginBottom: 8 }} />
@@ -271,8 +251,14 @@ export default function MyInboxScreen({ navigation }) {
                 badge: recentMessages.length,
                 onPress: () => { hapticMedium(); setShowMessagesModal(true); },
               },
+              isAdmin && { icon: 'add', label: 'Nueva tarea', primary: true, onPress: goToCreate },
+              {
+                icon: compactView ? 'list' : 'reorder-four-outline',
+                label: compactView ? 'Vista normal' : 'Vista compacta',
+                active: compactView,
+                onPress: () => { hapticLight(); setCompactView(!compactView); },
+              },
               { icon: 'help-circle-outline', label: 'Ayuda', onPress: () => { hapticLight(); setShowHelpModal(true); } },
-              currentUser?.role === 'admin' && { icon: 'add', label: 'Nueva tarea', primary: true, onPress: goToCreate },
             ].filter(Boolean)}
           />
         </Animated.View>
@@ -349,32 +335,6 @@ export default function MyInboxScreen({ navigation }) {
           </View>
         )}
 
-        {/* Vista normal o compacta */}
-        <View style={[styles.compactToggleRow, { backgroundColor: 'transparent' }]}>
-          <TouchableOpacity
-            style={[
-              styles.compactToggleBtn,
-              { backgroundColor: compactView ? theme.primary : (isDark ? theme.glass : theme.glassStrong) },
-            ]}
-            onPress={() => {
-              hapticLight();
-              setCompactView(!compactView);
-            }}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            accessibilityLabel={compactView ? 'Vista normal' : 'Vista compacta'}
-            accessibilityRole="button"
-          >
-            <Ionicons
-              name={compactView ? 'list' : 'grid-outline'}
-              size={16}
-              color={compactView ? '#fff' : theme.text}
-            />
-            <Text style={{ color: compactView ? '#fff' : theme.text, fontSize: 12, marginLeft: 4 }}>
-              {compactView ? 'Normal' : 'Compacto'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-
         <FlatList
           data={filtered}
           keyExtractor={(item) => item.id}
@@ -382,27 +342,28 @@ export default function MyInboxScreen({ navigation }) {
           contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
-          windowSize={5}
+          windowSize={7}
           maxToRenderPerBatch={6}
           initialNumToRender={8}
-          removeClippedSubviews={true}
-          updateCellsBatchingPeriod={100}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              tintColor={theme.primary}
-              colors={[theme.primary]}
+          ListEmptyComponent={filtersApplied ? (
+            <EmptyState
+              icon="search-outline"
+              title="Sin resultados"
+              message="Ninguna tarea coincide con la búsqueda o los filtros."
+              quickAction={{
+                label: 'Quitar filtros',
+                icon: 'close-circle-outline',
+                onPress: () => { setSearchText(''); setFilters(EMPTY_FILTERS); },
+              }}
             />
-          }
-          ListEmptyComponent={
+          ) : (
             <EmptyState
               icon="file-tray-outline"
-              title="¡Bandeja vacía!"
-              message="No tienes tareas en este momento. ¡Descansa y disfruta! 🎉"
+              title="Bandeja al día"
+              message="No tienes tareas pendientes por ahora."
               variant="success"
             />
-          }
+          )}
         />
       </View>
 

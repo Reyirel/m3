@@ -18,4 +18,3 @@ export { default as TaskHeader } from './TaskHeader';
 export { default as ReadOnlyTaskModal } from './ReadOnlyTaskModal';
 export { default as DelegateTaskModal } from './DelegateTaskModal';
 export { default as AiSubtasksModal } from './AiSubtasksModal';
-export { default as AssigneeChangeConfirmModal } from './AssigneeChangeConfirmModal';

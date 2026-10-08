@@ -1,10 +1,9 @@
 // components/SubtasksList.js
 // Componente para mostrar y gestionar subtareas
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   FlatList,
   TextInput,
@@ -12,10 +11,10 @@ import {
   SafeAreaView,
   Alert,
   ActivityIndicator,
-  ScrollView,
-  Platform
+  ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { infoAlert } from '../utils/alert';
 import { useTheme } from '../contexts/ThemeContext';
 import {
   addSubtask,
@@ -24,6 +23,7 @@ import {
   subscribeToSubtasks,
   assignSubtaskToUser
 } from '../services/tasksMultiple';
+import { createStyles } from './SubtasksListStyles';
 
 function SubtasksList({
   taskId,
@@ -33,6 +33,7 @@ function SubtasksList({
   currentUser = null
 }) {
   const { theme, isDark } = useTheme();
+  const styles = useMemo(() => createStyles(theme), [theme]);
   // Secretarios y admin pueden eliminar subtareas
   const canDelete = canEdit || currentUser?.role === 'secretario';
   const [subtasks, setSubtasks] = useState([]);
@@ -192,18 +193,10 @@ function SubtasksList({
         setSelectedSubtask(null);
         
         // Mostrar confirmación
-        if (Platform.OS === 'web') {
-          alert(`Subtarea delegada a ${director.displayName}`);
-        } else {
-          Alert.alert('Éxito', `Subtarea delegada a ${director.displayName}`);
-        }
+        infoAlert('Subtarea delegada', `Se delegó a ${director.displayName}.`);
       } catch (error) {
         if (__DEV__) console.error('Error delegando subtarea:', error);
-        if (Platform.OS === 'web') {
-          alert(`Error: ${error.message}`);
-        } else {
-          Alert.alert('Error', error.message);
-        }
+        infoAlert('No se pudo delegar', error.message);
       } finally {
         setDelegating(false);
       }
@@ -548,394 +541,3 @@ function formatTimeAgo(timestamp) {
 }
 
 export default React.memo(SubtasksList);
-
-const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-    marginVertical: 16,
-    paddingHorizontal: 16,
-  },
-
-  header: {
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 12,
-    color: '#999',
-  },
-  progressContainer: {
-    marginTop: 12,
-    gap: 8,
-  },
-  progressBar: {
-    height: 8,
-    backgroundColor: '#E8E8E8',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: '#4CAF50',
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#4CAF50',
-    textAlign: 'right',
-  },
-
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 32,
-    backgroundColor: '#F9F9F9',
-    borderRadius: 10,
-  },
-  emptyStateText: {
-    fontSize: 14,
-    color: '#999',
-    marginTop: 12,
-    fontWeight: '500',
-  },
-  emptyStateHint: {
-    fontSize: 12,
-    color: '#CCC',
-    marginTop: 4,
-  },
-
-  listContent: {
-    marginBottom: 16,
-  },
-  subtaskItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginBottom: 8,
-    backgroundColor: '#F9F9F9',
-    borderRadius: 10,
-    borderLeftWidth: 3,
-    borderLeftColor: '#DDD',
-  },
-
-  checkbox: {
-    marginRight: 12,
-    padding: 4,
-  },
-  uncheckedBox: {
-    width: 24,
-    height: 24,
-    borderWidth: 2,
-    borderColor: '#DDD',
-    borderRadius: 6,
-  },
-
-  subtaskContent: {
-    flex: 1,
-  },
-  subtaskTitle: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-  },
-  subtaskTitleCompleted: {
-    color: '#999',
-    textDecorationLine: 'line-through',
-  },
-  completedTime: {
-    fontSize: 12,
-    color: '#4CAF50',
-    marginTop: 4,
-    fontWeight: '500',
-  },
-
-  subtaskActions: {
-    paddingLeft: 8,
-  },
-  expandButton: {
-    padding: 4,
-  },
-
-  expandedView: {
-    backgroundColor: '#FFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    marginHorizontal: 0,
-    marginTop: -8,
-    paddingLeft: 48,
-  },
-
-  descriptionSection: {
-    marginBottom: 12,
-  },
-  sectionLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#666',
-    textTransform: 'uppercase',
-    marginBottom: 6,
-  },
-  description: {
-    fontSize: 14,
-    color: '#333',
-    lineHeight: 18,
-  },
-
-  actionButtons: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 12,
-  },
-  actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 8,
-    borderRadius: 6,
-    gap: 6,
-  },
-  actionButtonText: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: '500',
-  },
-
-  // Sección de asignado
-  assignedSection: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#EEE',
-  },
-  assignedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF0F3',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 6,
-    gap: 6,
-    alignSelf: 'flex-start',
-  },
-  assignedText: {
-    fontSize: 12,
-    color: '#9F2241',
-    fontWeight: '500',
-  },
-
-  metadataSection: {
-    borderTopWidth: 1,
-    borderTopColor: '#EEE',
-    paddingTop: 8,
-  },
-  metadataItem: {
-    marginBottom: 8,
-  },
-  metadataLabel: {
-    fontSize: 12,
-    color: '#999',
-    textTransform: 'uppercase',
-  },
-  metadataValue: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-    fontWeight: '500',
-  },
-
-  addButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#9F2241',
-    borderRadius: 10,
-    paddingVertical: 12,
-    gap: 8,
-    marginTop: 8,
-  },
-  addButtonText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-
-  // MODAL
-  modalContainer: {
-    flex: 1,
-    backgroundColor: '#FFF',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#333',
-    flex: 1,
-    textAlign: 'center',
-  },
-  saveButton: {
-    backgroundColor: '#9F2241',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 6,
-  },
-  saveButtonDisabled: {
-    opacity: 0.5,
-  },
-  saveButtonText: {
-    color: '#FFF',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-
-  modalContent: {
-    flex: 1,
-    padding: 16,
-  },
-  formGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#DDD',
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 14,
-    color: '#333',
-  },
-  inputDisabled: {
-    opacity: 0.6,
-    backgroundColor: '#F5F5F5',
-  },
-  textArea: {
-    height: 100,
-    paddingTop: 12,
-    paddingBottom: 12,
-  },
-
-  // Estilos del modal de delegación
-  delegateModalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  delegateModalContent: {
-    backgroundColor: '#FFF',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    padding: 20,
-    maxHeight: '70%',
-  },
-  delegateModalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  delegateModalTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#333',
-  },
-  selectedSubtaskInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    padding: 12,
-    borderRadius: 10,
-    marginBottom: 12,
-    gap: 8,
-  },
-  selectedSubtaskTitle: {
-    flex: 1,
-    fontSize: 14,
-    color: '#666',
-    fontWeight: '500',
-  },
-  delegateModalSubtitle: {
-    fontSize: 14,
-    color: '#666',
-    marginBottom: 12,
-  },
-  delegateUsersList: {
-    maxHeight: 300,
-  },
-  noDelegateUsers: {
-    alignItems: 'center',
-    paddingVertical: 30,
-  },
-  noDelegateUsersText: {
-    marginTop: 8,
-    fontSize: 14,
-    color: '#999',
-  },
-  delegateUserItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#F9F9F9',
-    borderRadius: 10,
-    marginBottom: 8,
-  },
-  delegateUserAvatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: '#9F2241',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  delegateUserInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  delegateUserName: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-  },
-  delegateUserArea: {
-    fontSize: 12,
-    color: '#666',
-    marginTop: 2,
-  },
-  delegateCancelButton: {
-    backgroundColor: '#EEE',
-    padding: 14,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 12,
-  },
-  delegateCancelButtonText: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#666',
-  },
-});

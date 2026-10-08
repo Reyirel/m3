@@ -16,11 +16,12 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import {
   GlassmorphicCard,
-  GlassmorphicButton,
   GlassmorphicDivider,
   GlassmorphicStatsCard,
 } from '../components';
+import Constants from 'expo-constants';
 import ScreenHeader from '../components/ui/ScreenHeader';
+import PrimaryButton from '../components/ui/PrimaryButton';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
 import { toMs } from '../utils/dateUtils';
@@ -237,19 +238,18 @@ const ProfileScreen = ({ navigation, onLogout }) => {
 
         {/* Logout Button */}
         <View style={[styles.section, { paddingHorizontal: 16 }]}>
-          <GlassmorphicButton
+          <PrimaryButton
             title="Cerrar Sesión"
             onPress={handleLogout}
-            variant="outline"
+            variant="ghost"
             icon="log-out-outline"
             color={theme.error}
-            fullWidth={true}
           />
         </View>
 
         <View style={[styles.footer, { paddingHorizontal: 16 }]}>
           <Text style={[styles.versionText, { color: theme.textMuted }]}>
-            App v1.4.2
+            {`Versión ${Constants.expoConfig?.version || ''}`.trim()}
           </Text>
         </View>
       </ScrollView>
@@ -293,13 +293,13 @@ const styles = StyleSheet.create({
   },
   heroAvatarText: {
     fontSize: 28,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: 1,
   },
   heroName: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.4,
   },

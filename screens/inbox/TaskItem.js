@@ -1,7 +1,7 @@
 // screens/inbox/TaskItem.js
 // TaskItem moderno con animaciones y glassmorphism - Compatible con web
 import React, { useEffect, useState, memo, useRef, useMemo } from 'react';
-import { TouchableOpacity, View, Text, StyleSheet, Animated, Platform, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, View, Text, Animated, Platform, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import { GlassView } from '../../utils/GlassView';
@@ -9,17 +9,24 @@ import { useResponsive } from '../../utils/responsive';
 import { hapticLight, hapticMedium } from '../../utils/haptics';
 import { getSwipeable } from '../../utils/platformComponents';
 import ContextMenu from './ContextMenu';
-import ConfirmDialog from './ConfirmDialog';
+import { confirmAlert } from '../../utils/alert';
 import Avatar from '../../components/Avatar';
 import ProgressBar from '../../components/ProgressBar';
-import { subscribeToTaskProgress } from '../../services/taskProgress';
 import { toMs } from '../../utils/dateUtils';
 import { useTasks } from '../../contexts/TasksContext';
 import { useChatUnread } from '../../hooks/useChatUnread';
 import { predictDelayRisk, riskLevelDisplay } from '../../utils/aiFeatures';
-import { isInProgress, statusLabel } from '../../utils/taskStatus';
+import { isInProgress, statusColor, statusLabel } from '../../utils/taskStatus';
+import { useNow } from '../../hooks/useNow';
+import { DURATION, PRESS_SCALE, SPRING, loop, spring, timing } from '../../theme/motion';
+import { styles } from './TaskItemStyles';
 
 const Swipeable = getSwipeable();
+
+// Botones apilados en el teléfono: un margen mayor haría que uno tape al otro
+const PHONE_HIT_SLOP = { top: 4, bottom: 4, left: 4, right: 4 };
+// Etiquetas visibles por tarjeta; el resto se resume como "+N"
+const MAX_TAGS = 2;
 
 
 const TaskItem = memo(function TaskItem({
@@ -33,115 +40,66 @@ const TaskItem = memo(function TaskItem({
   onReopen,
   onChat,
   currentUserRole = 'director',
-  index = 0,
   compact = false,  // 📱 Vista compacta para mostrar más tareas
   isDeleting: isDeleteProp = false  // ⚡ Prop para que el padre pueda controlar si se está borrando
 }) {
   const { theme, isDark } = useTheme();
-  const { width: screenWidth } = useResponsive();
+  const { width: screenWidth, isMobile } = useResponsive();
   const { tasks: allTasks } = useTasks();
   // Mensajes sin leer para ESTE usuario (no un indicador único por tarea)
   const hasUnreadChat = useChatUnread(task);
   const isSmallDevice = screenWidth < 400;
-  const [now, setNow] = useState(Date.now());
+  // En el teléfono el aviso de vencimiento va dentro del texto (no encima del título)
+  // y los botones se apilan para dejarle el ancho al contenido
+  const inlineDue = isMobile && !compact;
+  // Hora compartida que avanza cada minuto (las tareas cerradas no la necesitan)
+  const now = useNow(task.status !== 'cerrada');
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
-  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [progressData, setProgressData] = useState(null);
-  
-  // Animaciones
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(50)).current;
+
+  // Confirmación con el diálogo común de la app (components/DialogHost.js)
+  const askDelete = () => confirmAlert(
+    'Eliminar tarea',
+    'La tarea se moverá a la papelera.',
+    () => {
+      if (isDeleting || !onDelete) return;
+      setIsDeleting(true);
+      Promise.resolve(onDelete(task)).catch(() => {}).finally(() => setIsDeleting(false));
+    },
+    'Eliminar'
+  );
+
+  // Avance por subtareas: viene en la propia tarea (lo mantiene recalculateTaskProgress).
+  // Antes cada fila abría su propia suscripción a las subtareas.
+  const progress = typeof task.progressPercentage === 'number'
+    ? { percent: task.progressPercentage, total: task.subtasksTotal, done: task.subtasksDone }
+    : null;
+
+  // Las filas no animan su entrada: la lista las recicla al desplazarse y la animación
+  // se repetía cada vez que una fila volvía a la pantalla.
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const deletePulseAnim = useRef(new Animated.Value(0)).current;
-  const statusDotAnim = useRef(new Animated.Value(1)).current;
 
-  // Suscribir a cambios de progreso en tiempo real
+  // Pulso mientras se está borrando
   useEffect(() => {
-    if (!task.id) return;
-    
-    const unsubscribe = subscribeToTaskProgress(task.id, (data) => {
-      setProgressData(data);
-    });
-
-    return () => unsubscribe();
-  }, [task.id]);
-  
-  useEffect(() => {
-    // Animación de entrada escalonada
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        delay: index * 50,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 50,
-        friction: 7,
-        delay: index * 50,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [index, fadeAnim, slideAnim]);
-
-  // Animación de pulso cuando se está borrando
-  useEffect(() => {
-    if (!isDeleteProp) return;
-    const loop = Animated.loop(
+    if (!isDeleteProp) return undefined;
+    const pulse = loop(
       Animated.sequence([
-        Animated.timing(deletePulseAnim, {
-          toValue: 1,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-        Animated.timing(deletePulseAnim, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
+        timing(deletePulseAnim, 1, { duration: DURATION.slow }),
+        timing(deletePulseAnim, 0, { duration: DURATION.slow }),
       ])
     );
-    loop.start();
-    return () => loop.stop();
+    pulse.start();
+    return () => pulse.stop();
   }, [isDeleteProp, deletePulseAnim]);
-  
-  // Pulsing dot for in-process tasks
-  useEffect(() => {
-    if (!isInProgress(task.status)) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(statusDotAnim, { toValue: 0.3, duration: 800, useNativeDriver: true }),
-        Animated.timing(statusDotAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
-      ])
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [task.status, statusDotAnim]);
-
-  // Optimización: Solo actualizar el tiempo cada 60 segundos y solo si la tarea no está cerrada
-  useEffect(() => {
-    if (task.status === 'cerrada') return;
-    const t = setInterval(() => setNow(Date.now()), 60000);
-    return () => clearInterval(t);
-  }, [task.status]);
 
   const handlePressIn = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.98,
-      useNativeDriver: true,
-    }).start();
+    spring(scaleAnim, PRESS_SCALE, SPRING.press).start();
   };
 
   const handlePressOut = () => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      friction: 4,
-      tension: 40,
-      useNativeDriver: true,
-    }).start();
+    spring(scaleAnim, 1, SPRING.press).start();
   };
 
   const handleLongPress = (event) => {
@@ -167,7 +125,7 @@ const TaskItem = memo(function TaskItem({
     // Reabrir solo para admin si está cerrada
     ...(onReopen && task.status === 'cerrada' ? [{ icon: 'refresh-outline', label: 'Reabrir tarea', onPress: () => { hapticMedium(); onReopen(task); } }] : []),
     // Solo mostrar eliminar si el callback está disponible (solo admin) y no está en progreso
-    ...(onDelete ? [{ icon: 'trash-outline', label: 'Eliminar', danger: true, onPress: () => { hapticMedium(); setShowDeleteDialog(true); } }] : [])
+    ...(onDelete ? [{ icon: 'trash-outline', label: 'Eliminar', danger: true, onPress: () => { hapticMedium(); askDelete(); } }] : [])
   ];
 
   const renderRightActions = (progress, dragX) => {
@@ -177,7 +135,7 @@ const TaskItem = memo(function TaskItem({
     return (
       <TouchableOpacity
         style={styles.completeAction}
-        onPress={() => !isClosedAndNotAdmin && (onToggleComplete && onToggleComplete())}
+        onPress={() => !isClosedAndNotAdmin && !isDeleteProp && (onToggleComplete && onToggleComplete(task))}
         activeOpacity={isClosedAndNotAdmin ? 0.5 : 0.9}
         disabled={isClosedAndNotAdmin}
         accessibilityLabel={task.status === 'cerrada' ? 'Reabrir tarea' : 'Marcar como completada'}
@@ -207,9 +165,9 @@ const TaskItem = memo(function TaskItem({
         style={styles.deleteAction}
         onPress={() => {
           if (isDeleting) return;
-          if (onDelete) setShowDeleteDialog(true);
+          if (onDelete) askDelete();
         }}
-        activeOpacity={0.9}
+        activeOpacity={0.7}
         disabled={isDeleting}
         accessibilityLabel="Eliminar tarea"
         accessibilityRole="button"
@@ -260,17 +218,10 @@ const TaskItem = memo(function TaskItem({
 
   const dueStatus = getDueStatus();
 
-  const statusAccentColor = task.status === 'cerrada'
-    ? theme.success
-    : isInProgress(task.status)
-      ? theme.info
-      : task.status === 'en_revision'
-        ? theme.secondary
-        : dueStatus.status === 'vencida'
-          ? theme.error
-          : dueStatus.status === 'proxima'
-            ? theme.warning
-            : theme.primary;
+  // Mismo criterio que la tarjeta de Inicio: color del estado, rojo si está vencida
+  const statusAccentColor = task.status !== 'cerrada' && dueStatus.status === 'vencida'
+    ? theme.error
+    : statusColor(task.status, theme);
 
   // IA Feature 5: Alerta predictiva de retraso
   // Usar el conteo de tareas como proxy para cambios (evita recompute O(n²) con cada update)
@@ -281,6 +232,61 @@ const TaskItem = memo(function TaskItem({
     return risk.level !== 'low' ? { ...risk, display: riskLevelDisplay(risk.level) } : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [task.id, task.status, task.dueAt, task.priority, task.assignedTo, task.area, allTasksCount, compact]);
+
+  const dueBadge = dueStatus.status !== 'normal' ? (
+    <View style={[inlineDue ? styles.dueChip : styles.dueAlert, { backgroundColor: dueStatus.topBorderColor }]}>
+      <Ionicons
+        name={dueStatus.status === 'vencida' ? 'alert-circle' : 'time'}
+        size={inlineDue ? 12 : 14}
+        color="#FFF"
+        style={{ marginRight: 4 }}
+      />
+      <Text style={styles.dueAlertText}>
+        {relativeDueLabel || (dueStatus.status === 'vencida' ? 'VENCIDA' : 'VENCE')}
+      </Text>
+    </View>
+  ) : null;
+
+  const showQuickActions = !!onChangeStatus && task.status !== 'cerrada';
+  // En el teléfono chat y eliminar van al pie de la tarjeta, junto a las acciones:
+  // una columna a la derecha le quitaba ancho al título
+  const footerIcons = isMobile && !compact && (!!onChat || !!onDelete);
+  const actionIcons = (
+    <>
+      {onChat && (
+        <TouchableOpacity
+          onPress={() => { hapticLight(); onChat(task); }}
+          style={[styles.chatButton, isMobile && styles.actionBtnPhone, hasUnreadChat && { backgroundColor: theme.info + '22', borderColor: theme.info + '60' }]}
+          hitSlop={isMobile ? PHONE_HIT_SLOP : { top: 10, bottom: 10, left: 10, right: 10 }}
+          activeOpacity={0.7}
+          accessibilityLabel="Abrir chat"
+          accessibilityRole="button"
+        >
+          <Ionicons name="chatbubble-outline" size={18} color={hasUnreadChat ? theme.info : theme.textSecondary} />
+          {hasUnreadChat && (
+            <View style={[styles.chatUnreadDot, { backgroundColor: theme.info }]} />
+          )}
+        </TouchableOpacity>
+      )}
+      {onDelete && !(isMobile && compact) && (
+        <TouchableOpacity
+          onPress={() => {
+            if (isDeleting) return;
+            hapticMedium();
+            askDelete();
+          }}
+          style={[styles.deleteButton, isMobile && styles.actionBtnPhone]}
+          hitSlop={isMobile ? PHONE_HIT_SLOP : { top: 20, bottom: 20, left: 20, right: 20 }}
+          activeOpacity={isDeleting ? 0.3 : 0.7}
+          disabled={isDeleting}
+          accessibilityRole="button"
+          accessibilityLabel="Eliminar"
+        >
+          <Ionicons name="trash-outline" size={isMobile ? 18 : 22} color={isDeleting ? "#CCC" : theme.error} />
+        </TouchableOpacity>
+      )}
+    </>
+  );
 
   // Estilos compactos
   const compactStyles = compact ? {
@@ -295,7 +301,7 @@ const TaskItem = memo(function TaskItem({
   return (
     <>
       <Swipeable renderRightActions={renderRightActions} renderLeftActions={renderLeftActions} friction={1.5} overshootFriction={8}>
-        <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] }}>
+        <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
           <GlassView
             intensity={isDark ? 45 : 65}
             tint={isDark ? 'dark' : 'light'}
@@ -311,6 +317,7 @@ const TaskItem = memo(function TaskItem({
                 opacity: isDeleteProp ? 0.6 : 1,
               },
               task.status === 'cerrada' && { opacity: isDeleteProp ? 0.6 : 0.75 },
+              isMobile && styles.containerPhone,
               compact && compactStyles.container
             ]}
           >
@@ -347,36 +354,18 @@ const TaskItem = memo(function TaskItem({
               </Animated.View>
             )}
 
-            {/* Indicador de vencimiento - badge de alerta */}
-            {dueStatus.status !== 'normal' && (
-              <View 
-                style={[
-                  styles.dueAlert,
-                  { backgroundColor: dueStatus.topBorderColor }
-                ]}
-              >
-                <Ionicons 
-                  name={dueStatus.status === 'vencida' ? 'alert-circle' : 'time'} 
-                  size={14} 
-                  color="#FFF" 
-                  style={{ marginRight: 4 }}
-                />
-                <Text style={styles.dueAlertText}>
-                  {relativeDueLabel || (dueStatus.status === 'vencida' ? 'VENCIDA' : 'VENCE')}
-                </Text>
-              </View>
-            )}
-            <View style={styles.contentRow}>
+            {!inlineDue && dueBadge}
+            <View style={[styles.contentRow, isMobile && styles.contentRowPhone]}>
               {/* Contenido principal a la izquierda */}
               <View style={styles.taskContent}>
                 {/* Área tappable: título, meta, tags, riesgo */}
                 <TouchableOpacity
-                  onPress={() => { hapticMedium(); onPress && onPress(task); }}
+                  onPress={() => { if (isDeleteProp) return; hapticMedium(); onPress && onPress(task); }}
                   onPressIn={handlePressIn}
                   onPressOut={handlePressOut}
                   onLongPress={handleLongPress}
                   delayLongPress={500}
-                  activeOpacity={0.9}
+                  activeOpacity={0.7}
                   accessibilityLabel={`Tarea: ${task.title}. Área: ${task.area || 'Sin área'}. Estado: ${statusLabel(task.status)}.`}
                   accessibilityRole="button"
                   accessibilityHint="Toca para ver el detalle de la tarea"
@@ -392,10 +381,10 @@ const TaskItem = memo(function TaskItem({
                       />
                     )}
                     {isInProgress(task.status) && (
-                      <Animated.View style={[styles.statusDot, { backgroundColor: theme.info, shadowColor: theme.info, opacity: statusDotAnim }]} />
+                      <View style={[styles.statusDot, { backgroundColor: theme.statusInProgress, shadowColor: theme.statusInProgress }]} />
                     )}
                     {task.status === 'en_revision' && (
-                      <View style={[styles.statusDot, { backgroundColor: theme.secondary, shadowColor: theme.secondary }]} />
+                      <View style={[styles.statusDot, { backgroundColor: theme.statusReview, shadowColor: theme.statusReview }]} />
                     )}
                     <Text
                       style={[
@@ -435,489 +424,115 @@ const TaskItem = memo(function TaskItem({
                     </View>
                   )}
 
-                  {/* Fila 3: Estado - Oculto en compacto */}
+                  {/* Fila 3: estado, vencimiento, riesgo y etiquetas en una sola fila que se acomoda */}
                   {!compact && (
-                    <Text style={[styles.statusText, { color: theme.textTertiary }]} numberOfLines={1}>
-                      {statusLabel(task.status)}
-                    </Text>
-                  )}
-
-                  {/* Fila 3.5: Etiquetas - Oculto en compacto */}
-                  {!compact && task.tags && task.tags.length > 0 && (
-                    <View style={styles.tagsRow}>
-                      {task.tags.slice(0, 3).map((tag, idx) => (
-                        <View key={idx} style={[styles.tagChip, { backgroundColor: theme.primaryLight || 'rgba(159,34,65,0.1)' }]}>
-                          <Text style={[styles.tagText, { color: theme.primary }]}>#{tag}</Text>
+                    <View style={styles.badgesRow}>
+                      <Text style={[styles.statusTextInline, { color: theme.textTertiary }]} numberOfLines={1}>
+                        {statusLabel(task.status)}
+                      </Text>
+                      {inlineDue && dueBadge}
+                      {delayRisk && (
+                        <View style={[styles.riskBadge, { backgroundColor: delayRisk.display.color + '18', borderColor: delayRisk.display.color }]}>
+                          <Ionicons name={delayRisk.display.icon} size={12} color={delayRisk.display.color} />
+                          <Text style={[styles.riskBadgeText, { color: delayRisk.display.color }]}>
+                            {delayRisk.display.label}
+                          </Text>
+                        </View>
+                      )}
+                      {(task.tags || []).slice(0, MAX_TAGS).map((tag, idx) => (
+                        <View key={idx} style={[styles.tagChip, { backgroundColor: theme.primaryAlpha }]}>
+                          <Text style={[styles.tagText, { color: theme.primary }]} numberOfLines={1}>#{tag}</Text>
                         </View>
                       ))}
-                      {task.tags.length > 3 && (
-                        <Text style={[styles.tagMore, { color: theme.textSecondary }]}>+{task.tags.length - 3}</Text>
+                      {(task.tags || []).length > MAX_TAGS && (
+                        <Text style={[styles.tagMore, { color: theme.textSecondary }]}>+{task.tags.length - MAX_TAGS}</Text>
                       )}
-                    </View>
-                  )}
-
-                  {/* IA Feature 5: Badge de riesgo de retraso */}
-                  {delayRisk && (
-                    <View style={[styles.riskBadge, { backgroundColor: delayRisk.display.color + '18', borderColor: delayRisk.display.color }]}>
-                      <Ionicons name={delayRisk.display.icon} size={12} color={delayRisk.display.color} />
-                      <Text style={[styles.riskBadgeText, { color: delayRisk.display.color }]}>
-                        {delayRisk.display.label}
-                      </Text>
                     </View>
                   )}
                 </TouchableOpacity>
 
-                {/* Fila 4: Botones de Acción Rápida — FUERA del TouchableOpacity para evitar <button> anidado en web */}
-                {!compact && onChangeStatus && task.status !== 'cerrada' && (
-                  <View style={styles.quickActionsRow}>
-                    {task.status === 'pendiente' && (
-                      <TouchableOpacity
-                        style={[styles.quickActionBtn, { backgroundColor: theme.infoAlpha, borderColor: theme.info }]}
-                        onPress={() => { hapticMedium(); onChangeStatus(task, 'en_proceso'); }}
-                        activeOpacity={0.7}
-                        accessibilityLabel="Iniciar tarea"
-                        accessibilityRole="button"
-                      >
-                        <Ionicons name="play-circle" size={16} color={theme.info} />
-                        <Text style={[styles.quickActionText, { color: theme.info }]}>Iniciar</Text>
-                      </TouchableOpacity>
-                    )}
-                    {(task.status === 'pendiente' || isInProgress(task.status)) && (
-                      <TouchableOpacity
-                        style={[styles.quickActionBtn, { backgroundColor: theme.secondaryDark + '20', borderColor: theme.secondary }]}
-                        onPress={() => { hapticMedium(); onChangeStatus(task, 'en_revision'); }}
-                        activeOpacity={0.7}
-                        accessibilityLabel="Enviar a revisión"
-                        accessibilityRole="button"
-                      >
-                        <Ionicons name="eye" size={16} color={theme.secondary} />
-                        <Text style={[styles.quickActionText, { color: theme.secondary }]}>Revisión</Text>
-                      </TouchableOpacity>
-                    )}
-                    {currentUserRole === 'admin' && (isInProgress(task.status) || task.status === 'en_revision') && (
-                      <TouchableOpacity
-                        style={[styles.quickActionBtn, { backgroundColor: theme.successAlpha, borderColor: theme.success }]}
-                        onPress={() => { hapticMedium(); onChangeStatus(task, 'cerrada'); }}
-                        activeOpacity={0.7}
-                        accessibilityLabel="Cerrar tarea"
-                        accessibilityRole="button"
-                      >
-                        <Ionicons name="checkmark-circle" size={16} color={theme.success} />
-                        <Text style={[styles.quickActionText, { color: theme.success }]}>Cerrar</Text>
-                      </TouchableOpacity>
-                    )}
+                {/* Avance por subtareas: barra y valor en una sola línea */}
+                {!compact && progress && (
+                  <View
+                    style={styles.progressRow}
+                    accessible
+                    accessibilityLabel={`Avance ${progress.percent}%`}
+                  >
+                    <View style={styles.progressBarWrap}>
+                      <ProgressBar
+                        progress={progress.percent}
+                        size="small"
+                        showLabel={false}
+                        color={progress.percent === 100 ? theme.success : theme.primary}
+                      />
+                    </View>
+                    <Text style={[styles.progressValue, { color: theme.textSecondary }]}>
+                      {progress.total > 0 ? `${progress.done || 0}/${progress.total}` : `${progress.percent}%`}
+                    </Text>
                   </View>
                 )}
-
-                {/* Fila 5: Barra de Progreso (EN TIEMPO REAL) — FUERA del TouchableOpacity */}
-                {!compact && progressData && progressData.subtaskStats && progressData.subtaskStats.total > 0 && (
-                  <View style={styles.progressSection}>
-                    <View style={styles.progressHeader}>
-                      <Text style={[styles.progressLabel, { color: theme.textSecondary }]}>
-                        Progreso
-                      </Text>
-                      <Text style={[styles.progressValue, { color: theme.primary }]}>
-                        {progressData.subtaskStats.completada}/{progressData.subtaskStats.total}
-                      </Text>
+                {/* Acciones — FUERA del TouchableOpacity para evitar <button> anidado en web.
+                    En el teléfono chat y eliminar van en esta misma fila, a la derecha. */}
+                {!compact && (showQuickActions || footerIcons) && (
+                  <View style={styles.footerRow}>
+                    <View style={styles.quickActionsRow}>
+                      {showQuickActions && (
+                        <>
+                        {task.status === 'pendiente' && (
+                          <TouchableOpacity
+                            style={[styles.quickActionBtn, isMobile && styles.quickActionBtnPhone, { backgroundColor: theme.statusInProgressBg, borderColor: theme.statusInProgress }]}
+                            onPress={() => { hapticMedium(); onChangeStatus(task, 'en_proceso'); }}
+                            activeOpacity={0.7}
+                            accessibilityLabel="Iniciar tarea"
+                            accessibilityRole="button"
+                          >
+                            <Ionicons name="play-circle" size={16} color={theme.statusInProgress} />
+                            <Text style={[styles.quickActionText, { color: theme.statusInProgress }]}>Iniciar</Text>
+                          </TouchableOpacity>
+                        )}
+                        {(task.status === 'pendiente' || isInProgress(task.status)) && (
+                          <TouchableOpacity
+                            style={[styles.quickActionBtn, isMobile && styles.quickActionBtnPhone, { backgroundColor: theme.statusReviewBg, borderColor: theme.statusReview }]}
+                            onPress={() => { hapticMedium(); onChangeStatus(task, 'en_revision'); }}
+                            activeOpacity={0.7}
+                            accessibilityLabel="Enviar a revisión"
+                            accessibilityRole="button"
+                          >
+                            <Ionicons name="eye" size={16} color={theme.statusReview} />
+                            <Text style={[styles.quickActionText, { color: theme.statusReview }]}>Revisión</Text>
+                          </TouchableOpacity>
+                        )}
+                        {currentUserRole === 'admin' && (isInProgress(task.status) || task.status === 'en_revision') && (
+                          <TouchableOpacity
+                            style={[styles.quickActionBtn, isMobile && styles.quickActionBtnPhone, { backgroundColor: theme.successAlpha, borderColor: theme.success }]}
+                            onPress={() => { hapticMedium(); onChangeStatus(task, 'cerrada'); }}
+                            activeOpacity={0.7}
+                            accessibilityLabel="Cerrar tarea"
+                            accessibilityRole="button"
+                          >
+                            <Ionicons name="checkmark-circle" size={16} color={theme.success} />
+                            <Text style={[styles.quickActionText, { color: theme.success }]}>Cerrar</Text>
+                          </TouchableOpacity>
+                        )}
+                        </>
+                      )}
                     </View>
-                    <ProgressBar
-                      progress={progressData.overallProgress}
-                      size="small"
-                      showLabel={true}
-                      color={progressData.isComplete ? theme.success : theme.primary}
-                    />
+                    {footerIcons && <View style={styles.footerIcons}>{actionIcons}</View>}
                   </View>
                 )}
               </View>
               
-              {/* Acciones a la derecha: Chat + Delete */}
-              <View style={styles.actionsRow}>
-                {onChat && (
-                  <TouchableOpacity
-                    onPress={() => { hapticLight(); onChat(task); }}
-                    style={[styles.chatButton, hasUnreadChat && { backgroundColor: theme.info + '22', borderColor: theme.info + '60' }]}
-                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                    activeOpacity={0.7}
-                    accessibilityLabel="Abrir chat"
-                    accessibilityRole="button"
-                  >
-                    <Ionicons name="chatbubble-outline" size={isSmallDevice ? 16 : 18} color={hasUnreadChat ? theme.info : theme.textSecondary} />
-                    {hasUnreadChat && (
-                      <View style={[styles.chatUnreadDot, { backgroundColor: theme.info }]} />
-                    )}
-                  </TouchableOpacity>
-                )}
-                {onDelete && (
-                  <TouchableOpacity
-                    onPress={() => {
-                      if (isDeleting) return;
-                      hapticMedium();
-                      setShowDeleteDialog(true);
-                    }}
-                    style={[styles.deleteButton, isSmallDevice && styles.deleteButtonSmall]}
-                    hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
-                    activeOpacity={isDeleting ? 0.3 : 0.7}
-                    disabled={isDeleting}
-                    accessibilityRole="button"
-                    accessibilityLabel="Eliminar"
-                  >
-                    <Ionicons name="trash-outline" size={isSmallDevice ? 18 : 22} color={isDeleting ? "#CCC" : theme.error} />
-                  </TouchableOpacity>
-                )}
-              </View>
+              {/* Chat y eliminar a la derecha (escritorio, o vista compacta) */}
+              {!footerIcons && (
+                <View style={styles.actionsRow}>{actionIcons}</View>
+              )}
             </View>
           </GlassView>
         </Animated.View>
       </Swipeable>
       <ContextMenu visible={showContextMenu} onClose={() => setShowContextMenu(false)} position={menuPosition} actions={menuActions} />
-      <ConfirmDialog
-        visible={showDeleteDialog}
-        title="Eliminar tarea"
-        message="¿Estás seguro de que quieres eliminar esta tarea?"
-        icon="trash"
-        iconColor={theme.error}
-        danger
-        confirmText="Eliminar"
-        cancelText="Cancelar"
-        isLoading={false}
-        onConfirm={() => {
-          // 🛡️ GUARD: Prevenir múltiples clics
-          if (isDeleting) return;
-          
-          // ⚡ CERRAR INMEDIATAMENTE - ANTES que nada
-          setShowDeleteDialog(false);
-          setIsDeleting(true);
-          
-          // 🔄 Ejecutar delete en background
-          setTimeout(() => {
-            if (onDelete) {
-              Promise.resolve(onDelete())
-                .catch(_err => {
-                  // Delete handler error caught
-                })
-                .finally(() => setIsDeleting(false));
-            } else {
-              setIsDeleting(false);
-            }
-          }, 200); // Pequeño delay para asegurar que el dialog cerró
-        }}
-        onCancel={() => {
-          if (!isDeleting) {
-            setShowDeleteDialog(false);
-          }
-        }}
-      />
     </>
   );
 });
 
 export default TaskItem;
-
-const styles = StyleSheet.create({
-  container: {
-    marginBottom: 8,
-    marginHorizontal: 14,
-    borderRadius: 16,
-    padding: 14,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 0.5,
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  topAccentBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: 3,
-    borderTopLeftRadius: 16,
-    borderTopRightRadius: 16,
-    zIndex: 2,
-    pointerEvents: 'none',
-  },
-  dueAlert: {
-    position: 'absolute',
-    top: 6,
-    right: 6,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 3,
-  },
-  dueAlertText: {
-    color: '#FFF',
-    fontSize: 11,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 6,
-    gap: 5,
-  },
-  statusDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    flexShrink: 0,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.8,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  avatar: {
-    marginRight: 8,
-  },
-  title: { 
-    fontSize: 16, 
-    fontWeight: '700', 
-    flex: 1, 
-    marginRight: 8,
-    letterSpacing: -0.3,
-    lineHeight: 21,
-  },
-  titleCompleted: {
-    textDecorationLine: 'line-through',
-    opacity: 0.6,
-  },
-  meta: { 
-    fontSize: 14, 
-    fontWeight: '500',
-    letterSpacing: 0.1,
-    marginBottom: 6,
-  },
-  coordinationBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    marginBottom: 6,
-    borderWidth: 1,
-    gap: 6,
-    alignSelf: 'flex-start',
-  },
-  coordinationText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  statusText: { 
-    fontSize: 12, 
-    fontWeight: '500',
-    fontStyle: 'italic',
-    flex: 1,
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginTop: 6,
-    marginBottom: 2,
-  },
-  tagChip: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  tagText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  tagMore: {
-    fontSize: 12,
-    fontWeight: '500',
-    paddingVertical: 3,
-  },
-  progressSection: {
-    marginTop: 12,
-    paddingVertical: 8,
-    paddingHorizontal: 4,
-    gap: 6,
-  },
-  progressHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 2,
-  },
-  progressLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.3,
-  },
-  progressValue: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  completeAction: {
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-    paddingRight: 20,
-    borderRadius: 16,
-    marginBottom: 12,
-    marginRight: 16,
-    overflow: 'hidden'
-  },
-  deleteAction: {
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    paddingLeft: 20,
-    borderRadius: 16,
-    marginBottom: 12,
-    marginLeft: 16,
-    overflow: 'hidden'
-  },
-  actionGradient: {
-    flex: 1,
-    width: '100%',
-    justifyContent: 'center',
-    paddingHorizontal: 20,
-  },
-  actionContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 70
-  },
-  actionText: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '700',
-    marginTop: 4,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5
-  },
-  contentRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 16,
-  },
-  taskContent: {
-    flex: 1,
-  },
-  actionsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    justifyContent: 'center',
-    marginTop: 16,
-  },
-  chatButton: {
-    padding: 8,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.04)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(0,0,0,0.08)',
-    minWidth: 38,
-    minHeight: 38,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  chatUnreadDot: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 7,
-    height: 7,
-    borderRadius: 99,
-    borderWidth: 1.5,
-    borderColor: '#FFFFFF',
-  },
-  deleteButton: {
-    padding: 10,
-    borderRadius: 10,
-    backgroundColor: 'rgba(255, 59, 48, 0.10)',
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,59,48,0.20)',
-    minWidth: 44,
-    minHeight: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  deleteButtonSmall: {
-    padding: 6,
-    minWidth: 34,
-    minHeight: 34,
-  },
-  // ⚡ ESTILOS PARA INDICADOR DE BORRANDO
-  deletingOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 16,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 100,
-    paddingHorizontal: 16,
-    gap: 12,
-  },
-  deletingTextBold: {
-    fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: 1,
-    color: '#FFFFFF',
-    textShadowColor: 'rgba(0,0,0,0.3)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-  },
-  deletingTextSmall: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#FFFFFF',
-    marginTop: 2,
-    opacity: 0.9,
-  },
-  // Botones de acción rápida
-  quickActionsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    marginTop: 10,
-    marginBottom: 4,
-    flexWrap: 'wrap',
-  },
-  quickActionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  quickActionText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  riskBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderRadius: 6,
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    marginTop: 5,
-  },
-  riskBadgeText: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-});

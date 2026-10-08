@@ -1,78 +1,51 @@
 // scripts/generateIcon.mjs
-// Script para generar el icon.png desde icon.svg
+// Genera todos los iconos a partir de los SVG de assets/. Para cambiar el icono:
+// editar assets/icon.svg (icono completo), assets/adaptive-icon.svg (Android) y
+// assets/logo-mark.svg (figura sola), y ejecutar `node scripts/generateIcon.mjs`.
 import sharp from 'sharp';
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+const svg = (name) => readFileSync(join(root, 'assets', name));
+const png = (source, size, target) =>
+  sharp(source, { density: 300 }).resize(size, size).png().toFile(join(root, target));
 
-const svgPath = join(__dirname, '..', 'assets', 'icon.svg');
-const pngPath = join(__dirname, '..', 'assets', 'icon.png');
-const adaptiveIconPath = join(__dirname, '..', 'assets', 'adaptive-icon.png');
-const faviconPath = join(__dirname, '..', 'assets', 'favicon.png');
-const splashPath = join(__dirname, '..', 'assets', 'splash.png');
+const BRAND = { r: 159, g: 34, b: 65, alpha: 1 }; // #9F2241
 
 async function generateIcons() {
-  console.log('🎨 Generando íconos desde SVG...\n');
-  
-  const svgContent = readFileSync(svgPath);
-  
-  // Generar icon.png (1024x1024)
-  console.log('📱 Generando icon.png (1024x1024)...');
-  await sharp(svgContent)
-    .resize(1024, 1024)
-    .png({ quality: 100 })
-    .toFile(pngPath);
-  console.log('   ✅ icon.png generado');
-  
-  // Generar adaptive-icon.png (1024x1024) - mismo que icon
-  console.log('📱 Generando adaptive-icon.png (1024x1024)...');
-  await sharp(svgContent)
-    .resize(1024, 1024)
-    .png({ quality: 100 })
-    .toFile(adaptiveIconPath);
-  console.log('   ✅ adaptive-icon.png generado');
-  
-  // Generar favicon.png (64x64)
-  console.log('🌐 Generando favicon.png (64x64)...');
-  await sharp(svgContent)
-    .resize(64, 64)
-    .png({ quality: 100 })
-    .toFile(faviconPath);
-  console.log('   ✅ favicon.png generado');
-  
-  // Generar splash.png (1284x2778 - iPhone 14 Pro Max size)
-  console.log('🖼️  Generando splash.png (1284x2778)...');
-  
-  // Crear splash con fondo guinda y el ícono centrado
-  const iconForSplash = await sharp(svgContent)
-    .resize(400, 400)
-    .toBuffer();
-  
-  await sharp({
-    create: {
-      width: 1284,
-      height: 2778,
-      channels: 4,
-      background: { r: 159, g: 34, b: 65, alpha: 1 } // #9F2241
-    }
-  })
-  .composite([{
-    input: iconForSplash,
-    gravity: 'center'
-  }])
-  .png({ quality: 100 })
-  .toFile(splashPath);
-  console.log('   ✅ splash.png generado');
-  
-  console.log('\n🎉 ¡Todos los íconos generados exitosamente!');
-  console.log('\nArchivos actualizados:');
-  console.log('  - assets/icon.png');
-  console.log('  - assets/adaptive-icon.png');
-  console.log('  - assets/favicon.png');
-  console.log('  - assets/splash.png');
+  const icon = svg('icon.svg');
+  const mark = svg('logo-mark.svg');
+
+  await png(icon, 1024, 'assets/icon.png');
+  await png(icon, 64, 'assets/favicon.png');
+  await png(svg('adaptive-icon.svg'), 1024, 'assets/adaptive-icon.png');
+  // Figura sola para la pantalla de inicio animada (components/AnimatedSplash.js)
+  await png(mark, 512, 'assets/logo-mark.png');
+
+  // Web (PWA)
+  await png(icon, 1024, 'public/icon.png');
+  await png(icon, 512, 'public/icon-512.png');
+  await png(icon, 192, 'public/icon-192.png');
+  await png(icon, 64, 'public/favicon.png');
+  // Icono "maskable" (el que recorta Android al instalar la app web): fondo guinda hasta
+  // el borde, sin esquinas redondeadas; la figura ya queda dentro de la zona segura
+  const maskable = Buffer.from(icon.toString('utf8').replace('rx="224"', 'rx="0"'));
+  await png(maskable, 512, 'public/icon-maskable-512.png');
+  await png(maskable, 192, 'public/icon-maskable-192.png');
+
+  // Pantalla de inicio nativa: fondo guinda con la figura al centro
+  const markForSplash = await sharp(mark, { density: 300 }).resize(420, 420).png().toBuffer();
+  await sharp({ create: { width: 1284, height: 2778, channels: 4, background: BRAND } })
+    .composite([{ input: markForSplash, gravity: 'center' }])
+    .png()
+    .toFile(join(root, 'assets/splash.png'));
+
+  console.log('Iconos generados en assets/ y public/');
 }
 
-generateIcons().catch(console.error);
+generateIcons().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

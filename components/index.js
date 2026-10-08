@@ -11,7 +11,6 @@ export { default as PremiumGlassCard } from './PremiumGlassCard';
 export { default as GlassmorphicCard } from './GlassCard';
 
 // Glassmorphic components — legacy, used by screens not yet migrated to the new design system
-export { default as GlassmorphicButton } from './glass/GlassmorphicButton';
 export { default as GlassmorphicInput } from './glass/GlassmorphicInput';
 export { default as GlassmorphicSection } from './glass/GlassmorphicSection';
 export { default as GlassmorphicDivider } from './glass/GlassmorphicDivider';

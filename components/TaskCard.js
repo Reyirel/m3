@@ -1,4 +1,4 @@
-import React, { useRef, useCallback, useState } from 'react';
+import React, { memo, useRef, useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -11,73 +11,34 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { toMs } from '../utils/dateUtils';
-import { isInProgress, isInReview } from '../utils/taskStatus';
+import { isClosed as isClosedStatus, priorityColor, priorityLabel, statusColor as getStatusColor, statusLabel } from '../utils/taskStatus';
+import { SPRING, spring } from '../theme/motion';
 
-const PRIORITY_CONFIG = {
-  baja:    { label: 'Baja',    icon: 'arrow-down' },
-  media:   { label: 'Media',   icon: 'remove'     },
-  alta:    { label: 'Alta',    icon: 'arrow-up'   },
-  critica: { label: 'Crítica', icon: 'alert'      },
-};
+const EMPTY_TASK = {};
 
-const STATUS_CONFIG = {
-  pendiente:   { label: 'Pendiente'   },
-  en_progreso: { label: 'En Proceso'  },
-  en_proceso:  { label: 'En Proceso'  },
-  revision:    { label: 'En Revisión' },
-  en_revision: { label: 'En Revisión' },
-  completado:  { label: 'Completado'  },
-  cerrado:     { label: 'Cerrado'     },
-  cerrada:     { label: 'Cerrada'     },
-  bloqueado:   { label: 'Bloqueado'   },
-};
-
-export default function TaskCard({
-  task = {},
-  onPress = () => {},
-  onLongPress = () => {},
-}) {
+// Tarjeta de tarea. `onPress` y `onLongPress` reciben la tarea, así la lista puede pasar
+// siempre las mismas funciones y la tarjeta no se vuelve a dibujar sin necesidad.
+function TaskCard({ task = EMPTY_TASK, onPress, onLongPress }) {
   const { theme, isDark } = useTheme();
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const [hovered, setHovered] = useState(false);
 
   const handlePressIn = useCallback(() => {
-    Animated.spring(scaleAnim, {
-      toValue: 0.97,
-      tension: 300,
-      friction: 10,
-      useNativeDriver: true,
-    }).start();
+    spring(scaleAnim, 0.97, SPRING.press).start();
   }, [scaleAnim]);
 
   const handlePressOut = useCallback(() => {
-    Animated.spring(scaleAnim, {
-      toValue: 1,
-      tension: 300,
-      friction: 10,
-      useNativeDriver: true,
-    }).start();
+    spring(scaleAnim, 1, SPRING.press).start();
   }, [scaleAnim]);
 
-  const priority = PRIORITY_CONFIG[task.priority] || PRIORITY_CONFIG.media;
-  const status = STATUS_CONFIG[task.status] || { label: task.status || 'Sin estado' };
-
-  const isClosed = task.status === 'cerrada' || task.status === 'completado' || task.status === 'cerrado';
+  const isClosed = isClosedStatus(task.status);
   const isOverdue = task.dueAt && toMs(task.dueAt) < Date.now() && !isClosed;
 
-  // Accent color from theme
-  const accentColor = isOverdue
-    ? theme.error
-    : task.priority === 'critica' ? theme.error
-    : task.priority === 'alta'    ? theme.warning
-    : task.priority === 'baja'    ? theme.success
-    : theme.statusPending; // media → orange
-
-  const statusColor = isClosed ? theme.success
-    : isInProgress(task.status) ? theme.statusInProgress
-    : isInReview(task.status) ? theme.statusReview
-    : task.status === 'bloqueado' ? theme.error
-    : theme.statusPending;
+  // La barra lateral lleva el color del estado (rojo si está vencida);
+  // la prioridad va en su propia etiqueta
+  const statusColor = getStatusColor(task.status, theme);
+  const accentColor = isOverdue ? theme.error : statusColor;
+  const pillColor = isOverdue ? theme.error : isClosed ? theme.statusClosed : priorityColor(task.priority, theme);
 
   const dueDate = (() => {
     if (!task.dueAt) return null;
@@ -93,14 +54,15 @@ export default function TaskCard({
 
   return (
     <TouchableOpacity
-      onPress={onPress}
-      onLongPress={onLongPress}
+      onPress={() => onPress?.(task)}
+      onLongPress={onLongPress ? () => onLongPress(task) : undefined}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       activeOpacity={1}
       accessible
+      accessibilityRole="button"
       accessibilityLabel={`Tarea: ${task.title}`}
-      accessibilityHint={`Prioridad ${task.priority}, estado ${task.status}`}
+      accessibilityHint={`Prioridad ${priorityLabel(task.priority)}, estado ${statusLabel(task.status)}${isOverdue ? ', vencida' : ''}`}
       style={Platform.OS === 'web' ? { cursor: 'pointer' } : undefined}
       {...(Platform.OS === 'web' ? {
         onMouseEnter: () => setHovered(true),
@@ -152,7 +114,7 @@ export default function TaskCard({
               },
             ]}>
               <Text style={[styles.statusText, { color: statusColor }]}>
-                {status.label.toUpperCase()}
+                {statusLabel(task.status).toUpperCase()}
               </Text>
             </View>
           </View>
@@ -167,17 +129,17 @@ export default function TaskCard({
           {/* Meta row */}
           <View style={[styles.footer, { borderTopColor: theme.glassBorder }]}>
             {/* Priority / overdue pill */}
-            <View style={[styles.pill, { backgroundColor: accentColor + '18', borderColor: accentColor + '55' }]}>
-              <View style={[styles.dot, { backgroundColor: accentColor }]} />
-              <Text style={[styles.pillText, { color: accentColor }]}>
-                {isOverdue ? 'VENCIDA' : isClosed ? 'CERRADA' : priority.label.toUpperCase()}
+            <View style={[styles.pill, { backgroundColor: pillColor + '18', borderColor: pillColor + '55' }]}>
+              <View style={[styles.dot, { backgroundColor: pillColor }]} />
+              <Text style={[styles.pillText, { color: pillColor }]}>
+                {isOverdue ? 'VENCIDA' : isClosed ? 'CERRADA' : priorityLabel(task.priority).toUpperCase()}
               </Text>
             </View>
 
             {/* Area tag */}
             {!!task.area && (
               <View style={[styles.pill, { backgroundColor: theme.primaryAlpha || 'rgba(159,34,65,0.10)', borderColor: theme.primary + '30' }]}>
-                <Ionicons name="layers-outline" size={9} color={theme.primary} />
+                <Ionicons name="layers-outline" size={12} color={theme.primary} />
                 <Text style={[styles.pillText, { color: theme.primary }]} numberOfLines={1}>
                   {task.area.length > 14 ? task.area.slice(0, 13) + '…' : task.area}
                 </Text>
@@ -194,8 +156,8 @@ export default function TaskCard({
               </View>
             )}
 
-            {/* Areas */}
-            {task.areas && task.areas.length > 0 && (
+            {/* Áreas: solo cuando son varias (con una sola ya está la etiqueta del área) */}
+            {task.areas && task.areas.length > 1 && (
               <View style={styles.meta}>
                 <Ionicons name="layers-outline" size={12} color={theme.textTertiary} />
                 <Text style={[styles.metaText, { color: theme.textTertiary }]}>
@@ -227,6 +189,8 @@ export default function TaskCard({
     </TouchableOpacity>
   );
 }
+
+export default memo(TaskCard);
 
 const styles = StyleSheet.create({
   card: {
@@ -272,7 +236,7 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.4,
   },
   description: {
@@ -303,7 +267,7 @@ const styles = StyleSheet.create({
   },
   pillText: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     letterSpacing: 0.3,
   },
   meta: {

@@ -39,7 +39,7 @@ export default function AreaSelector({
       <TouchableOpacity
         onPress={() => !disabled && setModalVisible(true)}
         disabled={disabled}
-        activeOpacity={0.75}
+        activeOpacity={0.7}
         style={[
           styles.trigger,
           {
@@ -124,7 +124,7 @@ const styles = StyleSheet.create({
   badgeText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   trigger: {
     flexDirection: 'row',

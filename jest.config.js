@@ -3,7 +3,8 @@ module.exports = {
   setupFilesAfterEnv: ['<rootDir>/jest.setup.js'],
   testEnvironment: 'node',
   // tests/rules necesita el emulador de Firebase: se ejecuta con `npm run test:rules`
-  testPathIgnorePatterns: ['/node_modules/', '/.expo/', '/tests/rules/'],
+  // tests/rules y tests/render usan su propia configuración (test:rules, test:render)
+  testPathIgnorePatterns: ['/node_modules/', '/.expo/', '/tests/rules/', '/tests/render/'],
   transformIgnorePatterns: [
     'node_modules/(?!(react-native|@react-native|@react-native-community|expo|react-native-gesture-handler|react-native-reanimated|react-native-screens|react-native-safe-area-context|react-native-test-app)/)',
   ],

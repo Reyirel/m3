@@ -41,7 +41,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   heading: { 
     fontSize: isDesktop ? 36 : Platform.OS === 'android' ? 32 : 30, 
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
     letterSpacing: -0.8,
     marginTop: 2,
@@ -209,7 +209,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   dayTaskCountText: {
     fontSize: 11,
-    fontWeight: '800',
+    fontWeight: '700',
     color: '#FFFFFF',
   },
   dayContent: {
@@ -231,12 +231,12 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   dayNumberToday: {
     color: '#FFFFFF',
-    fontWeight: '800',
+    fontWeight: '700',
     fontSize: isDesktop ? 20 : isTablet ? 18 : 17,
   },
   dayNumberAlert: {
     color: theme.error,
-    fontWeight: '800',
+    fontWeight: '700',
   },
   dayNumberWarning: {
     color: theme.warning,
@@ -388,7 +388,7 @@ export const createStyles = (theme, isDark, isDesktop, isTablet, screenWidth, pa
   },
   modalDateDay: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '700',
     lineHeight: 24,
   },
   modalDateMonth: {

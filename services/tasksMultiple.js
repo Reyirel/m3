@@ -366,8 +366,12 @@ export async function recalculateTaskProgress(taskId) {
     const progressPercentage = Math.round((completedCount / subtasks.length) * 100);
     
     const taskRef = doc(db, TASKS_COLLECTION, taskId);
+    // Los conteos se guardan en la tarea para que las listas muestren el avance
+    // sin abrir una suscripción a las subtareas por cada fila
     await updateDoc(taskRef, {
       progressPercentage: progressPercentage,
+      subtasksTotal: subtasks.length,
+      subtasksDone: completedCount,
       updatedAt: serverTimestamp()
     });
     

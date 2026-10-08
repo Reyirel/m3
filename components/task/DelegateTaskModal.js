@@ -5,7 +5,7 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'rea
 import { Ionicons } from '@expo/vector-icons';
 import { canAssignAreaSubtask } from '../../services/permissions';
 import { useNotification } from '../../contexts/NotificationContext';
-import GlassmorphicButton from '../glass/GlassmorphicButton';
+import PrimaryButton from '../ui/PrimaryButton';
 
 /**
  * Props:
@@ -109,10 +109,10 @@ export default function DelegateTaskModal({
             )}
           </ScrollView>
 
-          <GlassmorphicButton
+          <PrimaryButton
             title="Cancelar"
             onPress={onClose}
-            variant="outline"
+            variant="ghost"
             size="large"
           />
         </View>
@@ -144,7 +144,7 @@ const createStyles = (_theme) =>
     },
     title: {
       fontSize: 22,
-      fontWeight: '800',
+      fontWeight: '700',
     },
     subtitle: {
       fontSize: 14,

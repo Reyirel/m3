@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import { useTheme } from '../../contexts/ThemeContext';
+import { DURATION, spring, timing } from '../../theme/motion';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -30,17 +31,8 @@ export default function ContextMenu({
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.spring(scaleAnim, {
-          toValue: 1,
-          friction: 8,
-          tension: 40,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacityAnim, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        })
+        spring(scaleAnim, 1),
+        timing(opacityAnim, 1, { duration: DURATION.fast })
       ]).start();
     } else {
       scaleAnim.setValue(0);

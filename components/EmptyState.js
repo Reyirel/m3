@@ -2,6 +2,7 @@ import React, { useRef, useEffect, memo } from 'react';
 import { View, Text, StyleSheet, Animated, Easing, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
+import { spring, timing } from '../theme/motion';
 
 /**
  * EmptyState component - Shows a friendly message when no data is available
@@ -35,56 +36,21 @@ const EmptyState = memo(function EmptyState({
   useEffect(() => {
     // ✨ Entrada rápida con spring
     Animated.parallel([
-      Animated.spring(fadeAnim, {
-        toValue: 1,
-        tension: 80,
-        friction: 10,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 100,
-        friction: 8,
-        useNativeDriver: true,
-      }),
-      Animated.spring(slideAnim, {
-        toValue: 0,
-        tension: 80,
-        friction: 10,
-        useNativeDriver: true,
-      }),
+      spring(fadeAnim, 1),
+      spring(scaleAnim, 1),
+      spring(slideAnim, 0),
     ]).start();
 
     // 🌊 Animación flotante suave - OPTIMIZADO: ejecutar solo una vez en lugar de loop
     Animated.sequence([
-      Animated.timing(floatAnim, {
-        toValue: 1,
-        duration: 1500,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      }),
-      Animated.timing(floatAnim, {
-        toValue: 0,
-        duration: 1500,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      }),
+      timing(floatAnim, 1, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
+      timing(floatAnim, 0, { duration: 1500, easing: Easing.inOut(Easing.ease) }),
     ]).start();
 
     // 💫 Pulso suave del círculo de fondo - OPTIMIZADO: ejecutar solo una vez
     Animated.sequence([
-      Animated.timing(pulseAnim, {
-        toValue: 1.05,
-        duration: 1200,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      }),
-      Animated.timing(pulseAnim, {
-        toValue: 1,
-        duration: 1200,
-        easing: Easing.inOut(Easing.ease),
-        useNativeDriver: true,
-      }),
+      timing(pulseAnim, 1.05, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+      timing(pulseAnim, 1, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
     ]).start();
   }, [fadeAnim, floatAnim, pulseAnim, scaleAnim, slideAnim]);
 
@@ -188,7 +154,7 @@ const EmptyState = memo(function EmptyState({
         <TouchableOpacity 
           style={[styles.quickActionButton, { backgroundColor: theme.primary }]}
           onPress={quickAction.onPress}
-          activeOpacity={0.8}
+          activeOpacity={0.7}
         >
           {quickAction.icon && (
             <Ionicons name={quickAction.icon} size={20} color="#FFFFFF" style={{ marginRight: 8 }} />

@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
+import { spring, timing } from '../../theme/motion';
 
 // ── componente principal ───────────────────────────────────────────────────
 const AreaStatsCard = memo(function AreaStatsCard({
@@ -52,8 +53,8 @@ const AreaStatsCard = memo(function AreaStatsCard({
     Animated.sequence([
       Animated.delay(index * 60),
       Animated.parallel([
-        Animated.timing(opacityAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
-        Animated.spring(slideAnim,   { toValue: 0, tension: 80, friction: 10, useNativeDriver: true }),
+        timing(opacityAnim, 1),
+        spring(slideAnim, 0),
       ]),
     ]).start();
   }, [index, opacityAnim, slideAnim]);
@@ -81,7 +82,7 @@ const AreaStatsCard = memo(function AreaStatsCard({
           },
         ]}
       >
-        <TouchableOpacity onPress={handlePress} activeOpacity={0.72} style={styles.row}>
+        <TouchableOpacity onPress={handlePress} activeOpacity={0.7} style={styles.row}>
           {/* Icono tipo área */}
           <View style={[styles.iconWrap, { backgroundColor: isDark ? `${status.color}22` : status.bg }]}>
             <Ionicons name={areaIcon} size={14} color={status.color} />
@@ -296,7 +297,7 @@ const styles = StyleSheet.create({
   // ── modal ─────────────────────────────────────────────────────────
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   sheet: {
@@ -353,7 +354,7 @@ const styles = StyleSheet.create({
   },
   sheetPct: {
     fontSize: 16,
-    fontWeight: '800',
+    fontWeight: '700',
     minWidth: 46,
     textAlign: 'right',
   },
@@ -372,7 +373,7 @@ const styles = StyleSheet.create({
   },
   metricVal: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '700',
     marginBottom: 3,
   },
   metricLbl: {

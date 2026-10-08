@@ -76,6 +76,23 @@ export function statusIcon(status) {
   }
 }
 
+/** Prioridades: mismos nombres y colores en Inicio, Bandeja, Tablero y Calendario */
+const PRIORITY_LABELS = { baja: 'Baja', media: 'Media', alta: 'Alta', critica: 'Crítica' };
+const PRIORITY_ICONS = { baja: 'arrow-down', media: 'remove', alta: 'arrow-up', critica: 'alert' };
+
+export const priorityLabel = (priority) => PRIORITY_LABELS[priority] || PRIORITY_LABELS.media;
+export const priorityIcon = (priority) => PRIORITY_ICONS[priority] || PRIORITY_ICONS.media;
+
+/** Color de la prioridad según el tema activo (legible como texto sobre una tarjeta) */
+export function priorityColor(priority, theme) {
+  switch (priority) {
+    case 'critica':
+    case 'alta': return theme.priorityHigh;
+    case 'baja': return theme.priorityLow;
+    default:     return theme.warningText;
+  }
+}
+
 /** Color del estado según el tema activo */
 export function statusColor(status, theme) {
   switch (normalizeStatus(status)) {

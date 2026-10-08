@@ -16,6 +16,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useHeaderPaddingTop } from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
 import { getUsersByRole } from '../services/usersDirectory';
@@ -31,6 +32,7 @@ const { width } = Dimensions.get('window');
 
 export default function SecretarioDashboardScreen({ navigation }) {
   const { theme, isDark } = useTheme();
+  const headerPaddingTop = useHeaderPaddingTop();
   const { tasks: contextTasks, currentUser } = useTasks();
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -241,7 +243,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
       <View style={[styles.container, { backgroundColor: theme.background }]}>
         <LinearGradient
           colors={theme.gradientHeader}
-          style={[styles.header, { justifyContent: 'flex-end', paddingBottom: 20 }]}
+          style={[styles.header, { justifyContent: 'flex-end', paddingTop: headerPaddingTop, paddingBottom: 20, borderBottomColor: theme.glassBorder }]}
         >
           <ShimmerEffect width={200} height={20} borderRadius={8} style={{ marginBottom: 8 }} />
           <ShimmerEffect width={260} height={16} borderRadius={6} />
@@ -292,7 +294,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
         colors={theme.gradientHeader}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
-        style={[styles.header, { shadowColor: theme.primary }]}
+        style={[styles.header, { paddingTop: headerPaddingTop, borderBottomColor: theme.glassBorder }]}
       >
         <View style={styles.headerContent}>
           <View>

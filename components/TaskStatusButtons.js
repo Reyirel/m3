@@ -1,25 +1,27 @@
 // components/TaskStatusButtons.js
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Alert, TouchableOpacity } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { hapticLight } from '../utils/haptics';
-import { getCurrentSession } from '../services/authFirestore';
+import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { canReopenTask } from '../services/permissions';
+import { statusColor } from '../utils/taskStatus';
+import { infoAlert } from '../utils/alert';
+import { ACTIVE_OPACITY } from '../theme/motion';
 
 const statusFlow = {
-  'pendiente':   { next: 'en_proceso',   label: 'Iniciar',   icon: 'play-circle-outline',     color: '#007AFF' },
-  'en_proceso':  { next: 'en_revision',  label: 'A revisión', icon: 'eye-outline',             color: '#AF52DE' },
-  'en_revision': { next: 'cerrada',      label: 'Completar', icon: 'checkmark-circle-outline', color: '#34C759' },
-  'cerrada':     { next: 'pendiente',    label: 'Reabrir',   icon: 'refresh-outline',          color: '#FF9500' },
+  'pendiente':   { next: 'en_proceso',   label: 'Iniciar',   icon: 'play-circle-outline' },
+  'en_proceso':  { next: 'en_revision',  label: 'A revisión', icon: 'eye-outline' },
+  'en_revision': { next: 'cerrada',      label: 'Completar', icon: 'checkmark-circle-outline' },
+  'cerrada':     { next: 'pendiente',    label: 'Reabrir',   icon: 'refresh-outline' },
 };
 
 export default function TaskStatusButtons({ currentStatus, taskId, onStatusChange, task = {} }) {
-  const [currentUser, setCurrentUser] = useState(null);
+  const { theme } = useTheme();
+  // El usuario viene del contexto: antes cada botón leía la sesión guardada por su cuenta
+  const { user: currentUser } = useAuth();
   const nextState = statusFlow[currentStatus || 'pendiente'];
-
-  useEffect(() => {
-    getCurrentSession().then(r => { if (r.success) setCurrentUser(r.session); });
-  }, []);
 
   if (!nextState) return null;
 
@@ -34,23 +36,28 @@ export default function TaskStatusButtons({ currentStatus, taskId, onStatusChang
     if (isReopening && currentUser) {
       const permission = canReopenTask(currentUser, task);
       if (!permission.canReopen) {
-        Alert.alert('Sin permisos', permission.reason);
+        infoAlert('Sin permisos', permission.reason);
         return;
       }
     }
     onStatusChange(taskId, nextState.next);
   };
 
+  // El botón lleva el color del estado al que pasa la tarea
+  const color = statusColor(nextState.next, theme);
+
   return (
     <View style={styles.container}>
       <TouchableOpacity
         onPress={handlePress}
-        activeOpacity={0.75}
-        style={[styles.chip, { borderColor: nextState.color + '50', backgroundColor: nextState.color + '14' }]}
+        activeOpacity={ACTIVE_OPACITY}
+        accessibilityRole="button"
+        accessibilityLabel={nextState.label}
+        style={[styles.chip, { borderColor: color + '50', backgroundColor: color + '14' }]}
       >
-        <Ionicons name={nextState.icon} size={14} color={nextState.color} />
-        <Text style={[styles.label, { color: nextState.color }]}>{nextState.label}</Text>
-        <Ionicons name="chevron-forward" size={12} color={nextState.color + 'AA'} />
+        <Ionicons name={nextState.icon} size={14} color={color} />
+        <Text style={[styles.label, { color }]}>{nextState.label}</Text>
+        <Ionicons name="chevron-forward" size={12} color={color + 'AA'} />
       </TouchableOpacity>
     </View>
   );

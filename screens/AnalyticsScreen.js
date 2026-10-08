@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   ScrollView,
   Dimensions,
   TouchableOpacity,
@@ -17,13 +16,16 @@ import { getReportStatistics } from '../services/reportsService';
 import { getOverallTaskMetrics } from '../services/tasks';
 import { useTasks } from '../contexts/TasksContext';
 import { GlassmorphicTabs } from '../components';
-import ScreenHeader from '../components/ui/ScreenHeader';
+import ScreenHeader, { useHeaderPaddingTop } from '../components/ui/ScreenHeader';
+import { spring } from '../theme/motion';
+import { createStyles } from './reports/AnalyticsScreenStyles';
 
 const { width } = Dimensions.get('window');
 
 // `embedded`: se muestra como pestaña dentro de Reportes, sin encabezado propio
 const AnalyticsScreen = ({ navigation, embedded = false }) => {
   const { theme, isDark } = useTheme();
+  const headerPaddingTop = useHeaderPaddingTop();
   const { tasks: contextTasks, currentUser } = useTasks();
   // Las estadísticas de reportes cuentan solo los que este usuario puede ver
   const reportScope = { user: currentUser, tasks: contextTasks };
@@ -62,306 +64,7 @@ const AnalyticsScreen = ({ navigation, embedded = false }) => {
     new Animated.Value(1),
   ]);
 
-  const styles = useMemo(() => StyleSheet.create({
-    container: {
-      flex: 1,
-      backgroundColor: theme.background,
-    },
-    // ✨ Header Premium
-    content: {
-      flex: 1,
-    },
-    // ✨ Secciones
-    section: {
-      marginHorizontal: 16,
-      marginVertical: 12,
-    },
-    sectionHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 16,
-    },
-    sectionIconContainer: {
-      width: 36,
-      height: 36,
-      borderRadius: 10,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 12,
-    },
-    sectionTitle: {
-      fontSize: 18,
-      fontWeight: '700',
-      color: theme.text,
-      letterSpacing: -0.3,
-    },
-    sectionSubtitle: {
-      fontSize: 12,
-      color: theme.textSecondary,
-      marginTop: 2,
-    },
-    // ✨ Métricas Grid Premium
-    metricsGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 12,
-    },
-    metricCardWrapper: {
-      width: (width - 44) / 2,
-    },
-    metricCardGradient: {
-      borderRadius: 24,
-      padding: 18,
-      minHeight: 140,
-      position: 'relative',
-      overflow: 'hidden',
-    },
-    metricIconWrapper: {
-      width: 48,
-      height: 48,
-      borderRadius: 16,
-      backgroundColor: 'rgba(255,255,255,0.2)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginBottom: 14,
-    },
-    metricLabel: {
-      fontSize: 14,
-      color: 'rgba(255,255,255,0.8)',
-      fontWeight: '600',
-      marginBottom: 6,
-    },
-    metricValue: {
-      fontSize: 32,
-      fontWeight: '800',
-      color: '#FFFFFF',
-      letterSpacing: -1,
-    },
-    metricSubvalue: {
-      fontSize: 12,
-      color: 'rgba(255,255,255,0.6)',
-      marginTop: 4,
-      fontWeight: '500',
-    },
-    // ✨ Rating Distribution Premium
-    ratingContainer: {
-      borderRadius: 24,
-      padding: 20,
-      overflow: 'hidden',
-    },
-    ratingHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 20,
-    },
-    ratingIconBg: {
-      width: 44,
-      height: 44,
-      borderRadius: 10,
-      backgroundColor: 'rgba(255,255,255,0.15)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 14,
-    },
-    ratingTitleText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: '#FFFFFF',
-    },
-    ratingSubtext: {
-      fontSize: 12,
-      color: 'rgba(255,255,255,0.6)',
-      marginTop: 2,
-    },
-    ratingBar: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 14,
-      gap: 12,
-    },
-    ratingStarContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      width: 45,
-      gap: 4,
-    },
-    ratingStarNum: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: '#FFFFFF',
-    },
-    ratingBarBackground: {
-      flex: 1,
-      height: 12,
-      backgroundColor: 'rgba(255,255,255,0.15)',
-      borderRadius: 6,
-      overflow: 'hidden',
-    },
-    ratingBarFill: {
-      height: '100%',
-      backgroundColor: '#FFFFFF',
-      borderRadius: 6,
-    },
-    ratingCount: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: '#FFFFFF',
-      minWidth: 30,
-      textAlign: 'right',
-    },
-    // ✨ Task Status Premium
-    statusContainer: {
-      borderRadius: 24,
-      padding: 20,
-      overflow: 'hidden',
-    },
-    statusHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: 20,
-    },
-    statusIconBg: {
-      width: 44,
-      height: 44,
-      borderRadius: 10,
-      backgroundColor: 'rgba(255,255,255,0.15)',
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 14,
-    },
-    statusTitleText: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: '#FFFFFF',
-    },
-    statusSubtext: {
-      fontSize: 12,
-      color: 'rgba(255,255,255,0.6)',
-      marginTop: 2,
-    },
-    statusItem: {
-      marginBottom: 18,
-    },
-    statusItemHeader: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      marginBottom: 10,
-    },
-    statusItemLabel: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 10,
-    },
-    statusDot: {
-      width: 10,
-      height: 10,
-      borderRadius: 5,
-    },
-    statusText: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: '#FFFFFF',
-    },
-    statusValue: {
-      fontSize: 16,
-      fontWeight: '800',
-      color: '#FFFFFF',
-    },
-    statusBarBg: {
-      height: 14,
-      backgroundColor: 'rgba(255,255,255,0.15)',
-      borderRadius: 7,
-      overflow: 'hidden',
-    },
-    statusBarFill: {
-      height: '100%',
-      borderRadius: 10,
-    },
-    // ✨ Top Tasks Premium
-    topTasksContainer: {
-      backgroundColor: theme.glass,
-      borderRadius: 24,
-      overflow: 'hidden',
-      borderWidth: 1,
-      borderColor: theme.glassBorder,
-    },
-    topTasksHeader: {
-      padding: 18,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.border,
-    },
-    topTasksHeaderContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    topTasksIconBg: {
-      width: 40,
-      height: 40,
-      borderRadius: 10,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 12,
-    },
-    topTasksTitle: {
-      fontSize: 16,
-      fontWeight: '700',
-      color: theme.text,
-    },
-    topTasksSubtitle: {
-      fontSize: 12,
-      color: theme.textSecondary,
-      marginTop: 2,
-    },
-    topTaskItem: {
-      padding: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    topTaskRank: {
-      width: 32,
-      height: 32,
-      borderRadius: 10,
-      justifyContent: 'center',
-      alignItems: 'center',
-      marginRight: 14,
-    },
-    topTaskRankText: {
-      fontSize: 14,
-      fontWeight: '800',
-      color: '#FFFFFF',
-    },
-    topTaskInfo: {
-      flex: 1,
-    },
-    topTaskTitle: {
-      fontSize: 14,
-      fontWeight: '600',
-      color: theme.text,
-      marginBottom: 4,
-    },
-    topTaskMeta: {
-      fontSize: 12,
-      color: theme.textSecondary,
-    },
-    topTaskRating: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-      backgroundColor: isDark ? 'rgba(251,191,36,0.15)' : 'rgba(251,191,36,0.1)',
-      paddingHorizontal: 10,
-      paddingVertical: 6,
-      borderRadius: 24,
-    },
-    topTaskRatingText: {
-      fontSize: 14,
-      fontWeight: '700',
-      color: theme.accentLight,
-    },
-    // Loading
-  }), [isDark, theme]);
+  const styles = useMemo(() => createStyles(isDark, theme), [isDark, theme]);
 
   // ✨ Función para ejecutar animaciones de entrada
   const runEntranceAnimations = () => {
@@ -380,28 +83,28 @@ const AnalyticsScreen = ({ navigation, embedded = false }) => {
     Animated.stagger(100, [
       // Header
       Animated.parallel([
-        Animated.spring(headerAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 8 }),
-        Animated.spring(headerSlide, { toValue: 0, useNativeDriver: true, tension: 50, friction: 8 }),
+        spring(headerAnim, 1),
+        spring(headerSlide, 0),
       ]),
       // Overview
       Animated.parallel([
-        Animated.spring(overviewAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 8 }),
-        Animated.spring(overviewSlide, { toValue: 0, useNativeDriver: true, tension: 50, friction: 8 }),
+        spring(overviewAnim, 1),
+        spring(overviewSlide, 0),
       ]),
       // Ratings
       Animated.parallel([
-        Animated.spring(ratingsAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 8 }),
-        Animated.spring(ratingsSlide, { toValue: 0, useNativeDriver: true, tension: 50, friction: 8 }),
+        spring(ratingsAnim, 1),
+        spring(ratingsSlide, 0),
       ]),
       // Status
       Animated.parallel([
-        Animated.spring(statusAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 8 }),
-        Animated.spring(statusSlide, { toValue: 0, useNativeDriver: true, tension: 50, friction: 8 }),
+        spring(statusAnim, 1),
+        spring(statusSlide, 0),
       ]),
       // Top Tasks
       Animated.parallel([
-        Animated.spring(topTasksAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 8 }),
-        Animated.spring(topTasksSlide, { toValue: 0, useNativeDriver: true, tension: 50, friction: 8 }),
+        spring(topTasksAnim, 1),
+        spring(topTasksSlide, 0),
       ]),
     ]).start();
     
@@ -409,12 +112,7 @@ const AnalyticsScreen = ({ navigation, embedded = false }) => {
   
   // Función para animar escala de tarjeta
   const animateCardPress = (index, pressed) => {
-    Animated.spring(cardScales[index], {
-      toValue: pressed ? 0.96 : 1,
-      useNativeDriver: true,
-      tension: 100,
-      friction: 8,
-    }).start();
+    spring(cardScales[index], pressed ? 0.96 : 1).start();
   };
   
   // Función para refresh
@@ -487,7 +185,7 @@ const AnalyticsScreen = ({ navigation, embedded = false }) => {
           colors={theme.gradientHeader}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={{ paddingTop: 56, paddingBottom: 20, paddingHorizontal: 20 }}
+          style={{ paddingTop: headerPaddingTop, paddingBottom: 20, paddingHorizontal: 20 }}
         >
           <ShimmerEffect width={160} height={24} borderRadius={8} style={{ marginBottom: 8 }} />
           <ShimmerEffect width={220} height={14} borderRadius={6} />
@@ -634,7 +332,7 @@ const AnalyticsScreen = ({ navigation, embedded = false }) => {
                 <TouchableOpacity
                   onPressIn={() => animateCardPress(index, true)}
                   onPressOut={() => animateCardPress(index, false)}
-                  activeOpacity={0.85}
+                  activeOpacity={0.7}
                 >
                 <View style={[styles.metricCardGradient, { padding: 16, borderRadius: 16, backgroundColor: isDark ? theme.card : theme.glassStrong, borderWidth: 1, borderColor: theme.glassBorder }]}>
                   <View style={styles.metricIconWrapper}>

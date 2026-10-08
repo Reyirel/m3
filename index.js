@@ -8,14 +8,8 @@ if (!__DEV__) {
 	// Mantener console.error para errores críticos
 }
 
-// Carga variables de entorno desde .env si no estamos en producción ni en entorno Expo
-if (!process.env.FIREBASE_API_KEY) {
-	try {
-		require('dotenv').config();
-	} catch (e) {
-		// dotenv no está disponible (por ejemplo, en Expo managed)
-	}
-}
+// Las variables de entorno llegan por app.config.js (Expo las lee de .env al compilar).
+// Aquí no se usa dotenv: es un módulo de Node y hacía fallar el bundle de Android e iOS.
 import './polyfills';
 import { registerRootComponent } from 'expo';
 import App from './App';

@@ -37,7 +37,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, ActivityIndicator, StyleSheet, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { ThemeProvider, useTheme } from './contexts/ThemeContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { TasksProvider, useTasks } from './contexts/TasksContext';
@@ -46,7 +46,6 @@ import { getGestureHandlerRootView } from './utils/platformComponents';
 import PremiumTabBar from './components/PremiumTabBar';
 import DesktopSidebar from './components/DesktopSidebar';
 import { useResponsive } from './utils/responsive';
-import MeshBackground from './components/MeshBackground';
 
 // ✅ OPTIMIZACIÓN: Lazy loading de screens (-40% bundle inicial)
 const LoginScreen = React.lazy(() => import('./screens/LoginScreen'));
@@ -56,8 +55,6 @@ const CalendarScreen = React.lazy(() => import('./screens/CalendarScreen'));
 const AdminScreen = React.lazy(() => import('./screens/AdminScreen'));
 const SecretarioDashboardScreen = React.lazy(() => import('./screens/SecretarioDashboardScreen'));
 const AdminExecutiveDashboard = React.lazy(() => import('./screens/AdminExecutiveDashboard'));
-const AdminReportsScreen = React.lazy(() => import('./screens/AdminReportsScreen'));
-const MyAreaReportsScreen = React.lazy(() => import('./screens/MyAreaReportsScreen'));
 const MyInboxScreen = React.lazy(() => import('./screens/MyInboxScreen'));
 const MoreScreen = React.lazy(() => import('./screens/MoreScreen'));
 const TaskDetailScreen = React.lazy(() => import('./screens/TaskDetailScreen'));
@@ -67,7 +64,6 @@ const ReportsScreen = React.lazy(() => import('./screens/ReportsScreen'));
 const NotificationsScreen = React.lazy(() => import('./screens/NotificationsScreen'));
 const AreaChiefDashboard = React.lazy(() => import('./screens/AreaChiefDashboard'));
 const AreaManagementScreen = React.lazy(() => import('./screens/area/AreaManagementScreen'));
-const AnalyticsScreen = React.lazy(() => import('./screens/AnalyticsScreen'));
 const TaskReportsAndActivityScreen = React.lazy(() => import('./screens/TaskReportsAndActivityScreen'));
 const ProfileScreen = React.lazy(() => import('./screens/ProfileScreen'));
 const SearchScreen = React.lazy(() => import('./screens/SearchScreen'));
@@ -80,11 +76,13 @@ import { initConnectionListener } from './services/offlineSync';
 import { startOrgStructureSync } from './services/orgStructure';
 import ConnectionStatus from './components/ConnectionStatus';
 import DialogHost from './components/DialogHost';
+import AppToast from './components/AppToast';
 import NotificationWatcher from './components/NotificationWatcher';
 import AnimatedSplash from './components/AnimatedSplash';
 import ImprovedErrorBoundary from './components/ImprovedErrorBoundary';
 import { startAutoCacheCleanup, stopAutoCacheCleanup } from './utils/cacheManager';
 import logger from './services/Logger';
+import { DURATION } from './theme/motion';
 
 // ✅ OPTIMIZACIÓN: Performance Monitoring
 if (Platform.OS === 'web') {
@@ -111,7 +109,7 @@ const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
 const GestureHandlerRootView = getGestureHandlerRootView();
 
-const APP_NAME = 'Gestión';
+const APP_NAME = 'Gestión Municipal';
 
 // Direcciones en web: cada pantalla tiene su URL, así se puede compartir el enlace
 // a una tarea y el botón "atrás" del navegador funciona.
@@ -147,9 +145,6 @@ const linking = {
       Settings: 'configuracion',
       Search: 'buscar',
       Trash: 'papelera',
-      Analytics: 'analiticas',
-      AdminReports: 'reportes-generales',
-      MyAreaReports: 'reportes-area',
       AreaManagement: 'areas',
       AreaChiefDashboard: 'panel-area',
     },
@@ -199,10 +194,7 @@ const Screens = {
   AreaManagement: lazyScreen(AreaManagementScreen),
   Notifications: lazyScreen(NotificationsScreen),
   AreaChiefDashboard: lazyScreen(AreaChiefDashboard),
-  Analytics: lazyScreen(AnalyticsScreen),
   TaskReportsAndActivity: lazyScreen(TaskReportsAndActivityScreen),
-  AdminReports: lazyScreen(AdminReportsScreen),
-  MyAreaReports: lazyScreen(MyAreaReportsScreen),
   Search: lazyScreen(SearchScreen),
   Trash: lazyScreen(TrashScreen),
 };
@@ -259,8 +251,7 @@ function TaskDetailRoute(props) {
 
 // Tab Navigator con todas las pantallas
 function MainTabs({ onLogout, navigation }) {
-  const { theme, isDark } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { theme } = useTheme();
   const { tasks: contextTasks } = useTasks();
   const { user: currentUser, isAdmin, isSecretario, isDirector } = useAuth();
   const { isDesktop, isTablet } = useResponsive();
@@ -364,7 +355,7 @@ function MainTabs({ onLogout, navigation }) {
           tabBar={(props) => {
             tabNavRef.current = props.navigation;
             if (usesSidebar) return null;
-            return <PremiumTabBar {...props} isDark={isDark} insets={insets} />;
+            return <PremiumTabBar {...props} />;
           }}
           screenListeners={({ route }) => ({
             focus: () => setActiveRouteName(route.name),
@@ -491,7 +482,7 @@ function AppNavigator({ navigationRef }) {
             screenOptions={{
               headerShown: false,
               animation: Platform.OS === 'web' ? 'fade' : 'slide_from_right',
-              animationDuration: Platform.OS === 'web' ? 300 : 400,
+              animationDuration: DURATION.normal,
             }}
           >
             {!isAuthenticated ? (
@@ -517,14 +508,11 @@ function AppNavigator({ navigationRef }) {
                 <Stack.Screen name="AreaManagement" options={{ ...cardScreen, title: 'Áreas' }} component={Screens.AreaManagement} />
                 <Stack.Screen name="Notifications" options={{ ...cardScreen, title: 'Notificaciones' }} component={Screens.Notifications} />
                 <Stack.Screen name="AreaChiefDashboard" options={{ ...cardScreen, title: 'Panel del área' }} component={Screens.AreaChiefDashboard} />
-                <Stack.Screen name="Analytics" options={{ ...cardScreen, title: 'Analíticas' }} component={Screens.Analytics} />
                 <Stack.Screen
                   name="TaskReportsAndActivity"
                   options={{ ...cardScreen, title: 'Reportes de la tarea' }}
                   component={Screens.TaskReportsAndActivity}
                 />
-                <Stack.Screen name="AdminReports" options={{ ...cardScreen, title: 'Reportes generales' }} component={Screens.AdminReports} />
-                <Stack.Screen name="MyAreaReports" options={{ ...cardScreen, title: 'Reportes de mi área' }} component={Screens.MyAreaReports} />
                 <Stack.Screen name="Profile" options={{ ...cardScreen, title: 'Mi perfil' }}>
                   {(props) => (
                     <Suspense fallback={<ScreenFallback />}>
@@ -554,6 +542,7 @@ function AppNavigator({ navigationRef }) {
 // cuando la sesión ya se restauró.
 function AppShell({ navigationRef }) {
   const { isLoading } = useAuth();
+  const { theme } = useTheme();
   // Pantalla de inicio animada: solo al abrir la app, no al cerrar o iniciar sesión
   const [splashVisible, setSplashVisible] = useState(true);
   // Tope de seguridad: si restaurar la sesión tarda, se muestra la app de todos modos
@@ -568,15 +557,15 @@ function AppShell({ navigationRef }) {
     <View style={{ flex: 1 }}>
       {ready && (
         <GestureHandlerRootView style={{ flex: 1 }}>
-          <MeshBackground>
+          <View style={{ flex: 1, backgroundColor: theme.background }}>
             <AppNavigator navigationRef={navigationRef} />
-            <Toast />
+            <AppToast />
             {/* Confirmaciones y avisos con el diseño de la app (utils/alert.js) */}
             <DialogHost />
             {/* Vercel Analytics - Solo en web */}
             {Platform.OS === 'web' && Analytics && <Analytics />}
             {Platform.OS === 'web' && SpeedInsights && <SpeedInsights />}
-          </MeshBackground>
+          </View>
         </GestureHandlerRootView>
       )}
       {splashVisible && (

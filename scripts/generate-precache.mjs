@@ -18,7 +18,7 @@ if (!fs.existsSync(dist) || !fs.existsSync(swFile)) {
 
 // Carpetas con los archivos de la app (código, fuentes, imágenes) y archivos sueltos de la raíz
 const PRECACHE_DIRS = ['_expo', 'assets'];
-const PRECACHE_ROOT_FILES = ['manifest.json', 'favicon.ico', 'favicon.png', 'favicon.svg', 'icon-192.png', 'icon-512.png'];
+const PRECACHE_ROOT_FILES = ['manifest.json', 'favicon.ico', 'favicon.png', 'favicon.svg', 'icon-192.png', 'icon-512.png', 'icon-maskable-192.png', 'icon-maskable-512.png'];
 
 const walk = (dir) =>
   fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {

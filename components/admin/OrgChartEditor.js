@@ -22,7 +22,7 @@ import OrgDiagramBoard from './OrgDiagramBoard';
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
 
 // ─── Vista Lista (editable) ────────────────────────────────────────────────────
-function ListView({ orgData, setOrgData, persist, onRename, onRemove, theme, isDark }) {
+function ListView({ orgData, setOrgData, persist, onRename, onRemove, theme }) {
   const [expanded, setExpanded] = useState({});
   const [editingDir, setEditingDir] = useState(null);
   const [addingDir, setAddingDir] = useState(null);
@@ -32,9 +32,9 @@ function ListView({ orgData, setOrgData, persist, onRename, onRemove, theme, isD
   editingRef.current = editingDir;
   addingRef.current = addingDir;
 
-  const cardBg = isDark ? '#1E1E2E' : '#FFFFFF';
-  const borderCol = isDark ? '#2E2E3E' : '#E5E7EB';
-  const subtextCol = isDark ? '#9CA3AF' : '#6B7280';
+  const cardBg = theme.card;
+  const borderCol = theme.borderLight;
+  const subtextCol = theme.textSecondary;
 
   const confirmRename = (secIdx, dirIdx) => {
     const editing = editingRef.current;
@@ -124,7 +124,7 @@ function ListView({ orgData, setOrgData, persist, onRename, onRemove, theme, isD
                       <View style={list.dirDot} />
                       {editingDir?.secIdx === secIdx && editingDir?.dirIdx === dirIdx ? (
                         <TextInput
-                          style={[list.dirInput, { color: theme.text, borderColor: theme.primary, backgroundColor: isDark ? '#2A2A3A' : '#FFF5F5' }]}
+                          style={[list.dirInput, { color: theme.text, borderColor: theme.primary, backgroundColor: theme.primaryAlpha }]}
                           value={editingDir.value}
                           onChangeText={v => setEditingDir(e => ({ ...e, value: v }))}
                           autoFocus
@@ -160,7 +160,7 @@ function ListView({ orgData, setOrgData, persist, onRename, onRemove, theme, isD
                     <View style={[list.dirRow, { borderBottomColor: 'transparent' }]}>
                       <View style={[list.dirDot, { backgroundColor: theme.primary }]} />
                       <TextInput
-                        style={[list.dirInput, { flex: 1, color: theme.text, borderColor: theme.primary, backgroundColor: isDark ? '#2A2A3A' : '#FFF5F5' }]}
+                        style={[list.dirInput, { flex: 1, color: theme.text, borderColor: theme.primary, backgroundColor: theme.primaryAlpha }]}
                         value={addingDir.value}
                         onChangeText={v => setAddingDir(e => ({ ...e, value: v }))}
                         placeholder="Nombre de la nueva dirección..."
@@ -250,7 +250,7 @@ function NamePrompt({ prompt, orgData, theme, onClose }) {
 
 // ─── Componente principal ──────────────────────────────────────────────────────
 export default function OrgChartEditor() {
-  const { theme, isDark } = useTheme();
+  const { theme } = useTheme();
   const [orgData, setOrgData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -457,7 +457,7 @@ export default function OrgChartEditor() {
     });
   }, [performMove]);
 
-  const subtextCol = isDark ? '#9CA3AF' : '#6B7280';
+  const subtextCol = theme.textSecondary;
 
   if (loading) {
     return (
@@ -473,7 +473,7 @@ export default function OrgChartEditor() {
   return (
     <View style={styles.root}>
       {/* Toggle de vista */}
-      <View style={[styles.toggleRow, { borderBottomColor: isDark ? '#2E2E3E' : '#E5E7EB' }]}>
+      <View style={[styles.toggleRow, { borderBottomColor: theme.borderLight }]}>
         <TouchableOpacity
           style={[styles.toggleBtn, viewMode === 'diagram' && styles.toggleBtnActive]}
           onPress={() => setViewMode('diagram')}
@@ -548,7 +548,6 @@ export default function OrgChartEditor() {
             onRename={performRename}
             onRemove={handleRemoveDireccion}
             theme={theme}
-            isDark={isDark}
           />
         ) : (
           <OrgDiagramBoard

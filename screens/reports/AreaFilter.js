@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
+import { timing } from '../../theme/motion';
 
 export default function AreaFilter({
   areas = [],
@@ -34,11 +35,7 @@ export default function AreaFilter({
   const handleToggleExpand = () => {
     const next = !isExpanded;
     setIsExpanded(next);
-    Animated.timing(rotateAnim, {
-      toValue: next ? 1 : 0,
-      duration: 250,
-      useNativeDriver: true,
-    }).start();
+    timing(rotateAnim, next ? 1 : 0).start();
   };
 
   const handleSelectAll = () => {

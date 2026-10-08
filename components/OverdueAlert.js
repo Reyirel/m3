@@ -14,6 +14,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { toMs } from '../utils/dateUtils';
+import { timing } from '../theme/motion';
 
 const PRIORITY_LABEL = { alta: 'Alta', media: 'Media', baja: 'Baja' };
 
@@ -75,8 +76,8 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
   useEffect(() => {
     if (total > 0) {
       Animated.parallel([
-        Animated.timing(slideAnim, { toValue: 0, duration: 350, useNativeDriver: true }),
-        Animated.timing(opacityAnim, { toValue: 1, duration: 350, useNativeDriver: true }),
+        timing(slideAnim, 0),
+        timing(opacityAnim, 1),
       ]).start();
     }
   }, [total, slideAnim, opacityAnim]);
@@ -206,7 +207,7 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
                       setModalVisible(false);
                       onTaskPress?.(task);
                     }}
-                    activeOpacity={0.75}
+                    activeOpacity={0.7}
                   >
                     <View style={styles.taskCardTop}>
                       <View style={{ flex: 1 }}>
@@ -303,7 +304,7 @@ const styles = StyleSheet.create({
   // Modal
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(0,0,0,0.5)',
     justifyContent: 'flex-end',
   },
   modalSheet: {

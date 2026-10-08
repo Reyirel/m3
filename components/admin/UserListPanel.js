@@ -3,11 +3,9 @@ import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   TextInput,
   Modal,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +14,7 @@ import { adminSetUserPassword } from '../../services/authFirestore';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNotification } from '../../contexts/NotificationContext';
 import { hapticLight, hapticMedium } from '../../utils/haptics';
+import { styles } from './UserListPanelStyles';
 
 const ROLE_LABELS = {
   director: 'Director',
@@ -561,9 +560,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
                 style={[
                   styles.confirmBtn,
                   {
-                    backgroundColor: isDark
-                      ? 'rgba(255,255,255,0.08)'
-                      : '#F3F4F6',
+                    backgroundColor: theme.background,
                   },
                 ]}
                 onPress={() => setDeleteConfirmUser(null)}
@@ -642,9 +639,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
                 style={[
                   styles.passBox,
                   {
-                    backgroundColor: isDark
-                      ? 'rgba(255,255,255,0.04)'
-                      : '#F9FAFB',
+                    backgroundColor: theme.background,
                     borderColor: theme.border,
                   },
                 ]}
@@ -672,9 +667,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
                 styles.passInputRow,
                 {
                   borderColor: theme.border,
-                  backgroundColor: isDark
-                    ? 'rgba(255,255,255,0.06)'
-                    : '#F9FAFB',
+                  backgroundColor: theme.background,
                 },
               ]}
             >
@@ -701,9 +694,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
                 style={[
                   styles.confirmBtn,
                   {
-                    backgroundColor: isDark
-                      ? 'rgba(255,255,255,0.08)'
-                      : '#F3F4F6',
+                    backgroundColor: theme.background,
                   },
                 ]}
                 onPress={() => {
@@ -736,345 +727,3 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  sectionCard: {
-    padding: 18,
-    borderRadius: 24,
-    marginBottom: 24,
-    borderWidth: 1.5,
-    borderColor: 'rgba(0,0,0,0.08)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    elevation: 4,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    gap: 12,
-  },
-  iconCircleSection: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 5,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
-  },
-  sectionTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    letterSpacing: -0.6,
-    flex: 1,
-    textShadowColor: 'rgba(0,0,0,0.15)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
-  },
-  expandButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 16,
-    borderRadius: 16,
-    borderWidth: 2,
-    marginBottom: 14,
-    minHeight: 48,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  expandButtonText: {
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-  },
-  userListContainer: {
-    marginTop: 8,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 14,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 14,
-    paddingVertical: 0,
-  },
-  roleSectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 12,
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    borderLeftWidth: 4,
-    gap: 12,
-  },
-  sectionIconWrapper: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  roleSectionTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    flex: 1,
-  },
-  roleSectionBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 16,
-    minWidth: 28,
-    alignItems: 'center',
-  },
-  roleSectionCount: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: '800',
-  },
-  userCard: {
-    flexDirection: 'row',
-    borderRadius: 16,
-    padding: Platform.OS === 'web' ? 16 : 14,
-    marginBottom: 10,
-    marginHorizontal: 2,
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-    alignItems: 'center',
-    gap: 12,
-  },
-  userInfo: {
-    flex: 1,
-  },
-  userHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    flex: 1,
-  },
-  userTextContainer: {
-    flex: 1,
-    minWidth: 0,
-  },
-  userAvatar: {
-    width: Platform.OS === 'web' ? 48 : 44,
-    height: Platform.OS === 'web' ? 48 : 44,
-    borderRadius: Platform.OS === 'web' ? 14 : 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    flexShrink: 0,
-  },
-  avatarInitial: {
-    fontSize: Platform.OS === 'web' ? 20 : 18,
-    fontWeight: '700',
-  },
-  userActions: {
-    alignItems: 'flex-end',
-    gap: 6,
-    flexShrink: 0,
-  },
-  roleChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 16,
-    borderWidth: 1,
-    gap: 5,
-  },
-  roleChipText: {
-    fontSize: 12,
-    fontWeight: '700',
-    letterSpacing: 0.3,
-  },
-  roleEditContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: 4,
-    maxWidth: 200,
-  },
-  roleOptionChip: {
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-    borderRadius: 16,
-    borderWidth: 1,
-  },
-  roleOptionText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  roleEditClose: {
-    padding: 4,
-  },
-  deleteUserBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(239, 68, 68, 0.35)',
-    backgroundColor: 'rgba(239, 68, 68, 0.07)',
-  },
-  deleteUserBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: 'transparent',
-  },
-  positionBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginTop: 4,
-    marginBottom: 2,
-    gap: 5,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-  },
-  positionText: {
-    fontSize: 12,
-    fontWeight: '700',
-    flex: 1,
-  },
-  areaTextRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
-  },
-  areaText: {
-    fontSize: 12,
-    fontWeight: '500',
-    flex: 1,
-  },
-  emailRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-    gap: 4,
-  },
-  phoneRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 3,
-    gap: 4,
-  },
-  phoneText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  userName: {
-    fontSize: Platform.OS === 'web' ? 15 : 14,
-    fontWeight: '700',
-    letterSpacing: -0.2,
-    marginBottom: 0,
-  },
-  userEmail: {
-    fontSize: Platform.OS === 'web' ? 12 : 11,
-    fontWeight: '500',
-    flex: 1,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  confirmModal: {
-    width: '100%',
-    maxWidth: 360,
-    borderRadius: 24,
-    padding: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 10,
-  },
-  confirmIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: 'rgba(239,68,68,0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 14,
-  },
-  confirmTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    marginBottom: 8,
-    textAlign: 'center',
-    width: '100%',
-  },
-  confirmMsg: {
-    fontSize: 14,
-    textAlign: 'center',
-    lineHeight: 20,
-    marginBottom: 20,
-  },
-  confirmBtns: {
-    flexDirection: 'row',
-    gap: 10,
-    width: '100%',
-    marginTop: 4,
-  },
-  confirmBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  confirmBtnText: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  passBox: {
-    width: '100%',
-    borderWidth: 1,
-    borderRadius: 10,
-    padding: 14,
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  passInputRow: {
-    width: '100%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    marginBottom: 16,
-    gap: 8,
-  },
-});
