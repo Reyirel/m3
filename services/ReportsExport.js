@@ -5,7 +5,7 @@
 
 import { Platform } from 'react-native';
 import { toMs } from '../utils/dateUtils';
-import { isInProgress } from '../utils/taskStatus';
+import { isClosed, isInProgress } from '../utils/taskStatus';
 
 // Imports condicionales para Expo modules (no disponibles en web)
 let FileSystem = null;
@@ -87,7 +87,7 @@ export async function exportAreaReport(areaMetrics, allTasks, _period = 'month')
     const overdueHeaders = ['ID', 'Título', 'Área', 'Asignado', 'Fecha Vencimiento', 'Días Retrasado'];
     const now = Date.now();
     const overdueRows = allTasks
-      .filter(t => t.dueAt && toMs(t.dueAt) < now && t.status !== 'cerrada')
+      .filter(t => t.dueAt && toMs(t.dueAt) < now && !isClosed(t.status))
       .map(t => [
         t.id.substring(0, 8),
         t.title,
@@ -110,7 +110,7 @@ export async function exportAreaReport(areaMetrics, allTasks, _period = 'month')
       pendiente: allTasks.filter(t => t.status === 'pendiente').length,
       en_proceso: allTasks.filter(t => isInProgress(t.status)).length,
       en_revision: allTasks.filter(t => t.status === 'en_revision').length,
-      cerrada: allTasks.filter(t => t.status === 'cerrada').length,
+      cerrada: allTasks.filter(t => isClosed(t.status)).length,
     };
 
     sections.push('=== ESTADÍSTICAS GENERALES ===\n');

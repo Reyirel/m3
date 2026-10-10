@@ -24,6 +24,7 @@ import { showDialog } from '../utils/alert';
 import WebSafeBlur from './WebSafeBlur';
 import PrimaryButton from './ui/PrimaryButton';
 import { createStyles } from './ReportFormModalStyles';
+import { useWindowDimensions } from 'react-native';
 
 
 const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
@@ -111,7 +112,8 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
     return () => unsubscribe();
   }, []);
 
-  const styles = useMemo(() => createStyles(isDark, theme), [isDark, theme]);
+  const { width } = useWindowDimensions();
+  const styles = useMemo(() => createStyles(isDark, theme, width), [isDark, theme, width]);
 
   // Agregar una foto: se reduce antes de guardarla en el formulario, para que el envío
   // sea rápido y para poder conservarla en el dispositivo si no hay conexión
@@ -348,7 +350,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
       animationType="slide"
     >
       <WebSafeBlur intensity={70} style={styles.container}>
-        <TouchableOpacity accessibilityLabel="Cerrar"
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Cerrar"
           style={styles.background}
           activeOpacity={1}
           onPress={handleClose}
@@ -403,7 +405,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
                 </View>
                 <View style={styles.templatesGrid}>
                   {REPORT_TEMPLATES.map(template => (
-                    <TouchableOpacity 
+                    <TouchableOpacity accessibilityRole="button" 
                       key={template.id} 
                       style={[styles.templateChip, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}
                       onPress={() => applyTemplate(template)}
@@ -522,7 +524,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
 
                 {images.length < 5 && !uploadingImages && !preparingImage && (
                   <View style={styles.imageButtonsRow}>
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button"
                       style={styles.addImageButton}
                       onPress={handleTakePhoto}
                       disabled={loading}
@@ -534,7 +536,7 @@ const ReportFormModal = ({ visible, onClose, taskId, onSuccess }) => {
                       />
                       <Text style={styles.addImageText}>Cámara</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button"
                       style={styles.addImageButton}
                       onPress={handleAddImage}
                       disabled={loading}

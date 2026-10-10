@@ -135,7 +135,7 @@ async function notifyMultipleAssignees(task) {
     const assignedUsers = [];
     
     (await getAllUsers()).forEach(userData => {
-      if (assigneeEmails.includes(userData.email?.toLowerCase())) {
+      if (userData.active !== false && assigneeEmails.includes(userData.email?.toLowerCase())) {
         assignedUsers.push(userData);
       }
     });

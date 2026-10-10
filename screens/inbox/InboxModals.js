@@ -60,7 +60,7 @@ export function HelpModal({ visible, onClose, styles, theme }) {
             </View>
           ))}
 
-          <TouchableOpacity style={[styles.helpModalCloseBtn, { backgroundColor: theme.primary }]} onPress={onClose}>
+          <TouchableOpacity accessibilityRole="button" style={[styles.helpModalCloseBtn, { backgroundColor: theme.primary }]} onPress={onClose}>
             <Text style={styles.helpModalCloseBtnText}>Entendido</Text>
           </TouchableOpacity>
         </View>
@@ -97,7 +97,7 @@ export function MessagesModal({ visible, onClose, messages, onOpenMessage, style
           </View>
           <ScrollView style={styles.modalScroll}>
             {messages.map((message, index) => (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 key={`msg-${message.taskId}-${message.id}-${index}`}
                 style={[styles.messageCard, {
                   backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : '#FFFFFF',

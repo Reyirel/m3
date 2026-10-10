@@ -25,6 +25,7 @@ import { useNotification } from '../contexts/NotificationContext';
 import ShimmerEffect from '../components/ShimmerEffect';
 import EmptyState from '../components/EmptyState';
 import { createStyles } from './task/TaskReportsAndActivityScreenStyles';
+import { useWindowDimensions } from 'react-native';
 
 
 const TaskReportsAndActivityScreen = ({ route, navigation }) => {
@@ -55,7 +56,8 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
   const [hoverRating, setHoverRating] = useState({});  // Para feedback visual de estrellas
   const [refreshing, setRefreshing] = useState(false);
 
-  const styles = useMemo(() => createStyles(isDark, theme), [isDark, theme]);
+  const { width } = useWindowDimensions();
+  const styles = useMemo(() => createStyles(isDark, theme, width), [isDark, theme, width]);
 
   const unsubReportsRef = useRef(null);
   const unsubActivityRef = useRef(null);
@@ -111,7 +113,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
     });
     return (
       <Animated.View style={{ transform: [{ translateX: trans }], justifyContent: 'center' }}>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           onPress={() => handleDeleteReport(reportId)}
           style={{
             backgroundColor: theme.error,
@@ -183,7 +185,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
   };
 
   const renderReportCard = ({ item }) => (
-    <TouchableOpacity
+    <TouchableOpacity accessibilityRole="button"
       style={styles.reportCard}
       onPress={() =>
         setExpandedReportId(expandedReportId === item.id ? null : item.id)
@@ -377,7 +379,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
       </LinearGradient>
 
       <View style={styles.tabsContainer}>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={[styles.tab, tab === 'reports' && styles.activeTab]}
           onPress={() => setTab('reports')}
         >
@@ -390,7 +392,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
             Reportes ({reports.length})
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={[styles.tab, tab === 'activity' && styles.activeTab]}
           onPress={() => setTab('activity')}
         >
@@ -422,7 +424,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
                   : 'Envía un reporte con fotos y detalles sobre el avance'}
               </Text>
               {!isAdmin && (
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   style={styles.addButton}
                   onPress={() => setShowReportForm(true)}
                 >
@@ -465,7 +467,7 @@ const TaskReportsAndActivityScreen = ({ route, navigation }) => {
               }
               ListFooterComponent={
                 !isAdmin ? (
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="button"
                     style={[
                       styles.addButton,
                       {

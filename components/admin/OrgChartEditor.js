@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert, ScrollView, Platform, Modal,
+  ActivityIndicator, ScrollView, Platform, Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -16,7 +16,7 @@ import {
   applyAreaRename, applyDireccionMove, moveDireccion, removeArea, renameArea, saveOrgStructure,
   subscribeToSavedOrgStructure,
 } from '../../services/orgStructure';
-import { showDialog } from '../../utils/alert';
+import { showDialog, infoAlert } from '../../utils/alert';
 import OrgDiagramBoard from './OrgDiagramBoard';
 
 const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
@@ -95,7 +95,7 @@ function ListView({ orgData, setOrgData, persist, onRename, onRemove, theme }) {
               <View style={[list.horzDash, { backgroundColor: theme.primary }]} />
             </View>
             <View style={[list.secCard, { backgroundColor: cardBg, borderColor: borderCol }]}>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 style={list.secHeader}
                 onPress={() => setExpanded(e => ({ ...e, [secIdx]: !e[secIdx] }))}
                 activeOpacity={0.7}
@@ -172,7 +172,7 @@ function ListView({ orgData, setOrgData, persist, onRename, onRemove, theme }) {
                       />
                     </View>
                   ) : (
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button"
                       style={list.addBtn}
                       onPress={() => setAddingDir({ secIdx, value: '' })}
                     >
@@ -272,7 +272,7 @@ export default function OrgChartEditor() {
     try {
       await saveOrgStructure(newData);
     } catch {
-      Alert.alert('Error', 'No se pudo guardar el cambio.');
+      infoAlert('Error', 'No se pudo guardar el cambio.');
     } finally {
       setSaving(false);
     }
@@ -322,7 +322,7 @@ export default function OrgChartEditor() {
       }
     } catch {
       setOrgData(getOrgStructure());
-      Alert.alert('No se pudo renombrar', 'El organigrama no se guardó. Revisa tu conexión e intenta de nuevo.');
+      infoAlert('No se pudo renombrar', 'El organigrama no se guardó. Revisa tu conexión e intenta de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -343,7 +343,7 @@ export default function OrgChartEditor() {
         });
       }
     } catch {
-      Alert.alert('No se pudo eliminar', 'No se pudo revisar si el área sigue en uso. Revisa tu conexión e intenta de nuevo.');
+      infoAlert('No se pudo eliminar', 'No se pudo revisar si el área sigue en uso. Revisa tu conexión e intenta de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -434,7 +434,7 @@ export default function OrgChartEditor() {
       }
     } catch {
       setOrgData(getOrgStructure());
-      Alert.alert('No se pudo mover', 'El organigrama no se guardó. Revisa tu conexión e intenta de nuevo.');
+      infoAlert('No se pudo mover', 'El organigrama no se guardó. Revisa tu conexión e intenta de nuevo.');
     } finally {
       setSaving(false);
     }
@@ -474,7 +474,7 @@ export default function OrgChartEditor() {
     <View style={styles.root}>
       {/* Toggle de vista */}
       <View style={[styles.toggleRow, { borderBottomColor: theme.borderLight }]}>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={[styles.toggleBtn, viewMode === 'diagram' && styles.toggleBtnActive]}
           onPress={() => setViewMode('diagram')}
         >
@@ -483,7 +483,7 @@ export default function OrgChartEditor() {
             Diagrama
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={[styles.toggleBtn, viewMode === 'list' && styles.toggleBtnActive]}
           onPress={() => setViewMode('list')}
         >

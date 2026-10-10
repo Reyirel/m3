@@ -8,6 +8,7 @@ import { normalizeStatus, getAssignedEmails, getConfirmedEmails } from '../utils
 import { db } from '../firebase';
 import { updateParentTaskProgress } from './areaSubtasks';
 import { getConnectionState, queueOperation, OPERATION_TYPES } from './offlineSync';
+import { isClosed } from '../utils/taskStatus';
 
 const normalizeEmail = (email) => (email || '').toLowerCase().trim();
 
@@ -191,7 +192,7 @@ export const getComplianceMetrics = (tasks, userEmail = null) => {
         } else if (dueAt && completedAt) {
           metrics[emailLower].late++;
         }
-      } else if (task.status !== 'cerrada') {
+      } else if (!isClosed(task.status)) {
         metrics[emailLower].pending++;
       }
     });

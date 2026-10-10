@@ -116,7 +116,7 @@ export default function ScreenHeader({ title, subtitle, icon, actions = [], onBa
 
       {overflow.length > 0 && (
         <Modal visible={menuOpen} transparent animationType="fade" onRequestClose={() => setMenuOpen(false)}>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="button"
             style={styles.menuOverlay}
             activeOpacity={1}
             onPress={() => setMenuOpen(false)}

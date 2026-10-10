@@ -272,7 +272,7 @@ export default function OnboardingTour({ userRole, onComplete, forceShow = false
               {currentStep + 1} / {steps.length}
             </Text>
             {!isLast && (
-              <TouchableOpacity onPress={handleComplete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <TouchableOpacity accessibilityRole="button" onPress={handleComplete} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Text style={[styles.skipText, { color: theme.textSecondary }]}>Saltar</Text>
               </TouchableOpacity>
             )}
@@ -307,7 +307,7 @@ export default function OnboardingTour({ userRole, onComplete, forceShow = false
           {/* Buttons */}
           <View style={styles.btnRow}>
             {!isFirst && (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 style={[styles.btnSecondary, { borderColor: step.color }]}
                 onPress={handlePrevious}
               >
@@ -315,7 +315,7 @@ export default function OnboardingTour({ userRole, onComplete, forceShow = false
                 <Text style={[styles.btnSecondaryText, { color: step.color }]}>Anterior</Text>
               </TouchableOpacity>
             )}
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               style={[styles.btnPrimary, { backgroundColor: step.color, flex: isFirst ? 1 : undefined }]}
               onPress={handleNext}
             >

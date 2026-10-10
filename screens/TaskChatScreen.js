@@ -16,6 +16,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
 import { useNotification } from '../contexts/NotificationContext';
 import { createStyles } from './chat/TaskChatScreenStyles';
+import { useWindowDimensions } from 'react-native';
 
 // ─── helpers ─────────────────────────────────────────────────────────────────
 
@@ -58,7 +59,8 @@ function buildFeed(messages, currentUserId, currentUser) {
 export default function TaskChatScreen({ route, navigation }) {
   const { theme, isDark } = useTheme();
   const headerPaddingTop = useHeaderPaddingTop();
-  const styles = useMemo(() => createStyles(theme, isDark), [theme, isDark]);
+  const { width } = useWindowDimensions();
+  const styles = useMemo(() => createStyles(theme, isDark, width), [theme, isDark, width]);
   const { currentUser: ctxUser, tasks: ctxTasks } = useTasks();
   const { showError } = useNotification();
   const { taskId, taskTitle } = route.params;
@@ -377,6 +379,8 @@ export default function TaskChatScreen({ route, navigation }) {
         <TouchableOpacity
           style={styles.imageModalContainer}
           activeOpacity={1}
+          accessibilityRole="button"
+          accessibilityLabel="Cerrar imagen"
           onPress={() => setSelectedImageUrl(null)}
         >
           <TouchableOpacity

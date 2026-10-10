@@ -140,7 +140,7 @@ export default function DateSelector({
 
       <View style={styles.rows}>
         {/* Fecha */}
-        <TouchableOpacity onPress={() => openPicker('date')} activeOpacity={0.7} style={rowStyle(pickerMode === 'date')}>
+        <TouchableOpacity accessibilityRole="button" onPress={() => openPicker('date')} activeOpacity={0.7} style={rowStyle(pickerMode === 'date')}>
           <View style={[styles.iconWrap, { backgroundColor: '#FF950018' }]}>
             <Ionicons name="calendar-outline" size={17} color={theme.warning} />
           </View>
@@ -154,7 +154,7 @@ export default function DateSelector({
 
         {/* Hora */}
         {showTime && (
-          <TouchableOpacity onPress={() => openPicker('time')} activeOpacity={0.7} style={rowStyle(pickerMode === 'time')}>
+          <TouchableOpacity accessibilityRole="button" onPress={() => openPicker('time')} activeOpacity={0.7} style={rowStyle(pickerMode === 'time')}>
             <View style={[styles.iconWrap, { backgroundColor: '#007AFF18' }]}>
               <Ionicons name="time-outline" size={17} color={theme.info} />
             </View>
@@ -169,7 +169,7 @@ export default function DateSelector({
 
         {/* Atajo hoy */}
         {!disabled && (
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="button"
             onPress={() => onChange(new Date())}
             activeOpacity={0.7}
             style={[styles.todayBtn, { borderColor: isDark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.10)' }]}
@@ -186,13 +186,13 @@ export default function DateSelector({
           <View style={styles.iosOverlay}>
             <View style={[styles.iosSheet, { backgroundColor: theme.background }]}>
               <View style={styles.iosHeader}>
-                <TouchableOpacity onPress={cancel}>
+                <TouchableOpacity accessibilityRole="button" onPress={cancel}>
                   <Text style={[styles.iosBtnText, { color: theme.textSecondary }]}>Cancelar</Text>
                 </TouchableOpacity>
                 <Text style={[styles.iosTitle, { color: theme.text }]}>
                   {pickerMode === 'date' ? 'Seleccionar fecha' : 'Seleccionar hora'}
                 </Text>
-                <TouchableOpacity onPress={confirm}>
+                <TouchableOpacity accessibilityRole="button" onPress={confirm}>
                   <Text style={[styles.iosBtnText, { color: theme.primary, fontWeight: '700' }]}>Confirmar</Text>
                 </TouchableOpacity>
               </View>

@@ -1,3 +1,5 @@
+import { isClosed } from './taskStatus';
+
 /**
  * Utilidades para manejo de fechas y timestamps de Firebase
  */
@@ -68,7 +70,7 @@ export const isAfter = (timestamp, compareMs = Date.now()) => {
  */
 export const isOverdue = (task) => {
   if (!task.dueAt) return false;
-  if (task.status === 'cerrada' || task.status === 'completada') return false;
+  if (isClosed(task.status)) return false;
   return isBefore(task.dueAt);
 };
 

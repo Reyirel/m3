@@ -43,7 +43,7 @@ function SectionTitle({ icon, title, spaced, styles, theme }) {
 // Filtro de un toque: activo o no
 function QuickFilterCard({ icon, title, count, color, activeBg, active, onPress, styles, theme }) {
   return (
-    <TouchableOpacity
+    <TouchableOpacity accessibilityRole="button"
       onPress={() => { onPress(); hapticLight(); }}
       style={[
         styles.quickFilterCard,
@@ -106,7 +106,7 @@ export function KanbanFiltersModal({ visible, onClose, filters, setFilters, task
                   const active = filters.priority === priority.key;
                   const count = taskStats.priorityCounts[priority.key];
                   return (
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button"
                       key={priority.key}
                       onPress={() => {
                         setFilters({ ...filters, priority: active ? '' : priority.key });
@@ -184,7 +184,7 @@ export function KanbanFiltersModal({ visible, onClose, filters, setFilters, task
           </ScrollView>
 
           <View style={[styles.filterModalFooter, { backgroundColor: theme.glass, borderTopColor: theme.glassBorder }]}>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               onPress={() => {
                 setFilters(EMPTY_KANBAN_FILTERS);
                 hapticLight();
@@ -194,7 +194,7 @@ export function KanbanFiltersModal({ visible, onClose, filters, setFilters, task
               <Ionicons name="refresh" size={18} color={theme.textSecondary} />
               <Text style={[styles.filterModalClearText, { color: theme.textSecondary }]}>Limpiar</Text>
             </TouchableOpacity>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               onPress={() => {
                 onClose();
                 hapticLight();
@@ -248,7 +248,7 @@ export function KanbanHelpModal({ visible, onClose, styles, theme }) {
             ))}
           </ScrollView>
           <View style={styles.filterModalFooter}>
-            <TouchableOpacity style={[styles.filterModalApply, { flex: 1 }]} onPress={onClose}>
+            <TouchableOpacity accessibilityRole="button" style={[styles.filterModalApply, { flex: 1 }]} onPress={onClose}>
               <LinearGradient colors={theme.gradientPrimary.slice(0, 2)} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={[styles.filterModalApplyGradient, { borderRadius: 16 }]}>
                 <Ionicons name="checkmark" size={18} color="#FFFFFF" />
                 <Text style={styles.filterModalApplyText}>¡Entendido!</Text>

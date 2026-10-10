@@ -75,7 +75,7 @@ export default function DesktopSidebar({
         end={{ x: 1, y: 1 }}
         style={[styles.brand, { paddingTop: insets.top + 16 }]}
       >
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={styles.brandInner}
           onPress={() => stackNavigation?.navigate('Profile')}
           activeOpacity={0.7}

@@ -8,13 +8,12 @@ import {
   Text,
   StyleSheet,
   ScrollView,
-  Dimensions
+  useWindowDimensions
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../../contexts/ThemeContext';
 import SpringCard from '../../components/SpringCard';
 
-const { width } = Dimensions.get('window');
 
 const InsightsPanel = React.memo(function InsightsPanel({
   monthlyComparative = null,
@@ -23,6 +22,7 @@ const InsightsPanel = React.memo(function InsightsPanel({
   workloadDistribution = {}
 }) {
   const { theme } = useTheme();
+  const { width } = useWindowDimensions();
 
   return (
     <ScrollView
@@ -33,7 +33,7 @@ const InsightsPanel = React.memo(function InsightsPanel({
     >
       {/* Comparativa mensual */}
       {monthlyComparative && (
-        <SpringCard style={[styles.insightCard, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
+        <SpringCard style={[styles.insightCard, { width: width * 0.75, backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
           <View style={styles.insightHeader}>
             <Ionicons name="trending-up" size={20} color={theme.info} />
             <Text style={[styles.insightTitle, { color: theme.text }]}>Comparativa Mensual</Text>
@@ -108,7 +108,7 @@ const InsightsPanel = React.memo(function InsightsPanel({
 
       {/* Cuellos de botella */}
       {bottlenecks.length > 0 && (
-        <SpringCard style={[styles.insightCard, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
+        <SpringCard style={[styles.insightCard, { width: width * 0.75, backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
           <View style={styles.insightHeader}>
             <Ionicons name="git-network" size={20} color={theme.warning} />
             <Text style={[styles.insightTitle, { color: theme.text }]}>Cuellos de Botella</Text>
@@ -158,7 +158,7 @@ const InsightsPanel = React.memo(function InsightsPanel({
 
       {/* Predicción de tendencia */}
       {Object.values(predictions).some(p => p) && (
-        <SpringCard style={[styles.insightCard, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
+        <SpringCard style={[styles.insightCard, { width: width * 0.75, backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
           <View style={styles.insightHeader}>
             <Ionicons name="sparkles" size={20} color="#8B5CF6" />
             <Text style={[styles.insightTitle, { color: theme.text }]}>Predicción</Text>
@@ -196,7 +196,7 @@ const InsightsPanel = React.memo(function InsightsPanel({
 
       {/* Distribución de carga */}
       {Object.keys(workloadDistribution).length > 0 && (
-        <SpringCard style={[styles.insightCard, { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
+        <SpringCard style={[styles.insightCard, { width: width * 0.75, backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder }]}>
           <View style={styles.insightHeader}>
             <Ionicons name="layers" size={20} color="#EC4899" />
             <Text style={[styles.insightTitle, { color: theme.text }]}>Carga de Trabajo</Text>
@@ -249,7 +249,6 @@ const styles = StyleSheet.create({
     marginHorizontal: -16
   },
   insightCard: {
-    width: width * 0.75,
     marginHorizontal: 16,
     borderRadius: 16,
     padding: 14,

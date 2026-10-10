@@ -209,7 +209,7 @@ const SettingsScreen = ({ navigation, onLogout }) => {
 
       return (
         <View key={`${groupIndex}-${itemIndex}`}>
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="button"
             onPress={item.onPress}
             disabled={item.disabled || item.toggle !== undefined}
             activeOpacity={item.disabled ? 1 : 0.6}

@@ -27,7 +27,7 @@ import { MAX_WIDTHS } from '../theme/tokens';
 import WebSafeBlur from '../components/WebSafeBlur';
 import { toMs } from '../utils/dateUtils';
 import ScreenHeader from '../components/ui/ScreenHeader';
-import { isInProgress, countByStatus, matchesStatusFilter, priorityColor, statusColor, statusLabel } from '../utils/taskStatus';
+import { isClosed, isInProgress, countByStatus, matchesStatusFilter, priorityColor, statusColor, statusLabel } from '../utils/taskStatus';
 import { createStyles } from './calendar/CalendarScreenStyles';
 import { DURATION, SPRING, spring, timing } from '../theme/motion';
 
@@ -175,11 +175,11 @@ export default function CalendarScreen({ navigation }) {
     const dayTasks = getTasksForDate(date);
     const hasHighPriority = dayTasks.some(t => t.priority === 'alta' || t.priority === 'critica');
     const hasMediumPriority = dayTasks.some(t => t.priority === 'media');
-    const isOverdue = dayTasks.some(t => toMs(t.dueAt) < Date.now() && t.status !== 'cerrada');
+    const isOverdue = dayTasks.some(t => toMs(t.dueAt) < Date.now() && !isClosed(t.status));
     const today = isToday(date);
     const hasTasks = dayTasks.length > 0;
     const isWeekend = date.getDay() === 0 || date.getDay() === 6;
-    const completedCount = dayTasks.filter(t => t.status === 'cerrada').length;
+    const completedCount = dayTasks.filter(t => isClosed(t.status)).length;
     const allCompleted = hasTasks && completedCount === dayTasks.length;
 
     return (
@@ -273,7 +273,7 @@ export default function CalendarScreen({ navigation }) {
   const renderTaskItem = (task, index) => (
     <FadeInView key={task.id} duration={350} delay={index * 80} style={{ marginBottom: compactTaskView ? 6 : 2 }}>
       {compactTaskView ? (
-        <RippleButton
+        <RippleButton accessibilityRole="button"
           style={[
             styles.modalTaskCardCompact,
             { backgroundColor: theme.card, borderColor: theme.glassBorder },
@@ -491,7 +491,7 @@ export default function CalendarScreen({ navigation }) {
         }}
       >
         <WebSafeBlur intensity={Platform.OS === 'ios' ? 50 : 100} style={styles.modalBlurOverlay} tint={isDark ? 'dark' : 'light'}>
-          <TouchableOpacity accessibilityLabel="Cerrar" 
+          <TouchableOpacity accessibilityRole="button" accessibilityLabel="Cerrar" 
             style={styles.modalBackdrop} 
             activeOpacity={1} 
             onPress={() => {
@@ -516,7 +516,7 @@ export default function CalendarScreen({ navigation }) {
                     {selectedDate?.toLocaleDateString('es-ES', { weekday: 'long' })}
                   </Text>
                   <Text style={[styles.modalSubtitle, { color: theme.textSecondary }]}>
-                    {selectedDateTasks.length} {selectedDateTasks.length === 1 ? 'tarea' : 'tareas'} • {selectedDateTasks.filter(t => t.status === 'cerrada').length} completadas
+                    {selectedDateTasks.length} {selectedDateTasks.length === 1 ? 'tarea' : 'tareas'} • {selectedDateTasks.filter(t => isClosed(t.status)).length} completadas
                   </Text>
                 </View>
               </View>
@@ -536,11 +536,11 @@ export default function CalendarScreen({ navigation }) {
             {/* Mini Stats del día */}
             {selectedDateTasks.length > 0 && (
               <View style={styles.modalDayStats}>
-                {selectedDateTasks.filter(t => t.priority === 'alta' && t.status !== 'cerrada').length > 0 && (
+                {selectedDateTasks.filter(t => t.priority === 'alta' && !isClosed(t.status)).length > 0 && (
                   <View style={[styles.modalStatBadge, { backgroundColor: theme.errorAlpha }]}>
                     <Ionicons name="alert-circle" size={14} color={theme.error} />
                     <Text style={[styles.modalStatText, { color: theme.error }]}>
-                      {selectedDateTasks.filter(t => t.priority === 'alta' && t.status !== 'cerrada').length} urgentes
+                      {selectedDateTasks.filter(t => t.priority === 'alta' && !isClosed(t.status)).length} urgentes
                     </Text>
                   </View>
                 )}
@@ -566,7 +566,7 @@ export default function CalendarScreen({ navigation }) {
                     { key: 'en_revision', label: 'Revisión', icon: 'eye' },
                     { key: 'cerrada', label: 'Cerradas', icon: 'checkmark-circle' },
                   ].map(filter => (
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button"
                       key={filter.key}
                       style={[
                         styles.modalFilterChip,

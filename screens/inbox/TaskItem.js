@@ -16,7 +16,7 @@ import { toMs } from '../../utils/dateUtils';
 import { useTasks } from '../../contexts/TasksContext';
 import { useChatUnread } from '../../hooks/useChatUnread';
 import { predictDelayRisk, riskLevelDisplay } from '../../utils/aiFeatures';
-import { isInProgress, statusColor, statusLabel } from '../../utils/taskStatus';
+import { isClosed, isInProgress, statusColor, statusLabel } from '../../utils/taskStatus';
 import { useNow } from '../../hooks/useNow';
 import { DURATION, PRESS_SCALE, SPRING, loop, spring, timing } from '../../theme/motion';
 import { styles } from './TaskItemStyles';
@@ -53,7 +53,7 @@ const TaskItem = memo(function TaskItem({
   // y los botones se apilan para dejarle el ancho al contenido
   const inlineDue = isMobile && !compact;
   // Hora compartida que avanza cada minuto (las tareas cerradas no la necesitan)
-  const now = useNow(task.status !== 'cerrada');
+  const now = useNow(!isClosed(task.status));
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ x: 0, y: 0 });
   const [isDeleting, setIsDeleting] = useState(false);
@@ -123,14 +123,14 @@ const TaskItem = memo(function TaskItem({
     ...(onDuplicate ? [{ icon: 'copy-outline', label: 'Duplicar tarea', onPress: () => { hapticMedium(); onDuplicate(task); } }] : []),
     { icon: 'share-outline', label: 'Compartir', onPress: () => { hapticMedium(); onShare && onShare(task); } },
     // Reabrir solo para admin si está cerrada
-    ...(onReopen && task.status === 'cerrada' ? [{ icon: 'refresh-outline', label: 'Reabrir tarea', onPress: () => { hapticMedium(); onReopen(task); } }] : []),
+    ...(onReopen && isClosed(task.status) ? [{ icon: 'refresh-outline', label: 'Reabrir tarea', onPress: () => { hapticMedium(); onReopen(task); } }] : []),
     // Solo mostrar eliminar si el callback está disponible (solo admin) y no está en progreso
     ...(onDelete ? [{ icon: 'trash-outline', label: 'Eliminar', danger: true, onPress: () => { hapticMedium(); askDelete(); } }] : [])
   ];
 
   const renderRightActions = (progress, dragX) => {
     const scale = dragX.interpolate({ inputRange: [-100, 0], outputRange: [1, 0], extrapolate: 'clamp' });
-    const isClosedAndNotAdmin = task.status === 'cerrada' && currentUserRole !== 'admin';
+    const isClosedAndNotAdmin = isClosed(task.status) && currentUserRole !== 'admin';
     
     return (
       <TouchableOpacity
@@ -138,20 +138,20 @@ const TaskItem = memo(function TaskItem({
         onPress={() => !isClosedAndNotAdmin && !isDeleteProp && (onToggleComplete && onToggleComplete(task))}
         activeOpacity={isClosedAndNotAdmin ? 0.5 : 0.9}
         disabled={isClosedAndNotAdmin}
-        accessibilityLabel={task.status === 'cerrada' ? 'Reabrir tarea' : 'Marcar como completada'}
+        accessibilityLabel={isClosed(task.status) ? 'Reabrir tarea' : 'Marcar como completada'}
         accessibilityRole="button"
         accessibilityState={{ disabled: isClosedAndNotAdmin }}
       >
         <View style={[
           styles.actionGradient, 
           { 
-            backgroundColor: task.status === 'cerrada' ? theme.info : theme.success,
+            backgroundColor: isClosed(task.status) ? theme.info : theme.success,
             opacity: isClosedAndNotAdmin ? 0.4 : 1
           }
         ]}>
           <Animated.View style={[styles.actionContent, { transform: [{ scale }] }]}>
-            <Ionicons name={task.status === 'cerrada' ? 'refresh' : 'checkmark-circle'} size={28} color="#FFF" />
-            <Text style={styles.actionText}>{task.status === 'cerrada' ? 'Reabrir' : 'Completar'}</Text>
+            <Ionicons name={isClosed(task.status) ? 'refresh' : 'checkmark-circle'} size={28} color="#FFF" />
+            <Text style={styles.actionText}>{isClosed(task.status) ? 'Reabrir' : 'Completar'}</Text>
           </Animated.View>
         </View>
       </TouchableOpacity>
@@ -219,7 +219,7 @@ const TaskItem = memo(function TaskItem({
   const dueStatus = getDueStatus();
 
   // Mismo criterio que la tarjeta de Inicio: color del estado, rojo si está vencida
-  const statusAccentColor = task.status !== 'cerrada' && dueStatus.status === 'vencida'
+  const statusAccentColor = !isClosed(task.status) && dueStatus.status === 'vencida'
     ? theme.error
     : statusColor(task.status, theme);
 
@@ -227,7 +227,7 @@ const TaskItem = memo(function TaskItem({
   // Usar el conteo de tareas como proxy para cambios (evita recompute O(n²) con cada update)
   const allTasksCount = allTasks?.length ?? 0;
   const delayRisk = useMemo(() => {
-    if (task.status === 'cerrada' || compact) return null;
+    if (isClosed(task.status) || compact) return null;
     const risk = predictDelayRisk(task, allTasks);
     return risk.level !== 'low' ? { ...risk, display: riskLevelDisplay(risk.level) } : null;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -247,7 +247,7 @@ const TaskItem = memo(function TaskItem({
     </View>
   ) : null;
 
-  const showQuickActions = !!onChangeStatus && task.status !== 'cerrada';
+  const showQuickActions = !!onChangeStatus && !isClosed(task.status);
   // En el teléfono chat y eliminar van al pie de la tarjeta, junto a las acciones:
   // una columna a la derecha le quitaba ancho al título
   const footerIcons = isMobile && !compact && (!!onChat || !!onDelete);
@@ -309,14 +309,14 @@ const TaskItem = memo(function TaskItem({
             style={[
               styles.container,
               {
-                backgroundColor: task.status === 'cerrada'
+                backgroundColor: isClosed(task.status)
                   ? (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)')
-                  : (isDark ? theme.card : '#FFFFFF'),
+                  : (theme.card),
                 borderColor: theme.glassBorder,
                 shadowColor: '#000000',
                 opacity: isDeleteProp ? 0.6 : 1,
               },
-              task.status === 'cerrada' && { opacity: isDeleteProp ? 0.6 : 0.75 },
+              isClosed(task.status) && { opacity: isDeleteProp ? 0.6 : 0.75 },
               isMobile && styles.containerPhone,
               compact && compactStyles.container
             ]}
@@ -390,7 +390,7 @@ const TaskItem = memo(function TaskItem({
                       style={[
                         styles.title,
                         { color: theme.text },
-                        task.status === 'cerrada' && styles.titleCompleted,
+                        isClosed(task.status) && styles.titleCompleted,
                         compact && { fontSize: 14 }
                       ]}
                       numberOfLines={compact ? 1 : 2}

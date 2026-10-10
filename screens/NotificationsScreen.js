@@ -312,7 +312,7 @@ export default function NotificationsScreen({ navigation }) {
     });
     return (
       <Animated.View style={{ transform: [{ translateX: trans }], justifyContent: 'center' }}>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           onPress={() => handleDeleteNotification(item.id)}
           style={{
             backgroundColor: theme.error,

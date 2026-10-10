@@ -27,7 +27,7 @@ function FilterGroup({ icon, title, badgeColor, options, selected, colorFor, lab
         {options.map((option) => {
           const active = selected.includes(option);
           return (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               key={option}
               style={[styles.filterOption, active && { ...styles.filterOptionActive, backgroundColor: colorFor(option) }]}
               onPress={() => onToggle(option)}
@@ -108,7 +108,7 @@ export function InboxFiltersModal({ visible, onClose, filters, onChange, areas, 
             )}
 
             <View style={styles.filterGroup}>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 style={[
                   styles.filterOption,
                   styles.filterOptionLarge,
@@ -137,7 +137,7 @@ export function InboxFiltersModal({ visible, onClose, filters, onChange, areas, 
             {hasActiveFilters(filters) && (
               <>
                 {separator}
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   style={[styles.clearFiltersBtn, { borderColor: theme.primary, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(159, 34, 65, 0.05)' }]}
                   onPress={() => onChange(EMPTY_FILTERS)}
                 >
@@ -149,13 +149,13 @@ export function InboxFiltersModal({ visible, onClose, filters, onChange, areas, 
           </ScrollView>
 
           <View style={[styles.modalFooter, { borderTopColor: theme.border }]}>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               style={[styles.modalFooterBtn, styles.modalFooterBtnSecondary, { borderColor: theme.textSecondary }]}
               onPress={onClose}
             >
               <Text style={[styles.modalFooterBtnText, { color: theme.text }]}>CANCELAR</Text>
             </TouchableOpacity>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               style={[styles.modalFooterBtn, styles.modalFooterBtnPrimary, { backgroundColor: theme.primary }]}
               onPress={onClose}
             >
@@ -171,7 +171,7 @@ export function InboxFiltersModal({ visible, onClose, filters, onChange, areas, 
 
 function Chip({ color, icon, label, onPress, styles }) {
   return (
-    <TouchableOpacity style={[styles.activeFilterChip, { backgroundColor: color }]} onPress={onPress}>
+    <TouchableOpacity accessibilityRole="button" style={[styles.activeFilterChip, { backgroundColor: color }]} onPress={onPress}>
       {icon && <Ionicons name={icon} size={14} color="#FFFFFF" />}
       <Text style={styles.activeFilterChipText} numberOfLines={1}>{label}</Text>
       <Ionicons name="close" size={14} color="#FFFFFF" />
@@ -202,7 +202,7 @@ export function ActiveFilterChips({ filters, onChange, searchText, onSearchChang
         {filters.area.map((area) => (
           <Chip key={area} color={theme.secondary} label={area.substring(0, 15)} onPress={remove('area', area)} styles={styles} />
         ))}
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={[styles.clearAllChip, { borderColor: theme.primary }]}
           onPress={() => {
             onChange(EMPTY_FILTERS);

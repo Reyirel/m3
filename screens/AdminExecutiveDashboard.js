@@ -9,7 +9,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Dimensions,
+  useWindowDimensions,
   Animated,
   Modal,
   Platform,
@@ -30,20 +30,21 @@ import { toMs } from '../utils/dateUtils';
 import { resolveAreaName } from '../config/areas';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
-import { isInProgress } from '../utils/taskStatus';
+import { isClosed, isInProgress } from '../utils/taskStatus';
 import { DURATION, spring, timing } from '../theme/motion';
 import { syncPendingOperations } from '../services/offlineSync';
 import { styles } from './dashboard/AdminExecutiveDashboardStyles';
 
-const { width } = Dimensions.get('window');
-const chartWidth = Math.min(width - 48, 500);
 
 export default function AdminExecutiveDashboard({ navigation }) {
   const { theme, isDark } = useTheme();
+  const { width } = useWindowDimensions();
+  const chartWidth = Math.min(width - 48, 500);
   const headerPaddingTop = useHeaderPaddingTop();
   const { isDesktop } = useResponsive();
   const { tasks } = useTasks();
   const [loading, setLoading] = useState(true);
+  const [usersError, setUsersError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [users, setUsers] = useState([]);
   const [activeTab, setActiveTab] = useState('overview'); // overview, compliance, trafficlight
@@ -72,9 +73,9 @@ export default function AdminExecutiveDashboard({ navigation }) {
     const now = new Date();
     const pending = tasks.filter(t => t.status === 'pendiente');
     const inProgress = tasks.filter(t => isInProgress(t.status));
-    const completed = tasks.filter(t => t.status === 'completada' || t.status === 'cerrada');
+    const completed = tasks.filter(t => isClosed(t.status));
     const overdue = tasks.filter(t => {
-      if (t.status === 'completada' || t.status === 'cerrada') return false;
+      if (isClosed(t.status)) return false;
       const dueDate = t.dueAt ? new Date(toMs(t.dueAt)) : null;
       return dueDate && dueDate < now;
     });
@@ -139,7 +140,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
       }
       
       const completedInPeriod = tasks.filter(t => {
-        if (t.status !== 'completada' && t.status !== 'cerrada') return false;
+        if (!isClosed(t.status)) return false;
         const completedAt = t.completedAt ? new Date(toMs(t.completedAt)) : null;
         return completedAt && completedAt >= startDate && completedAt <= endDate;
       });
@@ -167,13 +168,13 @@ export default function AdminExecutiveDashboard({ navigation }) {
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
     
     const thisMonthCompleted = tasks.filter(t => {
-      if (t.status !== 'completada' && t.status !== 'cerrada') return false;
+      if (!isClosed(t.status)) return false;
       const completedAt = t.completedAt ? new Date(toMs(t.completedAt)) : null;
       return completedAt && completedAt >= thisMonthStart;
     });
     
     const lastMonthCompleted = tasks.filter(t => {
-      if (t.status !== 'completada' && t.status !== 'cerrada') return false;
+      if (!isClosed(t.status)) return false;
       const completedAt = t.completedAt ? new Date(toMs(t.completedAt)) : null;
       return completedAt && completedAt >= lastMonthStart && completedAt <= lastMonthEnd;
     });
@@ -203,10 +204,10 @@ export default function AdminExecutiveDashboard({ navigation }) {
           ? t.assignedTo.some(e => (typeof e === 'string' ? e : e?.email || '').toLowerCase().trim() === user.email?.toLowerCase().trim())
           : t.assignedTo?.toLowerCase().trim() === user.email?.toLowerCase().trim()) || resolveAreaName(t.area) === resolveAreaName(user.area)
       );
-      const completed = userTasks.filter(t => t.status === 'completada' || t.status === 'cerrada');
+      const completed = userTasks.filter(t => isClosed(t.status));
       const pending = userTasks.filter(t => t.status === 'pendiente');
       const overdue = userTasks.filter(t => {
-        if (t.status === 'completada' || t.status === 'cerrada') return false;
+        if (isClosed(t.status)) return false;
         const dueDate = t.dueAt ? new Date(toMs(t.dueAt)) : null;
         return dueDate && dueDate < now;
       });
@@ -228,7 +229,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
   const topOverdueAreas = useMemo(() => {
     const now = Date.now();
     const counts = {};
-    tasks.filter(t => t.status !== 'cerrada' && t.area && toMs(t.dueAt) < now).forEach(t => {
+    tasks.filter(t => !isClosed(t.status) && t.area && toMs(t.dueAt) < now).forEach(t => {
       counts[t.area] = (counts[t.area] || 0) + 1;
     });
     return Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 3);
@@ -256,9 +257,9 @@ export default function AdminExecutiveDashboard({ navigation }) {
       // secretarías con 0 directores. isDirectorOfSecretario usa la misma regla que la delegación.
       const secDirectors = directores.filter(d => d.active !== false && isDirectorOfSecretario(d, sec));
       
-      const secCompleted = secTasks.filter(t => t.status === 'completada' || t.status === 'cerrada');
+      const secCompleted = secTasks.filter(t => isClosed(t.status));
       const secOverdue = secTasks.filter(t => {
-        if (t.status === 'completada' || t.status === 'cerrada') return false;
+        if (isClosed(t.status)) return false;
         const dueDate = t.dueAt ? new Date(toMs(t.dueAt)) : null;
         return dueDate && dueDate < now;
       });
@@ -287,10 +288,13 @@ export default function AdminExecutiveDashboard({ navigation }) {
     const unsubscribeUsers = subscribeToUsers((usersData) => {
       if (!mounted) return;
       setUsers(usersData);
+      setUsersError(false);
       setLoading(false);
     }, (error) => {
       if (__DEV__) console.error('Error loading users:', error);
-      if (mounted) setLoading(false);
+      if (!mounted) return;
+      setUsersError(true);
+      setLoading(false);
     });
 
     Animated.parallel([
@@ -332,7 +336,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
   // === COMPONENTES DE TABS ===
   
   const TabButton = ({ id, label, icon }) => (
-    <TouchableOpacity
+    <TouchableOpacity accessibilityRole="button"
       style={[
         styles.tabButton,
         activeTab === id && { backgroundColor: theme.primary + '20', borderColor: theme.primary },
@@ -439,7 +443,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
       )}
 
       {/* Botón para ver evolución histórica */}
-      <TouchableOpacity
+      <TouchableOpacity accessibilityRole="button"
         style={[styles.evolutionButton, { backgroundColor: theme.glass, borderColor: theme.glassBorder }]}
         onPress={() => setShowEvolutionModal(true)}
       >
@@ -468,7 +472,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
       {/* Selector de período */}
       <View style={styles.periodSelector}>
         {['week', 'month', 'quarter'].map(period => (
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="button"
             key={period}
             style={[
               styles.periodButton,
@@ -551,7 +555,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
             { key: 'directors', label: 'Directores', icon: 'people' },
             { key: 'secretarios', label: 'Secretarías', icon: 'business' },
           ].map(seg => (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               key={seg.key}
               style={[styles.segmentBtn, complianceView === seg.key && { backgroundColor: theme.glass, borderWidth: 1, borderColor: theme.glassBorder, shadowColor: '#000', shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 }]}
               onPress={() => setComplianceView(seg.key)}
@@ -591,7 +595,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
             </View>
           ) : isDirectors ? (
             userMetrics.map((user, index) => (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 key={user.id || index}
                 style={[styles.userCard, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderLeftColor: getCompletionColor(user.completionRate) }]}
                 onPress={() => { setSelectedUser(user); setShowUserModal(true); }}
@@ -610,7 +614,7 @@ export default function AdminExecutiveDashboard({ navigation }) {
             ))
           ) : (
             secretariaMetrics.map((data, index) => (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 key={data.secretario.id || index}
                 style={[styles.secretariaCard, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderLeftColor: getCompletionColor(data.completionRate) }]}
                 onPress={() => { setSelectedUser({ ...data.secretario, ...data }); setShowUserModal(true); }}
@@ -721,6 +725,17 @@ export default function AdminExecutiveDashboard({ navigation }) {
         showsVerticalScrollIndicator={false}
       >
         <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+          {usersError && (
+            <View
+              accessibilityRole="alert"
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12, marginBottom: 12, borderRadius: 16, backgroundColor: theme.errorAlpha }}
+            >
+              <Ionicons name="cloud-offline-outline" size={20} color={theme.error} />
+              <Text style={{ flex: 1, fontSize: 14, color: theme.text }}>
+                No se pudo cargar la lista de usuarios. Los datos por persona y por secretaría pueden estar incompletos.
+              </Text>
+            </View>
+          )}
           {activeTab === 'overview' && renderOverview()}
           {activeTab === 'compliance' && renderCompliance()}
           {activeTab === 'trafficlight' && (

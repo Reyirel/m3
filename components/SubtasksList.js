@@ -9,12 +9,11 @@ import {
   TextInput,
   Modal,
   SafeAreaView,
-  Alert,
   ActivityIndicator,
   ScrollView
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { infoAlert } from '../utils/alert';
+import { infoAlert, showDialog } from '../utils/alert';
 import { useTheme } from '../contexts/ThemeContext';
 import {
   addSubtask,
@@ -59,7 +58,7 @@ function SubtasksList({
 
   const handleAddSubtask = async () => {
     if (!newSubtaskTitle.trim()) {
-      Alert.alert('Error', 'El título de la subtarea es requerido');
+      infoAlert('Error', 'El título de la subtarea es requerido');
       return;
     }
 
@@ -96,9 +95,7 @@ function SubtasksList({
       
       // Mostrar confirmación de éxito en segundo plano
       setTimeout(() => {
-        Alert.alert('Éxito', 'Subtarea creada correctamente', [
-          { text: 'OK', onPress: () => {} }
-        ]);
+        infoAlert('Subtarea creada', 'La subtarea se creó correctamente.');
       }, 500);
     } catch (error) {
       if (__DEV__) console.error('Error al agregar subtarea:', error);
@@ -115,10 +112,10 @@ function SubtasksList({
       }
       
       // Mostrar el error pero SIN cerrar el modal - permitir reintentar
-      Alert.alert(
-        'Error al crear subtarea', 
-        errorMessage,
-        [
+      showDialog({
+        title: 'Error al crear subtarea',
+        message: errorMessage,
+        buttons: [
           { 
             text: 'Reintentar', 
             onPress: () => {
@@ -133,8 +130,8 @@ function SubtasksList({
               setNewSubtaskDesc('');
             }
           }
-        ]
-      );
+        ],
+      });
     } finally {
       setLoading(false);
     }
@@ -145,29 +142,29 @@ function SubtasksList({
       const newStatus = currentStatus === 'completada' ? 'pendiente' : 'completada';
       await updateSubtaskStatus(taskId, subtaskId, newStatus);
     } catch (error) {
-      Alert.alert('Error', error.message);
+      infoAlert('Error', error.message);
     }
   };
 
   const handleDeleteSubtask = async (subtaskId) => {
-    Alert.alert(
-      'Eliminar Subtarea',
-      '¿Estás seguro?',
-      [
-        { text: 'Cancelar', onPress: () => {} },
+    showDialog({
+      title: 'Eliminar subtarea',
+      message: '¿Estás seguro?',
+      buttons: [
+        { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Eliminar',
           onPress: async () => {
             try {
               await deleteSubtask(taskId, subtaskId);
             } catch (error) {
-              Alert.alert('Error', error.message);
+              infoAlert('Error', error.message);
             }
           },
           style: 'destructive'
         }
-      ]
-    );
+      ],
+    });
   };
 
   // Función para abrir modal de delegación para una subtarea específica
@@ -215,6 +212,9 @@ function SubtasksList({
       <TouchableOpacity
         style={[styles.subtaskItem, { backgroundColor: isDark ? theme.glass : '#F9F9F9' }, item.status === 'completada' && { backgroundColor: theme.successAlpha, borderLeftColor: theme.success }]}
         onPress={() => setExpandedId(expandedId === item.id ? null : item.id)}
+        accessibilityRole="button"
+        accessibilityLabel={`Subtarea: ${item.title || 'sin título'}`}
+        accessibilityState={{ expanded: expandedId === item.id }}
       >
         <TouchableOpacity accessibilityRole="checkbox" accessibilityLabel="Subtarea completada" accessibilityState={{ checked: item.status === 'completada' }}
           style={styles.checkbox}
@@ -274,7 +274,7 @@ function SubtasksList({
             <View style={styles.actionButtons}>
               {/* Botón de delegar (solo si canEdit, canDelegate y hay usuarios disponibles) */}
               {canEdit && canDelegate && delegateUsers.length > 0 && (
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   style={[styles.actionButton, { backgroundColor: theme.warning }]}
                   onPress={() => handleOpenDelegateModal(item)}
                 >
@@ -283,7 +283,7 @@ function SubtasksList({
                 </TouchableOpacity>
               )}
               
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 style={[styles.actionButton, { backgroundColor: theme.error }]}
                 onPress={() => handleDeleteSubtask(item.id)}
               >
@@ -370,7 +370,7 @@ function SubtasksList({
 
       {/* Botón para agregar */}
       {canEdit && (
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={[styles.addButton, { backgroundColor: theme.primary }]}
           onPress={() => setShowAddForm(true)}
         >
@@ -398,7 +398,7 @@ function SubtasksList({
               <Ionicons name="close" size={24} color={loading ? '#ccc' : '#333'} />
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Nueva Subtarea</Text>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               onPress={handleAddSubtask}
               disabled={loading || !newSubtaskTitle.trim()}
               style={[styles.saveButton, { backgroundColor: theme.primary }, (!newSubtaskTitle.trim() || loading) && styles.saveButtonDisabled]}
@@ -481,7 +481,7 @@ function SubtasksList({
                 </View>
               ) : (
                 delegateUsers.map((director) => (
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="button"
                     key={director.email}
                     style={styles.delegateUserItem}
                     onPress={() => handleDelegateSubtask(director)}
@@ -504,7 +504,7 @@ function SubtasksList({
               )}
             </ScrollView>
 
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               style={styles.delegateCancelButton}
               onPress={() => setShowDelegateModal(false)}
             >

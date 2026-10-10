@@ -19,3 +19,5 @@ jobs:
         run: npm run lint
       - name: Tests
         run: npm test -- --ci
+      - name: Pruebas de pantallas (tema claro y oscuro)
+        run: npm run test:render -- --ci

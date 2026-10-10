@@ -2,7 +2,7 @@
 // Servicio mejorado para calcular y gestionar métricas por área
 
 import { toMs } from '../utils/dateUtils';
-import { isInProgress } from '../utils/taskStatus';
+import { isClosed, isInProgress } from '../utils/taskStatus';
 
 // No importamos Firebase aquí porque areaMetrics solo calcula datos locales
 // Los datos ya vienen de otras funciones que sí usan Firebase
@@ -48,7 +48,7 @@ export const calculateDetailedAreaMetrics = (tasks = [], previousTasks = []) => 
 
     // Contar por estado
     const status = task.status?.toLowerCase() || 'pendiente';
-    if (status === 'cerrada' || status === 'completada') {
+    if (isClosed(status)) {
       byArea[area].completed++;
       
       // Calcular tiempo de completación
@@ -69,7 +69,7 @@ export const calculateDetailedAreaMetrics = (tasks = [], previousTasks = []) => 
     if (task.dueAt) {
       const dueDate = toMs(task.dueAt);
       const now = Date.now();
-      if (dueDate < now && (status !== 'cerrada' && status !== 'completada')) {
+      if (dueDate < now && (!isClosed(status))) {
         byArea[area].overdue++;
       }
     }
@@ -82,7 +82,7 @@ export const calculateDetailedAreaMetrics = (tasks = [], previousTasks = []) => 
       prevByArea[area] = { completed: 0, total: 0 };
     }
     prevByArea[area].total++;
-    if (task.status === 'cerrada' || task.status === 'completada') {
+    if (isClosed(task.status)) {
       prevByArea[area].completed++;
     }
   });
@@ -138,7 +138,7 @@ export const generateAreaSummary = (areaMetrics, tasks) => {
   const areas = Object.keys(areaMetrics);
   const totalTasks = tasks.length;
   const completedTasks = tasks.filter(t => 
-    t.status === 'cerrada' || t.status === 'completada'
+    isClosed(t.status)
   ).length;
 
   const totalAverageTimes = [];

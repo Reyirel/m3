@@ -8,7 +8,6 @@ import {
   ActivityIndicator,
   ScrollView,
   Switch,
-  Alert,
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,6 +15,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { exportReportToPDF, sharePDF, getReportExportStats } from '../services/exportService';
 import { useNotification } from '../contexts/NotificationContext';
 import WebSafeBlur from './WebSafeBlur';
+import { showDialog } from '../utils/alert';
 
 Dimensions.get('window');
 
@@ -212,10 +212,10 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
 
       // Ask user what to do with PDF
       setTimeout(() => {
-        Alert.alert(
-          '¿Qué deseas hacer?',
-          'El PDF está listo',
-          [
+        showDialog({
+          title: '¿Qué deseas hacer?',
+          message: 'El PDF está listo',
+          buttons: [
             {
               text: 'Compartir',
               onPress: async () => {
@@ -236,8 +236,8 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
               text: 'Cancelar',
               style: 'cancel',
             },
-          ]
-        );
+          ],
+        });
 
         setLoading(false);
         onClose();
@@ -256,7 +256,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
       animationType="slide"
     >
       <WebSafeBlur intensity={70} style={styles.container}>
-        <TouchableOpacity accessibilityLabel="Cerrar"
+        <TouchableOpacity accessibilityRole="button" accessibilityLabel="Cerrar"
           style={styles.background}
           activeOpacity={1}
           onPress={onClose}
@@ -281,7 +281,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
             <View style={styles.section}>
               <Text style={styles.sectionTitle}>Tipo de Exportación</Text>
 
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 style={[
                   styles.optionCard,
                   exportType === 'single' && styles.optionCardActive,
@@ -305,7 +305,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
               </TouchableOpacity>
 
               {allReports && allReports.length > 1 && (
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   style={[
                     styles.optionCard,
                     exportType === 'all' && styles.optionCardActive,
@@ -393,7 +393,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
 
           {/* Action Buttons */}
           <View style={styles.buttonRow}>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               style={styles.cancelButton}
               onPress={onClose}
               disabled={loading}
@@ -402,7 +402,7 @@ const ExportReportModal = ({ visible, onClose, report, task, allReports = [] }) 
                 Cancelar
               </Text>
             </TouchableOpacity>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               style={styles.exportButton}
               onPress={handleExport}
               disabled={loading}

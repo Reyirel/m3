@@ -3,7 +3,7 @@
 // los números que se muestran, sin leer ni guardar nada.
 import { getAreaType } from '../../config/areas';
 import { toMs } from '../../utils/dateUtils';
-import { isInProgress } from '../../utils/taskStatus';
+import { isClosed, isInProgress } from '../../utils/taskStatus';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -22,7 +22,7 @@ const emptyTypeMetrics = () => ({ total: 0, completed: 0, pending: 0, overdue: 0
 
 export const emptyMetricsByType = () => ({ secretaria: emptyTypeMetrics(), direccion: emptyTypeMetrics() });
 
-const isDone = (task) => task.status === 'cerrada' || task.status === 'completada';
+const isDone = (task) => isClosed(task.status);
 
 /** Días promedio entre crear y completar una tarea */
 export const averageCompletionDays = (completedTasks) => {

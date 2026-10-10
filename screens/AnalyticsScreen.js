@@ -3,7 +3,7 @@ import {
   View,
   Text,
   ScrollView,
-  Dimensions,
+  useWindowDimensions,
   TouchableOpacity,
   Animated,
   RefreshControl,
@@ -20,7 +20,6 @@ import ScreenHeader, { useHeaderPaddingTop } from '../components/ui/ScreenHeader
 import { spring } from '../theme/motion';
 import { createStyles } from './reports/AnalyticsScreenStyles';
 
-const { width } = Dimensions.get('window');
 
 // `embedded`: se muestra como pestaña dentro de Reportes, sin encabezado propio
 const AnalyticsScreen = ({ navigation, embedded = false }) => {
@@ -64,7 +63,8 @@ const AnalyticsScreen = ({ navigation, embedded = false }) => {
     new Animated.Value(1),
   ]);
 
-  const styles = useMemo(() => createStyles(isDark, theme), [isDark, theme]);
+  const { width } = useWindowDimensions();
+  const styles = useMemo(() => createStyles(isDark, theme, width), [isDark, theme, width]);
 
   // ✨ Función para ejecutar animaciones de entrada
   const runEntranceAnimations = () => {
@@ -329,7 +329,7 @@ const AnalyticsScreen = ({ navigation, embedded = false }) => {
                 key={index} 
                 style={[styles.metricCardWrapper, { transform: [{ scale: cardScales[index] }] }]}
               >
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   onPressIn={() => animateCardPress(index, true)}
                   onPressOut={() => animateCardPress(index, false)}
                   activeOpacity={0.7}
@@ -490,7 +490,7 @@ const AnalyticsScreen = ({ navigation, embedded = false }) => {
                 ];
                 
                 return (
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="button"
                     key={task.id}
                     activeOpacity={0.7}
                     style={[

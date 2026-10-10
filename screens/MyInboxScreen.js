@@ -36,6 +36,7 @@ import { useTaskDeletion } from './inbox/useTaskDeletion';
 import { InboxFiltersModal, ActiveFilterChips } from './inbox/InboxFilterControls';
 import { HelpModal, MessagesModal } from './inbox/InboxModals';
 import { spring, timing } from '../theme/motion';
+import { isClosed } from '../utils/taskStatus';
 
 export default function MyInboxScreen({ navigation, route }) {
   const { theme, isDark } = useTheme();
@@ -133,11 +134,11 @@ export default function MyInboxScreen({ navigation, route }) {
   }, [currentUser, showWarning, showError]);
 
   const toggleComplete = useCallback((task) => {
-    if (task.status === 'cerrada' && !isAdmin) {
+    if (isClosed(task.status) && !isAdmin) {
       showWarning('Solo administradores pueden reabrir tareas');
       return;
     }
-    changeStatus(task, task.status === 'cerrada' ? 'pendiente' : 'cerrada');
+    changeStatus(task, isClosed(task.status) ? 'pendiente' : 'cerrada');
   }, [isAdmin, changeStatus, showWarning]);
 
   const reopen = useCallback((task) => changeStatus(task, 'pendiente'), [changeStatus]);
@@ -191,7 +192,7 @@ export default function MyInboxScreen({ navigation, route }) {
             onDelete={isAdmin ? removeTask : undefined}
             onToggleComplete={toggleComplete}
             onReopen={isAdmin ? reopen : undefined}
-            onChangeStatus={item.status !== 'cerrada' ? changeStatus : undefined}
+            onChangeStatus={!isClosed(item.status) ? changeStatus : undefined}
             onChat={openChat}
             currentUserRole={currentUser?.role || 'director'}
             isDeleting={isDeleting}

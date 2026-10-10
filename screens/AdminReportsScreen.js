@@ -10,9 +10,8 @@ import {
   RefreshControl,
   Modal,
   ScrollView,
-  Alert,
 } from 'react-native';
-import { confirmAlert } from '../utils/alert';
+import { confirmAlert, infoAlert } from '../utils/alert';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import ShimmerEffect from '../components/ShimmerEffect';
@@ -157,7 +156,7 @@ const AdminReportsScreen = ({ navigation, embedded = false }) => {
       setShowModal(false);
     } catch (error) {
       hapticWarning();
-      Alert.alert('Error', 'No se pudo calificar el reporte');
+      infoAlert('Error', 'No se pudo calificar el reporte');
     }
   }, [currentUser, showSuccess]);
 
@@ -342,7 +341,7 @@ const AdminReportsScreen = ({ navigation, embedded = false }) => {
 
               <View style={styles.detailSection}>
                 <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Tarea relacionada</Text>
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   style={[styles.taskLink, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}
                   onPress={() => {
                     setShowModal(false);
@@ -417,7 +416,7 @@ const AdminReportsScreen = ({ navigation, embedded = false }) => {
 
               {/* Botón de eliminar reportes */}
               <View style={styles.detailSection}>
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   style={styles.deleteButton}
                   onPress={() => handleDeleteReport(selectedReport.id, selectedReport.taskId)}
                 >
@@ -513,7 +512,7 @@ const AdminReportsScreen = ({ navigation, embedded = false }) => {
       <View style={styles.groupByRow}>
         <Text style={styles.groupByLabel}>Agrupar por:</Text>
         {['area', 'role', 'date'].map(g => (
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="button"
             key={g}
             style={[styles.groupByButton, groupBy === g && styles.groupByButtonActive]}
             onPress={() => setGroupBy(g)}

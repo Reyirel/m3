@@ -73,9 +73,9 @@ export default function DelegateTaskModal({
           </Text>
 
           {task?.isAreaSubtask && currentUser?.role === 'secretario' && (
-            <View style={[styles.warningBox, { backgroundColor: '#FFF3CD', borderColor: '#FFC107' }]}>
-              <Ionicons name="warning" size={16} color="#FF6B6B" />
-              <Text style={styles.warningText}>
+            <View style={[styles.warningBox, { backgroundColor: theme.warningAlpha, borderColor: theme.warning }]}>
+              <Ionicons name="warning" size={16} color={theme.warningText} />
+              <Text style={[styles.warningText, { color: theme.text }]}>
                 Las subtareas solo pueden asignarse a UN director. Cada subtarea debe ser responsabilidad de una sola persona.
               </Text>
             </View>
@@ -91,7 +91,7 @@ export default function DelegateTaskModal({
               </View>
             ) : (
               delegateUsers.map((director) => (
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   key={director.email}
                   style={[styles.userItem, { backgroundColor: theme.background, borderColor: theme.border }]}
                   onPress={() => handleSelect(director)}

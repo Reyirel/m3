@@ -8,7 +8,7 @@ import {
   StyleSheet,
   Modal,
   Animated,
-  Dimensions,
+  useWindowDimensions,
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +16,6 @@ import { BlurView } from 'expo-blur';
 import { useTheme } from '../../contexts/ThemeContext';
 import { DURATION, spring, timing } from '../../theme/motion';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function ContextMenu({
   visible,
@@ -25,6 +24,7 @@ export default function ContextMenu({
   actions = []
 }) {
   const { theme, isDark } = useTheme();
+  const { width: SCREEN_WIDTH } = useWindowDimensions();
   const scaleAnim = useRef(new Animated.Value(0)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -53,7 +53,7 @@ export default function ContextMenu({
       onRequestClose={onClose}
       animationType="none"
     >
-      <TouchableOpacity 
+      <TouchableOpacity accessibilityRole="button" 
         style={styles.overlay} 
         activeOpacity={1}
         onPress={onClose}
@@ -104,7 +104,7 @@ export default function ContextMenu({
             ]}
           />
           {actions.map((action, index) => (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               key={index}
               style={[
                 styles.menuItem,

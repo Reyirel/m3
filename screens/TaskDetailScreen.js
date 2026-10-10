@@ -222,8 +222,8 @@ export default function TaskDetailScreen({ route, navigation }) {
     (async () => {
       try {
         const { getAllUsers } = await import('../services/usersDirectory');
-        // Misma condición que antes (active == true): los usuarios sin el campo no aparecen
-        const activeUsers = (await getAllUsers()).filter(u => u.active === true);
+        // Misma regla que el resto de la app: solo se excluye a quien está desactivado
+        const activeUsers = (await getAllUsers()).filter(u => u.active !== false);
         if (cancelled) return;
         const allUsers = activeUsers.map(u => ({
           id: u.id,

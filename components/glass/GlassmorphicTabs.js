@@ -80,7 +80,7 @@ const GlassmorphicTabs = ({
           const isActive = tab.id === activeTab;
 
           return (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               key={tab.id}
               onPress={() => handleTabPress(tab.id)}
               activeOpacity={0.7}

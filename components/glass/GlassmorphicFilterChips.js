@@ -78,7 +78,7 @@ const GlassmorphicFilterChips = ({
         const isSelected = selectedIds.includes(item.id);
 
         return (
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="button"
             key={item.id}
             onPress={() => handleSelect(item.id)}
             activeOpacity={0.7}

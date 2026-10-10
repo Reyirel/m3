@@ -81,7 +81,7 @@ export default function AreaComparisonChart({
           const isLowPerformer = index === areas.length - 1 && area.completionRate < 50;
 
           return (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               key={area.name}
               style={styles.barRow}
               onPress={() => onAreaSelect?.(area.name)}

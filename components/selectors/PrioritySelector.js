@@ -34,7 +34,7 @@ export default function PrioritySelector({ value = 'media', onChange = () => {},
         {PRIORITIES.map((p) => {
           const selected = value === p.value;
           return (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               key={p.value}
               onPress={() => !disabled && onChange(p.value)}
               activeOpacity={0.7}

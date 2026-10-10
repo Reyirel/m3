@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Image,
-  Modal, SafeAreaView, Alert, ActivityIndicator, Platform,
+  Modal, SafeAreaView, ActivityIndicator, Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -12,6 +12,7 @@ import { storage } from '../firebase';
 import { getConnectionState } from '../services/offlineSync';
 import { uriToDataUrl } from '../utils/imageData';
 import { useTheme } from '../contexts/ThemeContext';
+import { infoAlert } from '../utils/alert';
 
 // Una foto dentro del mensaje no puede acercarse al límite de 1 MB por documento de Firestore
 const MAX_EMBEDDED_IMAGE_CHARS = 700 * 1024;
@@ -29,13 +30,13 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
     if (needsCamera) {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso denegado', 'Necesitas permiso de cámara para tomar fotos.');
+        infoAlert('Permiso denegado', 'Necesitas permiso de cámara para tomar fotos.');
         return false;
       }
     } else {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso denegado', 'Necesitas permiso de galería para seleccionar fotos.');
+        infoAlert('Permiso denegado', 'Necesitas permiso de galería para seleccionar fotos.');
         return false;
       }
     }
@@ -73,7 +74,7 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
         setPreviewVisible(true);
       }
     } catch {
-      Alert.alert('Error', 'No se pudo abrir la cámara.');
+      infoAlert('Error', 'No se pudo abrir la cámara.');
     }
   };
 
@@ -91,7 +92,7 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
         setPreviewVisible(true);
       }
     } catch {
-      Alert.alert('Error', 'No se pudo abrir la galería.');
+      infoAlert('Error', 'No se pudo abrir la galería.');
     }
   };
 
@@ -117,7 +118,7 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
 
       // Verificar tamaño — máximo 4 MB
       if (blob.size > 4 * 1024 * 1024) {
-        Alert.alert('Imagen muy grande', 'La imagen debe ser menor a 4 MB. Intenta con otra.');
+        infoAlert('Imagen muy grande', 'La imagen debe ser menor a 4 MB. Intenta con otra.');
         return;
       }
 
@@ -156,7 +157,7 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
 
     } catch (error) {
       if (__DEV__) console.error('[ChatImageUpload] upload error:', error);
-      Alert.alert('Error al enviar', error.message || 'No se pudo subir la imagen. Intenta de nuevo.');
+      infoAlert('Error al enviar', error.message || 'No se pudo subir la imagen. Intenta de nuevo.');
       setUploadProgress(0);
     } finally {
       setUploading(false);
@@ -182,7 +183,7 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
         accessibilityRole="button"
       >
         {uploading
-          ? <ActivityIndicator size="small" color="#9F2241" />
+          ? <ActivityIndicator size="small" color={theme.primary} />
           : <Ionicons name="image" size={22} color={(disabled || uploading) ? theme.textMuted : theme.primary} />
         }
       </TouchableOpacity>
@@ -194,7 +195,7 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
         animationType="fade"
         onRequestClose={() => setSourceMenuVisible(false)}
       >
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={styles.menuOverlay}
           activeOpacity={1}
           onPress={() => setSourceMenuVisible(false)}
@@ -202,9 +203,9 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
           <View style={[styles.menuSheet, { backgroundColor: theme.card }]}>
             <Text style={[styles.menuTitle, { color: theme.textTertiary }]}>Adjuntar imagen</Text>
 
-            <TouchableOpacity style={styles.menuOption} onPress={openCamera}>
-              <View style={styles.menuIconBg}>
-                <Ionicons name="camera" size={22} color="#9F2241" />
+            <TouchableOpacity accessibilityRole="button" style={[styles.menuOption, { borderBottomColor: theme.glassBorder }]} onPress={openCamera}>
+              <View style={[styles.menuIconBg, { backgroundColor: theme.glassPrimary }]}>
+                <Ionicons name="camera" size={22} color={theme.primary} />
               </View>
               <View>
                 <Text style={[styles.menuOptionLabel, { color: theme.text }]}>Cámara</Text>
@@ -212,9 +213,9 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.menuOption} onPress={openGallery}>
-              <View style={styles.menuIconBg}>
-                <Ionicons name="images" size={22} color="#9F2241" />
+            <TouchableOpacity accessibilityRole="button" style={[styles.menuOption, { borderBottomColor: theme.glassBorder }]} onPress={openGallery}>
+              <View style={[styles.menuIconBg, { backgroundColor: theme.glassPrimary }]}>
+                <Ionicons name="images" size={22} color={theme.primary} />
               </View>
               <View>
                 <Text style={[styles.menuOptionLabel, { color: theme.text }]}>Galería</Text>
@@ -222,7 +223,7 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity style={[styles.menuCancel, { backgroundColor: theme.background }]} onPress={() => setSourceMenuVisible(false)}>
+            <TouchableOpacity accessibilityRole="button" style={[styles.menuCancel, { backgroundColor: theme.background }]} onPress={() => setSourceMenuVisible(false)}>
               <Text style={[styles.menuCancelText, { color: theme.error }]}>Cancelar</Text>
             </TouchableOpacity>
           </View>
@@ -243,7 +244,7 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
               <Ionicons name="close" size={24} color="#FFF" />
             </TouchableOpacity>
             <Text style={styles.previewTitle}>Vista previa</Text>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               onPress={sendImage}
               disabled={uploading}
               style={[styles.previewSendBtn, uploading && styles.previewSendBtnDisabled]}
@@ -275,10 +276,10 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
           {/* Footer */}
           {!uploading && (
             <View style={styles.previewFooter}>
-              <TouchableOpacity style={styles.cancelBtn} onPress={cancel}>
+              <TouchableOpacity accessibilityRole="button" style={styles.cancelBtn} onPress={cancel}>
                 <Text style={styles.cancelBtnText}>Cancelar</Text>
               </TouchableOpacity>
-              <TouchableOpacity style={styles.confirmBtn} onPress={sendImage}>
+              <TouchableOpacity accessibilityRole="button" style={styles.confirmBtn} onPress={sendImage}>
                 <Ionicons name="send" size={16} color="#FFF" />
                 <Text style={styles.confirmBtnText}>Enviar foto</Text>
               </TouchableOpacity>

@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { toMs } from '../utils/dateUtils';
 import { timing } from '../theme/motion';
+import { isClosed } from '../utils/taskStatus';
 
 const PRIORITY_LABEL = { alta: 'Alta', media: 'Media', baja: 'Baja' };
 
@@ -51,7 +52,7 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
     const urgent = [];
 
     const applicable = tasks.filter(t => {
-      if (t.status === 'cerrada') return false;
+      if (isClosed(t.status)) return false;
       if (role === 'admin' || role === 'secretario' || role === 'director') return true;
       const assignees = Array.isArray(t.assignedTo) ? t.assignedTo : [t.assignedTo];
       return assignees.some(a => (typeof a === 'string' ? a : a?.email || '').toLowerCase() === currentUserEmail?.toLowerCase());
@@ -118,7 +119,7 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
             <Text style={[styles.bannerText, { color: theme.warning, fontWeight: '700' }]}>{urgent.length} tarea{urgent.length !== 1 ? 's' : ''} urgente{urgent.length !== 1 ? 's' : ''}</Text>
           )}
         </View>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={[styles.bannerBtn, { backgroundColor: hasOverdue ? theme.error : theme.warning }, Platform.OS === 'web' && { cursor: 'pointer' }]}
           onPress={() => {
             setActiveTab(hasOverdue ? 'overdue' : 'urgent');
@@ -163,7 +164,7 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
             {/* Tabs */}
             <View style={[styles.tabs, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}>
               {hasOverdue && (
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   style={[styles.tab, activeTab === 'overdue' && { backgroundColor: theme.error }]}
                   onPress={() => setActiveTab('overdue')}
                 >
@@ -174,7 +175,7 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
                 </TouchableOpacity>
               )}
               {hasUrgent && (
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   style={[styles.tab, activeTab === 'urgent' && { backgroundColor: theme.warning }]}
                   onPress={() => setActiveTab('urgent')}
                 >
@@ -200,7 +201,7 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
                   : (task.assignedTo || '');
 
                 return (
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="button"
                     key={task.id}
                     style={[styles.taskCard, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderLeftColor: accentColor }]}
                     onPress={() => {
@@ -244,7 +245,7 @@ export default function OverdueAlert({ tasks, currentUserEmail, role = 'director
 
             {/* Footer */}
             <View style={styles.modalFooter}>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 style={[styles.footerBtn, { backgroundColor: theme.primary }]}
                 onPress={() => setModalVisible(false)}
               >

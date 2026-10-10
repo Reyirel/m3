@@ -120,7 +120,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
           </Text>
         </View>
 
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={[
             styles.expandButton,
             { backgroundColor: theme.glass, borderColor: theme.glassBorder },
@@ -398,7 +398,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
                         {editingRoleUserId === user.id ? (
                           <View style={styles.roleEditContainer}>
                             {['director', 'secretario', 'admin'].map((role) => (
-                              <TouchableOpacity
+                              <TouchableOpacity accessibilityRole="button"
                                 key={role}
                                 style={[
                                   styles.roleOptionChip,
@@ -440,7 +440,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
                             </TouchableOpacity>
                           </View>
                         ) : (
-                          <TouchableOpacity
+                          <TouchableOpacity accessibilityRole="button"
                             style={[
                               styles.roleChip,
                               {
@@ -476,7 +476,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
                         )}
 
                         {/* Ver / cambiar contraseña */}
-                        <TouchableOpacity
+                        <TouchableOpacity accessibilityRole="button"
                           style={[
                             styles.deleteUserBtn,
                             {
@@ -507,7 +507,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
 
                         {/* Eliminar */}
                         {user.id !== currentUser?.userId && (
-                          <TouchableOpacity
+                          <TouchableOpacity accessibilityRole="button"
                             style={styles.deleteUserBtn}
                             onPress={() =>
                               deleteUserAccount(user.id, user.displayName)
@@ -556,7 +556,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
               {'?\nEsta acción no se puede deshacer.'}
             </Text>
             <View style={styles.confirmBtns}>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 style={[
                   styles.confirmBtn,
                   {
@@ -569,7 +569,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
                   Cancelar
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 style={[styles.confirmBtn, { backgroundColor: theme.error }]}
                 onPress={confirmDeleteUser}
               >
@@ -690,7 +690,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
             </View>
 
             <View style={styles.confirmBtns}>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 style={[
                   styles.confirmBtn,
                   {
@@ -706,7 +706,7 @@ export default function UserListPanel({ allUsers, currentUser, onUsersChanged })
                   Cerrar
                 </Text>
               </TouchableOpacity>
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 style={[
                   styles.confirmBtn,
                   {

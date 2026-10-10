@@ -82,7 +82,7 @@ const AreaStatsCard = memo(function AreaStatsCard({
           },
         ]}
       >
-        <TouchableOpacity onPress={handlePress} activeOpacity={0.7} style={styles.row}>
+        <TouchableOpacity accessibilityRole="button" onPress={handlePress} activeOpacity={0.7} style={styles.row}>
           {/* Icono tipo área */}
           <View style={[styles.iconWrap, { backgroundColor: isDark ? `${status.color}22` : status.bg }]}>
             <Ionicons name={areaIcon} size={14} color={status.color} />
@@ -202,7 +202,7 @@ const AreaStatsCard = memo(function AreaStatsCard({
                 </View>
 
                 {/* Botón cerrar */}
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   onPress={() => setModalVisible(false)}
                   style={[styles.dismissBtn, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#F3F4F6' }]}
                   activeOpacity={0.7}

@@ -18,7 +18,7 @@ import { useTasks } from '../contexts/TasksContext';
 import ShimmerEffect from '../components/ShimmerEffect';
 import ProgressBar from '../components/ProgressBar';
 import Avatar from '../components/Avatar';
-import { isInProgress } from '../utils/taskStatus';
+import { isClosed, isInProgress } from '../utils/taskStatus';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { DURATION, timing } from '../theme/motion';
 import { styles } from './dashboard/AreaChiefDashboardStyles';
@@ -66,7 +66,7 @@ export default function AreaChiefDashboard({ navigation }) {
         return;
       }
 
-      const fullyCompletedTasks = taskList.filter((t) => t.status === 'cerrada').length;
+      const fullyCompletedTasks = taskList.filter((t) => isClosed(t.status)).length;
       const tasksInProgress = taskList.filter((t) => isInProgress(t.status)).length;
       const totalTasks = taskList.length;
       
@@ -100,7 +100,7 @@ export default function AreaChiefDashboard({ navigation }) {
       case 'en_proceso':
         return tasks.filter((t) => isInProgress(t.status));
       case 'completed':
-        return tasks.filter((t) => t.status === 'cerrada');
+        return tasks.filter((t) => isClosed(t.status));
       default:
         return tasks;
     }
@@ -120,7 +120,7 @@ export default function AreaChiefDashboard({ navigation }) {
     }
 
     return (
-    <TouchableOpacity
+    <TouchableOpacity accessibilityRole="button"
       onPress={() => handleTaskPress(task)}
       style={[
         styles.taskCard,
@@ -137,7 +137,7 @@ export default function AreaChiefDashboard({ navigation }) {
           styles.statusBar,
           {
             backgroundColor:
-              task.status === 'cerrada'
+              isClosed(task.status)
                 ? theme.success
                 : isInProgress(task.status)
                 ? theme.warning
@@ -313,7 +313,7 @@ export default function AreaChiefDashboard({ navigation }) {
         )}
 
         {/* Acceso a Reportes */}
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           onPress={() => navigation.navigate('Main', { screen: 'Reports', params: { tab: 'enviados' } })}
           style={[styles.reportsButton, { backgroundColor: isDark ? theme.glass : theme.glassStrong, borderColor: theme.primary }]}
           activeOpacity={0.7}
@@ -337,7 +337,7 @@ export default function AreaChiefDashboard({ navigation }) {
         {/* Filtros */}
         <View style={styles.filterContainer}>
           {['all', 'pendiente', 'en_proceso', 'completed'].map((f) => (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               key={f}
               onPress={() => setFilter(f)}
               style={[

@@ -184,7 +184,7 @@ export default function AreaManagementScreen({ navigation }) {
             <Ionicons name="folder-open" size={64} color={theme.textSecondary} />
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>No hay áreas registradas</Text>
             <Text style={[styles.emptySubtext, { color: theme.textSecondary }]}>Crea una nueva área para comenzar</Text>
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               style={[styles.emptyBtn, { backgroundColor: theme.primary }]}
               onPress={handleCreateArea}
             >

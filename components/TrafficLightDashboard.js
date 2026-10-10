@@ -9,16 +9,15 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '../contexts/ThemeContext';
 import { AREAS_CONFIG } from '../config/areas';
 import AnimatedNumber from './AnimatedNumber';
 import { toMs } from '../utils/dateUtils';
+import { isClosed } from '../utils/taskStatus';
 
-const { width: screenWidth } = Dimensions.get('window');
-const isDesktop = screenWidth >= 768;
 
 /**
  * TrafficLightDashboard - Vista de semáforo por área
@@ -28,6 +27,7 @@ const isDesktop = screenWidth >= 768;
  */
 export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact = false }) {
   const { theme, isDark } = useTheme();
+  const isDesktop = useWindowDimensions().width >= 768;
   
   // Calcular métricas por área
   const areaMetrics = useMemo(() => {
@@ -61,7 +61,7 @@ export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact
       metrics[area].total++;
       
       // Determinar estado
-      if (task.status === 'cerrada' || task.status === 'completada') {
+      if (isClosed(task.status)) {
         metrics[area].completed++;
         metrics[area].green++;
       } else if (task.dueAt) {
@@ -204,10 +204,11 @@ export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact
             const config = statusConfig[status] || statusConfig.healthy;
             
             return (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 key={metric.area}
                 style={[
                   styles.areaCard,
+                  isDesktop ? { width: '33%', minWidth: 280 } : { width: '100%' },
                   {
                     backgroundColor: theme.glass,
                     borderLeftColor: config.color,
@@ -256,7 +257,7 @@ export default function TrafficLightDashboard({ tasks = [], onAreaPress, compact
 
                 {/* Barra de progreso */}
                 <View style={styles.progressContainer}>
-                  <View style={styles.progressBar}>
+                  <View style={[styles.progressBar, { backgroundColor: theme.borderLight }]}>
                     {metric.green > 0 && (
                       <View style={[styles.progressSegment, {
                         flex: metric.green,
@@ -364,8 +365,6 @@ const createStyles = (theme, _isDark, _compact) => StyleSheet.create({
     gap: 12,
   },
   areaCard: {
-    width: isDesktop ? '33%' : '100%',
-    minWidth: isDesktop ? 280 : undefined,
     borderRadius: 16,
     padding: 14,
     borderLeftWidth: 4,

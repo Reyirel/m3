@@ -71,7 +71,7 @@ function QuickMetricCard({ area, metrics, onPress, styles, theme }) {
   const statusIcon = rate >= 75 ? 'checkmark-circle' : rate >= 50 ? 'time' : 'alert-circle';
 
   return (
-    <TouchableOpacity
+    <TouchableOpacity accessibilityRole="button"
       style={[styles.quickMetricCard, { backgroundColor: theme.glass, borderColor: theme.glassBorder }]}
       onPress={onPress}
       activeOpacity={0.7}

@@ -66,7 +66,7 @@ export default function AreaFilter({
           <Text style={[styles.title, { color: theme.text }]}>Filtrar por Área</Text>
         </View>
         {hasData && (
-          <TouchableOpacity 
+          <TouchableOpacity accessibilityRole="button" 
             onPress={handleSelectAll}
             style={styles.selectAllButton}
           >
@@ -89,7 +89,7 @@ export default function AreaFilter({
             {visibleAreas.map((area) => {
               const isSelected = selectedAreas.includes(area);
               return (
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   key={area}
                   onPress={() => handleSelectArea(area)}
                   style={[
@@ -123,7 +123,7 @@ export default function AreaFilter({
             })}
 
             {hiddenCount > 0 && !isExpanded && (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 onPress={handleToggleExpand}
                 style={[styles.chip, styles.moreChip, { borderColor: theme.border }]}
               >
@@ -150,7 +150,7 @@ export default function AreaFilter({
                 {areas.map((area) => {
                   const isSelected = selectedAreas.includes(area);
                   return (
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button"
                       key={area}
                       onPress={() => handleSelectArea(area)}
                       style={[

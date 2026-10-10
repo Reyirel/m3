@@ -70,7 +70,7 @@ const GlassmorphicSection = ({
     >
       {/* HEADER */}
       {title && (
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           onPress={handleToggle}
           disabled={!collapsible}
           activeOpacity={collapsible ? 0.6 : 1}

@@ -36,7 +36,7 @@ export default function AreaSelector({
       </View>
 
       {/* Trigger */}
-      <TouchableOpacity
+      <TouchableOpacity accessibilityRole="button"
         onPress={() => !disabled && setModalVisible(true)}
         disabled={disabled}
         activeOpacity={0.7}
@@ -71,7 +71,7 @@ export default function AreaSelector({
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll}>
           <View style={styles.chips}>
             {value.map((area) => (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 key={area}
                 onPress={() => !disabled && onChange(value.filter(a => a !== area))}
                 style={[styles.chip, { backgroundColor: theme.primary + '18', borderColor: theme.primary + '50' }]}

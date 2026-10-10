@@ -127,7 +127,7 @@ export default function PasswordResetForm({ isUserAdmin }) {
         />
       </View>
 
-      <TouchableOpacity
+      <TouchableOpacity accessibilityRole="button"
         style={styles.actionButton}
         onPress={() => {
           hapticMedium();

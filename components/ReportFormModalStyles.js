@@ -2,9 +2,8 @@
 // Estilos de ReportFormModal.js
 import { StyleSheet, Dimensions } from 'react-native';
 
-const { width } = Dimensions.get('window');
 
-export const createStyles = (isDark, theme) => StyleSheet.create({
+export const createStyles = (isDark, theme, width = Dimensions.get('window').width) => StyleSheet.create({
   container: {
     flex: 1,
     justifyContent: 'flex-end',

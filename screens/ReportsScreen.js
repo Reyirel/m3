@@ -12,7 +12,6 @@ import {
   Platform,
   Animated,
   ActivityIndicator,
-  Alert,
   StyleSheet,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +36,7 @@ import HierarchySummary from './reports/HierarchySummary';
 import AreaSections from './reports/AreaSections';
 import ChartsModal, { priorityChartData } from './reports/ChartsModal';
 import { syncPendingOperations } from '../services/offlineSync';
+import { infoAlert } from '../utils/alert';
 
 const ComplianceReport = React.lazy(() => import('./reports/ComplianceReport'));
 // Pestañas que antes eran pantallas aparte
@@ -110,7 +110,7 @@ export default function ReportsScreen({ navigation, route }) {
   const handleExportReport = useCallback(async () => {
     const notify = (ok, webText, title, text) => {
       if (Platform.OS === 'web') (ok ? showSuccess : showError)(webText);
-      else Alert.alert(title, text);
+      else infoAlert(title, text);
     };
     setExporting(true);
     try {
@@ -305,7 +305,7 @@ export default function ReportsScreen({ navigation, route }) {
           )}
 
           {(role === 'admin' || role === 'secretario' || role === 'director') && hasAreaData && (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               style={[styles.exportButton, { backgroundColor: theme.primary }]}
               onPress={handleExportReport}
               disabled={exporting}
@@ -322,7 +322,7 @@ export default function ReportsScreen({ navigation, route }) {
           )}
 
           {hasCharts && (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               style={[styles.chartsButton, glassCard]}
               onPress={() => setShowChartsModal(true)}
               activeOpacity={0.7}

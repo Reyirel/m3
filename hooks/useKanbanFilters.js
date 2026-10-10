@@ -4,6 +4,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import { toMs } from '../utils/dateUtils';
 import { isTaskAssignedToUser } from '../utils/taskHelpers';
+import { isClosed } from '../utils/taskStatus';
 
 const DEFAULT_FILTERS = {
   searchText: '',
@@ -32,20 +33,20 @@ const endOfWeek = (today) => {
 
 /** Vencida: tiene fecha límite, ya pasó y la tarea no está cerrada */
 export const isTaskOverdue = (task) => {
-  if (!task.dueAt || task.status === 'cerrada') return false;
+  if (!task.dueAt || isClosed(task.status)) return false;
   const dueMs = toMs(task.dueAt);
   return dueMs ? dueMs < Date.now() : false;
 };
 
 const isDueToday = (task, today) => {
   const dueMs = toMs(task.dueAt);
-  return !!dueMs && task.status !== 'cerrada' && new Date(dueMs).toDateString() === today.toDateString();
+  return !!dueMs && !isClosed(task.status) && new Date(dueMs).toDateString() === today.toDateString();
 };
 
 // Vence entre hoy (desde el inicio del día) y los próximos 7 días
 const isDueThisWeek = (task, today) => {
   const dueMs = toMs(task.dueAt);
-  return !!dueMs && task.status !== 'cerrada' && dueMs >= today.getTime() && dueMs <= endOfWeek(today).getTime();
+  return !!dueMs && !isClosed(task.status) && dueMs >= today.getTime() && dueMs <= endOfWeek(today).getTime();
 };
 
 /** Tareas que pasan los filtros del tablero */

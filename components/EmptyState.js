@@ -151,7 +151,7 @@ const EmptyState = memo(function EmptyState({
       
       {/* 🚀 Quick Action Button */}
       {quickAction && (
-        <TouchableOpacity 
+        <TouchableOpacity accessibilityRole="button" 
           style={[styles.quickActionButton, { backgroundColor: theme.primary }]}
           onPress={quickAction.onPress}
           activeOpacity={0.7}

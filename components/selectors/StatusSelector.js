@@ -36,7 +36,7 @@ export default function StatusSelector({ value = 'pendiente', onChange = () => {
         {STATUSES.map((s) => {
           const selected = value === s.value;
           return (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               key={s.value}
               onPress={() => !disabled && onChange(s.value)}
               activeOpacity={0.7}

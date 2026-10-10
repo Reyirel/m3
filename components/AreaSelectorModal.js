@@ -86,7 +86,7 @@ export default function AreaSelectorModal({
 
     return (
       <View key={type} style={styles.section}>
-        <TouchableOpacity 
+        <TouchableOpacity accessibilityRole="button" 
           style={styles.sectionHeader}
           activeOpacity={0.7}
         >
@@ -111,7 +111,7 @@ export default function AreaSelectorModal({
           {areaList.map((area) => {
             const isSelected = selectedAreas.includes(area);
             return (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 key={area}
                 onPress={() => toggleArea(area)}
                 style={[
@@ -234,7 +234,7 @@ export default function AreaSelectorModal({
             <View style={styles.selectedPreview}>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.selectedList}>
                 {selectedAreas.map((area) => (
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="button"
                     key={area}
                     onPress={() => toggleArea(area)}
                     style={[styles.selectedPill, { backgroundColor: theme.primary }]}
@@ -278,7 +278,7 @@ export default function AreaSelectorModal({
             borderTopColor: theme.border,
             backgroundColor: isDark ? 'rgba(0,0,0,0.3)' : '#FAFAFA'
           }]}>
-            <TouchableOpacity 
+            <TouchableOpacity accessibilityRole="button" 
               style={[
                 styles.buttonSecondary, 
                 { borderColor: theme.border, backgroundColor: isDark ? 'rgba(255,255,255,0.05)' : '#FFFFFF' }
@@ -293,7 +293,7 @@ export default function AreaSelectorModal({
               <Text style={[styles.buttonText, { color: selectedAreas.length === 0 ? theme.textSecondary + '50' : theme.text }]}>Limpiar</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity accessibilityRole="button" 
               style={[styles.buttonPrimary, { backgroundColor: theme.primary }]}
               onPress={onClose}
             >

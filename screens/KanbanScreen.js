@@ -269,7 +269,7 @@ export default function KanbanScreen({ navigation }) {
               style={{ flex: 1 }}
             >
               {currentUser && (
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   onPress={toggleMine}
                   style={[
                     styles.filterChipCompact,

@@ -9,8 +9,7 @@ import {
   ScrollView,
   TouchableOpacity,
   RefreshControl,
-  Dimensions,
-  Alert,
+  useWindowDimensions,
   Modal,
   Platform,
 } from 'react-native';
@@ -20,18 +19,19 @@ import { useHeaderPaddingTop } from '../components/ui/ScreenHeader';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
 import { getUsersByRole } from '../services/usersDirectory';
-import { getDireccionesBySecretaria, resolveAreaName } from '../config/areas';
+import { isDirectorOfSecretario } from '../services/roles';
+import { filterVisibleTasks } from '../utils/taskVisibility';
 import ProgressBar from '../components/ProgressBar';
 import Avatar from '../components/Avatar';
 import ShimmerEffect from '../components/ShimmerEffect';
 import { toMs } from '../utils/dateUtils';
-import { isInProgress } from '../utils/taskStatus';
+import { isClosed, isInProgress } from '../utils/taskStatus';
 import { styles } from './dashboard/SecretarioDashboardStyles';
 
-const { width } = Dimensions.get('window');
 
 export default function SecretarioDashboardScreen({ navigation }) {
   const { theme, isDark } = useTheme();
+  const { width } = useWindowDimensions();
   const headerPaddingTop = useHeaderPaddingTop();
   const { tasks: contextTasks, currentUser } = useTasks();
   const [loading, setLoading] = useState(true);
@@ -61,27 +61,9 @@ export default function SecretarioDashboardScreen({ navigation }) {
   // Recalcular métricas cuando cambian las tareas del context o los directores
   useEffect(() => {
     if (!currentUser) return;
-    const secArea = resolveAreaName(currentUser.area || '');
-    const direccionesOficiales = getDireccionesBySecretaria(secArea);
-    const direccionesFirebase = currentUser.direcciones || [];
-    const direcciones = [...new Set([...direccionesOficiales, ...direccionesFirebase])].filter(Boolean);
-
-    const areaTasks = contextTasks.filter(task => {
-      const taskArea = task.area || '';
-      const taskAreas = task.areas || [taskArea];
-      const isInMyArea = direcciones.some(dir =>
-        taskAreas.map(a => resolveAreaName(a)).includes(resolveAreaName(dir)) ||
-        resolveAreaName(taskArea) === resolveAreaName(dir)
-      );
-      const isAssignedToMyDirector = directors.some(dir =>
-        Array.isArray(task.assignedTo)
-          ? task.assignedTo.includes(dir.email)
-          : task.assignedTo === dir.email
-      );
-      const isCoordinationWithMyArea = task.isCoordinationTask &&
-        taskAreas.some(area => direcciones.map(resolveAreaName).includes(resolveAreaName(area)));
-      return isInMyArea || isAssignedToMyDirector || isCoordinationWithMyArea;
-    });
+    // Las mismas tareas que el secretario ve en el resto de la app: la regla vive en
+    // utils/taskVisibility y aquí no se vuelve a decidir qué es "de su secretaría"
+    const areaTasks = filterVisibleTasks(contextTasks, currentUser);
 
     setTasks(areaTasks);
     calculateMetrics(areaTasks, directors);
@@ -104,7 +86,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
 
   const loadDirectors = async (user) => {
     const DIRECTORS_CACHE_TTL = 10 * 60 * 1000; // 10 minutos
-    const cacheKey = `@sec_directors_${(user.email || '').toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+    const cacheKey = `@sec_directors_v2_${(user.email || '').toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
 
     try {
       // Verificar cache — la lista de directores cambia raramente
@@ -117,19 +99,10 @@ export default function SecretarioDashboardScreen({ navigation }) {
         }
       }
 
-      const direccionesOficiales = getDireccionesBySecretaria(user.area || '');
-      const direccionesFirebase = user.direcciones || [];
-      const direcciones = [...new Set([...direccionesOficiales, ...direccionesFirebase])].filter(Boolean);
-      const secretariaArea = user.area || '';
-
-      const myDirectors = [];
-      (await getUsersByRole('director')).forEach(directorData => {
-        if (direcciones.includes(directorData.area) ||
-            direcciones.includes(directorData.department) ||
-            directorData.area?.includes(secretariaArea)) {
-          myDirectors.push(directorData);
-        }
-      });
+      // Misma regla que la delegación y el panel del administrador: los directores guardan
+      // su secretaría en `area` y su dirección en `areasPermitidas`. Sin cuentas desactivadas.
+      const myDirectors = (await getUsersByRole('director'))
+        .filter(d => d.active !== false && isDirectorOfSecretario(d, user));
 
       setDirectors(myDirectors);
       AsyncStorage.setItem(cacheKey, JSON.stringify({ data: myDirectors, timestamp: Date.now() })).catch(() => {});
@@ -144,9 +117,9 @@ export default function SecretarioDashboardScreen({ navigation }) {
     // Métricas generales
     const pendingTasks = areaTasks.filter(t => t.status === 'pendiente');
     const inProgressTasks = areaTasks.filter(t => isInProgress(t.status));
-    const completedTasks = areaTasks.filter(t => t.status === 'completada' || t.status === 'cerrada');
+    const completedTasks = areaTasks.filter(t => isClosed(t.status));
     const overdueTasks = areaTasks.filter(t => {
-      if (t.status === 'completada' || t.status === 'cerrada') return false;
+      if (isClosed(t.status)) return false;
       const dueMs = toMs(t.dueAt);
       const dueDate = dueMs ? new Date(dueMs) : null;
       return dueDate && dueDate < now;
@@ -155,7 +128,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
     // Tareas de coordinación
     const coordinationTasks = areaTasks.filter(t => t.isCoordinationTask);
     const coordinationPending = coordinationTasks.filter(t => 
-      t.status !== 'completada' && t.status !== 'cerrada'
+      !isClosed(t.status)
     );
     
     // Tasa de cumplimiento
@@ -168,12 +141,12 @@ export default function SecretarioDashboardScreen({ navigation }) {
       // Tareas del ÁREA que supervisa el director (no las asignadas a él)
       const areaTasks_dir = areaTasks.filter(t => t.area === director.area);
       const areaCompleted = areaTasks_dir.filter(t => 
-        t.status === 'completada' || t.status === 'cerrada'
+        isClosed(t.status)
       );
       const areaPending = areaTasks_dir.filter(t => t.status === 'pendiente');
       const areaInProgress = areaTasks_dir.filter(t => isInProgress(t.status));
       const areaOverdue = areaTasks_dir.filter(t => {
-        if (t.status === 'completada' || t.status === 'cerrada') return false;
+        if (isClosed(t.status)) return false;
         const dueMs = toMs(t.dueAt);
         const dueDate = dueMs ? new Date(dueMs) : null;
         return dueDate && dueDate < now;
@@ -221,7 +194,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
     (currentUser?.direcciones || []).forEach(direccion => {
       const dirTasks = tasks.filter(t =>
         (t.area === direccion || t.areas?.includes(direccion)) &&
-        t.status !== 'completada' && t.status !== 'cerrada'
+        !isClosed(t.status)
       );
       const overdue = dirTasks.filter(t => {
         const dueDate = t.dueAt ? new Date(toMs(t.dueAt)) : null;
@@ -417,7 +390,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
               </View>
             </View>
 
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               style={[styles.viewAllButton, { borderColor: theme.secondary }]}
               onPress={() => navigation.navigate('Home', { filter: 'coordination' })}
             >
@@ -489,7 +462,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
               const { directionTasks, overdue } = directionTasksMap[direccion] || { directionTasks: [], overdue: [] };
               
               return (
-                <TouchableOpacity 
+                <TouchableOpacity accessibilityRole="button" 
                   key={index}
                   style={[styles.directionCard, { backgroundColor: isDark ? 'rgba(245,158,11,0.10)' : 'rgba(245,158,11,0.06)' }]}
                   onPress={() => navigation.navigate('Home', { filterArea: direccion })}
@@ -585,14 +558,14 @@ export default function SecretarioDashboardScreen({ navigation }) {
 
                 {/* Acciones */}
                 <View style={styles.directorActions}>
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="button"
                     style={[styles.directorActionBtn, { borderColor: theme.border }]}
                     onPress={() => navigation.navigate('Home', { filterArea: director.area })}
                   >
                     <Ionicons name="list-outline" size={15} color={theme.textSecondary} />
                     <Text style={[styles.directorActionText, { color: theme.textSecondary }]}>Ver tareas</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="button"
                     style={[styles.directorActionBtn, { borderColor: theme.info, backgroundColor: theme.infoAlpha }]}
                     onPress={() => setSelectedDirector(director)}
                   >
@@ -613,38 +586,24 @@ export default function SecretarioDashboardScreen({ navigation }) {
           </View>
           
           <View style={styles.actionsGrid}>
-            <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: theme.glass }]}
-              onPress={() => {
-                Alert.alert(
-                  'Acción no permitida',
-                  'Los secretarios no pueden crear tareas principales. Solo puedes crear subtareas desde las tareas asignadas por el administrador.',
-                  [{ text: 'Entendido', style: 'default' }]
-                );
-              }}
-            >
-              <Ionicons name="lock-closed" size={28} color={theme.textSecondary} />
-              <Text style={[styles.actionText, { color: theme.textSecondary }]}>Nueva Tarea (Bloqueado)</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: theme.infoAlpha }]}
+            <TouchableOpacity accessibilityRole="button" 
+              style={[styles.actionButton, { width: (width - 64 - 12) / 2, backgroundColor: theme.infoAlpha }]}
               onPress={() => navigation.navigate('Reports', { tab: 'enviados' })}
             >
               <Ionicons name="document-text" size={28} color={theme.info} />
               <Text style={[styles.actionText, { color: theme.text }]}>Ver Reportes</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: theme.successAlpha }]}
+            <TouchableOpacity accessibilityRole="button" 
+              style={[styles.actionButton, { width: (width - 64 - 12) / 2, backgroundColor: theme.successAlpha }]}
               onPress={() => navigation.navigate('Kanban')}
             >
               <Ionicons name="apps" size={28} color={theme.success} />
               <Text style={[styles.actionText, { color: theme.text }]}>Tablero</Text>
             </TouchableOpacity>
             
-            <TouchableOpacity 
-              style={[styles.actionButton, { backgroundColor: theme.warningAlpha }]}
+            <TouchableOpacity accessibilityRole="button" 
+              style={[styles.actionButton, { width: (width - 64 - 12) / 2, backgroundColor: theme.warningAlpha }]}
               onPress={() => navigation.navigate('Calendar')}
             >
               <Ionicons name="calendar" size={28} color={theme.warning} />
@@ -687,10 +646,10 @@ export default function SecretarioDashboardScreen({ navigation }) {
                     : t.assignedTo?.toLowerCase() === selectedDirector?.email?.toLowerCase()
                   ) || t.area === selectedDirector?.area
                 )
-                .filter(t => t.status !== 'cerrada')
+                .filter(t => !isClosed(t.status))
                 .slice(0, 15)
                 .map(task => (
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="button"
                     key={task.id}
                     style={[styles.taskRow, { borderBottomColor: theme.border }]}
                     onPress={() => {
@@ -721,7 +680,7 @@ export default function SecretarioDashboardScreen({ navigation }) {
                   ? t.assignedTo.some(e => e?.toLowerCase() === selectedDirector?.email?.toLowerCase())
                   : t.assignedTo?.toLowerCase() === selectedDirector?.email?.toLowerCase()
                 ) || t.area === selectedDirector?.area
-              ).filter(t => t.status !== 'cerrada').length === 0 && (
+              ).filter(t => !isClosed(t.status)).length === 0 && (
                 <View style={styles.emptyState}>
                   <Ionicons name="document-text-outline" size={40} color={theme.textSecondary} />
                   <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Sin tareas activas</Text>

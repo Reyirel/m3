@@ -177,7 +177,7 @@ export default function KanbanColumn({
     <Animated.View
       style={[
         styles.column,
-        { backgroundColor: isDark ? theme.card : '#FFFFFF', borderColor: theme.glassBorder, borderWidth: 0.5 },
+        { backgroundColor: theme.card, borderColor: theme.glassBorder, borderWidth: 0.5 },
         animatedStyle,
       ]}
     >

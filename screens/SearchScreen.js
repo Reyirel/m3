@@ -5,8 +5,8 @@
  */
 
 import React, { useState, useCallback, useMemo } from 'react';
-import { isInProgress } from '../utils/taskStatus';
-import { toMs } from '../utils/dateUtils';
+import { isClosed, isInProgress } from '../utils/taskStatus';
+import { toMs, isOverdue } from '../utils/dateUtils';
 import {
   View,
   Text,
@@ -57,9 +57,9 @@ const SearchScreen = ({ navigation }) => {
       // Filtros adicionales
       if (selectedFilters.includes('pending') && task.status !== 'pendiente') return false;
       if (selectedFilters.includes('inProgress') && !isInProgress(task.status)) return false;
-      if (selectedFilters.includes('completed') && task.status !== 'cerrada') return false;
+      if (selectedFilters.includes('completed') && !isClosed(task.status)) return false;
       if (selectedFilters.includes('urgent') && task.priority !== 'alta') return false;
-      if (selectedFilters.includes('overdue') && !(task.dueAt && toMs(task.dueAt) < Date.now() && task.status !== 'cerrada')) return false;
+      if (selectedFilters.includes('overdue') && !isOverdue(task)) return false;
 
       return true;
     });
@@ -78,6 +78,8 @@ const SearchScreen = ({ navigation }) => {
   const renderSearchResult = useCallback(({ item }) => (
     <TouchableOpacity
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Abrir tarea: ${item.title || 'sin título'}`}
       onPress={() => navigation.navigate('TaskDetail', { task: item, taskId: item.id })}
       style={Platform.OS === 'web' ? { cursor: 'pointer' } : undefined}
     >
@@ -150,7 +152,7 @@ const SearchScreen = ({ navigation }) => {
                   { id: 'priority', label: 'Prioridad', icon: 'flash' },
                   { id: 'date', label: 'Fecha', icon: 'calendar' },
                 ].map(option => (
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="button"
                     key={option.id}
                     style={[
                       styles.sortButton,

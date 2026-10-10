@@ -144,7 +144,7 @@ const GlassmorphicStatsCard = ({
 
   if (onPress) {
     return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
+      <TouchableOpacity onPress={onPress} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={`${title}: ${value}`}>
         {content}
       </TouchableOpacity>
     );

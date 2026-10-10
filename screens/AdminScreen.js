@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, ScrollView, TouchableOpacity,
-  Platform, Modal, Alert, KeyboardAvoidingView,
+  Platform, Modal, KeyboardAvoidingView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,13 +19,14 @@ import { hapticMedium, hapticLight } from '../utils/haptics';
 import { useTasks } from '../contexts/TasksContext';
 import { useResponsive } from '../utils/responsive';
 import { MAX_WIDTHS } from '../theme/tokens';
-import { confirmAlert } from '../utils/alert';
+import { confirmAlert, infoAlert } from '../utils/alert';
 import CreateUserForm from '../components/admin/CreateUserForm';
 import PasswordResetForm from '../components/admin/PasswordResetForm';
 import UserListPanel from '../components/admin/UserListPanel';
 import { getAllUsers, invalidateUsersDirectory } from '../services/usersDirectory';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { s } from './admin/AdminScreenStyles';
+import { isClosed } from '../utils/taskStatus';
 
 const TABS = [
   { id: 'resumen',  label: 'Resumen',  icon: 'grid-outline'       },
@@ -78,7 +79,7 @@ export default function AdminScreen({ navigation, onLogout }) {
     const now = Date.now();
     const sixHours = 6 * 60 * 60 * 1000;
     const urgent = tasks.filter(task => {
-      if (task.status === 'cerrada' || !task.dueAt) return false;
+      if (isClosed(task.status) || !task.dueAt) return false;
       const timeLeft = toMs(task.dueAt) - now;
       return timeLeft > 0 && timeLeft < sixHours;
     });
@@ -110,6 +111,7 @@ export default function AdminScreen({ navigation, onLogout }) {
       })));
     } catch {
       setAllUsers([]);
+      showError('No se pudo cargar la lista de usuarios. Revisa tu conexión.');
     }
   };
 
@@ -117,26 +119,26 @@ export default function AdminScreen({ navigation, onLogout }) {
     try {
       const granted = await ensurePermissions();
       if (!granted) {
-        Alert.alert('Permisos Denegados', 'Las notificaciones push no están disponibles en Expo Go.');
+        infoAlert('Permisos Denegados', 'Las notificaciones push no están disponibles en Expo Go.');
         return;
       }
       await Notifications.scheduleNotificationAsync({
         content: { title: 'Notificación de Prueba', body: 'Sistema TODO', data: { type: 'test' }, sound: true },
         trigger: { seconds: 2 },
       });
-      Alert.alert('Programada', 'Recibirás una notificación en 2 segundos.');
+      infoAlert('Programada', 'Recibirás una notificación en 2 segundos.');
       setTimeout(() => loadNotificationCount(), 100);
     } catch {
-      Alert.alert('Info', 'Las notificaciones push no están disponibles en Expo Go.');
+      infoAlert('Info', 'Las notificaciones push no están disponibles en Expo Go.');
     }
   };
 
   const viewScheduledNotifications = async () => {
     const notifications = await getAllScheduledNotifications();
     if (notifications.length === 0) {
-      Alert.alert('Sin Notificaciones', 'No hay notificaciones programadas');
+      infoAlert('Sin Notificaciones', 'No hay notificaciones programadas');
     } else {
-      Alert.alert(
+      infoAlert(
         'Notificaciones Programadas',
         `Total: ${notifications.length}\n\n${notifications.slice(0, 5).map((n, i) =>
           `${i + 1}. ${n.content.title}`).join('\n')}${notifications.length > 5 ? `\n\n...y ${notifications.length - 5} más` : ''}`
@@ -151,7 +153,7 @@ export default function AdminScreen({ navigation, onLogout }) {
       async () => {
         await cancelAllNotifications();
         setNotificationCount(0);
-        Alert.alert('Completado', 'Todas las notificaciones han sido canceladas');
+        infoAlert('Completado', 'Todas las notificaciones han sido canceladas');
       },
       'Sí, cancelar todo'
     );
@@ -182,7 +184,7 @@ export default function AdminScreen({ navigation, onLogout }) {
       <View style={{ flex: 1, backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
         <Ionicons name="alert-circle" size={60} color={theme.text} style={{ marginBottom: 16, opacity: 0.5 }} />
         <Text style={{ color: theme.text, fontSize: 16, fontWeight: '600', marginBottom: 24 }}>No hay sesión activa</Text>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={{ backgroundColor: theme.primary, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 16 }}
           onPress={() => { if (onLogout) onLogout(); }}
         >
@@ -244,7 +246,7 @@ export default function AdminScreen({ navigation, onLogout }) {
   );
 
   const ActionRow = ({ icon, color, title, subtitle, onPress, right }) => (
-    <TouchableOpacity style={s.actionRow} onPress={onPress} activeOpacity={0.7}>
+    <TouchableOpacity accessibilityRole="button" style={s.actionRow} onPress={onPress} activeOpacity={0.7}>
       <View style={[s.actionIconBox, { backgroundColor: color }]}>
         <Ionicons name={icon} size={20} color="#FFFFFF" />
       </View>
@@ -454,7 +456,7 @@ export default function AdminScreen({ navigation, onLogout }) {
                   const critical  = hoursLeft < 2;
                   const accent    = critical ? theme.error : theme.warning;
                   return (
-                    <TouchableOpacity
+                    <TouchableOpacity accessibilityRole="button"
                       key={task.id}
                       style={[s.urgentTask, { backgroundColor: theme.glass, borderColor: accent }]}
                       onPress={() => { setShowUrgentModal(false); navigation.navigate('Home'); }}
@@ -482,7 +484,7 @@ export default function AdminScreen({ navigation, onLogout }) {
               </ScrollView>
 
               <View style={{ padding: 16 }}>
-                <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.error }]} onPress={() => setShowUrgentModal(false)}>
+                <TouchableOpacity accessibilityRole="button" style={[s.modalBtn, { backgroundColor: theme.error }]} onPress={() => setShowUrgentModal(false)}>
                   <Text style={s.modalBtnText}>Entendido</Text>
                 </TouchableOpacity>
               </View>
@@ -571,7 +573,7 @@ export default function AdminScreen({ navigation, onLogout }) {
               </ScrollView>
 
               <View style={{ padding: 16 }}>
-                <TouchableOpacity style={[s.modalBtn, { backgroundColor: theme.primary }]} onPress={() => setShowFlowModal(false)}>
+                <TouchableOpacity accessibilityRole="button" style={[s.modalBtn, { backgroundColor: theme.primary }]} onPress={() => setShowFlowModal(false)}>
                   <Text style={s.modalBtnText}>Entendido</Text>
                 </TouchableOpacity>
               </View>
@@ -591,7 +593,7 @@ export default function AdminScreen({ navigation, onLogout }) {
           {TABS.map(tab => {
             const active = activeTab === tab.id;
             return (
-              <TouchableOpacity
+              <TouchableOpacity accessibilityRole="button"
                 key={tab.id}
                 style={s.tabItem}
                 onPress={() => { hapticLight(); setActiveTab(tab.id); }}

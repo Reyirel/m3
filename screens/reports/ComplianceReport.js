@@ -109,7 +109,7 @@ const ComplianceReport = ({
       {/* Controles de ordenamiento */}
       <View style={styles.sortControls}>
         <Text style={styles.sortLabel}>Ordenar por:</Text>
-        <TouchableOpacity 
+        <TouchableOpacity accessibilityRole="button" 
           style={[styles.sortBtn, sortBy === 'complianceRate' && styles.sortBtnActive]}
           onPress={() => toggleSort('complianceRate')}
         >
@@ -117,7 +117,7 @@ const ComplianceReport = ({
             Cumplimiento {sortBy === 'complianceRate' && (sortOrder === 'asc' ? '↑' : '↓')}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity accessibilityRole="button" 
           style={[styles.sortBtn, sortBy === 'pending' && styles.sortBtnActive]}
           onPress={() => toggleSort('pending')}
         >
@@ -130,7 +130,7 @@ const ComplianceReport = ({
       {/* Lista de usuarios */}
       <View style={styles.usersList}>
         {sortedMetrics.map((user, index) => (
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="button"
             key={user.email}
             style={[
               styles.userCard,

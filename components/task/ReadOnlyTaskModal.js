@@ -198,7 +198,7 @@ export default function ReadOnlyTaskModal({
                     </Text>
                   </View>
                 ) : canConfirm ? (
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="button"
                     style={[styles.confirmBtn, { backgroundColor: theme.success }]}
                     onPress={handleConfirmProgress}
                     disabled={confirming}
@@ -228,7 +228,7 @@ export default function ReadOnlyTaskModal({
           </ScrollView>
 
           {/* Cerrar */}
-          <TouchableOpacity
+          <TouchableOpacity accessibilityRole="button"
             style={[styles.closeButtonBottom, { backgroundColor: theme.primary }]}
             onPress={() => navigation.goBack()}
           >

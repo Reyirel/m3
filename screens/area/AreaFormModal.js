@@ -164,7 +164,7 @@ export default function AreaFormModal({
                   <Text style={[styles.label, { color: theme.text }]}>Tipo *</Text>
                   <View style={styles.tipoContainer}>
                     {tiposDisponibles.map((t) => (
-                      <TouchableOpacity
+                      <TouchableOpacity accessibilityRole="button"
                         key={t.value}
                         style={[
                           styles.tipoButton,
@@ -227,7 +227,7 @@ export default function AreaFormModal({
                   },
                 ]}
               >
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   style={[styles.button, styles.cancelButton, { borderColor: theme.border }]}
                   onPress={onClose}
                   disabled={saving}
@@ -235,7 +235,7 @@ export default function AreaFormModal({
                   <Text style={[styles.buttonText, { color: theme.text }]}>Cancelar</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   style={[styles.button, styles.saveButton, { backgroundColor: theme.primary }]}
                   onPress={handleSave}
                   disabled={saving}

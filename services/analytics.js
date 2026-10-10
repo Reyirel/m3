@@ -3,7 +3,7 @@
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '../firebase';
 import { toMs, diffMs } from '../utils/dateUtils';
-import { isInProgress } from '../utils/taskStatus';
+import { isClosed, isInProgress } from '../utils/taskStatus';
 import { filterVisibleTasks, getUserSecretaria } from '../utils/taskVisibility';
 
 // ✅ OPTIMIZACIÓN: Cache simple con TTL
@@ -65,16 +65,16 @@ export const getGeneralMetrics = async (userId, userRole, user = null) => {
 
     // Métricas básicas
     const total = tasks.length;
-    const completed = tasks.filter(t => t.status === 'cerrada').length;
+    const completed = tasks.filter(t => isClosed(t.status)).length;
     const pending = tasks.filter(t => t.status === 'pendiente').length;
     const inProgress = tasks.filter(t => isInProgress(t.status)).length;
     const inReview = tasks.filter(t => t.status === 'en_revision').length;
     const overdue = tasks.filter(t => 
-      t.status !== 'cerrada' && t.dueAt && toMs(t.dueAt) < now
+      !isClosed(t.status) && t.dueAt && toMs(t.dueAt) < now
     ).length;
 
     // Métricas de tiempo
-    const completedTasks = tasks.filter(t => t.status === 'cerrada' && t.completedAt && t.createdAt);
+    const completedTasks = tasks.filter(t => isClosed(t.status) && t.completedAt && t.createdAt);
     const avgCompletionTime = completedTasks.length > 0
       ? completedTasks.reduce((sum, t) => {
           return sum + diffMs(t.completedAt, t.createdAt);
@@ -95,13 +95,13 @@ export const getGeneralMetrics = async (userId, userRole, user = null) => {
 
     // Tareas completadas en periodos
     const completedToday = tasks.filter(t => 
-      t.status === 'cerrada' && toMs(t.completedAt) >= today
+      isClosed(t.status) && toMs(t.completedAt) >= today
     ).length;
     const completedThisWeek = tasks.filter(t => 
-      t.status === 'cerrada' && toMs(t.completedAt) >= weekAgo
+      isClosed(t.status) && toMs(t.completedAt) >= weekAgo
     ).length;
     const completedThisMonth = tasks.filter(t => 
-      t.status === 'cerrada' && toMs(t.completedAt) >= monthAgo
+      isClosed(t.status) && toMs(t.completedAt) >= monthAgo
     ).length;
 
     // Tasa de completitud

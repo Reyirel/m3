@@ -93,7 +93,7 @@ export default function AreaCoordinationProgress({ parentTaskId, onSubtaskPress,
           const isCurrentArea = subtaskAreaLower === currentAreaLower;
           
           return (
-            <TouchableOpacity 
+            <TouchableOpacity accessibilityRole="button" 
               key={subtask.id}
               style={[
                 styles.areaItem, 

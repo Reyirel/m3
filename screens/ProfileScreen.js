@@ -24,8 +24,8 @@ import ScreenHeader from '../components/ui/ScreenHeader';
 import PrimaryButton from '../components/ui/PrimaryButton';
 import { useTheme } from '../contexts/ThemeContext';
 import { useTasks } from '../contexts/TasksContext';
-import { toMs } from '../utils/dateUtils';
-import { isInProgress } from '../utils/taskStatus';
+import { isOverdue } from '../utils/dateUtils';
+import { isClosed, isInProgress } from '../utils/taskStatus';
 import { hapticMedium } from '../utils/haptics';
 import { confirmAlert, infoAlert } from '../utils/alert';
 
@@ -49,9 +49,9 @@ const ProfileScreen = ({ navigation, onLogout }) => {
 
   const stats = {
     totalTasks: tasks.length,
-    completedTasks: tasks.filter(t => t.status === 'cerrada').length,
+    completedTasks: tasks.filter(t => isClosed(t.status)).length,
     inProgressTasks: tasks.filter(t => isInProgress(t.status)).length,
-    overdueTasks: tasks.filter(t => t.dueAt && toMs(t.dueAt) < Date.now() && t.status !== 'cerrada').length,
+    overdueTasks: tasks.filter(t => isOverdue(t)).length,
   };
 
   const completionRate = stats.totalTasks > 0
@@ -106,7 +106,7 @@ const ProfileScreen = ({ navigation, onLogout }) => {
 
   const renderInfoItem = useCallback((item, index, total) => (
     <View key={index}>
-      <TouchableOpacity
+      <TouchableOpacity accessibilityRole="button"
         onPress={item.onPress}
         disabled={!item.action}
         activeOpacity={item.action ? 0.6 : 1}

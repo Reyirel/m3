@@ -165,7 +165,7 @@ export default function CreateUserForm({ onUserCreated, isUserAdmin }) {
         Seleccionar Rol:
       </Text>
       <View style={styles.roleSelector}>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={[
             styles.roleButton,
             { backgroundColor: theme.background, borderColor: theme.border },
@@ -189,7 +189,7 @@ export default function CreateUserForm({ onUserCreated, isUserAdmin }) {
             Director
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={[
             styles.roleButton,
             { backgroundColor: theme.background, borderColor: theme.border },
@@ -213,7 +213,7 @@ export default function CreateUserForm({ onUserCreated, isUserAdmin }) {
             Secretario
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
+        <TouchableOpacity accessibilityRole="button"
           style={[
             styles.roleButton,
             { backgroundColor: theme.background, borderColor: theme.border },
@@ -239,7 +239,7 @@ export default function CreateUserForm({ onUserCreated, isUserAdmin }) {
         </TouchableOpacity>
       </View>
 
-      <TouchableOpacity
+      <TouchableOpacity accessibilityRole="button"
         style={styles.actionButton}
         onPress={() => {
           hapticMedium();

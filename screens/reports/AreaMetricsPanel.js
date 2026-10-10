@@ -9,6 +9,7 @@ import { getUsersByRole } from '../../services/usersDirectory';
 import { useTheme } from '../../contexts/ThemeContext';
 import { SPACING, RADIUS, TYPOGRAPHY, SHADOWS } from '../../theme/tokens';
 import { toMs } from '../../utils/dateUtils';
+import { isClosed } from '../../utils/taskStatus';
 
 const AreaMetricsPanel = ({ 
   userArea,
@@ -56,9 +57,9 @@ const AreaMetricsPanel = ({
     const areaTasks = tasks.filter(t => (t.area || '').toLowerCase().trim() === userAreaNorm);
     
     const now = Date.now();
-    const completed = areaTasks.filter(t => t.status === 'cerrada' || t.status === 'completada').length;
-    const pending = areaTasks.filter(t => t.status !== 'cerrada' && t.status !== 'completada').length;
-    const overdue = areaTasks.filter(t => t.status !== 'cerrada' && t.status !== 'completada' && toMs(t.dueAt) < now).length;
+    const completed = areaTasks.filter(t => isClosed(t.status)).length;
+    const pending = areaTasks.filter(t => !isClosed(t.status)).length;
+    const overdue = areaTasks.filter(t => !isClosed(t.status) && toMs(t.dueAt) < now).length;
     
     // Calcular métricas por director
     const directorMetrics = directors.map(director => {
@@ -72,9 +73,9 @@ const AreaMetricsPanel = ({
         return task.assignedTo?.toLowerCase() === directorEmail;
       });
       
-      const dirCompleted = directorTasks.filter(t => t.status === 'cerrada').length;
-      const dirPending = directorTasks.filter(t => t.status !== 'cerrada').length;
-      const dirOverdue = directorTasks.filter(t => t.status !== 'cerrada' && toMs(t.dueAt) < now).length;
+      const dirCompleted = directorTasks.filter(t => isClosed(t.status)).length;
+      const dirPending = directorTasks.filter(t => !isClosed(t.status)).length;
+      const dirOverdue = directorTasks.filter(t => !isClosed(t.status) && toMs(t.dueAt) < now).length;
       const completionRate = directorTasks.length > 0 
         ? Math.round((dirCompleted / directorTasks.length) * 100) 
         : 0;
@@ -264,7 +265,7 @@ const AreaMetricsPanel = ({
             { key: 'completed', label: 'Completadas' },
             { key: 'overdue', label: 'Vencidas' }
           ].map(filter => (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               key={filter.key}
               style={[
                 styles.filterChip,

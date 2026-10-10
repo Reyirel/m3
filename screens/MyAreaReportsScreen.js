@@ -308,7 +308,7 @@ const MyAreaReportsScreen = ({ navigation, embedded = false }) => {
 
               <View style={styles.detailSection}>
                 <Text style={[styles.sectionLabel, { color: theme.textSecondary }]}>Tarea relacionada</Text>
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   style={[styles.taskLink, { backgroundColor: isDark ? theme.glass : theme.glassStrong }]}
                   onPress={() => {
                     setShowModal(false);
@@ -373,7 +373,7 @@ const MyAreaReportsScreen = ({ navigation, embedded = false }) => {
 
               {/* Botón de eliminar reportes */}
               <View style={styles.detailSection}>
-                <TouchableOpacity
+                <TouchableOpacity accessibilityRole="button"
                   style={styles.deleteButton}
                   onPress={() => handleDeleteReport(selectedReport.id, selectedReport.taskId)}
                 >

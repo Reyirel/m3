@@ -2,10 +2,8 @@
 // Estilos de TaskChatScreen.js
 import { StyleSheet, Dimensions } from 'react-native';
 
-const { width: SCREEN_W } = Dimensions.get('window');
-const BUBBLE_MAX = SCREEN_W * 0.72;
 
-export const createStyles = (theme, isDark) => StyleSheet.create({
+export const createStyles = (theme, isDark, SCREEN_W = Dimensions.get('window').width) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: theme.background,
@@ -116,7 +114,7 @@ export const createStyles = (theme, isDark) => StyleSheet.create({
 
   // Bubbles
   bubble: {
-    maxWidth: BUBBLE_MAX,
+    maxWidth: SCREEN_W * 0.72,
     paddingHorizontal: 14,
     paddingVertical: 10,
     borderRadius: 24,

@@ -2,12 +2,13 @@
 // Context global para sincronizar tareas entre todas las pantallas en tiempo real
 // ⚡ Optimizado con useMemo para evitar re-renders innecesarios
 
-import React, { createContext, useState, useEffect, useMemo } from 'react';
+import React, { createContext, useState, useEffect, useMemo, useCallback } from 'react';
 import logger from '../services/Logger';
 import { subscribeToTasks } from '../services/tasks';
 import { subscribeToConnectionState } from '../services/offlineSync';
 import { deleteManager } from '../utils/deleteManager';
 import { useAuth } from './AuthContext';
+import { showDialog } from '../utils/alert';
 
 export const TasksContext = createContext(null);
 
@@ -16,6 +17,10 @@ export function TasksProvider({ children }) {
   const [tasks, setTasks] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(true);
+  // La suscripción falló tras agotar los reintentos: la lista vacía NO significa "sin tareas"
+  const [loadError, setLoadError] = useState(false);
+  const [reloadKey, setReloadKey] = useState(0);
+  const retryLoad = useCallback(() => setReloadKey(key => key + 1), []);
 
   // Conectividad: la misma fuente que el resto de la app (services/offlineSync, que usa
   // NetInfo). Antes se escuchaban los eventos online/offline de `window`, que solo
@@ -44,6 +49,7 @@ export function TasksProvider({ children }) {
     if (!userEmail) {
       setTasks(prev => prev.length > 0 ? [] : prev);
       setIsLoading(false);
+      setLoadError(false);
       return undefined;
     }
 
@@ -54,6 +60,7 @@ export function TasksProvider({ children }) {
     const MAX_RETRIES = 5;
     let hasLoadedOnce = false;
     setIsLoading(true);
+    setLoadError(false);
 
     const setupSubscription = async () => {
       try {
@@ -67,6 +74,7 @@ export function TasksProvider({ children }) {
           }
 
           retryCount = 0;
+          setLoadError(false);
         }, currentUser);
         // El usuario cambió mientras se preparaba la suscripción
         if (!mounted) {
@@ -88,7 +96,16 @@ export function TasksProvider({ children }) {
           }, delayMs);
         } else {
           setIsLoading(false);
+          setLoadError(true);
           logger.error('TasksContext', 'Max retries exceeded for task subscription');
+          showDialog({
+            title: 'No se pudieron cargar las tareas',
+            message: 'Revisa tu conexión. Mientras tanto la lista puede aparecer vacía aunque tengas tareas.',
+            buttons: [
+              { text: 'Cerrar', style: 'cancel' },
+              { text: 'Reintentar', onPress: retryLoad },
+            ],
+          });
         }
       }
     };
@@ -108,7 +125,7 @@ export function TasksProvider({ children }) {
     };
     // currentUser se lee completo dentro, pero solo estos campos cambian qué tareas se ven
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authStatus, userEmail, userRole, userArea, userDirecciones]);
+  }, [authStatus, userEmail, userRole, userArea, userDirecciones, reloadKey]);
 
   // ⚡ Memoize context value to prevent unnecessary re-renders
   const value = useMemo(() => ({
@@ -116,9 +133,11 @@ export function TasksProvider({ children }) {
     setTasks,
     isLoading,
     isOnline,
+    loadError,
+    retryLoad,
     currentUser,
     deleteManager,
-  }), [tasks, isLoading, isOnline, currentUser]);
+  }), [tasks, isLoading, isOnline, loadError, retryLoad, currentUser]);
 
   return (
     <TasksContext.Provider value={value}>

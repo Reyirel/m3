@@ -24,7 +24,7 @@ export function PeriodTabs({ period, onChange, styles, theme, isDark }) {
         {PERIODS.map((option) => {
           const active = period === option.key;
           return (
-            <TouchableOpacity
+            <TouchableOpacity accessibilityRole="button"
               key={option.key}
               onPress={() => onChange(option.key)}
               style={[

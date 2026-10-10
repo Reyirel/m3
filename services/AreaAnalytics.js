@@ -2,6 +2,7 @@
 // Análisis avanzado con histórico, predicciones y detección de cuellos de botella
 // Optimizado: Usa caché local para no recalcular constantemente
 import { toMs, diffMs } from '../utils/dateUtils';
+import { isClosed } from '../utils/taskStatus';
 
 let analyticsCache = {
   timestamp: 0,
@@ -44,9 +45,9 @@ export function calculateMonthlyComparative(allTasks) {
 
   const calculateMetrics = (tasks) => ({
     total: tasks.length,
-    completed: tasks.filter(t => t.status === 'cerrada').length,
+    completed: tasks.filter(t => isClosed(t.status)).length,
     completionRate: tasks.length > 0 
-      ? Math.round((tasks.filter(t => t.status === 'cerrada').length / tasks.length) * 100)
+      ? Math.round((tasks.filter(t => isClosed(t.status)).length / tasks.length) * 100)
       : 0,
     avgCompletionDays: calculateAvgCompletionTime(tasks)
   });
@@ -72,7 +73,7 @@ export function identifyBottlenecks(areaMetrics, allTasks) {
 
   Object.entries(areaMetrics).forEach(([area, _metrics]) => {
     const areaTasks = allTasks.filter(t => t.area === area);
-    const completedTasks = areaTasks.filter(t => t.status === 'cerrada' && t.completedAt && t.createdAt);
+    const completedTasks = areaTasks.filter(t => isClosed(t.status) && t.completedAt && t.createdAt);
 
     if (completedTasks.length === 0) return;
 
@@ -180,7 +181,7 @@ export function generateOptimizationSuggestions(areaMetrics, allTasks, alerts) {
 // Helpers privados
 
 function calculateAvgCompletionTime(tasks) {
-  const completedTasks = tasks.filter(t => t.status === 'cerrada' && t.completedAt && t.createdAt);
+  const completedTasks = tasks.filter(t => isClosed(t.status) && t.completedAt && t.createdAt);
   if (completedTasks.length === 0) return 0;
   
   const totalTime = completedTasks.reduce((sum, t) => {

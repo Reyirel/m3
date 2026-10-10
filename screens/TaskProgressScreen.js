@@ -9,7 +9,6 @@ import {
   Dimensions,
   SafeAreaView,
   RefreshControl,
-  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { subscribeToTaskProgress } from '../services/taskProgress';
@@ -23,6 +22,7 @@ import { toMs } from '../utils/dateUtils';
 import ScreenHeader from '../components/ui/ScreenHeader';
 import { DURATION, timing } from '../theme/motion';
 import { styles } from './task/TaskProgressScreenStyles';
+import { infoAlert } from '../utils/alert';
 
 Dimensions.get('window');
 
@@ -64,7 +64,7 @@ export default function TaskProgressScreen({ route, navigation }) {
 
   const handleEdit = () => {
     if (!currentUser || (currentUser.role !== 'admin')) {
-      Alert.alert('Sin permisos', 'Solo administradores pueden editar tareas');
+      infoAlert('Sin permisos', 'Solo administradores pueden editar tareas');
       return;
     }
     navigation.navigate('TaskDetail', { task, taskId });
@@ -294,7 +294,7 @@ export default function TaskProgressScreen({ route, navigation }) {
                 const isCompleted = subtask.status === 'completada';
                 
                 return (
-                  <TouchableOpacity
+                  <TouchableOpacity accessibilityRole="button"
                     key={subtask.id}
                     onPress={() => setExpandedSubtask(isExpanded ? null : subtask.id)}
                     style={[

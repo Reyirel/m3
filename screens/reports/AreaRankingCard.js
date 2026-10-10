@@ -96,7 +96,7 @@ export default function AreaRankingCard({
       {/* Rankings */}
       <View style={styles.rankingList}>
         {ranking.map((area, index) => (
-          <TouchableOpacity 
+          <TouchableOpacity accessibilityRole="button" 
             key={area.name}
             onPress={() => onAreaPress?.(area.name)}
             activeOpacity={0.7}
