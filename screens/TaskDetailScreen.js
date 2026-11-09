@@ -46,6 +46,8 @@ import { getSecretariasForAreas } from '../config/areas';
 import { getTitularesByAreas, isDirectorOfSecretario, isTitularOfArea } from '../services/roles';
 import { canChangeTaskStatus } from '../services/permissions';
 import { updateTask } from '../services/tasks';
+import { notifyAssignment } from '../services/notifications';
+import { getConnectionState } from '../services/offlineSync';
 import { getAssignedEmails } from '../utils/taskHelpers';
 import { getTaskAreas } from '../utils/taskVisibility';
 import {
@@ -434,6 +436,17 @@ export default function TaskDetailScreen({ route, navigation }) {
 
       // updateTask funciona también sin conexión: guarda el cambio en la cola
       await updateTask(liveTask.id, updates);
+      // Avisar al director: sin esto se enteraba solo si abría la app y revisaba su bandeja.
+      // Sin conexión el aviso se perdería (notifyAssignment lee la lista de usuarios).
+      if (!alreadyAssigned && getConnectionState()) {
+        notifyAssignment({
+          id: liveTask.id,
+          title: liveTask.title,
+          dueAt: liveTask.dueAt,
+          assignedTo: [directorEmail],
+          priority: liveTask.priority,
+        }).catch(() => {});
+      }
       showSuccess(`Tarea delegada a ${directorName}`);
       setShowDelegateModal(false);
     } catch {

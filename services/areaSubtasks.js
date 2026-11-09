@@ -2,7 +2,7 @@
 // Sistema de subtareas automáticas por área
 // Cuando una tarea se asigna a múltiples áreas, se crean subtareas coordinadas
 
-import { collection, doc, getDoc, updateDoc, query, where, getDocs, Timestamp, serverTimestamp, onSnapshot } from 'firebase/firestore';
+import { collection, doc, getDoc, updateDoc, query, where, getDocs, Timestamp, serverTimestamp, onSnapshot, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase';
 import { normalizeStatus } from '../utils/taskHelpers';
 import { getSecretariasForAreas } from '../config/areas';
@@ -20,37 +20,43 @@ import { getSecretariasForAreas } from '../config/areas';
  * @param {string} parentTaskId - ID de la tarea principal
  * @returns {number} Subtareas agregadas (0 si la tarea tiene una sola área)
  */
+const getParentAreas = (parentTask) =>
+  [...new Set(Array.isArray(parentTask?.areas) ? parentTask.areas.filter(Boolean) : [])];
+
+// Documento de la subtarea de un área
+const buildAreaSubtask = (area, parentTask, parentTaskId) => ({
+  title: `[${area}] ${parentTask.title}`,
+  description: parentTask.description,
+  status: 'pendiente',
+  priority: parentTask.priority || 'media',
+  area,
+  areas: [area],
+  // Secretaría que puede ver la subtarea (visibilidad del secretario)
+  secretarias: getSecretariasForAreas([area]),
+  parentTaskId,
+  parentTaskTitle: parentTask.title,
+  isSubtask: true,
+  isAreaSubtask: true, // Marca especial para subtareas de coordinación
+  assignedTo: [],
+  assignedToNames: [],
+  assignments: [],
+  createdBy: parentTask.createdBy,
+  createdByName: parentTask.createdByName,
+  createdAt: serverTimestamp(),
+  updatedAt: serverTimestamp(),
+  dueAt: parentTask.dueAt || null,
+  tags: parentTask.tags || [],
+  isCoordinationTask: false,
+  progressPercentage: 0,
+});
+
 export const addAreaSubtasksToBatch = (batch, parentTask, parentTaskId) => {
-  const areas = Array.isArray(parentTask.areas) ? parentTask.areas.filter(Boolean) : [];
+  const areas = getParentAreas(parentTask);
   if (areas.length <= 1) return 0;
 
   const tasksRef = collection(db, 'tasks');
   areas.forEach((area) => {
-    batch.set(doc(tasksRef), {
-      title: `[${area}] ${parentTask.title}`,
-      description: parentTask.description,
-      status: 'pendiente',
-      priority: parentTask.priority || 'media',
-      area,
-      areas: [area],
-      // Secretaría que puede ver la subtarea (visibilidad del secretario)
-      secretarias: getSecretariasForAreas([area]),
-      parentTaskId,
-      parentTaskTitle: parentTask.title,
-      isSubtask: true,
-      isAreaSubtask: true, // Marca especial para subtareas de coordinación
-      assignedTo: [],
-      assignedToNames: [],
-      assignments: [],
-      createdBy: parentTask.createdBy,
-      createdByName: parentTask.createdByName,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-      dueAt: parentTask.dueAt || null,
-      tags: parentTask.tags || [],
-      isCoordinationTask: false,
-      progressPercentage: 0,
-    });
+    batch.set(doc(tasksRef), buildAreaSubtask(area, parentTask, parentTaskId));
   });
 
   batch.update(doc(db, 'tasks', parentTaskId), {
@@ -60,6 +66,48 @@ export const addAreaSubtasksToBatch = (batch, parentTask, parentTaskId) => {
     coordinationProgress: 0,
   });
   return areas.length;
+};
+
+/**
+ * Ajusta las subtareas por área después de que el administrador cambia las áreas de una
+ * tarea ya creada (al crearla se usa addAreaSubtasksToBatch):
+ *   - un área nueva recibe su subtarea
+ *   - la subtarea de un área quitada va a la papelera (areaRemoved: true), no se borra:
+ *     conserva su avance y su chat, y no regresa si después se restaura la tarea principal
+ *   - si la tarea queda con una sola área deja de ser de coordinación
+ *
+ * @param {string} parentTaskId - ID de la tarea principal
+ * @param {object} parentTask - Datos de la tarea ya actualizados (title, areas, dueAt…)
+ * @param {string} [removedBy] - Correo de quien hizo el cambio
+ * @returns {Promise<{added: number, removed: number}>}
+ */
+export const syncAreaSubtasksAfterEdit = async (parentTaskId, parentTask, removedBy = '') => {
+  const areas = getParentAreas(parentTask);
+  const isCoordination = areas.length > 1;
+  const current = (await getAreaSubtasks(parentTaskId)).filter(st => !st.deleted);
+  const currentAreas = new Set(current.map(st => st.area));
+
+  const toAdd = isCoordination ? areas.filter(area => !currentAreas.has(area)) : [];
+  const keep = new Set(isCoordination ? areas : []);
+  const toRemove = current.filter(st => !keep.has(st.area));
+  if (toAdd.length === 0 && toRemove.length === 0) return { added: 0, removed: 0 };
+
+  const batch = writeBatch(db);
+  const tasksRef = collection(db, 'tasks');
+  toAdd.forEach(area => batch.set(doc(tasksRef), buildAreaSubtask(area, parentTask, parentTaskId)));
+  toRemove.forEach(st => batch.update(doc(db, 'tasks', st.id), {
+    deleted: true,
+    deletedBy: removedBy,
+    deletedAt: serverTimestamp(),
+    areaRemoved: true,
+  }));
+  batch.update(doc(db, 'tasks', parentTaskId), isCoordination
+    ? { isCoordinationTask: true, subtaskCount: areas.length }
+    : { isCoordinationTask: false, subtaskCount: 0, subtasksCompleted: 0, coordinationProgress: 0 });
+  await batch.commit();
+
+  if (isCoordination) await updateParentTaskProgress(parentTaskId);
+  return { added: toAdd.length, removed: toRemove.length };
 };
 
 /**

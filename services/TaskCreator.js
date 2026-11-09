@@ -36,7 +36,7 @@ import { toMs } from '../utils/dateUtils';
 import { ValidationRules, Validator } from '../utils/ValidationRules';
 import { getSecretariasForAreas } from '../config/areas';
 import { getAssignedEmails } from '../utils/taskHelpers';
-import { addAreaSubtasksToBatch } from './areaSubtasks';
+import { addAreaSubtasksToBatch, syncAreaSubtasksAfterEdit } from './areaSubtasks';
 import {
   getConnectionState,
   queueOperation,
@@ -472,6 +472,26 @@ export const TaskCreator = {
       // 4. ACTUALIZAR EN BD
       await updateDoc(taskRef, normalizedData);
 
+      // Si cambiaron las áreas, cada área nueva recibe su subtarea y la de un área
+      // quitada va a la papelera. Si falla, la tarea ya quedó guardada: solo se avisa.
+      const previousAreas = [...new Set(
+        Array.isArray(existing.areas) ? existing.areas.filter(Boolean) : [existing.area].filter(Boolean)
+      )].sort();
+      const newAreas = [...new Set(fields.areas)].sort();
+      let subtasksWarning;
+      if (previousAreas.join('|') !== newAreas.join('|')) {
+        try {
+          await syncAreaSubtasksAfterEdit(
+            taskId,
+            { ...existing, ...normalizedData, dueAt: normalizedData.dueAt },
+            currentUser.email || ''
+          );
+        } catch (subtaskError) {
+          if (__DEV__) console.error('Error ajustando subtareas por área:', subtaskError);
+          subtasksWarning = 'La tarea se guardó, pero no se pudieron ajustar las subtareas por área';
+        }
+      }
+
       // 5. NOTIFICAR SOLO A LOS NUEVOS ASIGNADOS. Quien ya tenía la tarea no debe
       // recibir "Nueva tarea asignada" cada vez que se corrige el título o la fecha.
       const previousAssignees = getAssignedEmails(existing);
@@ -482,6 +502,7 @@ export const TaskCreator = {
 
       return {
         success: true,
+        ...(subtasksWarning ? { warning: subtasksWarning } : {}),
       };
     } catch (error) {
       if (__DEV__) console.error('TaskCreator.update error:', error);

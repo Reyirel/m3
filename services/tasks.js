@@ -21,7 +21,8 @@ import {
   serverTimestamp,
   Timestamp,
   getDoc,
-  getDocs
+  getDocs,
+  writeBatch
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { getCurrentSession } from './authFirestore';
@@ -457,9 +458,10 @@ async function refreshParentProgress(taskRef) {
 }
 
 /**
- * Eliminar una tarea: la manda a la papelera (deleted: true), NO borra el documento.
- * Así un borrado por error se puede deshacer con restoreTask y no se pierden
- * la descripción, el chat ni las subtareas.
+ * Eliminar una tarea: la manda a la papelera (deleted: true) junto con sus subtareas
+ * por área, NO borra documentos. Así un borrado por error se puede deshacer con
+ * restoreTask y no se pierden la descripción, el chat ni las subtareas.
+ * Sin las subtareas, cada área seguía viendo como activa su parte de una tarea borrada.
  * OFFLINE-FIRST: la quita del cache local y sincroniza cuando hay conexión
  * @param {string} taskId - ID de la tarea a eliminar
  * @returns {Promise<void>}
@@ -487,10 +489,16 @@ export async function deleteTask(taskId) {
 
   const trashFields = { deleted: true, deletedBy: cacheUserEmail || '' };
 
+  // Subtareas por área según la copia del dispositivo (para el modo sin conexión)
+  let cachedSubtaskIds = [];
+
   try {
     // Eliminar del cache local primero
     const cached = await getCachedTasks(cacheUserEmail);
-    const filtered = cached.filter(t => t.id !== taskId);
+    cachedSubtaskIds = cached
+      .filter(t => t.parentTaskId === taskId && !String(t.id).startsWith('temp_'))
+      .map(t => t.id);
+    const filtered = cached.filter(t => t.id !== taskId && t.parentTaskId !== taskId);
     await cacheTasksLocally(filtered, cacheUserEmail);
 
     if (isTemp) {
@@ -499,12 +507,19 @@ export async function deleteTask(taskId) {
     }
 
     if (getConnectionState()) {
-      const taskRef = doc(db, COLLECTION_NAME, taskId);
-      await updateDoc(taskRef, { ...trashFields, deletedAt: serverTimestamp() });
+      // La tarea y sus subtareas van en un solo lote: o se manda todo a la papelera o nada
+      const trashed = { ...trashFields, deletedAt: serverTimestamp() };
+      const batch = writeBatch(db);
+      batch.update(doc(db, COLLECTION_NAME, taskId), trashed);
+      const subtasks = await getDocs(query(collection(db, COLLECTION_NAME), where('parentTaskId', '==', taskId)));
+      subtasks.docs.forEach(subtask => batch.update(subtask.ref, trashed));
+      await batch.commit();
     } else {
       // MODO OFFLINE: Encolar para sincronización
       log('📴 Eliminación encolada para sincronización');
-      await queueOperation(OPERATION_TYPES.UPDATE, { ...trashFields, deletedAt: Date.now() }, taskId, cacheUserEmail);
+      for (const id of [taskId, ...cachedSubtaskIds]) {
+        await queueOperation(OPERATION_TYPES.UPDATE, { ...trashFields, deletedAt: Date.now() }, id, cacheUserEmail);
+      }
     }
     return;
 
@@ -514,7 +529,9 @@ export async function deleteTask(taskId) {
 
     // Si falla Firebase por un error transitorio, encolar para después
     log('⚠️ Error eliminando, encolando para después:', error.message);
-    await queueOperation(OPERATION_TYPES.UPDATE, { ...trashFields, deletedAt: Date.now() }, taskId, cacheUserEmail);
+    for (const id of [taskId, ...cachedSubtaskIds]) {
+      await queueOperation(OPERATION_TYPES.UPDATE, { ...trashFields, deletedAt: Date.now() }, id, cacheUserEmail);
+    }
   }
 }
 
@@ -535,12 +552,13 @@ export async function restoreTask(taskId) {
   };
   await updateDoc(doc(db, COLLECTION_NAME, taskId), restoredFields);
 
-  // Las subtareas por área se fueron a la papelera junto con la tarea: regresan con ella
+  // Las subtareas por área se fueron a la papelera junto con la tarea: regresan con ella.
+  // Las de un área que el administrador quitó de la tarea (areaRemoved) se quedan allí.
   try {
     const subtasks = await getDocs(query(collection(db, COLLECTION_NAME), where('parentTaskId', '==', taskId)));
     await Promise.all(
       subtasks.docs
-        .filter(subtask => subtask.data().deleted)
+        .filter(subtask => subtask.data().deleted && !subtask.data().areaRemoved)
         .map(subtask => updateDoc(subtask.ref, restoredFields))
     );
   } catch (e) {

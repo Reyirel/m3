@@ -356,15 +356,16 @@ export const getCurrentSession = async () => {
         return { success: true, session };
       }
 
-      // Refrescar datos del usuario desde Firebase para obtener campos actualizados
+      // Refrescar datos del usuario desde Firebase para obtener campos actualizados.
+      // Se lee el documento de ESTA sesión: buscar por correo tomaba el primero que
+      // apareciera, y con dos documentos del mismo correo la sesión podía quedarse
+      // con el rol y las áreas del otro.
       try {
         lastSessionRefresh = Date.now();
-        const usersRef = collection(db, 'users');
-        const q = query(usersRef, where('email', '==', session.email));
-        const querySnapshot = await getDocs(q);
-        
-        if (!querySnapshot.empty) {
-          const userData = querySnapshot.docs[0].data();
+        const userSnap = session.userId ? await getDoc(doc(db, 'users', session.userId)) : null;
+
+        if (userSnap?.exists()) {
+          const userData = userSnap.data();
           // Si el usuario fue desactivado, cerrar sesión
           if (userData.active === false) {
             await AsyncStorage.removeItem('userSession');

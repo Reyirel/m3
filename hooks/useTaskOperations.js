@@ -25,7 +25,7 @@ export const useTaskOperations = (task, currentUser) => {
   const [isSaving, setIsSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState(null);
   const [error, setError] = useState(null);
-  const { showSuccess, showError } = useNotification();
+  const { showSuccess, showError, showWarning } = useNotification();
   const { saveTask, deleteTask: deleteTaskFromCreation } = useTaskCreation();
 
   /**
@@ -116,6 +116,8 @@ export const useTaskOperations = (task, currentUser) => {
 
         if (result.offline) {
           showSuccess('Guardado en este dispositivo. Se enviará al recuperar la conexión.');
+        } else if (result.warning) {
+          showWarning(result.warning);
         } else {
           showSuccess(task ? '¡Tarea actualizada!' : '¡Tarea creada!');
         }
@@ -128,7 +130,7 @@ export const useTaskOperations = (task, currentUser) => {
         return false;
       }
     },
-    [isSaving, task, currentUser, saveTask, showSuccess, showError]
+    [isSaving, task, currentUser, saveTask, showSuccess, showError, showWarning]
   );
 
   /**
