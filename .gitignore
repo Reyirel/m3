@@ -38,6 +38,8 @@ testEmail.js
 updatePasswords.js
 listUsers.js
 listAllUsers.mjs
+# Scripts antiguos que traían contraseñas escritas en el código (el repositorio es público)
+scripts/archivo-local/
 
 # Firebase config files (IMPORTANTE: No subir estos archivos)
 google-services.json

@@ -206,7 +206,7 @@ const uploadToStorage = async (blob, taskId, reportId, fileName) => {
  */
 export const uploadReportImage = async (taskId, reportId, imageData) => {
   try {
-    const fileName = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}.jpg`;
+    const fileName = `${Date.now()}_${Math.random().toString(36).slice(2, 11)}.jpg`;
 
     let dataUrl = imageData.dataUrl
       || (imageData.base64 ? `data:image/jpeg;base64,${imageData.base64}` : null);

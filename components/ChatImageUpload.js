@@ -103,7 +103,7 @@ export default function ChatImageUpload({ onImageCapture = () => {}, disabled = 
     setUploadProgress(0);
 
     try {
-      const filename = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}.jpg`;
+      const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 11)}.jpg`;
       setUploadProgress(20);
 
       // Obtener blob

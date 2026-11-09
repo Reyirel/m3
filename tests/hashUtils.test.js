@@ -7,7 +7,7 @@ import { webcrypto } from 'crypto';
 import { hashPassword, sha256Hash, pbkdf2HexJs, sha256HexJs } from '../utils/hashUtils';
 
 const CASES = [
-  ['admin123', 'admin@todo.com'],
+  ['prueba123', 'usuario@ejemplo.com'],
   ['Contraseña-ñ-€-😀', 'josé.núñez@municipio.com'],
   ['x', 'a@b.c'],
   ['una contraseña bastante larga que supera con mucho los sesenta y cuatro bytes de un bloque', 'largo@municipio.com'],
